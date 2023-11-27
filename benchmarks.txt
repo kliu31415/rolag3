@@ -1,0 +1,16 @@
+Benchmarks
+
+Setup:
+-i9 11980HK
+-RTX 3080 laptop GPU
+
+Test 1
+-quadrilateral vertexes (30, 30), (80, 20), (70, 40), (50, 50)
+-2 triangle renders per quad, 6 vertexes sent to GPU. Each vertex is 6 f32s, so 24 bytes.
+-area 750px
+-163840 quads, and almost all quads were on screen (very little can be clipped)
+-debug build: 6/7fps (likely with dedicated GPU, but unsure)
+-release build: 20 fps with dedicated GPU, 12 with integrated
+-fps: 20 with release build, 6/7 with debug build
+-Unsure if this used a discrete GPU or not
+-Might be CPU bound; with the current logic, every frame, one allocation occurs per quad drawn
