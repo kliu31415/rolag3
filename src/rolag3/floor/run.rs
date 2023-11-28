@@ -1,8 +1,9 @@
-use super::map_object::Room;
+use super::map_object::{Room, Act1Context};
 
 pub struct RunFloorContext<'a> {
     pub num_ticks: u32,
     pub room: &'a mut Room,
+    pub player_input: &'a PlayerInput,
 }
 
 // run_floor() should be called once per frame
@@ -10,15 +11,42 @@ pub fn run_floor(ctx: RunFloorContext) {
     for _ in 0 .. ctx.num_ticks {
         let tick_ctx = RunFloorTickContext {
             room: ctx.room,
+            player_input: ctx.player_input,
         };
         run_floor_tick(tick_ctx);
     }
 }
 
-struct RunFloorTickContext<'a> {
-    pub room: &'a mut Room,
+pub enum PlayerHorizontalMoveInput {
+    None,
+    Left,
+    Right,
 }
 
-fn run_floor_tick(_ctx: RunFloorTickContext) {
+pub enum PlayerVerticalMoveInput {
+    None,
+    Up,
+    Down,
+}
 
+pub struct PlayerInput {
+    pub horizontal_move: PlayerHorizontalMoveInput,
+    pub vertical_move: PlayerVerticalMoveInput,
+
+    pub mouse_x: f64, // in floor coordinates
+    pub mouse_y: f64, // in floor coordinates
+    pub is_lmb_down: bool, // lmb = left mouse button
+    pub is_rmb_down: bool, // rmb = right mouse button
+}
+
+struct RunFloorTickContext<'a> {
+    pub room: &'a mut Room,
+    pub player_input: &'a PlayerInput,
+}
+
+fn run_floor_tick(ctx: RunFloorTickContext) {
+    let mut act1_context = Act1Context::new(ctx.player_input);
+    for obj in ctx.room.room_objects.iter_mut() {
+        obj.act1(&mut act1_context);
+    }
 }

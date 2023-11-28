@@ -1,14 +1,22 @@
 use crate::gfx::renderer::ColorRGBA32f;
 
-use super::draw::DrawContext;
+use super::{draw::DrawContext, run::{PlayerInput, PlayerHorizontalMoveInput, PlayerVerticalMoveInput}};
 
 pub trait FloorObject {
-    fn act1(&mut self, ctx: &Act1Context);
+    fn act1(&mut self, ctx: &mut Act1Context);
     fn draw(&self, ctx: &mut DrawContext);
 }
 
-pub struct Act1Context {
+pub struct Act1Context<'a> {
+    player_input: &'a PlayerInput
+}
 
+impl<'a> Act1Context<'a> {
+    pub fn new(player_input: &'a PlayerInput) -> Self {
+        Self {
+            player_input
+        }
+    }
 }
 
 pub struct FloorCoordinate {
@@ -55,8 +63,19 @@ struct Player {
 }
 
 impl FloorObject for Player {
-    fn act1(&mut self, _ctx: &Act1Context) {
-
+    fn act1(&mut self, ctx: &mut Act1Context) {
+        let speed = 0.1;
+        let input = &ctx.player_input;
+        match input.horizontal_move {
+            PlayerHorizontalMoveInput::Left => self.x -= speed,
+            PlayerHorizontalMoveInput::Right => self.x += speed,
+            PlayerHorizontalMoveInput::None => {}
+        }
+        match input.vertical_move {
+            PlayerVerticalMoveInput::Up => self.y -= speed,
+            PlayerVerticalMoveInput::Down => self.y += speed,
+            PlayerVerticalMoveInput::None => {}
+        }
     }
     fn draw(&self, ctx: &mut DrawContext) {
         let color = ColorRGBA32f {

@@ -1,10 +1,10 @@
 use std::{collections::VecDeque, time::{SystemTime, UNIX_EPOCH}};
 
-use winit::{event::{Event, WindowEvent, KeyEvent, ElementState}, event_loop::EventLoopWindowTarget, keyboard::{PhysicalKey, KeyCode}};
+use winit::{event::{Event, WindowEvent, KeyEvent, ElementState, MouseButton}, event_loop::EventLoopWindowTarget, keyboard::{PhysicalKey, KeyCode}};
 
 use crate::{gfx::{self, window::{Window, EventHandler}, renderer::{ColorRGBA32f, ViewSpaceCoordinate}}, rolag3::gfx::draw_op::DrawOpTriFan};
 
-use super::{gfx::draw_op::{process_draw_ops, DrawOpWithMetadata}, floor::{map_object::Room, draw::{DrawFloorContext, get_draw_floor_ops}, run::{RunFloorContext, run_floor}}};
+use super::{gfx::draw_op::{process_draw_ops, DrawOpWithMetadata}, floor::{map_object::Room, draw::{DrawFloorContext, get_draw_floor_ops}, run::{RunFloorContext, run_floor, PlayerInput, PlayerHorizontalMoveInput, PlayerVerticalMoveInput}}};
 
 pub fn run() {
     env_logger::init();
@@ -15,9 +15,58 @@ pub fn run() {
 }
 
 struct Rolag3EventHandler {
-   frame_timestamps: VecDeque<f64>,
-   room: Room,
+    #[allow(dead_code)] // rust falsely thinks frame_timestamps is never read even though its length is printed
+    frame_timestamps: VecDeque<f64>,
+    room: Room,
 }
+
+impl EventHandler for Rolag3EventHandler {
+    fn handle_event(&mut self, window: &mut dyn Window, event: Event<()>, elwt: &EventLoopWindowTarget<()>) {
+        match event {
+            Event::WindowEvent {
+                ref event,
+                window_id,
+            } if window_id == window.get_id() => {
+                match event {
+                    WindowEvent::CloseRequested 
+                    | WindowEvent::KeyboardInput {
+                        event: KeyEvent {
+                            state: ElementState::Pressed,
+                            physical_key: PhysicalKey::Code(KeyCode::Escape),
+                            ..
+                        },
+                        ..
+                    } => {
+                        elwt.exit();
+                        println!("exit signal detected. Exiting");
+                    }
+                    WindowEvent::Resized(size) => {
+                        println!("window resized");
+                        window.get_renderer().resize(size.width, size.height);
+                    }
+                    WindowEvent::ScaleFactorChanged {..} => {
+                        println!("window scale factor changed");
+                        // do something here?
+                    }
+                    WindowEvent::RedrawRequested => {
+                        self.run_frame(window);
+
+                    },
+                    _ => {},
+                }
+            },
+            Event::AboutToWait {..} => {
+                self.run_frame(window);
+            },
+            _ => {},
+        }
+    }
+}
+
+const PLAYER_MOVE_UP: PhysicalKey = PhysicalKey::Code(KeyCode::ArrowUp);
+const PLAYER_MOVE_DOWN: PhysicalKey = PhysicalKey::Code(KeyCode::ArrowDown);
+const PLAYER_MOVE_LEFT: PhysicalKey = PhysicalKey::Code(KeyCode::ArrowLeft);
+const PLAYER_MOVE_RIGHT: PhysicalKey = PhysicalKey::Code(KeyCode::ArrowRight);
 
 impl Rolag3EventHandler {
     fn new_test1() -> Rolag3EventHandler {
@@ -28,9 +77,43 @@ impl Rolag3EventHandler {
     }
 
     fn run_frame(&mut self, window: &mut dyn Window) {
+        let input_state = window.get_input_state();
+
+        let mut horizontal_move = PlayerHorizontalMoveInput::None;
+        if input_state.is_key_down(&PLAYER_MOVE_LEFT) && 
+            input_state.get_key_last_down_time(&PLAYER_MOVE_LEFT) > 
+            input_state.get_key_last_down_time(&PLAYER_MOVE_RIGHT) {
+            horizontal_move = PlayerHorizontalMoveInput::Left;
+        }
+        if input_state.is_key_down(&PLAYER_MOVE_RIGHT) && 
+            input_state.get_key_last_down_time(&PLAYER_MOVE_RIGHT) > 
+            input_state.get_key_last_down_time(&PLAYER_MOVE_LEFT) {
+                horizontal_move = PlayerHorizontalMoveInput::Right;
+        }
+
+        let mut vertical_move = PlayerVerticalMoveInput::None;
+        if input_state.is_key_down(&PLAYER_MOVE_UP) && 
+            input_state.get_key_last_down_time(&PLAYER_MOVE_UP) > 
+            input_state.get_key_last_down_time(&PLAYER_MOVE_DOWN) {
+            vertical_move = PlayerVerticalMoveInput::Up;
+        }
+        if input_state.is_key_down(&PLAYER_MOVE_DOWN) && 
+            input_state.get_key_last_down_time(&PLAYER_MOVE_DOWN) > 
+            input_state.get_key_last_down_time(&PLAYER_MOVE_UP) {
+            vertical_move = PlayerVerticalMoveInput::Down;
+        }
+
         let run_floor_ctx = RunFloorContext {
             num_ticks: 10,
             room: &mut self.room,
+            player_input: &PlayerInput {
+                horizontal_move: horizontal_move,
+                vertical_move: vertical_move,
+                mouse_x: 20.0,
+                mouse_y: 20.0,
+                is_lmb_down: input_state.is_mouse_button_down(&MouseButton::Left),
+                is_rmb_down: input_state.is_mouse_button_down(&MouseButton::Right),
+            }
         };
         run_floor(run_floor_ctx);
 
@@ -120,47 +203,6 @@ impl Rolag3EventHandler {
         match res {
             Err(e) => eprintln!("error when calling renderer.present(): {}", e),
             Ok(_) => {}
-        }
-    }
-}
-
-impl EventHandler for Rolag3EventHandler {
-    fn handle_event(&mut self, window: &mut dyn Window, event: Event<()>, elwt: &EventLoopWindowTarget<()>) {
-        match event {
-            Event::WindowEvent {
-                ref event,
-                window_id,
-            } if window_id == window.get_id() => match event {
-                WindowEvent::CloseRequested 
-                | WindowEvent::KeyboardInput {
-                    event: KeyEvent {
-                        state: ElementState::Pressed,
-                        physical_key: PhysicalKey::Code(KeyCode::Escape),
-                        ..
-                    },
-                    ..
-                } => {
-                    elwt.exit();
-                    println!("exit signal detected. Exiting");
-                }
-                WindowEvent::Resized(size) => {
-                    println!("window resized");
-                    window.get_renderer().resize(size.width, size.height);
-                }
-                WindowEvent::ScaleFactorChanged {..} => {
-                    println!("window scale factor changed");
-                    // do something here?
-                }
-                WindowEvent::RedrawRequested => {
-                    self.run_frame(window);
-
-                },
-                _ => {},
-            },
-            Event::AboutToWait {..} => {
-                self.run_frame(window);
-            }
-            _ => {}
         }
     }
 }

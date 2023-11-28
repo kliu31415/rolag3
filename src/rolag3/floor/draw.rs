@@ -11,9 +11,9 @@ pub struct DrawFloorContext<'a> {
 pub fn get_draw_floor_ops(ctx: DrawFloorContext) -> Vec<DrawOpWithMetadata> {
     let mut draw_context = DrawContext {
         draw_ops: Vec::new(),
-        camera_x: 2.0,
+        camera_x: 0.0,
         camera_y: 0.0,
-        pixels_per_tile: 20.0,
+        pixels_per_tile: 40.0,
     };
     for obj in ctx.room.room_objects.iter() {
         obj.draw(&mut draw_context);

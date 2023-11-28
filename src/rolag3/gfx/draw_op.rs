@@ -52,6 +52,7 @@ impl DrawOp for DrawOpMulti {
 }
 
 impl DrawOpMulti {
+    #[allow(dead_code)] // this function is not used yet
     pub fn new(ops: Vec<Box<dyn DrawOp>>) -> Self {
         Self { ops }
     }
