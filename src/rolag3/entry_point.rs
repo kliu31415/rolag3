@@ -4,7 +4,7 @@ use winit::{event::{Event, WindowEvent, KeyEvent, ElementState, MouseButton}, ev
 
 use crate::{gfx::{self, window::{Window, EventHandler}, renderer::{ColorRGBA32f, ViewSpaceCoordinate}}, rolag3::gfx::draw_op::DrawOpTriFan};
 
-use super::{gfx::draw_op::{process_draw_ops, DrawOpWithMetadata}, floor::{map_object::Room, draw::{DrawFloorContext, get_draw_floor_ops}, run::{RunFloorContext, run_floor, PlayerInput, PlayerHorizontalMoveInput, PlayerVerticalMoveInput}}};
+use super::{gfx::draw_op::{process_draw_ops, DrawOpWithMetadata}, floor::{draw::{DrawFloorContext, get_draw_floor_ops}, run::{RunFloorContext, run_floor, PlayerInput, PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, floor_object::floor_object::Room}};
 
 pub fn run() {
     env_logger::init();
@@ -67,6 +67,7 @@ const PLAYER_MOVE_UP: PhysicalKey = PhysicalKey::Code(KeyCode::ArrowUp);
 const PLAYER_MOVE_DOWN: PhysicalKey = PhysicalKey::Code(KeyCode::ArrowDown);
 const PLAYER_MOVE_LEFT: PhysicalKey = PhysicalKey::Code(KeyCode::ArrowLeft);
 const PLAYER_MOVE_RIGHT: PhysicalKey = PhysicalKey::Code(KeyCode::ArrowRight);
+const PLAYER_TEST_INPUT1: PhysicalKey = PhysicalKey::Code(KeyCode::Space);
 
 impl Rolag3EventHandler {
     fn new_test1() -> Rolag3EventHandler {
@@ -113,14 +114,15 @@ impl Rolag3EventHandler {
                 mouse_y: 20.0,
                 is_lmb_down: input_state.is_mouse_button_down(&MouseButton::Left),
                 is_rmb_down: input_state.is_mouse_button_down(&MouseButton::Right),
+                test_input1: input_state.is_key_down(&PLAYER_TEST_INPUT1),
             }
         };
         run_floor(run_floor_ctx);
 
         let draw_floor_ctx = DrawFloorContext {
             room: &mut self.room,
-            window_width: window.get_width(),
-            window_height: window.get_height(),
+            window_width: window.get_width() as f64,
+            window_height: window.get_height() as f64,
         };
         let draw_ops_with_md = get_draw_floor_ops(draw_floor_ctx);
         process_draw_ops(window.get_renderer(), draw_ops_with_md);

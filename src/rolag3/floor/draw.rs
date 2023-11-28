@@ -1,20 +1,23 @@
 use crate::{rolag3::gfx::draw_op::{DrawOpWithMetadata, DrawOpTriFan}, gfx::renderer::{ColorRGBA32f, ViewSpaceCoordinate}};
 
-use super::map_object::{Room, FloorCoordinate};
+use super::floor_object::floor_object::{Room, FloorObject};
 
 pub struct DrawFloorContext<'a> {
     pub room: &'a mut Room,
-    pub window_width: u32,
-    pub window_height: u32,
+    pub window_width: f64,
+    pub window_height: f64,
 }
 
 pub fn get_draw_floor_ops(ctx: DrawFloorContext) -> Vec<DrawOpWithMetadata> {
+    let player_position = ctx.room.player.get_position();
+    let pixels_per_tile = 40.0;
     let mut draw_context = DrawContext {
         draw_ops: Vec::new(),
-        camera_x: 0.0,
-        camera_y: 0.0,
-        pixels_per_tile: 40.0,
+        camera_x: (player_position.x - ctx.window_width / 2.0 / (pixels_per_tile as f64)) as f32,
+        camera_y: (player_position.y - ctx.window_height / 2.0 / (pixels_per_tile as f64)) as f32,
+        pixels_per_tile,
     };
+    ctx.room.player.draw(&mut draw_context);
     for obj in ctx.room.room_objects.iter() {
         obj.draw(&mut draw_context);
     }
@@ -28,13 +31,45 @@ pub struct DrawContext {
     pixels_per_tile: f32,
 }
 
+#[derive(Debug, Copy, Clone)]
+pub struct FloorDrawCoordinate {
+    pub x: f32,
+    pub y: f32,
+}
+
+impl FloorDrawCoordinate {
+    pub fn new(x: f32, y: f32) -> Self {
+        Self {x, y}
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
+pub struct Color {
+    pub r: f32,
+    pub g: f32,
+    pub b: f32,
+    pub a: f32,
+}
+
+impl Color {
+    pub fn new(r: f32, g: f32, b: f32, a: f32) -> Self {
+        Color {r, g, b, a}
+    }
+}
+
 impl DrawContext {
-    pub fn add_draw_op_quad(&mut self, z: f64, color: ColorRGBA32f, vertexes: &[FloorCoordinate; 4]) {
+    pub fn add_draw_op_quad(&mut self, z: f64, color: Color, vertexes: &[FloorDrawCoordinate; 4]) {
         let vs_coords = vertexes
             .iter()
             .map(|c| ViewSpaceCoordinate{x: self.x_to_vsc(c.x), y: self.y_to_vsc(c.y)})
             .collect();
-        let op = Box::new(DrawOpTriFan::new(color, vs_coords));
+        let color_converted = ColorRGBA32f {
+            r: color.r,
+            g: color.g,
+            b: color.b,
+            a: color.a,
+        };
+        let op = Box::new(DrawOpTriFan::new(color_converted, vs_coords));
         self.draw_ops.push(DrawOpWithMetadata::new(z, op));
     }
 

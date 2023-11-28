@@ -1,4 +1,4 @@
-use super::map_object::{Room, Act1Context};
+use super::floor_object::floor_object::{Room, Act1Context, FloorObject};
 
 pub struct RunFloorContext<'a> {
     pub num_ticks: u32,
@@ -37,6 +37,7 @@ pub struct PlayerInput {
     pub mouse_y: f64, // in floor coordinates
     pub is_lmb_down: bool, // lmb = left mouse button
     pub is_rmb_down: bool, // rmb = right mouse button
+    pub test_input1: bool, // used for testing purposes
 }
 
 struct RunFloorTickContext<'a> {
@@ -46,6 +47,7 @@ struct RunFloorTickContext<'a> {
 
 fn run_floor_tick(ctx: RunFloorTickContext) {
     let mut act1_context = Act1Context::new(ctx.player_input);
+    ctx.room.player.act1(&mut act1_context);
     for obj in ctx.room.room_objects.iter_mut() {
         obj.act1(&mut act1_context);
     }
