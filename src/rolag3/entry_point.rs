@@ -4,7 +4,7 @@ use winit::{event::{Event, WindowEvent, KeyEvent, ElementState, MouseButton}, ev
 
 use crate::{gfx::{self, window::{Window, EventHandler}, renderer::{ColorRGBA32f, ViewSpaceCoordinate}}, rolag3::gfx::draw_op::DrawOpTriFan};
 
-use super::{gfx::draw_op::{process_draw_ops, DrawOpWithMetadata}, floor::{draw::{DrawFloorContext, get_draw_floor_ops}, run::{RunFloorContext, run_floor, PlayerInput, PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, floor_object::floor_object::Room}};
+use super::{gfx::draw_op::{process_draw_ops, DrawOpWithMetadata}, floor::{draw::{DrawFloorContext, get_draw_floor_ops}, run::{RunFloorContext, run_floor, PlayerInput, PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, room::Room}};
 
 pub fn run() {
     env_logger::init();
@@ -108,8 +108,8 @@ impl Rolag3EventHandler {
             num_ticks: 10,
             room: &mut self.room,
             player_input: &PlayerInput {
-                horizontal_move: horizontal_move,
-                vertical_move: vertical_move,
+                horizontal_move,
+                vertical_move,
                 mouse_x: 20.0,
                 mouse_y: 20.0,
                 is_lmb_down: input_state.is_mouse_button_down(&MouseButton::Left),
@@ -127,16 +127,13 @@ impl Rolag3EventHandler {
         let draw_ops_with_md = get_draw_floor_ops(draw_floor_ctx);
         process_draw_ops(window.get_renderer(), draw_ops_with_md);
         let res = window.get_renderer().present(ColorRGBA32f{r: 0.5f32, g: 0.7f32, b: 0.9f32, a: 1.0f32});
-        match res {
-            Err(e) => eprintln!("error when calling renderer.present(): {}", e),
-            Ok(_) => {}
-        }
+        if let Err(e) = res { eprintln!("error when calling renderer.present(): {}", e) }
     }
 
     fn _render_test2(&mut self, window: &mut dyn Window) {
         let time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs_f64();
-        let _ = self.frame_timestamps.push_back(time);
-        while self.frame_timestamps.len() > 0 && *self.frame_timestamps.front().unwrap() < time - 1.0 {
+        _ = self.frame_timestamps.push_back(time);
+        while !self.frame_timestamps.is_empty() && *self.frame_timestamps.front().unwrap() < time - 1.0 {
             self.frame_timestamps.pop_front();
         }
         println!("fps={}", self.frame_timestamps.len());
@@ -169,10 +166,7 @@ impl Rolag3EventHandler {
         process_draw_ops(window.get_renderer(), draw_ops_with_md);
 
         let res = window.get_renderer().present(ColorRGBA32f{r: 0.5f32, g: 0.7f32, b: 0.9f32, a: 1.0f32});
-        match res {
-            Err(e) => eprintln!("error when calling renderer.present(): {}", e),
-            Ok(_) => {}
-        }
+        if let Err(e) = res { eprintln!("error when calling renderer.present(): {}", e) }
     }
 
     fn _render_test1(&mut self, window: &mut dyn Window) {
@@ -202,9 +196,6 @@ impl Rolag3EventHandler {
             renderer.draw_tri_fan(color, fan.as_slice());
         }
         let res = renderer.present(ColorRGBA32f{r: 0.5f32, g: 0.7f32, b: 0.9f32, a: 1.0f32});
-        match res {
-            Err(e) => eprintln!("error when calling renderer.present(): {}", e),
-            Ok(_) => {}
-        }
+        if let Err(e) = res { eprintln!("error when calling renderer.present(): {}", e) }
     }
 }

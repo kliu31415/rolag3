@@ -55,9 +55,9 @@ impl Renderer for WgpuRenderer {
                 vertexes);
         }
         for i in 2..vertexes.len() {
-            self.triangle_vertexes.push(ColoredVertex { color: color, coordinate: vertexes[0] });
-            self.triangle_vertexes.push(ColoredVertex { color: color, coordinate: vertexes[i-1] });
-            self.triangle_vertexes.push(ColoredVertex { color: color, coordinate: vertexes[i] });
+            self.triangle_vertexes.push(ColoredVertex { color, coordinate: vertexes[0] });
+            self.triangle_vertexes.push(ColoredVertex { color, coordinate: vertexes[i-1] });
+            self.triangle_vertexes.push(ColoredVertex { color, coordinate: vertexes[i] });
         }
     }
 
@@ -144,7 +144,7 @@ impl WgpuRenderer {
 
         render_pass.set_pipeline(&self.triangle_pipeline);
         for (i, batch) in ndc_vertexes.chunks(3 * Self::TRIANGLE_BATCH_SIZE).enumerate() {
-            let bytes: &[u8] = bytemuck::cast_slice(&batch);
+            let bytes: &[u8] = bytemuck::cast_slice(batch);
             if bytes.len() % (COPY_BUFFER_ALIGNMENT as usize) != 0 {
                 todo!("wgpu copy buffer alignment isn't respected. Buffer size={}, desired alignment={}", 
                     bytes.len(), 
@@ -157,11 +157,11 @@ impl WgpuRenderer {
     }
 
     fn x_to_ndc(&self, x: f32) -> f32 {
-        (2.0 * x / (self.config.width as f32) - 1.0) as f32
+        2.0 * x / (self.config.width as f32) - 1.0
     }
 
     fn y_to_ndc(&self, y: f32) -> f32 {
-        (1.0 - 2.0 * y / (self.config.height as f32)) as f32
+        1.0 - 2.0 * y / (self.config.height as f32)
     }
 
 }
@@ -252,10 +252,8 @@ fn make_triangle_pipeline(device: &Device, config: &SurfaceConfiguration) -> wgp
         bind_group_layouts: &[],
         push_constant_ranges: &[],
     });
-
-
     
-    let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
         label: Some("Triangle Render Pipeline"),
         layout: Some(&render_pipeline_layout),
         vertex: wgpu::VertexState {
@@ -289,7 +287,5 @@ fn make_triangle_pipeline(device: &Device, config: &SurfaceConfiguration) -> wgp
             mask: !0, alpha_to_coverage_enabled: false,
         },
         multiview: None,
-    });
-
-    render_pipeline
+    })
 }

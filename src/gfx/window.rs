@@ -48,10 +48,7 @@ impl Window for WinitWindow {
             }
         );
 
-        match res {
-            Err(e) => eprintln!("event_loop.run() returned error: {:?}", e),
-            Ok(_) => {}
-        }
+        if let Err(e) = res { eprintln!("event_loop.run() returned error: {:?}", e) }
     }
 }
 

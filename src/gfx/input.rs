@@ -35,15 +35,15 @@ impl InputState {
     }
 
     pub fn is_key_down(&self, key: &PhysicalKey) -> bool {
-        return self.is_key_down[Self::key_to_usize(key)];
+        self.is_key_down[Self::key_to_usize(key)]
     }
 
     pub fn get_key_last_down_time(&self, key: &PhysicalKey) -> f64 {
-        return self.key_last_down_time[Self::key_to_usize(key)];
+        self.key_last_down_time[Self::key_to_usize(key)]
     }
 
     pub fn is_mouse_button_down(&self, button: &MouseButton) -> bool {
-        return self.is_key_down[Self::mouse_button_to_usize(button)];
+        self.is_key_down[Self::mouse_button_to_usize(button)]
     }
 
     pub fn handle_event(&mut self, source_window_id: WindowId, event: &Event<()>) {

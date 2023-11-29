@@ -1,4 +1,4 @@
-use super::floor_object::floor_object::{Room, Act1Context, FloorObject};
+use super::{floor_object::floor_object::{Act1Context, FloorObject}, room::Room};
 
 pub struct RunFloorContext<'a> {
     pub num_ticks: u32,
@@ -46,9 +46,12 @@ struct RunFloorTickContext<'a> {
 }
 
 fn run_floor_tick(ctx: RunFloorTickContext) {
-    let mut act1_context = Act1Context::new(ctx.player_input);
+    ctx.room.rofiz.start_new_tick();
+    let mut act1_context = Act1Context::new(ctx.player_input, &mut ctx.room.rofiz);
+    // note that act1() isn't called on basic_walls. It should be a NOP for them.
     ctx.room.player.act1(&mut act1_context);
     for obj in ctx.room.room_objects.iter_mut() {
         obj.act1(&mut act1_context);
     }
+    ctx.room.rofiz.move_objects_and_find_collisions();
 }

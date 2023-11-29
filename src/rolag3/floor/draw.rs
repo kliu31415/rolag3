@@ -1,6 +1,6 @@
 use crate::{rolag3::gfx::draw_op::{DrawOpWithMetadata, DrawOpTriFan}, gfx::renderer::{ColorRGBA32f, ViewSpaceCoordinate}};
 
-use super::floor_object::floor_object::{Room, FloorObject};
+use super::{floor_object::floor_object::FloorObject, room::Room, rofiz::rofiz_state::RofizState};
 
 pub struct DrawFloorContext<'a> {
     pub room: &'a mut Room,
@@ -9,26 +9,31 @@ pub struct DrawFloorContext<'a> {
 }
 
 pub fn get_draw_floor_ops(ctx: DrawFloorContext) -> Vec<DrawOpWithMetadata> {
-    let player_position = ctx.room.player.get_position();
+    let player_position = ctx.room.player.get_center_point(&ctx.room.rofiz);
     let pixels_per_tile = 40.0;
     let mut draw_context = DrawContext {
         draw_ops: Vec::new(),
         camera_x: (player_position.x - ctx.window_width / 2.0 / (pixels_per_tile as f64)) as f32,
         camera_y: (player_position.y - ctx.window_height / 2.0 / (pixels_per_tile as f64)) as f32,
         pixels_per_tile,
+        rofiz: &ctx.room.rofiz,
     };
     ctx.room.player.draw(&mut draw_context);
+    for obj in ctx.room.basic_walls.iter() {
+        obj.draw(&mut draw_context);
+    }
     for obj in ctx.room.room_objects.iter() {
         obj.draw(&mut draw_context);
     }
     draw_context.draw_ops
 }
 
-pub struct DrawContext {
+pub struct DrawContext<'a> {
     draw_ops: Vec<DrawOpWithMetadata>,
     camera_x: f32,
     camera_y: f32,
     pixels_per_tile: f32,
+    rofiz: &'a RofizState,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -57,7 +62,7 @@ impl Color {
     }
 }
 
-impl DrawContext {
+impl DrawContext<'_> {
     pub fn add_draw_op_quad(&mut self, z: f64, color: Color, vertexes: &[FloorDrawCoordinate; 4]) {
         let vs_coords = vertexes
             .iter()
@@ -71,6 +76,10 @@ impl DrawContext {
         };
         let op = Box::new(DrawOpTriFan::new(color_converted, vs_coords));
         self.draw_ops.push(DrawOpWithMetadata::new(z, op));
+    }
+
+    pub fn get_rofiz(&self) -> &RofizState {
+        self.rofiz
     }
 
     fn x_to_vsc(&self, x: f32) -> f32{
