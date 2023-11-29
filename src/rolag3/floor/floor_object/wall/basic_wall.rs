@@ -1,11 +1,11 @@
-use crate::rolag3::floor::{floor_object::floor_object::{FloorObject, Act1Context, FloorObjectId, NewFloorObjectContext}, draw::{DrawContext, Color, FloorDrawCoordinate}};
+use crate::rolag3::floor::{floor_object::floor_object::{FloorObject, Act1Context, NewFloorObjectContext, FloorObjectMetadata}, draw::{DrawContext, Color, FloorDrawCoordinate}};
 
 use super::Wall;
 
 /* BasicWall is a unit square with integer vertexes
  */
 pub struct BasicWall {
-    id: FloorObjectId,
+    md: FloorObjectMetadata,
     // (x, y) is coordinate of the top left vertex of the wall. Note it's the corner of a vertex, not the wall's center.
     x: u32,
     y: u32,
@@ -13,8 +13,8 @@ pub struct BasicWall {
 }
 
 impl FloorObject for BasicWall {
-    fn get_id(&self) -> FloorObjectId{
-        self.id
+    fn get_metadata(&self) -> &FloorObjectMetadata {
+        &self.md
     }
 
     fn act1(&mut self, _ctx: &mut Act1Context) {
@@ -39,8 +39,8 @@ impl Wall for BasicWall {
 
 impl BasicWall {
     pub fn new(ctx: &mut NewFloorObjectContext, x: u32, y: u32, color: Color) -> Self {
-        let wall = Self {id: ctx.get_next_floor_object_id(), x, y, color};
-        ctx.add_basic_wall(wall.get_id(), wall.x, wall.y);
+        let wall = Self {md: FloorObjectMetadata::new(ctx), x, y, color};
+        ctx.add_basic_wall(wall.get_metadata().get_id(), wall.x, wall.y);
         wall
     }
 }

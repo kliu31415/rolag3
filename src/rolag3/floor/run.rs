@@ -2,6 +2,7 @@ use super::{floor_object::floor_object::{Act1Context, FloorObject}, room::Room};
 
 pub struct RunFloorContext<'a> {
     pub num_ticks: u32,
+    pub frame_length: f64,
     pub room: &'a mut Room,
     pub player_input: &'a PlayerInput,
 }
@@ -12,6 +13,7 @@ pub fn run_floor(ctx: RunFloorContext) {
         let tick_ctx = RunFloorTickContext {
             room: ctx.room,
             player_input: ctx.player_input,
+            tick_length: ctx.frame_length / (ctx.num_ticks as f64),
         };
         run_floor_tick(tick_ctx);
     }
@@ -43,11 +45,12 @@ pub struct PlayerInput {
 struct RunFloorTickContext<'a> {
     pub room: &'a mut Room,
     pub player_input: &'a PlayerInput,
+    pub tick_length: f64,
 }
 
 fn run_floor_tick(ctx: RunFloorTickContext) {
     ctx.room.rofiz.start_new_tick();
-    let mut act1_context = Act1Context::new(ctx.player_input, &mut ctx.room.rofiz);
+    let mut act1_context = Act1Context::new(ctx.player_input, &mut ctx.room.rofiz, ctx.tick_length);
     // note that act1() isn't called on basic_walls. It should be a NOP for them.
     ctx.room.player.act1(&mut act1_context);
     for obj in ctx.room.room_objects.iter_mut() {

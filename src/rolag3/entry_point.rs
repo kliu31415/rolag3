@@ -104,8 +104,14 @@ impl Rolag3EventHandler {
             vertical_move = PlayerVerticalMoveInput::Down;
         }
 
+        let mut frame_length = 0.01;
+        if self.frame_timestamps.len() >= 2 {
+            frame_length = self.frame_timestamps.back().unwrap() - self.frame_timestamps[self.frame_timestamps.len()-2];
+        }
+
         let run_floor_ctx = RunFloorContext {
             num_ticks: 10,
+            frame_length,
             room: &mut self.room,
             player_input: &PlayerInput {
                 horizontal_move,

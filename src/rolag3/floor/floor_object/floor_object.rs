@@ -1,7 +1,7 @@
 use crate::rolag3::floor::{draw::DrawContext, run::PlayerInput, rofiz::{rofiz_state::RofizState, rofiz_object::{Hitbox, RofizObjectRef}}};
 
 pub trait FloorObject {
-    fn get_id(&self) -> FloorObjectId;
+    fn get_metadata(&self) -> &FloorObjectMetadata;
     fn act1(&mut self, ctx: &mut Act1Context);
     fn draw(&self, ctx: &mut DrawContext);
 
@@ -13,7 +13,21 @@ pub trait FloorObject {
     }
 }
 
+pub struct FloorObjectMetadata {
+    id: FloorObjectId,
+}
+
 pub type FloorObjectId = usize;
+
+impl FloorObjectMetadata {
+    pub fn new(ctx: &mut NewFloorObjectContext) -> Self {
+        Self { id: ctx.get_next_floor_object_id() }
+    }
+    pub fn get_id(&self) -> FloorObjectId {
+        self.id
+    }
+}
+
 pub struct NewFloorObjectContext<'a> {
     current_floor_object_id_counter: FloorObjectId,
     rofiz: &'a mut RofizState,
@@ -55,13 +69,15 @@ impl FloorCoordinate {
 pub struct Act1Context<'a> {
     player_input: &'a PlayerInput,
     rofiz: &'a mut RofizState,
+    tick_length: f64,
 }
 
 impl<'a> Act1Context<'a> {
-    pub fn new(player_input: &'a PlayerInput, rofiz: &'a mut RofizState) -> Self {
+    pub fn new(player_input: &'a PlayerInput, rofiz: &'a mut RofizState, tick_length: f64) -> Self {
         Self {
             player_input,
             rofiz,
+            tick_length,
         }
     }
     pub fn get_player_input(&self) -> &PlayerInput {
@@ -69,6 +85,9 @@ impl<'a> Act1Context<'a> {
     }
     pub fn get_rofiz(&mut self) -> &mut RofizState {
         self.rofiz
+    }
+    pub fn get_tick_length(&self) -> f64 {
+        self.tick_length
     }
 }
 
