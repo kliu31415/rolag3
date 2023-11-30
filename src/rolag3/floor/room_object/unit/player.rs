@@ -2,7 +2,7 @@ use crate::rolag3::floor::{run::{PlayerHorizontalMoveInput, PlayerVerticalMoveIn
 
 use super::{Unit, standard_unit::{StandardUnit, StandardUnitCommon, Budeb, BudebMaxSpeed}};
 
-// (x, y) represents the top left corner of the player
+// (x, y) represents the center of the player
 pub struct Player {
     md: RoomObjectMetadata,
     su_common: StandardUnitCommon,
@@ -16,18 +16,24 @@ impl RoomObject for Player {
 
     fn act1<'a, 'b>(&mut self, ctx: &'a mut Act1Context<'b>) -> Act1Response {
         let tick_len = ctx.get_tick_length();
+        let mouse_theta = ctx.get_player_input().mouse_theta_relative_to_player;
 
         // process test input
         if ctx.get_player_input().test_input1 {
             self.su_common.apply_budeb(Budeb::MaxSpeed(BudebMaxSpeed::new(1.0, 2.5)));
-            if self.since_last_projectile > 0.1 {
-                self.since_last_projectile = 0.0;
-                let ro = ctx.get_rofiz().get_movable_object(self.su_common.get_ro_ref());
-                let player_x = ro.current.transformation.dx;
-                let player_y = ro.current.transformation.dy;
-                let mut nfo_ctx = NewRoomObjectContext::from_act1_ctx(ctx);
-                self.md.get_child_objects_mut().add(Box::new(BasicProjectile::new(&mut nfo_ctx, 1.0, player_x, player_y, 20.0, 20.0)));
-            }
+        }
+
+        // process throwing projectiles
+        if ctx.get_player_input().is_lmb_down && self.since_last_projectile > 0.1 {
+            self.since_last_projectile = 0.0;
+            let ro = ctx.get_rofiz().get_movable_object(self.su_common.get_ro_ref());
+            let player_x = ro.current.transformation.dx;
+            let player_y = ro.current.transformation.dy;
+            let mut nfo_ctx = NewRoomObjectContext::from_act1_ctx(ctx);
+            let proj_velocity = 50.0;
+            let dx = proj_velocity * f64::cos(mouse_theta);
+            let dy = proj_velocity * f64::sin(mouse_theta);
+            self.md.get_child_objects_mut().add(Box::new(BasicProjectile::new(&mut nfo_ctx, 1.0, player_x, player_y, dx, dy)));
         } else {
             self.since_last_projectile += tick_len;
         }
@@ -68,8 +74,8 @@ impl RoomObject for Player {
         // draw main player
         let color = Color::new(0.5, 0.7, 0.9, 1.0);
         let ro = ctx.get_rofiz().get_movable_object(self.su_common.get_ro_ref());
-        let player_x = ro.current.transformation.dx as f32;
-        let player_y = ro.current.transformation.dy as f32;
+        let player_x = ro.current.transformation.dx as f32 - Self::PLAYER_S / 2.0;
+        let player_y = ro.current.transformation.dy as f32 - Self::PLAYER_S / 2.0;
         let player_w = Self::PLAYER_S;
         let player_h = Self::PLAYER_S;
         let vertexes = &[
@@ -107,7 +113,7 @@ impl Player {
         let y = 10.0;
         let hitbox = Hitbox::new(
             Transformation::new(x, y, 0.0),
-            Shape::of_square(0.0, 0.0, Self::PLAYER_S),
+            Shape::of_square(-Self::PLAYER_S / 2.0, - Self::PLAYER_S / 2.0, Self::PLAYER_S),
         );
         let md = RoomObjectMetadata::new(ctx);
         let ro_ref = ctx.add_nonspectral_unit(md.get_id(), hitbox);
@@ -119,8 +125,6 @@ impl Player {
     }
     pub fn get_center_point(&self, rofiz: &RofizState) -> FloorCoordinate {
         let ro = rofiz.get_movable_object(self.su_common.get_ro_ref());
-        let player_x = ro.current.transformation.dx - (Self::PLAYER_S / 2.0) as f64;
-        let player_y = ro.current.transformation.dy - (Self::PLAYER_S / 2.0) as f64;
-        FloorCoordinate::new(player_x, player_y)
+        FloorCoordinate::new(ro.current.transformation.dx, ro.current.transformation.dy)
     }
 }

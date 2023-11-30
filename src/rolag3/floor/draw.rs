@@ -6,16 +6,16 @@ pub struct DrawFloorContext<'a> {
     pub room: &'a mut Room,
     pub window_width: f64,
     pub window_height: f64,
+    pub pixels_per_tile: f64,
 }
 
 pub fn get_draw_floor_ops(ctx: DrawFloorContext) -> Vec<DrawOpWithMetadata> {
     let player_position = ctx.room.room_objects.get_player().get_center_point(&ctx.room.rofiz);
-    let pixels_per_tile = 40.0;
     let mut draw_context = DrawContext {
         draw_ops: Vec::new(),
-        camera_x: (player_position.x - ctx.window_width / 2.0 / (pixels_per_tile as f64)) as f32,
-        camera_y: (player_position.y - ctx.window_height / 2.0 / (pixels_per_tile as f64)) as f32,
-        pixels_per_tile,
+        camera_x: (player_position.x - ctx.window_width / 2.0 / ctx.pixels_per_tile) as f32,
+        camera_y: (player_position.y - ctx.window_height / 2.0 / ctx.pixels_per_tile) as f32,
+        pixels_per_tile: ctx.pixels_per_tile as f32,
         rofiz: &ctx.room.rofiz,
     };
     ctx.room.room_objects.apply_mut(&mut |x| x.draw(&mut draw_context));

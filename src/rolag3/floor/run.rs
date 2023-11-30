@@ -36,6 +36,7 @@ pub struct PlayerInput {
 
     pub mouse_x: f64, // in floor coordinates
     pub mouse_y: f64, // in floor coordinates
+    pub mouse_theta_relative_to_player: f64,
     pub is_lmb_down: bool, // lmb = left mouse button
     pub is_rmb_down: bool, // rmb = right mouse button
     pub test_input1: bool, // used for testing purposes

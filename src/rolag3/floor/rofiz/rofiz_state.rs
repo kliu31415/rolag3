@@ -96,9 +96,7 @@ impl RofizState {
     }
 
     pub fn move_objects_and_find_collisions(&mut self) -> Vec<RofizCollision> {
-        for (_, obj) in self.basic_projectiles.iter_mut()
-                .chain(self.spectral_units.iter_mut())
-                .chain(self.nonspectral_units.iter_mut()) {
+        for (_, obj) in self.movable_objs_iter_mut() {
             obj.temp_hitbox = match obj.movement {
                 RofizObjectMovement::NoMove() => obj.current.transformation.get_transformed_shape(&obj.current.shape),
                 RofizObjectMovement::Move(ref t) => (obj.current.transformation.add(t)).get_transformed_shape(&obj.current.shape),
@@ -109,6 +107,7 @@ impl RofizState {
 
         let mut collisions = Vec::new();
 
+        // Phase 1a: Check for collisions between nonspectral units and basic walls
         for (_nsu_id, nsu) in self.nonspectral_units.iter_mut() {
             for (_bw_id, bw) in self.basic_walls.iter_mut() {
                 if shapes_overlap(&nsu.temp_hitbox, &bw.shape) {
@@ -121,7 +120,10 @@ impl RofizState {
             }
         }
 
-        for (_nsu_id, nsu) in self.nonspectral_units.iter_mut() {
+        // Phase 1b: Check for collisions between nonspectral units
+
+        // wrap up by officially moving objects that have move_successful=true
+        for (_nsu_id, nsu) in self.movable_objs_iter_mut() {
             if nsu.move_successful {
                 match nsu.movement {
                     RofizObjectMovement::NoMove() => {},
@@ -132,6 +134,12 @@ impl RofizState {
         }
 
         collisions
+    }
+
+    fn movable_objs_iter_mut(&mut self) -> impl Iterator<Item = (&usize, &mut RofizObjMovable)> {
+        self.basic_projectiles.iter_mut()
+                .chain(self.spectral_units.iter_mut())
+                .chain(self.nonspectral_units.iter_mut())
     }
 
     fn new_rofiz_obj_basic_wall(&mut self, floor_object_id: RoomObjectId, x: u32, y: u32) -> (RofizObjectRef, RofizObjBasicWall) {

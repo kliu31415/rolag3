@@ -43,7 +43,7 @@ impl InputState {
     }
 
     pub fn is_mouse_button_down(&self, button: &MouseButton) -> bool {
-        self.is_key_down[Self::mouse_button_to_usize(button)]
+        self.is_mouse_button_down[Self::mouse_button_to_usize(button)]
     }
 
     pub fn handle_event(&mut self, source_window_id: WindowId, event: &Event<()>) {
@@ -68,6 +68,14 @@ impl InputState {
             Code(k) => *k as usize,
             Unidentified(k) => {eprintln!("attempting to convert PhysicalKey::Unidentified({:?}) to usize", k); 255},
         }
+    }
+
+    pub fn get_mouse_x(&self) -> f64 {
+        self.mouse_x
+    }
+
+    pub fn get_mouse_y(&self) -> f64 {
+        self.mouse_y
     }
 
     fn process_key_event(&mut self, key_event: &KeyEvent) {

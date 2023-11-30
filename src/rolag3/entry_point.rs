@@ -78,6 +78,8 @@ impl Rolag3EventHandler {
     }
 
     fn run_frame(&mut self, window: &mut dyn Window) {
+        let window_width = window.get_width() as f64;
+        let window_height = window.get_height() as f64;
         let input_state = window.get_input_state();
 
         let mut horizontal_move = PlayerHorizontalMoveInput::None;
@@ -109,6 +111,14 @@ impl Rolag3EventHandler {
             frame_length = self.frame_timestamps.back().unwrap() - self.frame_timestamps[self.frame_timestamps.len()-2];
         }
 
+        let player_position = self.room.room_objects.get_player().get_center_point(&self.room.rofiz);
+        let pixels_per_tile = 40.0;
+        let camera_x = player_position.x - window_width / 2.0 / pixels_per_tile;
+        let camera_y = player_position.y - window_height / 2.0 / pixels_per_tile;
+        let mouse_x = camera_x + input_state.get_mouse_x() / pixels_per_tile;
+        let mouse_y = camera_y + input_state.get_mouse_y() / pixels_per_tile;
+        let mouse_theta_relative_to_player = (mouse_y - player_position.y).atan2(mouse_x - player_position.x);
+
         let run_floor_ctx = RunFloorContext {
             num_ticks: 10,
             frame_length,
@@ -116,8 +126,9 @@ impl Rolag3EventHandler {
             player_input: &PlayerInput {
                 horizontal_move,
                 vertical_move,
-                mouse_x: 20.0,
-                mouse_y: 20.0,
+                mouse_x,
+                mouse_y,
+                mouse_theta_relative_to_player,
                 is_lmb_down: input_state.is_mouse_button_down(&MouseButton::Left),
                 is_rmb_down: input_state.is_mouse_button_down(&MouseButton::Right),
                 test_input1: input_state.is_key_down(&PLAYER_TEST_INPUT1),
@@ -127,8 +138,9 @@ impl Rolag3EventHandler {
 
         let draw_floor_ctx = DrawFloorContext {
             room: &mut self.room,
-            window_width: window.get_width() as f64,
-            window_height: window.get_height() as f64,
+            window_width,
+            window_height,
+            pixels_per_tile
         };
         let draw_ops_with_md = get_draw_floor_ops(draw_floor_ctx);
         process_draw_ops(window.get_renderer(), draw_ops_with_md);
