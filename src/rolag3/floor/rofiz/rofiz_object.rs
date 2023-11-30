@@ -1,4 +1,4 @@
-use crate::rolag3::floor::floor_object::floor_object::FloorObjectId;
+use crate::rolag3::floor::room_object::room_object::RoomObjectId;
 
 use super::shape::Shape;
 
@@ -30,7 +30,7 @@ pub struct RofizObjBasicWall {
     pub x: u32,
     pub y: u32,
 
-    pub floor_object_id: FloorObjectId,
+    pub floor_object_id: RoomObjectId,
 
     pub shape: Shape,
 }
@@ -38,7 +38,7 @@ pub struct RofizObjBasicWall {
 pub struct RofizObjMovable {
     pub current: Hitbox,
     pub movement: RofizObjectMovement,
-    pub floor_object_id: FloorObjectId,
+    pub floor_object_id: RoomObjectId,
 
     pub temp_hitbox: Shape, // only used as a temporary cache in move_objects_and_find_collisions()
     pub move_successful: bool // only used in move_objects_and_find_collisions()

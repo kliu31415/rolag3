@@ -1,8 +1,8 @@
-use super::floor_object::FloorObject;
+use super::room_object::RoomObject;
 
 pub mod basic_wall;
 
-pub trait Wall: FloorObject {
+pub trait Wall: RoomObject {
     fn is_wall_like(&self) -> bool {
         true
     }

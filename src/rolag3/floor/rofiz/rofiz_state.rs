@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::rolag3::floor::floor_object::floor_object::FloorObjectId;
+use crate::rolag3::floor::room_object::room_object::RoomObjectId;
 
 use super::{rofiz_object::{RofizObjectRef, RofizObjBasicWall, RofizObjMovable, RofizObjTypeIdx, RofizObjId, Hitbox, RofizObjectMovement}, shape::Shape, shapes_overlap::shapes_overlap};
 
@@ -31,7 +31,7 @@ impl RofizState {
         }
     }
 
-    pub fn add_basic_wall(&mut self, floor_object_id: FloorObjectId, x: u32, y: u32) -> RofizObjectRef {
+    pub fn add_basic_wall(&mut self, floor_object_id: RoomObjectId, x: u32, y: u32) -> RofizObjectRef {
         let new_wall = Self::new_rofiz_obj_basic_wall(self, floor_object_id, x, y);
         self.basic_walls.insert(new_wall.0.id, new_wall.1);
         new_wall.0
@@ -66,9 +66,15 @@ impl RofizState {
         }
     }
 
-    pub fn add_nonspectral_unit(&mut self, floor_object_id: FloorObjectId, hitbox: Hitbox) -> RofizObjectRef {
+    pub fn add_nonspectral_unit(&mut self, floor_object_id: RoomObjectId, hitbox: Hitbox) -> RofizObjectRef {
         let (obj_ref, obj) = self.new_rofiz_obj_movable(RofizObjTypeIdx::NonspectralUnit, hitbox, floor_object_id);
         self.nonspectral_units.insert(obj_ref.id, obj);
+        obj_ref
+    }
+
+    pub fn add_basic_projectile(&mut self, floor_object_id: RoomObjectId, hitbox: Hitbox) -> RofizObjectRef {
+        let (obj_ref, obj) = self.new_rofiz_obj_movable(RofizObjTypeIdx::Projectile, hitbox, floor_object_id);
+        self.basic_projectiles.insert(obj_ref.id, obj);
         obj_ref
     }
 
@@ -78,6 +84,15 @@ impl RofizState {
 
     pub fn get_movable_object(&self, obj_ref: RofizObjectRef) -> &RofizObjMovable {
         self.get_rofiz_obj_movable(obj_ref)
+    }
+    
+    pub fn remove_object(&mut self, obj_ref: RofizObjectRef) {
+        match obj_ref.type_idx {
+            RofizObjTypeIdx::BasicWall => panic!("cannot remove BasicWall from Rofiz"),
+            RofizObjTypeIdx::Projectile | RofizObjTypeIdx::SpectralUnit | RofizObjTypeIdx::NonspectralUnit => {
+                self.remove_rofiz_obj_movable(obj_ref);
+            }
+        }
     }
 
     pub fn move_objects_and_find_collisions(&mut self) -> Vec<RofizCollision> {
@@ -119,7 +134,7 @@ impl RofizState {
         collisions
     }
 
-    fn new_rofiz_obj_basic_wall(&mut self, floor_object_id: FloorObjectId, x: u32, y: u32) -> (RofizObjectRef, RofizObjBasicWall) {
+    fn new_rofiz_obj_basic_wall(&mut self, floor_object_id: RoomObjectId, x: u32, y: u32) -> (RofizObjectRef, RofizObjBasicWall) {
         self.obj_creation_counter += 1;
         (RofizObjectRef{
             id: self.obj_creation_counter, 
@@ -132,7 +147,7 @@ impl RofizState {
         })
     }
 
-    fn new_rofiz_obj_movable(&mut self, type_idx: RofizObjTypeIdx, hitbox: Hitbox, floor_object_id: FloorObjectId) -> (RofizObjectRef, RofizObjMovable) {
+    fn new_rofiz_obj_movable(&mut self, type_idx: RofizObjTypeIdx, hitbox: Hitbox, floor_object_id: RoomObjectId) -> (RofizObjectRef, RofizObjMovable) {
         self.obj_creation_counter += 1;
         (RofizObjectRef{
             id: self.obj_creation_counter, 
@@ -144,6 +159,16 @@ impl RofizState {
             move_successful: false, // dummy
             floor_object_id,
         })
+    }
+
+    fn remove_rofiz_obj_movable(&mut self, obj_ref: RofizObjectRef) {
+        let error_str = format!("unable to remove rofiz object with id={:?}", obj_ref);
+        match obj_ref.type_idx {
+            RofizObjTypeIdx::BasicWall => panic!("removing BasicWall in remove_rofiz_obj_movable() is not supported"),
+            RofizObjTypeIdx::Projectile => self.basic_projectiles.remove(&obj_ref.id).expect(&error_str),
+            RofizObjTypeIdx::SpectralUnit => self.spectral_units.remove(&obj_ref.id).expect(&error_str),
+            RofizObjTypeIdx::NonspectralUnit => self.nonspectral_units.remove(&obj_ref.id).expect(&error_str),
+        };
     }
 
     fn get_rofiz_obj_movable_mut(&mut self, obj_ref: RofizObjectRef) -> &mut RofizObjMovable {
@@ -168,12 +193,12 @@ impl RofizState {
 }
 
 pub struct RofizCollision {
-    pub floor_obj_id1: FloorObjectId,
-    pub floor_obj_id2: FloorObjectId,
+    pub floor_obj_id1: RoomObjectId,
+    pub floor_obj_id2: RoomObjectId,
 }
 
 impl RofizCollision {
-    fn new(floor_obj_id1: FloorObjectId, floor_obj_id2: FloorObjectId) -> Self {
+    fn new(floor_obj_id1: RoomObjectId, floor_obj_id2: RoomObjectId) -> Self {
         Self {
             floor_obj_id1,
             floor_obj_id2,

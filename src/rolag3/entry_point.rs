@@ -4,7 +4,7 @@ use winit::{event::{Event, WindowEvent, KeyEvent, ElementState, MouseButton}, ev
 
 use crate::{gfx::{self, window::{Window, EventHandler}, renderer::{ColorRGBA32f, ViewSpaceCoordinate}}, rolag3::gfx::draw_op::DrawOpTriFan};
 
-use super::{gfx::draw_op::{process_draw_ops, DrawOpWithMetadata}, floor::{draw::{DrawFloorContext, get_draw_floor_ops}, run::{RunFloorContext, run_floor, PlayerInput, PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, room::Room}};
+use super::{gfx::draw_op::{process_draw_ops, DrawOpWithMetadata}, floor::{draw::{DrawFloorContext, get_draw_floor_ops}, run::{RunFloorContext, run_floor_frame, PlayerInput, PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, room::Room}};
 
 pub fn run() {
     env_logger::init();
@@ -123,7 +123,7 @@ impl Rolag3EventHandler {
                 test_input1: input_state.is_key_down(&PLAYER_TEST_INPUT1),
             }
         };
-        run_floor(run_floor_ctx);
+        run_floor_frame(run_floor_ctx);
 
         let draw_floor_ctx = DrawFloorContext {
             room: &mut self.room,

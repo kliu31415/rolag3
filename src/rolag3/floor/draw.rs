@@ -1,6 +1,6 @@
 use crate::{rolag3::gfx::draw_op::{DrawOpWithMetadata, DrawOpTriFan}, gfx::renderer::{ColorRGBA32f, ViewSpaceCoordinate}};
 
-use super::{floor_object::floor_object::FloorObject, room::Room, rofiz::rofiz_state::RofizState};
+use super::{room::Room, rofiz::rofiz_state::RofizState};
 
 pub struct DrawFloorContext<'a> {
     pub room: &'a mut Room,
@@ -9,7 +9,7 @@ pub struct DrawFloorContext<'a> {
 }
 
 pub fn get_draw_floor_ops(ctx: DrawFloorContext) -> Vec<DrawOpWithMetadata> {
-    let player_position = ctx.room.player.get_center_point(&ctx.room.rofiz);
+    let player_position = ctx.room.room_objects.get_player().get_center_point(&ctx.room.rofiz);
     let pixels_per_tile = 40.0;
     let mut draw_context = DrawContext {
         draw_ops: Vec::new(),
@@ -18,13 +18,7 @@ pub fn get_draw_floor_ops(ctx: DrawFloorContext) -> Vec<DrawOpWithMetadata> {
         pixels_per_tile,
         rofiz: &ctx.room.rofiz,
     };
-    ctx.room.player.draw(&mut draw_context);
-    for obj in ctx.room.basic_walls.iter() {
-        obj.draw(&mut draw_context);
-    }
-    for obj in ctx.room.room_objects.iter() {
-        obj.draw(&mut draw_context);
-    }
+    ctx.room.room_objects.apply_mut(&mut |x| x.draw(&mut draw_context));
     draw_context.draw_ops
 }
 
