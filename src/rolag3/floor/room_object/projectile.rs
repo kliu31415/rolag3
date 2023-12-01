@@ -1,4 +1,4 @@
-use super::room_object::RoomObject;
+use super::room_object_def::RoomObject;
 
 pub mod basic_projectile;
 

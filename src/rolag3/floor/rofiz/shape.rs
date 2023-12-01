@@ -43,11 +43,11 @@ impl Polygon {
 }
 
 impl Shape {
-    pub fn of_polygon(vertexes: Box<[Point]>) -> Shape {
+    pub fn _of_polygon(vertexes: Box<[Point]>) -> Shape {
         Shape::Polygon(Polygon::new(vertexes))
     }
 
-    pub fn of_rect(rect: Rect) -> Shape {
+    pub fn _of_rect(rect: Rect) -> Shape {
         let vertexes = [
             Point::new(rect.x, rect.y),
             Point::new(rect.x + rect.w, rect.y),
@@ -120,7 +120,7 @@ pub struct Rect {
 }
 
 impl Rect {
-    pub fn new(x: f32, y: f32, w: f32, h: f32) -> Self {
+    pub fn _new(x: f32, y: f32, w: f32, h: f32) -> Self {
         Self {x, y, w, h}
     }
 }
@@ -135,8 +135,8 @@ pub struct BoundingBox {
 
 impl BoundingBox {
     pub fn overlap(b1: &BoundingBox, b2: &BoundingBox) -> bool {
-        ((b2.x1 >= b1.x1 && b2.x1 <= b1.x2) || (b2.x2 >= b1.x1 && b2.x2 <= b1.x2)) &&
-        ((b2.y1 >= b1.y1 && b2.y1 <= b1.y2) || (b2.y2 >= b1.y1 && b2.y2 <= b1.y2))
+        ((b2.x1 >= b1.x1 && b2.x1 <= b1.x2) || (b1.x1 >= b2.x1 && b1.x1 <= b2.x2)) &&
+        ((b2.y1 >= b1.y1 && b2.y1 <= b1.y2) || (b1.y1 >= b2.y1 && b1.y1 <= b2.y2))
     }
 }
 

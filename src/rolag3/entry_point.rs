@@ -8,6 +8,7 @@ use super::{gfx::draw_op::{process_draw_ops, DrawOpWithMetadata}, floor::{draw::
 
 pub fn run() {
     env_logger::init();
+    std::env::set_var("RUST_BACKTRACE", "1");
     let mut window = gfx::window::make_window_and_renderer("Rolag3", 640, 360, 2560, 1440);
     let mut event_handler = Rolag3EventHandler::new_test1();
     window.run_event_loop(&mut event_handler);
@@ -111,7 +112,7 @@ impl Rolag3EventHandler {
             frame_length = self.frame_timestamps.back().unwrap() - self.frame_timestamps[self.frame_timestamps.len()-2];
         }
 
-        let player_position = self.room.room_objects.get_player().get_center_point(&self.room.rofiz);
+        let player_position = self.room.player.borrow().get_center_point(&self.room.rofiz);
         let pixels_per_tile = 40.0;
         let camera_x = player_position.x - window_width / 2.0 / pixels_per_tile;
         let camera_y = player_position.y - window_height / 2.0 / pixels_per_tile;
@@ -120,7 +121,7 @@ impl Rolag3EventHandler {
         let mouse_theta_relative_to_player = (mouse_y - player_position.y).atan2(mouse_x - player_position.x);
 
         let run_floor_ctx = RunFloorContext {
-            num_ticks: 10,
+            num_ticks: 40,
             frame_length,
             room: &mut self.room,
             player_input: &PlayerInput {
@@ -150,7 +151,7 @@ impl Rolag3EventHandler {
 
     fn _render_test2(&mut self, window: &mut dyn Window) {
         let time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs_f64();
-        _ = self.frame_timestamps.push_back(time);
+        self.frame_timestamps.push_back(time);
         while !self.frame_timestamps.is_empty() && *self.frame_timestamps.front().unwrap() < time - 1.0 {
             self.frame_timestamps.pop_front();
         }

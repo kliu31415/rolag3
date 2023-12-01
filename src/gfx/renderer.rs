@@ -69,9 +69,9 @@ impl Renderer for WgpuRenderer {
                 vertexes);
         }
         for i in 2..vertexes.len() {
-            self.triangle_vertexes.push(ColoredVertex { color: color, coordinate: vertexes[i-2] });
-            self.triangle_vertexes.push(ColoredVertex { color: color, coordinate: vertexes[i-1] });
-            self.triangle_vertexes.push(ColoredVertex { color: color, coordinate: vertexes[i] });
+            self.triangle_vertexes.push(ColoredVertex { color, coordinate: vertexes[i-2] });
+            self.triangle_vertexes.push(ColoredVertex { color, coordinate: vertexes[i-1] });
+            self.triangle_vertexes.push(ColoredVertex { color, coordinate: vertexes[i] });
         }
     }
 

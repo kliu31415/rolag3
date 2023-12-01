@@ -1,4 +1,6 @@
-use super::{room_object::room_object::Act1Context, room::Room};
+use std::collections::HashSet;
+
+use super::{room_object::room_object_def::{Act1Context, HandleCollisionContext, HandleCollisionResponse}, room::Room};
 
 pub struct RunFloorContext<'a> {
     pub num_ticks: u32,
@@ -48,19 +50,39 @@ struct RunFloorTickContext<'a> {
     pub tick_length: f64,
 }
 
-fn run_floor_tick<'a>(ctx: RunFloorTickContext) {
+fn run_floor_tick(ctx: RunFloorTickContext) {
     ctx.room.rofiz.start_new_tick();
     let mut act1_context = Act1Context::new(ctx.player_input, &mut ctx.room.rofiz, &mut ctx.room.room_object_id_counter, ctx.tick_length);
-    let mut responses = Vec::new();
-    ctx.room.room_objects.apply_mut(&mut |x| {
-        responses.push(x.act1(&mut act1_context));
-    });
-    let should_remove: Vec<bool> = responses.iter().map(|x| x.get_remove_me()).collect();
-    ctx.room.room_objects.remove_all_using_bool_array(should_remove.as_slice());
+    ctx.room.room_objects.act1(&mut act1_context);
     let collisions = ctx.room.rofiz.move_objects_and_find_collisions();
+    let mut to_remove = HashSet::new();
     for collision in collisions.iter() {
-        let (obj1, obj2) = ctx.room.room_objects.get_two_floor_obj_mut(collision.floor_obj_id1, collision.floor_obj_id2);
-        obj1.handle_collision(obj2);
-        obj2.handle_collision(obj1);
+        if collision.room_obj_id1 == collision.room_obj_id2 {
+            panic!("found collision between object and itself. id={}", collision.room_obj_id1);
+        }
+
+        let hc1r: HandleCollisionResponse;
+        let hc2r: HandleCollisionResponse;
+        {
+            let obj1 = ctx.room.room_objects.get(collision.room_obj_id1);
+            let obj2 = ctx.room.room_objects.get(collision.room_obj_id2);
+            
+            let mut hc_ctx = HandleCollisionContext::new(obj2);
+            hc1r = obj1.borrow_mut().handle_collision(&mut hc_ctx);
+        }
+        
+        {
+            let obj1 = ctx.room.room_objects.get(collision.room_obj_id1);
+            let obj2 = ctx.room.room_objects.get(collision.room_obj_id2);
+            let mut hc_ctx = HandleCollisionContext::new(obj1);
+            hc2r = obj2.borrow_mut().handle_collision(&mut hc_ctx);
+        }
+        if hc1r.get_remove_me() {
+            to_remove.insert(collision.room_obj_id1);
+        }
+        if hc2r.get_remove_me() {
+            to_remove.insert(collision.room_obj_id2);
+        }
     }
+    ctx.room.room_objects.remove_by_id(to_remove);
 }

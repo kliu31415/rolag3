@@ -1,31 +1,18 @@
-use crate::rolag3::floor::room_object::room_object::RoomObjectId;
+use std::rc::Rc;
+
+use crate::rolag3::floor::room_object::room_object_def::RoomObjectId;
 
 use super::shape::Shape;
 
-#[derive(Debug, Copy, Clone)]
-pub enum RofizObjTypeIdx {
-    BasicWall = 1,
-    Projectile = 2,
-    SpectralUnit = 3,
-    NonspectralUnit = 4,
-}
-
 pub type RofizObjId = usize;
 
-#[derive(Debug, Copy, Clone)]
-pub struct RofizObjectRef {
-    pub type_idx: RofizObjTypeIdx, //bijects with TYPE_IDX constants
-    pub id: RofizObjId,
-}
-
-pub enum RofizObject {
-    BasicWall(RofizObjBasicWall),
-    BasicProjectile(RofizObjMovable),
-    SpectralUnit(RofizObjMovable),
-    NonspectralUnit(RofizObjMovable),
-}
-
+// external_ref_count is 1 greater than the number of external references. Rofiz itself will never create additional
+// Rcs to external_ref_count. When external_ref_count reaches 1 (i.e. no external references are left), the rofiz object 
+// is deleted.
 pub struct RofizObjBasicWall {
+    pub id: RofizObjId,
+    pub external_ref_count: Rc<()>,
+
     // (x, y) is the top left corner of the wall. The wall is a unit square.
     pub x: u32,
     pub y: u32,
@@ -36,6 +23,9 @@ pub struct RofizObjBasicWall {
 }
 
 pub struct RofizObjMovable {
+    pub id: RofizObjId,
+    pub external_ref_count: Rc<()>,
+
     pub current: Hitbox,
     pub movement: RofizObjectMovement,
     pub floor_object_id: RoomObjectId,
@@ -47,7 +37,8 @@ pub struct RofizObjMovable {
 pub enum RofizObjectMovement {
     NoMove(),
     Move(Transformation),
-    NewHitbox(Hitbox),
+    _NewHitbox(Hitbox),
+    Delete(),
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -86,12 +77,6 @@ impl Hitbox {
         Self {
             transformation,
             shape,
-        }
-    }
-    pub fn empty() -> Self {
-        Self {
-            transformation: Transformation{dx: 0.0, dy: 0.0, dtheta: 0.0}, 
-            shape: Shape::of_circle(0.0, 0.0, 0.0)
         }
     }
 }

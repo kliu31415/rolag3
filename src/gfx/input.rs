@@ -47,19 +47,16 @@ impl InputState {
     }
 
     pub fn handle_event(&mut self, source_window_id: WindowId, event: &Event<()>) {
-        match event {
-            Event::WindowEvent {ref event, window_id} => {
-                if *window_id != source_window_id {
-                    return;
-                }
-                match event {
-                    WindowEvent::KeyboardInput { event, ..} => self.process_key_event(event),
-                    WindowEvent::MouseInput {button, state, .. } => self.process_mouse_input(button, state),
-                    WindowEvent::CursorMoved {position, ..} => self.process_cursor_move(position),
-                    _ => {},
-                }
+        if let Event::WindowEvent {ref event, window_id} = event {
+            if *window_id != source_window_id {
+                return;
             }
-            _ => {},
+            match event {
+                WindowEvent::KeyboardInput { event, ..} => self.process_key_event(event),
+                WindowEvent::MouseInput {button, state, .. } => self.process_mouse_input(button, state),
+                WindowEvent::CursorMoved {position, ..} => self.process_cursor_move(position),
+                _ => {},
+            }
         }
     }
 

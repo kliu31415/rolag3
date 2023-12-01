@@ -1,4 +1,4 @@
-use crate::rolag3::floor::rofiz::{rofiz_object::{RofizObjectRef, RofizObjectMovement, Transformation}, rofiz_state::RofizState};
+use crate::rolag3::floor::rofiz::{rofiz_object::{RofizObjectMovement, Transformation}, rofiz_state::{RofizState, RofizObjectRef}};
 
 use super::Unit;
 
@@ -44,8 +44,17 @@ impl StandardUnitCommon {
         }
     }
 
-    pub fn get_ro_ref(&self) -> RofizObjectRef {
-        self.ro_ref
+    pub fn get_velocity_x(&self) -> f64 {
+        self.velocity_x
+    }
+
+    pub fn get_velocity_y(&self) -> f64 {
+        self.velocity_y
+    }
+
+
+    pub fn get_ro_ref(&self) -> &RofizObjectRef {
+        &self.ro_ref
     }
 
     pub fn decelerate_ro_xy(&mut self, tick_length: f64) {
@@ -121,7 +130,7 @@ impl StandardUnitCommon {
         let dtheta = 0.0;
 
         let movement = RofizObjectMovement::Move(Transformation::new(dx, dy, dtheta));
-        rofiz.move_object(self.ro_ref, movement);
+        rofiz.move_object(&self.ro_ref, movement);
     }
 
     pub fn apply_budeb(&mut self, budeb: Budeb) {

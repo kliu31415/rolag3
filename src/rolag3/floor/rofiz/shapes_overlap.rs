@@ -34,7 +34,7 @@ fn polygon_overlaps_overlap(p1: &Polygon, p2: &Polygon) -> bool {
         let a2 = p1.vertexes[i];
         for j in 0..p2.vertexes.len() {
             let b1 = if j == 0 {p2.vertexes[p2.vertexes.len()-1]} else {p2.vertexes[j-1]};
-            let b2 = p2.vertexes[i];
+            let b2 = p2.vertexes[j];
 
             let v1 = b1 - a1;
             let v2 = a2 - b1;
