@@ -104,6 +104,11 @@ impl StandardUnitCommon {
         self.clamp_velocity();
     }
 
+    pub fn reset_velocity(&mut self) {
+        self.velocity_x = 0.0;
+        self.velocity_y = 0.0;
+    }
+
     pub fn process(&mut self, rofiz: &mut RofizState, tick_length: f64) {
         let mut max_speed_mult = 1.0;
         let mut min_speed_mult = 1.0;

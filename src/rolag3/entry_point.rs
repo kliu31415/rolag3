@@ -1,5 +1,6 @@
 use std::{collections::VecDeque, time::{SystemTime, UNIX_EPOCH}};
 
+use rand::{rngs::ThreadRng, thread_rng};
 use winit::{event::{Event, WindowEvent, KeyEvent, ElementState, MouseButton}, event_loop::EventLoopWindowTarget, keyboard::{PhysicalKey, KeyCode}};
 
 use crate::{gfx::{self, window::{Window, EventHandler}, renderer::{ColorRGBA32f, ViewSpaceCoordinate}}, rolag3::gfx::draw_op::DrawOpTriFan};
@@ -19,6 +20,7 @@ struct Rolag3EventHandler {
     #[allow(dead_code)] // rust falsely thinks frame_timestamps is never read even though its length is printed
     frame_timestamps: VecDeque<f64>,
     room: Room,
+    rng: ThreadRng,
 }
 
 impl EventHandler for Rolag3EventHandler {
@@ -75,6 +77,7 @@ impl Rolag3EventHandler {
         Rolag3EventHandler { 
             frame_timestamps: VecDeque::new(),
             room: Room::new_test_room1(),
+            rng: thread_rng(),
         }
     }
 
@@ -133,7 +136,8 @@ impl Rolag3EventHandler {
                 is_lmb_down: input_state.is_mouse_button_down(&MouseButton::Left),
                 is_rmb_down: input_state.is_mouse_button_down(&MouseButton::Right),
                 test_input1: input_state.is_key_down(&PLAYER_TEST_INPUT1),
-            }
+            },
+            rng: &mut self.rng,
         };
         run_floor_frame(run_floor_ctx);
 

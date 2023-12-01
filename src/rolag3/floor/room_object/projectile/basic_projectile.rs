@@ -54,6 +54,7 @@ impl RoomObject for BasicProjectile {
         if ctx.get_other().borrow().is_wall_like() {
             return HandleCollisionResponse::new().remove_me();
         }
+        
         HandleCollisionResponse::new()
     }
 }

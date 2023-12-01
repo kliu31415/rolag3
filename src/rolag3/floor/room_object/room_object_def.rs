@@ -1,5 +1,7 @@
 use std::{rc::{Rc, Weak}, cell::{RefCell, Ref}, collections::HashSet};
 
+use rand::{rngs::ThreadRng, Rng};
+
 use crate::rolag3::floor::{draw::DrawContext, run::PlayerInput, rofiz::{rofiz_state::{RofizState, RofizObjectRef}, rofiz_object::Hitbox}};
 
 pub trait RoomObject {
@@ -167,16 +169,18 @@ pub struct Act1Context<'a> {
     room_object_id_counter: &'a mut RoomObjectId,
     self_as_weak: Option<Weak<RefCell<dyn RoomObject>>>,
     tick_length: f64,
+    rng: &'a mut ThreadRng,
 }
 
 impl<'a> Act1Context<'a> {
-    pub fn new(player_input: &'a PlayerInput, rofiz: &'a mut RofizState, room_object_id_counter: &'a mut RoomObjectId, tick_length: f64) -> Self {
+    pub fn new(player_input: &'a PlayerInput, rofiz: &'a mut RofizState, room_object_id_counter: &'a mut RoomObjectId, tick_length: f64, rng: &'a mut ThreadRng) -> Self {
         Self {
             player_input,
             rofiz,
             room_object_id_counter,
             self_as_weak: Option::None,
             tick_length,
+            rng,
         }
     }
 
@@ -198,6 +202,11 @@ impl<'a> Act1Context<'a> {
 
     pub fn self_as_weak(&self) -> Weak<RefCell<dyn RoomObject>> {
         self.self_as_weak.clone().unwrap()
+    }
+
+    // in the range [0, 1)
+    pub fn get_randf64(&mut self) -> f64 {
+        self.rng.gen::<f64>()
     }
 } 
 
@@ -234,19 +243,26 @@ impl Act1Response {
     }
 }
 
-pub struct HandleCollisionContext {
-    other: Rc<RefCell<dyn RoomObject>>
+pub struct HandleCollisionContext<'a> {
+    other: Rc<RefCell<dyn RoomObject>>,
+    rng: &'a mut ThreadRng,
 }
 
-impl HandleCollisionContext {
-    pub fn new(other: Rc<RefCell<dyn RoomObject>>) -> Self {
+impl<'a> HandleCollisionContext<'a> {
+    pub fn new(other: Rc<RefCell<dyn RoomObject>>, rng: &'a mut ThreadRng) -> Self {
         Self { 
             other,
+            rng,
         }
     }
     
     pub fn get_other(&self) -> Rc<RefCell<dyn RoomObject>> {
         self.other.clone()
+    }
+
+    // in the range [0, 1)
+    pub fn get_randf64(&mut self) -> f64 {
+        self.rng.gen::<f64>()
     }
 }
 

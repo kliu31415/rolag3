@@ -80,7 +80,7 @@ impl RofizState {
             println!("basic wall max_x({}) and max_y({}) are large. This has negative performance implications", max_x, max_y);
         }
 
-        let mut has_wall_at_coordinate = vec![vec![false; (max_x+1) as usize]; (max_y+1) as usize];
+        let mut has_wall_at_coordinate = vec![vec![false; (max_y+1) as usize]; (max_x+1) as usize];
         for bw in self.basic_walls.iter().map(|x| x.borrow()) {
             has_wall_at_coordinate[bw.x as usize][bw.y as usize] = true;
         }

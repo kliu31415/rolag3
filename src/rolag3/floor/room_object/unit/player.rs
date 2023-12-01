@@ -69,7 +69,6 @@ impl RoomObject for Player {
     }
 
     fn draw(&self, ctx: &mut DrawContext) {
-        // draw main player
         let color = Color::new(0.5, 0.7, 0.9, 1.0);
         let xform = ctx.get_rofiz().get_movable_object_xform(&self.su_common.get_ro_ref());
         let player_x = xform.dx as f32 - Self::PLAYER_S / 2.0;
@@ -103,7 +102,7 @@ impl Player {
     const PLAYER_S: f32 = 1.5;
 
     pub fn new_test1(ctx: &mut NewRoomObjectContext) -> Player {
-        let x = 20.0;
+        let x = 10.0;
         let y = 10.0;
         let hitbox = Hitbox::new(
             Transformation::new(x, y, 0.0),
