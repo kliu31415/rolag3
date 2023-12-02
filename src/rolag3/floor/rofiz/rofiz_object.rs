@@ -28,6 +28,7 @@ pub struct RofizObjMovable {
 
     pub current: Hitbox,
     pub movement: RofizObjectMovement,
+    pub move_with_fallbacks_idx: usize,
     pub floor_object_id: RoomObjectId,
 
     pub temp_hitbox: Shape, // only used as a temporary cache in move_objects_and_find_collisions()
@@ -37,6 +38,7 @@ pub struct RofizObjMovable {
 pub enum RofizObjectMovement {
     NoMove(),
     Move(Transformation),
+    MoveWithFallbacks(Vec<Transformation>),
     _NewHitbox(Hitbox),
     Delete(),
 }

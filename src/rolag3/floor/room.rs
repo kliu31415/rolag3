@@ -7,6 +7,7 @@ pub struct Room {
     pub room_objects: RoomObjectCollection,
     pub rofiz: RofizState,
     pub room_object_id_counter: RoomObjectId,
+    pub room_time: f64,
 }
 
 impl Room {
@@ -45,6 +46,7 @@ impl Room {
             room_objects,
             rofiz,
             room_object_id_counter,
+            room_time: 0.0,
         }
     }
 }

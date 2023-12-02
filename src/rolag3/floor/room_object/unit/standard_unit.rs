@@ -1,4 +1,4 @@
-use crate::rolag3::floor::rofiz::{rofiz_object::{RofizObjectMovement, Transformation}, rofiz_state::{RofizState, RofizObjectRef}};
+use crate::rolag3::floor::{rofiz::{rofiz_object::{RofizObjectMovement, Transformation}, rofiz_state::{RofizState, RofizObjectRef}}, draw::Color};
 
 use super::Unit;
 
@@ -27,19 +27,27 @@ pub struct StandardUnitCommon {
     max_accel: Option<f64>,
     velocity_x: f64,
     velocity_y: f64,
+
+    hp: f64,
+    last_damaged_time: f64,
+
     budebs: Vec<Budeb>,
 }
 
 impl StandardUnitCommon {
     const EPSILON: f64 = 1e-20;
 
-    pub fn new(ro_ref: RofizObjectRef, max_speed: f64, accel: Option<f64>) -> Self {
+    pub fn new(ro_ref: RofizObjectRef, hp: f64, max_speed: f64, accel: Option<f64>) -> Self {
         Self {
             ro_ref,
             max_speed,
             max_accel: accel,
             velocity_x: 0.0,
             velocity_y: 0.0,
+
+            hp,
+            last_damaged_time: -100.0,
+
             budebs: Vec::new(),
         }
     }
@@ -153,4 +161,45 @@ impl StandardUnitCommon {
             self.velocity_y *= adjustment;
         }
     }
+
+    pub fn take_damage(&mut self, room_time: f64, damage: f64) -> TakeDamageResponse {
+        if damage < 0.0 {
+            panic!("damage < 0. Expected positive damage.");
+        }
+        let damage_taken: f64;
+        if self.hp < damage {
+            damage_taken = self.hp;
+            self.hp = 0.0
+        } else {
+            damage_taken = damage;
+            self.hp -= damage;
+        }
+        self.last_damaged_time = room_time;
+        TakeDamageResponse { 
+            dead: self.hp <= 0.0,
+            damage_taken,
+         }
+    }
+
+    pub fn get_draw_color(&self, room_time: f64, original_color: Color) -> Color {
+        lerp_no_alpha(((1.0 - 4.0 * f64::min(0.25, room_time - self.last_damaged_time)) / 1.5) as f32, 
+            original_color,
+            Color::new(1.0, 1.0, 1.0, 0.0))
+    }
+}
+
+pub struct TakeDamageResponse {
+    pub dead: bool,
+    pub damage_taken: f64,
+}
+
+fn lerp_no_alpha(v: f32, a: Color, b: Color) -> Color {
+    if v < 0.0 || v > 1.0 {
+        panic!("lerp got v={}", v);
+    }
+    Color::new(
+        a.r*(1.0-v) + b.r*v,
+        a.g*(1.0-v) + b.g*v,
+        a.b*(1.0-v) + b.b*v,
+        a.a)
 }

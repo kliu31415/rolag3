@@ -40,6 +40,10 @@ impl RoomObject for BasicWall {
     fn is_wall_like(&self) -> bool {
         true
     }
+
+    fn is_spectral(&self) -> bool {
+        false
+    }
 }
 
 impl Wall for BasicWall {

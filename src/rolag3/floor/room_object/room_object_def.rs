@@ -5,12 +5,23 @@ use rand::{rngs::ThreadRng, Rng};
 use crate::rolag3::floor::{draw::DrawContext, run::PlayerInput, rofiz::{rofiz_state::{RofizState, RofizObjectRef}, rofiz_object::Hitbox}};
 
 pub trait RoomObject {
+    fn is_player(&self) -> bool {
+        false
+    }
     fn get_metadata(&self) -> &RoomObjectMetadata;
     fn act1(&mut self, ctx: &mut Act1Context) -> Act1Response;
     fn draw(&self, ctx: &mut DrawContext);
 
     fn handle_collision(&mut self, ctx: &mut HandleCollisionContext) -> HandleCollisionResponse;
+    fn handle_collision_projectile(&mut self, _: &HcProjectileContext) -> HcProjectileResponse {
+        return HcProjectileResponse {
+            projectile_consumed: false,
+            damage_dealt: 0.0,
+            room_objects_to_delete: Vec::new(),
+        }
+    }
 
+    fn is_spectral(&self) -> bool;
     fn is_wall_like(&self) -> bool {
         false
     }
@@ -77,6 +88,9 @@ impl RoomObjectCollection {
     }
 
     pub fn remove_by_id(&mut self, to_remove: HashSet<RoomObjectId>) {
+        if to_remove.is_empty() {
+            return;
+        }
         self.objects.retain(|x| !to_remove.contains(&x.borrow().get_metadata().get_id()));
     }
 
@@ -102,14 +116,27 @@ impl RoomObjectCollection {
         self.objects.retain(|_| {idx += 1; !should_remove[idx - 1]});
     }
 
-    pub fn get(&self, id: RoomObjectId) -> Rc<RefCell<dyn RoomObject>> {
+    pub fn get(&self, id: RoomObjectId) -> Option<Rc<RefCell<dyn RoomObject>>> {
         let iter = self.objects.iter();
         for fo in iter {
             if id == fo.borrow().get_metadata().get_id() {
-                return fo.clone();
+                return Some(fo.clone());
             }
         }
-        panic!("unable to find RoomObject with id={}", id)
+        None
+    }
+
+    pub fn validate(&self) {
+        for ro in self.objects.iter() {
+            let ref_count = Rc::strong_count(&ro);
+            if ro.borrow().is_player() {
+                if ref_count != 2 {
+                    panic!("RoomObject Player Rc::strong_count()={}. Expected 2. Id={:?}", ref_count, ro.borrow().get_metadata().get_id());
+                }
+            } else if ref_count != 1 {
+                panic!("RoomObject Rc::strong_count()={}. Expected 1. Id={:?}", ref_count, ro.borrow().get_metadata().get_id());
+            }
+        }
     }
 }
 
@@ -246,17 +273,19 @@ impl Act1Response {
 pub struct HandleCollisionContext<'a> {
     other: Rc<RefCell<dyn RoomObject>>,
     rng: &'a mut ThreadRng,
+    room_time: f64,
 }
 
 impl<'a> HandleCollisionContext<'a> {
-    pub fn new(other: Rc<RefCell<dyn RoomObject>>, rng: &'a mut ThreadRng) -> Self {
+    pub fn new(other: Rc<RefCell<dyn RoomObject>>, rng: &'a mut ThreadRng, room_time: f64) -> Self {
         Self { 
             other,
             rng,
+            room_time,
         }
     }
     
-    pub fn get_other(&self) -> Rc<RefCell<dyn RoomObject>> {
+    pub fn get_other(&mut self) -> Rc<RefCell<dyn RoomObject>> {
         self.other.clone()
     }
 
@@ -264,26 +293,63 @@ impl<'a> HandleCollisionContext<'a> {
     pub fn get_randf64(&mut self) -> f64 {
         self.rng.gen::<f64>()
     }
+
+    pub fn get_room_time(&self) -> f64 {
+        self.room_time
+    }
 }
 
 pub struct HandleCollisionResponse {
-    should_remove_me: bool,
+    room_objects_to_remove: Vec<RoomObjectId>,
 }
 
 impl HandleCollisionResponse {
     pub fn new() -> Self {
         Self { 
-            should_remove_me: false,
+            room_objects_to_remove: Vec::new(),
         }
     }
 
-    pub fn remove_me(mut self) -> Self {
-        self.should_remove_me = true;
+    pub fn remove_room_obj(mut self, id: RoomObjectId) -> Self {
+        self.room_objects_to_remove.push(id);
         self
     }
 
-    pub fn get_remove_me(&self) -> bool {
-        self.should_remove_me
+    pub fn remove_room_objs(mut self, ids: &[RoomObjectId]) -> Self {
+        self.room_objects_to_remove.extend(ids);
+        self
+    }
+
+    pub fn get_room_objects_to_remove(&self) -> &[RoomObjectId] {
+        self.room_objects_to_remove.as_slice()
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum Team {
+    Player,
+    Enemy,
+}
+
+pub struct HcProjectileContext {
+    pub team: Team,
+    pub damage: f64,
+    pub room_time: f64,
+}
+
+pub struct HcProjectileResponse {
+    pub projectile_consumed: bool,
+    pub damage_dealt: f64,
+    pub room_objects_to_delete: Vec<RoomObjectId>,
+}
+
+impl HcProjectileResponse {
+    pub fn nop() -> Self {
+        Self {
+            projectile_consumed: false,
+            damage_dealt: 0.0,
+            room_objects_to_delete: Vec::new(),
+        }
     }
 }
 

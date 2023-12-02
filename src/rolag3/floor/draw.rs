@@ -17,6 +17,7 @@ pub fn get_draw_floor_ops(ctx: DrawFloorContext) -> Vec<DrawOpWithMetadata> {
         camera_y: (player_position.y - ctx.window_height / 2.0 / ctx.pixels_per_tile) as f32,
         pixels_per_tile: ctx.pixels_per_tile as f32,
         rofiz: &ctx.room.rofiz,
+        room_time: ctx.room.room_time,
     };
     ctx.room.room_objects.draw(&mut draw_context);
     draw_context.draw_ops
@@ -28,6 +29,7 @@ pub struct DrawContext<'a> {
     camera_y: f32,
     pixels_per_tile: f32,
     rofiz: &'a RofizState,
+    room_time: f64,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -74,6 +76,10 @@ impl DrawContext<'_> {
 
     pub fn get_rofiz(&self) -> &RofizState {
         self.rofiz
+    }
+
+    pub fn get_room_time(&self) -> f64 {
+        self.room_time
     }
 
     fn x_to_vsc(&self, x: f32) -> f32{

@@ -1,11 +1,12 @@
 use std::{cell::RefCell, rc::Weak};
 
-use crate::rolag3::floor::{room_object::room_object_def::{RoomObject, RoomObjectMetadata, Act1Context, NewRoomObjectContext, Act1Response, HandleCollisionContext, HandleCollisionResponse}, draw::{DrawContext, Color, FloorDrawCoordinate}, rofiz::{rofiz_object::{Hitbox, Transformation, RofizObjectMovement}, shape::Shape, rofiz_state::RofizObjectRef}};
+use crate::rolag3::floor::{room_object::room_object_def::{RoomObject, RoomObjectMetadata, Act1Context, NewRoomObjectContext, Act1Response, HandleCollisionContext, HandleCollisionResponse, HcProjectileContext, Team}, draw::{DrawContext, Color, FloorDrawCoordinate}, rofiz::{rofiz_object::{Hitbox, Transformation, RofizObjectMovement}, shape::Shape, rofiz_state::RofizObjectRef}};
 
 use super::Projectile;
 
 pub struct BasicProjectile {
     md: RoomObjectMetadata,
+    team: Team,
     owner: Weak<RefCell<dyn RoomObject>>,
     ro_ref: RofizObjectRef,
     lifespan_left: f64,
@@ -52,10 +53,22 @@ impl RoomObject for BasicProjectile {
 
     fn handle_collision(&mut self, ctx: &mut HandleCollisionContext) -> HandleCollisionResponse {
         if ctx.get_other().borrow().is_wall_like() {
-            return HandleCollisionResponse::new().remove_me();
+            return HandleCollisionResponse::new().remove_room_obj(self.md.get_id());
         }
-        
-        HandleCollisionResponse::new()
+        let hcp_response = ctx.get_other().borrow_mut().handle_collision_projectile(&HcProjectileContext{
+            team: self.team,
+            damage: 3.0,
+            room_time: ctx.get_room_time(),
+        });
+        let mut to_remove = hcp_response.room_objects_to_delete;
+        if hcp_response.projectile_consumed {
+            to_remove.push(self.md.get_id());
+        }
+        HandleCollisionResponse::new().remove_room_objs(&to_remove.as_slice())
+    }
+
+    fn is_spectral(&self) -> bool {
+        true
     }
 }
 
@@ -65,7 +78,7 @@ impl Projectile for BasicProjectile {
 
 impl BasicProjectile {
     const PROJ_S: f32 = 0.8;
-    pub fn new(ctx: &mut NewRoomObjectContext, owner: Weak<RefCell<dyn RoomObject>>, lifespan: f64, x: f64, y: f64, dx: f64, dy: f64) -> Self {
+    pub fn new(ctx: &mut NewRoomObjectContext, team: Team, owner: Weak<RefCell<dyn RoomObject>>, lifespan: f64, x: f64, y: f64, dx: f64, dy: f64) -> Self {
         let md = RoomObjectMetadata::new(ctx);
         let hitbox = Hitbox::new(
             Transformation::new(x, y, 0.0),
@@ -74,6 +87,7 @@ impl BasicProjectile {
         let ro_ref = ctx.add_basic_projectile(md.get_id(), hitbox);
         Self {
             md,
+            team,
             owner,
             ro_ref,
             lifespan_left: lifespan,

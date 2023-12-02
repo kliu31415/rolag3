@@ -1,4 +1,4 @@
-use crate::rolag3::floor::{room_object::room_object_def::{RoomObjectMetadata, RoomObject, NewRoomObjectContext, Act1Response, Act1Context, HandleCollisionResponse, HandleCollisionContext}, rofiz::{rofiz_object::{Hitbox, Transformation}, shape::Shape}, draw::{Color, FloorDrawCoordinate, DrawContext}};
+use crate::rolag3::floor::{room_object::room_object_def::{RoomObjectMetadata, RoomObject, NewRoomObjectContext, Act1Response, Act1Context, HandleCollisionResponse, HandleCollisionContext, HcProjectileContext, HcProjectileResponse, Team}, rofiz::{rofiz_object::{Hitbox, Transformation}, shape::Shape}, draw::{Color, FloorDrawCoordinate, DrawContext}};
 
 use super::{standard_unit::{StandardUnitCommon, StandardUnit}, Unit};
 
@@ -27,7 +27,7 @@ impl RoomObject for Enemy1 {
     }
 
     fn draw(&self, ctx: &mut DrawContext) {
-        let color = Color::new(0.1, 0.1, 1.0, 1.0);
+        let color = self.su_common.get_draw_color(ctx.get_room_time(), Color::new(0.1, 0.1, 1.0, 1.0));
         let xform = ctx.get_rofiz().get_movable_object_xform(&self.su_common.get_ro_ref());
         let x = xform.dx as f32 - Self::ENEMY1_S / 2.0;
         let y = xform.dy as f32 - Self::ENEMY1_S / 2.0;
@@ -43,9 +43,31 @@ impl RoomObject for Enemy1 {
     }
 
     fn handle_collision(&mut self, ctx: &mut HandleCollisionContext) -> HandleCollisionResponse {
-        self.su_common.reset_velocity();
-        self.accel_xy_angle = 2.0 * PI * ctx.get_randf64();
+        if !ctx.get_other().borrow().is_spectral() {
+            self.su_common.reset_velocity();
+            self.accel_xy_angle = 2.0 * PI * ctx.get_randf64();
+        }
         HandleCollisionResponse::new()
+    }
+
+    fn handle_collision_projectile(&mut self, ctx: &HcProjectileContext) -> HcProjectileResponse {
+        if matches!(ctx.team, Team::Enemy) {
+            return HcProjectileResponse::nop();
+        }
+        let td_response = self.su_common.take_damage(ctx.room_time, ctx.damage);
+        let mut room_objects_to_delete = Vec::new();
+        if td_response.dead {
+            room_objects_to_delete.push(self.md.get_id());
+        }
+        HcProjectileResponse { 
+            projectile_consumed: true,
+            damage_dealt: td_response.damage_taken,
+            room_objects_to_delete,
+        }
+    }
+
+    fn is_spectral(&self) -> bool {
+        false
     }
 }
 
@@ -69,7 +91,7 @@ impl Enemy1 {
         let ro_ref = ctx.add_nonspectral_unit(md.get_id(), hitbox);
         Enemy1 {
             md,
-            su_common: StandardUnitCommon::new(ro_ref, 40.0, Option::Some(100.0)),
+            su_common: StandardUnitCommon::new(ro_ref, 10.0, 40.0, Option::Some(100.0)),
             accel_xy_angle: 0.0,
         }
     }

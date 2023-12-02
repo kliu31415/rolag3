@@ -153,7 +153,8 @@ impl RofizState {
             obj.temp_hitbox = match obj.movement {
                 RofizObjectMovement::NoMove() => obj.current.transformation.get_transformed_shape(&obj.current.shape),
                 RofizObjectMovement::Move(ref t) => (obj.current.transformation.add(t)).get_transformed_shape(&obj.current.shape),
-                RofizObjectMovement::_NewHitbox(_) => todo!(),
+                RofizObjectMovement::MoveWithFallbacks(_) => todo!(),
+                RofizObjectMovement::_NewHitbox(_) => todo!(), 
                 RofizObjectMovement::Delete() => panic!("there should be no rofiz objects with Delete movement. Loc 1."),
             };
             obj.move_successful = true;
@@ -168,10 +169,7 @@ impl RofizState {
                 let bw = bw_rc.as_ref().borrow_mut();
                 if shapes_overlap(&nsu.temp_hitbox, &bw.shape) {
                     collisions.push(RofizCollision::new(nsu.floor_object_id, bw.floor_object_id));
-                    if nsu.move_successful {
-                        nsu.move_successful = false;
-                        nsu.temp_hitbox = nsu.current.transformation.get_transformed_shape(&nsu.current.shape);
-                    }
+                    Self::move_back(&mut nsu);
                 }
             }
         }
@@ -184,13 +182,8 @@ impl RofizState {
                 let mut nsu_j = self.nonspectral_units[j].as_ref().borrow_mut();
                 if shapes_overlap(&nsu_i.temp_hitbox, &nsu_j.temp_hitbox) {
                     collisions.push(RofizCollision::new(nsu_i.floor_object_id, nsu_j.floor_object_id));
-                    if nsu_j.move_successful {
-                        nsu_j.move_successful = false;
-                        nsu_j.temp_hitbox = nsu_j.current.transformation.get_transformed_shape(&nsu_j.current.shape);
-                    }
-                    if nsu_i.move_successful {
-                        nsu_i.move_successful = false;
-                        nsu_i.temp_hitbox = nsu_i.current.transformation.get_transformed_shape(&nsu_i.current.shape);
+                    Self::move_back(&mut nsu_j);
+                    if Self::move_back(&mut nsu_i) {
                         // if nsu_i was previously considered as moving successfully, then it moves back to its
                         // original place. Additionally, j is reset, because collisions between nsu_i's original hitbox
                         // and other nsus need to be rechecked.
@@ -229,6 +222,7 @@ impl RofizState {
                 match mo.movement {
                     RofizObjectMovement::NoMove() => {},
                     RofizObjectMovement::Move(ref t) => mo.current.transformation = mo.current.transformation.add(t),
+                    RofizObjectMovement::MoveWithFallbacks(_) => todo!(),
                     RofizObjectMovement::_NewHitbox(_) => todo!(),
                     RofizObjectMovement::Delete() => panic!("there should be no rofiz objects with Delete movement. Loc 2."),
                 }
@@ -236,6 +230,16 @@ impl RofizState {
         }
 
         collisions
+    }
+
+    // returns true if the object was moved back to a different location
+    fn move_back(rom: &mut RofizObjMovable) -> bool {
+        if rom.move_successful {
+            rom.move_successful = false;
+            rom.temp_hitbox = rom.current.transformation.get_transformed_shape(&rom.current.shape);
+            return true;
+        }
+        false
     }
 
     fn movable_objs_iter(&mut self) -> impl Iterator<Item = &Rc<RefCell<RofizObjMovable>>> {
@@ -263,6 +267,7 @@ impl RofizState {
             external_ref_count: Rc::new(()),
             current: hitbox, 
             movement: RofizObjectMovement::NoMove(), 
+            move_with_fallbacks_idx: 0,
             temp_hitbox: Shape::dummy(),
             move_successful: false, // dummy
             floor_object_id,

@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
-use crate::rolag3::floor::{run::{PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, draw::{DrawContext, Color, FloorDrawCoordinate}, room_object::{room_object_def::{RoomObject, Act1Context, FloorCoordinate, NewRoomObjectContext, RoomObjectMetadata, Act1Response, HandleCollisionContext, HandleCollisionResponse}, projectile::basic_projectile::BasicProjectile}, rofiz::{rofiz_object::{Hitbox, Transformation}, shape::Shape, rofiz_state::RofizState}};
+use crate::rolag3::floor::{run::{PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, draw::{DrawContext, Color, FloorDrawCoordinate}, room_object::{room_object_def::{RoomObject, Act1Context, FloorCoordinate, NewRoomObjectContext, RoomObjectMetadata, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse}, projectile::basic_projectile::BasicProjectile}, rofiz::{rofiz_object::{Hitbox, Transformation}, shape::Shape, rofiz_state::RofizState}};
 
 use super::{Unit, standard_unit::{StandardUnit, StandardUnitCommon, Budeb, BudebMaxSpeed}};
 
@@ -12,6 +12,10 @@ pub struct Player {
 }
 
 impl RoomObject for Player {
+    fn is_player(&self) -> bool {
+        true
+    }
+    
     fn get_metadata(&self) -> &RoomObjectMetadata {
         &self.md
     }
@@ -38,7 +42,7 @@ impl RoomObject for Player {
             let proj_velocity = 50.0;
             let dx = proj_velocity * f64::cos(mouse_theta) + self.su_common.get_velocity_x();
             let dy = proj_velocity * f64::sin(mouse_theta) + self.su_common.get_velocity_y();
-            let proj = Rc::new(RefCell::new(BasicProjectile::new(&mut nfo_ctx, self_as_weak, 1.0, player_x, player_y, dx, dy)));
+            let proj = Rc::new(RefCell::new(BasicProjectile::new(&mut nfo_ctx, Team::Player, self_as_weak, 1.0, player_x, player_y, dx, dy)));
             response.add_room_obj(proj);
         } else {
             self.since_last_projectile += tick_len;
@@ -87,6 +91,15 @@ impl RoomObject for Player {
     fn handle_collision(&mut self, _ctx: &mut HandleCollisionContext) -> HandleCollisionResponse {
         HandleCollisionResponse::new()
     }
+
+    fn handle_collision_projectile(&mut self, _ctx: &HcProjectileContext) -> HcProjectileResponse {
+        // nop so far
+        HcProjectileResponse::nop()
+    }
+
+    fn is_spectral(&self) -> bool {
+        false
+    }
 }
 
 impl Unit for Player {
@@ -112,7 +125,7 @@ impl Player {
         let ro_ref = ctx.add_nonspectral_unit(md.get_id(), hitbox);
         Player {
             md,
-            su_common: StandardUnitCommon::new(ro_ref, 40.0, Option::Some(1000.0)),
+            su_common: StandardUnitCommon::new(ro_ref, 20.0, 40.0, Option::Some(1000.0)),
             since_last_projectile: 0.0,
         }
     }
