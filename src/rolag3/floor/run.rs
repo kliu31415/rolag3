@@ -14,7 +14,7 @@ pub struct RunFloorContext<'a> {
 
 pub fn run_floor_frame(ctx: RunFloorContext) {
     let tick_length = ctx.frame_length / (ctx.num_ticks as f64);
-    for i in 0 .. ctx.num_ticks {
+    for _ in 0 .. ctx.num_ticks {
         ctx.room.room_time += tick_length;
         let tick_ctx = RunFloorTickContext {
             room: ctx.room,
