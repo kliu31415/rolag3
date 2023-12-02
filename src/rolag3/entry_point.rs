@@ -149,7 +149,7 @@ impl Rolag3EventHandler {
         };
         let draw_ops_with_md = get_draw_floor_ops(draw_floor_ctx);
         process_draw_ops(window.get_renderer(), draw_ops_with_md);
-        let res = window.get_renderer().present(ColorRGBA32f{r: 0.5f32, g: 0.7f32, b: 0.9f32, a: 1.0f32});
+        let res = window.get_renderer().present(ColorRGBA32f{r: 0.8f32, g: 0.8f32, b: 0.9f32, a: 1.0f32});
         if let Err(e) = res { eprintln!("error when calling renderer.present(): {}", e) }
     }
 
