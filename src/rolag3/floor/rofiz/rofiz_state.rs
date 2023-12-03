@@ -153,45 +153,57 @@ impl RofizState {
             obj.temp_hitbox = match obj.movement {
                 RofizObjectMovement::NoMove() => obj.current.transformation.get_transformed_shape(&obj.current.shape),
                 RofizObjectMovement::Move(ref t) => (obj.current.transformation.add(t)).get_transformed_shape(&obj.current.shape),
-                RofizObjectMovement::_MoveWithFallbacks(_) => todo!(),
+                RofizObjectMovement::_MoveWithFallbacks(ref v) => (obj.current.transformation.add(&v[0])).get_transformed_shape(&obj.current.shape),
                 RofizObjectMovement::_NewHitbox(_) => todo!(), 
                 RofizObjectMovement::Delete() => panic!("there should be no rofiz objects with Delete movement. Loc 1."),
             };
+            obj.fallback_idx = 0;
             obj.move_successful = true;
         }
 
         let mut collisions = Vec::new();
 
-        // Phase 1a: Check for collisions between nonspectral units and basic walls
-        for nsu_rc in self.nonspectral_units.iter() {
-            let mut nsu = nsu_rc.as_ref().borrow_mut();
+        // Phase 1: Check for collisions between nonspectral units and basic walls
+        // At any point, the invariant that nsus[0..i] are in valid positions should hold, i.e. none of them overlap.
+        let mut i = 0;
+        while i < self.nonspectral_units.len() {
+            // verify that nsu[i] doesn't overlap with any walls
+            let mut nsu_i = self.nonspectral_units[i].as_ref().borrow_mut();
             for bw_rc in self.basic_walls.iter() {
                 let bw = bw_rc.as_ref().borrow_mut();
-                if shapes_overlap(&nsu.temp_hitbox, &bw.shape) {
-                    collisions.push(RofizCollision::new(nsu.floor_object_id, bw.floor_object_id));
-                    Self::move_back(&mut nsu);
+                if shapes_overlap(&nsu_i.temp_hitbox, &bw.shape) {
+                    collisions.push(RofizCollision::new(nsu_i.room_object_id, bw.floor_object_id));
+                    // keep moving the unit back while both of the following hold:
+                    // 1. the unit is moved back to a different position
+                    // 2. the different position overlaps with a wall.
+                    // Remember, we assert that the unit's original position must never overlap with a basic wall
+                    while Self::move_back(&mut nsu_i) && shapes_overlap(&nsu_i.temp_hitbox, &bw.shape) {}
                 }
             }
-        }
 
-        // Phase 1b: Check for collisions between nonspectral units
-        for i in 0..self.nonspectral_units.len() {
-            let mut nsu_i = self.nonspectral_units[i].as_ref().borrow_mut();
-            let mut j = i + 1;
-            while j < self.nonspectral_units.len() {
+            let mut i_override = None;
+            let mut j = 0;
+            while j < i {
                 let mut nsu_j = self.nonspectral_units[j].as_ref().borrow_mut();
                 if shapes_overlap(&nsu_i.temp_hitbox, &nsu_j.temp_hitbox) {
-                    collisions.push(RofizCollision::new(nsu_i.floor_object_id, nsu_j.floor_object_id));
-                    Self::move_back(&mut nsu_j);
-                    if Self::move_back(&mut nsu_i) {
-                        // if nsu_i was previously considered as moving successfully, then it moves back to its
-                        // original place. Additionally, j is reset, because collisions between nsu_i's original hitbox
-                        // and other nsus need to be rechecked.
-                        j = i + 1;
-                        continue;
+                    collisions.push(RofizCollision::new(nsu_i.room_object_id, nsu_j.room_object_id));
+
+                    while Self::move_back(&mut nsu_i) && shapes_overlap(&nsu_i.temp_hitbox, &nsu_j.temp_hitbox) {}
+
+                    if shapes_overlap(&nsu_i.temp_hitbox, &nsu_j.temp_hitbox) {
+                        while Self::move_back(&mut nsu_j) && shapes_overlap(&nsu_i.temp_hitbox, &nsu_j.temp_hitbox) {}
+                        // nsus[0..j] are still valid, but nsus[j..i] aren't necessarily, because j was moved.
+                        i_override = Some(j);
+                    } else {
+                        // nop, because moving nsu_i back is enough to resolve the collision. nsus[0..i] are still 
+                        // in valid final positions, i.e. none of them overlap.
                     }
                 }
                 j += 1;
+            }
+            i = match i_override {
+                Some(v) => v,
+                None => i + 1,
             }
         }
 
@@ -203,43 +215,65 @@ impl RofizState {
             for bw_rc in self.basic_walls.iter() {
                 let bw = bw_rc.as_ref().borrow_mut();
                 if shapes_overlap(&bp.temp_hitbox, &bw.shape) {
-                    collisions.push(RofizCollision::new(bp.floor_object_id, bw.floor_object_id));
+                    collisions.push(RofizCollision::new(bp.room_object_id, bw.floor_object_id));
                 }
             }
 
             for nsu_rc in self.nonspectral_units.iter() {
                 let nsu = nsu_rc.as_ref().borrow_mut();
                 if shapes_overlap(&bp.temp_hitbox, &nsu.temp_hitbox) {
-                    collisions.push(RofizCollision::new(bp.floor_object_id, nsu.floor_object_id));
+                    collisions.push(RofizCollision::new(bp.room_object_id, nsu.room_object_id));
                 }
             }
         }
 
-        // wrap up by officially moving objects that have move_successful=true
+        // wrap up by officially moving objects
         for mo_rc in self.movable_objs_iter() {
             let mut mo = mo_rc.as_ref().borrow_mut();
-            if mo.move_successful {
+            if let RofizObjectMovement::_MoveWithFallbacks(ref v) = mo.movement {
+                if mo.fallback_idx < v.len() {
+                    mo.current.transformation = mo.current.transformation.add(&v[mo.fallback_idx]);
+                }
+            } else if mo.move_successful {
                 match mo.movement {
                     RofizObjectMovement::NoMove() => {},
                     RofizObjectMovement::Move(ref t) => mo.current.transformation = mo.current.transformation.add(t),
-                    RofizObjectMovement::_MoveWithFallbacks(_) => todo!(),
+                    RofizObjectMovement::_MoveWithFallbacks(_) => panic!("Rofiz MoveWithFallbacks should not be hit here"),
                     RofizObjectMovement::_NewHitbox(_) => todo!(),
                     RofizObjectMovement::Delete() => panic!("there should be no rofiz objects with Delete movement. Loc 2."),
                 }
             }
         }
-
         collisions
     }
 
     // returns true if the object was moved back to a different location
     fn move_back(rom: &mut RofizObjMovable) -> bool {
-        if rom.move_successful {
-            rom.move_successful = false;
-            rom.temp_hitbox = rom.current.transformation.get_transformed_shape(&rom.current.shape);
-            return true;
+        match rom.movement {
+        RofizObjectMovement::_MoveWithFallbacks(ref v) => {
+            if rom.fallback_idx < v.len() {
+                rom.fallback_idx += 1;
+                if rom.fallback_idx < v.len() {
+                    let new_xform = rom.current.transformation.add(&v[rom.fallback_idx]); 
+                    rom.temp_hitbox = new_xform.get_transformed_shape(&rom.current.shape);
+                } else {
+                    rom.temp_hitbox = rom.current.transformation.get_transformed_shape(&rom.current.shape);
+                }
+                return true;
+            } else {
+                return false;
+            }
         }
-        false
+        _ => {
+            if rom.move_successful {
+                rom.move_successful = false;
+                rom.temp_hitbox = rom.current.transformation.get_transformed_shape(&rom.current.shape);
+                return true;
+            } else {
+                return false;
+            }
+        }
+        }
     }
 
     fn movable_objs_iter(&mut self) -> impl Iterator<Item = &Rc<RefCell<RofizObjMovable>>> {
@@ -270,7 +304,8 @@ impl RofizState {
             move_with_fallbacks_idx: 0,
             temp_hitbox: Shape::dummy(),
             move_successful: false, // dummy
-            floor_object_id,
+            fallback_idx: 0, // dummy
+            room_object_id: floor_object_id,
         }
     }
 }
@@ -281,10 +316,10 @@ pub struct RofizCollision {
 }
 
 impl RofizCollision {
-    fn new(floor_obj_id1: RoomObjectId, floor_obj_id2: RoomObjectId) -> Self {
+    fn new(room_obj_id1: RoomObjectId, room_obj_id2: RoomObjectId) -> Self {
         Self {
-            room_obj_id1: floor_obj_id1,
-            room_obj_id2: floor_obj_id2,
+            room_obj_id1,
+            room_obj_id2,
         }
     }
 }

@@ -34,9 +34,11 @@ impl Room {
         let player = Rc::new(RefCell::new(Player::new_test1(&mut new_floor_object_ctx)));
         room_objects.add(player.clone());
 
-        for i in 1..3 {
-            let enemy = Enemy1::new(&mut new_floor_object_ctx, (15 + i*2) as f64, (15 + i*2) as f64);
-            room_objects.add(Rc::new(RefCell::new(enemy)));
+        for i in 1..5 {
+            for j in 1..5 {
+                let enemy = Enemy1::new(&mut new_floor_object_ctx, (15 + i*2) as f64, (15 + j*2) as f64);
+                room_objects.add(Rc::new(RefCell::new(enemy)));
+            }
         }
 
         rofiz.finalize_start_floor();

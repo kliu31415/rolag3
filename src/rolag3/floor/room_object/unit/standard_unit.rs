@@ -142,7 +142,20 @@ impl StandardUnitCommon {
         let dy = self.velocity_y * tick_length * max_speed_mult * min_speed_mult;
         let dtheta = 0.0;
 
-        let movement = RofizObjectMovement::Move(Transformation::new(dx, dy, dtheta));
+        let mut move_fallbacks = vec![Transformation::new(dx, dy, dtheta)];
+
+        let dxy_r = f64::hypot(dx, dy);
+        let dxy_theta = f64::atan2(dy, dx);
+        for i in 1..10 {
+            for j in [-1, 1] {
+                let angle = (j * i) as f64 / 10.0 * std::f64::consts::PI / 2.0;
+                let mag_adj = f64::cos(angle);
+                let new_dx = mag_adj * dxy_r * f64::cos(dxy_theta + angle);
+                let new_dy = mag_adj * dxy_r * f64::sin(dxy_theta + angle);
+                move_fallbacks.push(Transformation::new(new_dx, new_dy, dtheta));
+            }
+        }
+        let movement = RofizObjectMovement::_MoveWithFallbacks(move_fallbacks);
         rofiz.move_object(&self.ro_ref, movement);
     }
 

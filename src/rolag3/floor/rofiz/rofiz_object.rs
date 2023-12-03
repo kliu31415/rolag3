@@ -29,10 +29,12 @@ pub struct RofizObjMovable {
     pub current: Hitbox,
     pub movement: RofizObjectMovement,
     pub move_with_fallbacks_idx: usize,
-    pub floor_object_id: RoomObjectId,
+    pub room_object_id: RoomObjectId,
 
-    pub temp_hitbox: Shape, // only used as a temporary cache in move_objects_and_find_collisions()
-    pub move_successful: bool // only used in move_objects_and_find_collisions()
+    // only used in move_objects_and_find_collisions()
+    pub temp_hitbox: Shape,
+    pub move_successful: bool,
+    pub fallback_idx: usize,
 }
 
 pub enum RofizObjectMovement {
