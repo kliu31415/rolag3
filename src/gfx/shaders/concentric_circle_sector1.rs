@@ -4,48 +4,65 @@ use super::shader_pipeline::{new_wgpu_shader_pipeline, draw_triangle_inputs_batc
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
-pub struct TriangleVertexShaderInput {
+pub struct ConcrenticCircleSectorVertexShaderInput {
     pub position: [f32; 2],
-    pub color: [f32; 4],
+    pub pixel_xy: [f32; 2],
+    pub center: [f32; 2],
+    pub r1: f32,
+    pub r2: f32,
+    pub color1: [f32; 4],
+    pub color2: [f32; 4],
+    pub theta_range1: [f32; 2],
+    pub theta_range2: [f32; 2],
 }
 
-impl TriangleVertexShaderInput {
-    const ATTRIBUTES: [wgpu::VertexAttribute; 2] = wgpu::vertex_attr_array![0 => Float32x2, 1 => Float32x4];
-
+impl ConcrenticCircleSectorVertexShaderInput {
+    const ATTRIBUTES: [wgpu::VertexAttribute; 9] = wgpu::vertex_attr_array![
+        0 => Float32x2,
+        1 => Float32x2,
+        2 => Float32x2,
+        3 => Float32,
+        4 => Float32,
+        5 => Float32x4,
+        6 => Float32x4,
+        7 => Float32x2,
+        8 => Float32x2,
+    ];
+    
     fn desc() -> wgpu::VertexBufferLayout<'static> {
         wgpu::VertexBufferLayout {
-            array_stride: std::mem::size_of::<TriangleVertexShaderInput>() as wgpu::BufferAddress,
+            array_stride: std::mem::size_of::<ConcrenticCircleSectorVertexShaderInput>() as wgpu::BufferAddress,
             step_mode: wgpu::VertexStepMode::Vertex,
             attributes: &Self::ATTRIBUTES,
         }
     }
 }
 
-pub struct TriangleShaderPipeline {
+pub struct ConcrenticCircleSectorShaderPipeline {
     pipeline: wgpu::RenderPipeline,
     vertex_buffers: Vec<wgpu::Buffer>, // GPU memory
-    vertex_inputs: Vec<[TriangleVertexShaderInput; 3]>, // CPU memory,
+    vertex_inputs: Vec<[ConcrenticCircleSectorVertexShaderInput; 3]>, // CPU memory,
 }
 
-impl TriangleShaderPipeline {
-    const NAME: &'static str = "triangle1";
+impl ConcrenticCircleSectorShaderPipeline {
+    const NAME: &'static str = "concrentic_circle_sector1";
     const BATCH_SIZE: usize = 100;
 
     pub fn new(device: &Device, config: &SurfaceConfiguration) -> Self {
         Self {
             pipeline: new_wgpu_shader_pipeline(
                 Self::NAME, 
-                include_str!("triangle1.wgsl").into(), 
+                include_str!("concentric_circle_sector1.wgsl").into(), 
                 &device, 
                 &config, 
-                TriangleVertexShaderInput::desc(),
+                ConcrenticCircleSectorVertexShaderInput::desc(),
                 &[]),
             vertex_buffers: Vec::new(),
             vertex_inputs: Vec::new(),
         }
     }
 
-    pub fn add_triangle(&mut self, input: &[TriangleVertexShaderInput; 3]) {
+    pub fn add_triangle(&mut self, input: &[ConcrenticCircleSectorVertexShaderInput; 3]) {
         self.vertex_inputs.push(*input);
     }
 

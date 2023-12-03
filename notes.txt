@@ -1,0 +1,2 @@
+1. I saw an enemy1 stuck by a wall for many seconds. I eventually just killed it. There were ~10 other enemy1s
+ in the room, and the others were moving. I'm not sure why one got stuck by a wall.

@@ -2,7 +2,7 @@ use std::collections::{VecDeque, HashMap};
 
 use crate::util::time::now_unix;
 
-use super::{shaders::{triangle1::{TriangleVertexShaderInput, TriangleShaderPipeline}, text_texture1::{TextTextureShaderPipeline, TextTextureVertexShaderInput}}, text::font::{FontRasterizer, make_font_rasterizer}};
+use super::{shaders::{triangle1::{TriangleVertexShaderInput, TriangleShaderPipeline}, text_texture1::{TextTextureShaderPipeline, TextTextureVertexShaderInput}, concentric_circle_sector1::{ConcrenticCircleSectorShaderPipeline, ConcrenticCircleSectorVertexShaderInput}}, text::font::{FontRasterizer, make_font_rasterizer}};
 
 pub trait Renderer {
     fn resize(&mut self, width: u32, height: u32);
@@ -10,8 +10,20 @@ pub trait Renderer {
 
     fn draw_tri_fan(&mut self, color: ColorRGBA32f, vertexes: &[ViewSpaceCoordinate]);
     fn draw_tri_strip(&mut self, color: ColorRGBA32f, vertexes: &[ViewSpaceCoordinate]);
+    fn draw_concentric_circle_sector(&mut self, args: &DrawConcentricCircleSectorArgs);
     fn draw_text(&mut self, text: &str, color: ColorRGBA32f, x: f32, y: f32, font_size: f32, position: DrawTextPosition);
     fn present(&mut self, clear_color: ColorRGBA32f) -> Result<(), wgpu::SurfaceError>;
+}
+
+pub struct DrawConcentricCircleSectorArgs {
+    pub x: f32,
+    pub y: f32,
+    pub inner_radius: f32,
+    pub outer_radius: f32,
+    pub viewport: Option<Rect>,
+    pub inner_color: ColorRGBA32f,
+    pub outer_color: ColorRGBA32f,
+    pub angle_range: Option<(f32, f32)>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -31,8 +43,24 @@ impl ColorRGBA32f {
     pub fn new(r: f32, g: f32, b: f32, a: f32) -> Self {
         ColorRGBA32f { r, g, b, a}
     }
+    pub fn to_f32x4(&self) -> [f32; 4] {
+        return [self.r, self.g, self.b, self.a];
+    }
 }
 
+#[derive(Debug, Copy, Clone)]
+pub struct Rect {
+    pub x: f32,
+    pub y: f32,
+    pub w: f32,
+    pub h: f32,
+}
+
+impl Rect {
+    pub fn new(x: f32, y: f32, w: f32, h: f32) -> Self {
+        Self {x, y, w, h}
+    }
+}
 
 #[derive(Debug, Copy, Clone)]
 pub struct ViewSpaceCoordinate {
@@ -55,6 +83,7 @@ struct WgpuRenderer {
     frame_timestamps: VecDeque<f64>,
 
     triangle_shader_pipeline: TriangleShaderPipeline,
+    concentric_circle_sector_shader_pipeline: ConcrenticCircleSectorShaderPipeline,
 
     text_shader_pipelines: HashMap<CachedTextPipelineK, CachedTextPipelineV>,
     font_rasterizer: Box<dyn FontRasterizer>,
@@ -114,6 +143,68 @@ impl Renderer for WgpuRenderer {
                 self.tri_to_gpu( &color, &vertexes[i-1]),
                 self.tri_to_gpu( &color, &vertexes[i])]);
         }
+    }
+
+    fn draw_concentric_circle_sector(&mut self, args: &DrawConcentricCircleSectorArgs) {
+        if args.inner_radius < 0.0 || args.outer_radius < 0.0 || args.inner_radius > args.outer_radius {
+            panic!("concentric circle sector inner_radius({}) and outer_radius({}) have bad values", args.inner_radius, args.outer_radius);
+        }
+        let viewport = match args.viewport {
+            Some(v) => v,
+            None => Rect::new(args.x - args.outer_radius, args.y - args.outer_radius, args.outer_radius*2.0, args.outer_radius*2.0),
+        };
+        let position_x = self.x_to_ndc(viewport.x);
+        let position_y = self.y_to_ndc(viewport.y);
+        let position_w = self.w_to_ndc(viewport.w);
+        let position_h = self.h_to_ndc(viewport.h);
+
+        const DUMMY_ANGLE: f32 = 10.0; // in WGSL, atan2 can never return 10
+        let (theta_range1, theta_range2) = match args.angle_range {
+            Some((mut angle_begin, mut angle_end)) => (|| {
+                if angle_begin == 0.0 && angle_end == 2.0*std::f32::consts::PI {
+                    return ([-100.0, 100.0 + 2.0*std::f32::consts::PI], [DUMMY_ANGLE, DUMMY_ANGLE]);
+                }
+                if angle_begin < 0.0 || angle_begin > 2.0*std::f32::consts::PI {
+                    panic!("concentric circle sector angle_begin between isn't between 0 and 2*PI. Got {}", angle_begin);
+                }
+                if angle_end < 0.0 || angle_end > 2.0*std::f32::consts::PI {
+                    panic!("concentric circle sector angle_end between isn't between 0 and 2*PI. Got {}", angle_end);
+                }
+
+                if angle_begin > std::f32::consts::PI {
+                    angle_begin -= 2.0 * std::f32::consts::PI;
+                }
+                if angle_end > std::f32::consts::PI {
+                    angle_end -= 2.0 * std::f32::consts::PI;
+                }
+
+                if angle_end < angle_begin {
+                    ([angle_begin, std::f32::consts::PI], [-std::f32::consts::PI, angle_end])
+                } else {
+                    ([angle_begin, angle_end], [DUMMY_ANGLE, DUMMY_ANGLE])
+                }
+            })(),
+            None => ([-100.0, 100.0 + 2.0*std::f32::consts::PI], [DUMMY_ANGLE, DUMMY_ANGLE]),
+        };
+
+        let mut vertexes = Vec::new();
+        for (dx, dy) in [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)] {
+            vertexes.push(ConcrenticCircleSectorVertexShaderInput {
+                // we use + for x and - for y because the y axis in WGSL NDC is inverted
+                position: [position_x + dx * position_w, position_y - dy * position_h],
+                pixel_xy: [viewport.x + dx * viewport.w, viewport.y + dy * viewport.h],
+                center: [args.x, args.y],
+                r1: args.inner_radius,
+                r2: args.outer_radius,
+                color1: args.inner_color.to_f32x4(),
+                color2: args.outer_color.to_f32x4(),
+                theta_range1,
+                theta_range2,
+            });
+        }
+
+        self.concentric_circle_sector_shader_pipeline.add_triangle(&[vertexes[0], vertexes[1], vertexes[2]]);
+        self.concentric_circle_sector_shader_pipeline.add_triangle(&[vertexes[2], vertexes[3], vertexes[0]]);
     }
 
     fn draw_text(&mut self, text: &str, color: ColorRGBA32f, x: f32, y: f32, font_size: f32, position: DrawTextPosition) {
@@ -194,6 +285,7 @@ impl Renderer for WgpuRenderer {
             });
 
             self.triangle_shader_pipeline.draw(&mut render_pass, &self.device, &self.queue);
+            self.concentric_circle_sector_shader_pipeline.draw(&mut render_pass, &self.device, &self.queue);
             self.text_shader_pipelines.values_mut().for_each(|x| x.pipeline.draw(&mut render_pass, &self.device, &self.queue));
         }
         let now = now_unix();
@@ -220,6 +312,14 @@ impl WgpuRenderer {
 
     fn y_to_ndc(&self, y: f32) -> f32 {
         1.0 - 2.0 * y / (self.config.height as f32)
+    }
+
+    fn w_to_ndc(&self, w: f32) -> f32 {
+        2.0 * w / (self.config.width as f32)
+    }
+
+    fn h_to_ndc(&self, h: f32) -> f32 {
+        2.0 * h / (self.config.height as f32)
     }
 
     fn tri_to_gpu(&self, color: &ColorRGBA32f, v: &ViewSpaceCoordinate) -> TriangleVertexShaderInput {
@@ -284,6 +384,7 @@ pub fn make_renderer(window: &winit::window::Window) -> Box<dyn Renderer> {
     surface.configure(&device, &config);
 
     let triangle_shader_pipeline = TriangleShaderPipeline::new(&device, &config);
+    let concentric_circle_sector_shader_pipeline = ConcrenticCircleSectorShaderPipeline::new(&device, &config);
 
     let renderer = WgpuRenderer {
         surface,
@@ -292,6 +393,7 @@ pub fn make_renderer(window: &winit::window::Window) -> Box<dyn Renderer> {
         config,
         frame_timestamps: VecDeque::new(),
         triangle_shader_pipeline,
+        concentric_circle_sector_shader_pipeline,
         text_shader_pipelines: HashMap::new(),
         font_rasterizer: make_font_rasterizer(),
     };
