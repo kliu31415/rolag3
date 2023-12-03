@@ -328,7 +328,7 @@ impl HandleCollisionResponse {
 #[derive(Debug, Copy, Clone)]
 pub enum Team {
     Player,
-    Enemy,
+    _Enemy,
 }
 
 pub struct HcProjectileContext {

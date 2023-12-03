@@ -153,7 +153,7 @@ impl RofizState {
             obj.temp_hitbox = match obj.movement {
                 RofizObjectMovement::NoMove() => obj.current.transformation.get_transformed_shape(&obj.current.shape),
                 RofizObjectMovement::Move(ref t) => (obj.current.transformation.add(t)).get_transformed_shape(&obj.current.shape),
-                RofizObjectMovement::MoveWithFallbacks(_) => todo!(),
+                RofizObjectMovement::_MoveWithFallbacks(_) => todo!(),
                 RofizObjectMovement::_NewHitbox(_) => todo!(), 
                 RofizObjectMovement::Delete() => panic!("there should be no rofiz objects with Delete movement. Loc 1."),
             };
@@ -222,7 +222,7 @@ impl RofizState {
                 match mo.movement {
                     RofizObjectMovement::NoMove() => {},
                     RofizObjectMovement::Move(ref t) => mo.current.transformation = mo.current.transformation.add(t),
-                    RofizObjectMovement::MoveWithFallbacks(_) => todo!(),
+                    RofizObjectMovement::_MoveWithFallbacks(_) => todo!(),
                     RofizObjectMovement::_NewHitbox(_) => todo!(),
                     RofizObjectMovement::Delete() => panic!("there should be no rofiz objects with Delete movement. Loc 2."),
                 }

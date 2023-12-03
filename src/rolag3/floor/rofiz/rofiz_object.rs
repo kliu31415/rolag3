@@ -38,7 +38,7 @@ pub struct RofizObjMovable {
 pub enum RofizObjectMovement {
     NoMove(),
     Move(Transformation),
-    MoveWithFallbacks(Vec<Transformation>),
+    _MoveWithFallbacks(Vec<Transformation>),
     _NewHitbox(Hitbox),
     Delete(),
 }

@@ -1,11 +1,22 @@
-use super::shaders::triangle1::{TriangleVertexShaderInput, TriangleShaderPipeline};
+use std::collections::{VecDeque, HashMap};
+
+use crate::util::time::now_unix;
+
+use super::{shaders::{triangle1::{TriangleVertexShaderInput, TriangleShaderPipeline}, text_texture1::{TextTextureShaderPipeline, TextTextureVertexShaderInput}}, text::font::{FontRasterizer, make_font_rasterizer}};
 
 pub trait Renderer {
     fn resize(&mut self, width: u32, height: u32);
+    fn get_fps(&self) -> u32;
 
     fn draw_tri_fan(&mut self, color: ColorRGBA32f, vertexes: &[ViewSpaceCoordinate]);
     fn draw_tri_strip(&mut self, color: ColorRGBA32f, vertexes: &[ViewSpaceCoordinate]);
+    fn draw_text(&mut self, text: &str, color: ColorRGBA32f, x: f32, y: f32, font_size: f32, position: DrawTextPosition);
     fn present(&mut self, clear_color: ColorRGBA32f) -> Result<(), wgpu::SurfaceError>;
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum DrawTextPosition {
+    TopLeft
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -16,11 +27,23 @@ pub struct ColorRGBA32f {
     pub a: f32,
 }
 
+impl ColorRGBA32f {
+    pub fn new(r: f32, g: f32, b: f32, a: f32) -> Self {
+        ColorRGBA32f { r, g, b, a}
+    }
+}
+
 
 #[derive(Debug, Copy, Clone)]
 pub struct ViewSpaceCoordinate {
     pub x: f32,
     pub y: f32,
+}
+
+impl ViewSpaceCoordinate {
+    pub fn new(x: f32, y: f32) -> Self {
+        ViewSpaceCoordinate { x, y }
+    }
 }
 
 struct WgpuRenderer {
@@ -29,7 +52,25 @@ struct WgpuRenderer {
     queue: wgpu::Queue,
     config: wgpu::SurfaceConfiguration,
 
+    frame_timestamps: VecDeque<f64>,
+
     triangle_shader_pipeline: TriangleShaderPipeline,
+
+    text_shader_pipelines: HashMap<CachedTextPipelineK, CachedTextPipelineV>,
+    font_rasterizer: Box<dyn FontRasterizer>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+struct CachedTextPipelineK {
+    text: String,
+    font_size: u32,
+}
+
+struct CachedTextPipelineV { 
+    pipeline: TextTextureShaderPipeline,
+    last_used: f64,
+    width: u32,
+    height: u32,
 }
 
 impl Renderer for WgpuRenderer {
@@ -39,6 +80,10 @@ impl Renderer for WgpuRenderer {
             self.config.height = height;
             self.surface.configure(&self.device, &self.config);
         }
+    }
+
+    fn get_fps(&self) -> u32 {
+        self.frame_timestamps.len() as u32
     }
 
     fn draw_tri_fan(&mut self, color: ColorRGBA32f, vertexes: &[ViewSpaceCoordinate]) {
@@ -71,6 +116,53 @@ impl Renderer for WgpuRenderer {
         }
     }
 
+    fn draw_text(&mut self, text: &str, color: ColorRGBA32f, x: f32, y: f32, font_size: f32, position: DrawTextPosition) {
+        let font_size = font_size as u32;
+        let k = CachedTextPipelineK { text: text.to_owned(), font_size };
+
+        if !self.text_shader_pipelines.contains_key(&k) {
+            let bytes_2d = self.font_rasterizer.rasterize_text_line(text, font_size as f32);
+            if bytes_2d.len() == 0 {
+                return;
+            }
+            let width = bytes_2d[0].len() as u32;
+            let height = bytes_2d.len() as u32;
+            let bytes_1d: Vec<u8> = bytes_2d.into_iter().flatten().collect();
+            let pipeline = TextTextureShaderPipeline::new(&self.queue, &self.device, &self.config, bytes_1d.as_slice(), width, height);
+            let v = CachedTextPipelineV {
+                pipeline,
+                last_used: 0.0, //dummy
+                width,
+                height,
+            };
+            self.text_shader_pipelines.insert(k.clone(), v);
+        } 
+
+        let width: f32;
+        let height: f32;
+        {
+            let cached_v = self.text_shader_pipelines.get_mut(&k).expect("unable to get cached text pipeline (1)");
+            cached_v.last_used = now_unix();
+            width = cached_v.width as f32;
+            height = cached_v.height as f32;
+        }
+        
+        let (x, y) = match position {
+            DrawTextPosition::TopLeft => (x, y),
+        };
+
+        let vertexes = &[
+            self.text_tri_to_gpu(&color, &ViewSpaceCoordinate::new(x, y), [0.0, 0.0]),
+            self.text_tri_to_gpu(&color, &ViewSpaceCoordinate::new(x + width, y), [1.0, 0.0]),
+            self.text_tri_to_gpu(&color, &ViewSpaceCoordinate::new(x + width, y + height), [1.0, 1.0]),
+            self.text_tri_to_gpu(&color, &ViewSpaceCoordinate::new(x, y + height), [0.0, 1.0]),
+        ];
+
+        let cached_v = self.text_shader_pipelines.get_mut(&k).expect("unable to get cached text pipeline (2)");
+        cached_v.pipeline.add_triangle(&[vertexes[0], vertexes[1], vertexes[2]]);
+        cached_v.pipeline.add_triangle(&[vertexes[2], vertexes[3], vertexes[0]]);
+    }
+
     fn present(&mut self, clear_color: ColorRGBA32f) -> Result<(), wgpu::SurfaceError> {
         let output = self.surface.get_current_texture()?;
         let view = output.texture.create_view(&wgpu::TextureViewDescriptor::default());
@@ -101,11 +193,20 @@ impl Renderer for WgpuRenderer {
                 occlusion_query_set: None,
             });
 
-            //render triangles
             self.triangle_shader_pipeline.draw(&mut render_pass, &self.device, &self.queue);
+            self.text_shader_pipelines.values_mut().for_each(|x| x.pipeline.draw(&mut render_pass, &self.device, &self.queue));
         }
+        let now = now_unix();
+        self.text_shader_pipelines.retain(|_, v| now - v.last_used < 1.0);
 
         self.queue.submit(std::iter::once(encoder.finish()));
+
+        let now = now_unix();
+        self.frame_timestamps.push_back(now);
+        while !self.frame_timestamps.is_empty() && *self.frame_timestamps.front().unwrap() < now - 1.0 {
+            self.frame_timestamps.pop_front();
+        }
+
         output.present();
 
         Ok(())
@@ -125,6 +226,14 @@ impl WgpuRenderer {
         TriangleVertexShaderInput{
             position: [self.x_to_ndc(v.x), self.y_to_ndc(v.y)], 
             color: [color.r, color.g, color.b, color.a],
+        } 
+    }
+
+    fn text_tri_to_gpu(&self, color: &ColorRGBA32f, v: &ViewSpaceCoordinate, tex_coords: [f32; 2]) -> TextTextureVertexShaderInput {
+        TextTextureVertexShaderInput{
+            position: [self.x_to_ndc(v.x), self.y_to_ndc(v.y)], 
+            color: [color.r, color.g, color.b, color.a],
+            tex_coords,
         } 
     }
 }
@@ -174,12 +283,17 @@ pub fn make_renderer(window: &winit::window::Window) -> Box<dyn Renderer> {
     };
     surface.configure(&device, &config);
 
+    let triangle_shader_pipeline = TriangleShaderPipeline::new(&device, &config);
+
     let renderer = WgpuRenderer {
-        triangle_shader_pipeline: TriangleShaderPipeline::new(&device, &config),
         surface,
         device,
         queue,
         config,
+        frame_timestamps: VecDeque::new(),
+        triangle_shader_pipeline,
+        text_shader_pipelines: HashMap::new(),
+        font_rasterizer: make_font_rasterizer(),
     };
 
     Box::new(renderer)

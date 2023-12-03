@@ -8,7 +8,8 @@ pub fn new_wgpu_shader_pipeline(
     shader_code: &str, 
     device: &Device, 
     config: &SurfaceConfiguration, 
-    desc: wgpu::VertexBufferLayout,
+    vertex_buffer_layout: wgpu::VertexBufferLayout,
+    bind_group_layouts: &[&wgpu::BindGroupLayout],
 ) -> wgpu::RenderPipeline {
     let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some(&format!("{} Shader", name)),
@@ -17,7 +18,7 @@ pub fn new_wgpu_shader_pipeline(
 
     let render_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some(&format!("{} Render Pipeline Layout ", name)),
-        bind_group_layouts: &[],
+        bind_group_layouts: bind_group_layouts,
         push_constant_ranges: &[],
     });
     
@@ -28,7 +29,7 @@ pub fn new_wgpu_shader_pipeline(
             module: &shader,
             entry_point: "vs_main",
             buffers: &[
-                desc,
+                vertex_buffer_layout,
             ],
         },
         fragment: Some(wgpu::FragmentState {
@@ -68,7 +69,8 @@ pub fn draw_triangle_inputs_batched<'a, T: Pod>(
     pipeline: &'a wgpu::RenderPipeline,
     render_pass: &mut wgpu::RenderPass<'a>, 
     device: &wgpu::Device, 
-    queue: &wgpu::Queue
+    queue: &wgpu::Queue,
+    bind_groups: &'a [wgpu::BindGroup],
 ) {
     while vertex_buffers.len() < vertex_inputs.chunks(batch_size).len() {
         let buffer = device.create_buffer(
@@ -83,6 +85,9 @@ pub fn draw_triangle_inputs_batched<'a, T: Pod>(
     }
 
     render_pass.set_pipeline(&pipeline);
+    for (i, bind_group) in bind_groups.iter().enumerate() {
+        render_pass.set_bind_group(i as u32, bind_group, &[]);
+    }
     for (i, batch) in vertex_inputs.chunks(batch_size).enumerate() {
         let bytes: &[u8] = bytemuck::cast_slice(batch);
         if bytes.len() % (COPY_BUFFER_ALIGNMENT as usize) != 0 {

@@ -3,7 +3,7 @@ use std::{collections::VecDeque, time::{SystemTime, UNIX_EPOCH}};
 use rand::{rngs::ThreadRng, thread_rng};
 use winit::{event::{Event, WindowEvent, KeyEvent, ElementState, MouseButton}, event_loop::EventLoopWindowTarget, keyboard::{PhysicalKey, KeyCode}};
 
-use crate::{gfx::{self, window::{Window, EventHandler}, renderer::{ColorRGBA32f, ViewSpaceCoordinate}}, rolag3::gfx::draw_op::DrawOpTriFan};
+use crate::{gfx::{self, window::{Window, EventHandler}, renderer::{ColorRGBA32f, ViewSpaceCoordinate, DrawTextPosition}}, rolag3::gfx::draw_op::DrawOpTriFan};
 
 use super::{gfx::draw_op::{process_draw_ops, DrawOpWithMetadata}, floor::{draw::{DrawFloorContext, get_draw_floor_ops}, run::{RunFloorContext, run_floor_frame, PlayerInput, PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, room::Room}};
 
@@ -149,6 +149,8 @@ impl Rolag3EventHandler {
         };
         let draw_ops_with_md = get_draw_floor_ops(draw_floor_ctx);
         process_draw_ops(window.get_renderer(), draw_ops_with_md);
+        let fps_text = format!("fps={}", window.get_renderer().get_fps());
+        window.get_renderer().draw_text(&fps_text, ColorRGBA32f::new(0.8, 0.2, 0.2, 0.7), 0.0, 0.0, 30.0, DrawTextPosition::TopLeft);
         let res = window.get_renderer().present(ColorRGBA32f{r: 0.8f32, g: 0.8f32, b: 0.9f32, a: 1.0f32});
         if let Err(e) = res { eprintln!("error when calling renderer.present(): {}", e) }
     }

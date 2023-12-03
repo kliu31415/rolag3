@@ -31,6 +31,7 @@ pub struct TriangleShaderPipeline {
 
 impl TriangleShaderPipeline {
     const NAME: &'static str = "triangle1";
+    const BATCH_SIZE: usize = 100;
 
     pub fn new(device: &Device, config: &SurfaceConfiguration) -> Self {
         Self {
@@ -39,7 +40,8 @@ impl TriangleShaderPipeline {
                 include_str!("triangle1.wgsl").into(), 
                 &device, 
                 &config, 
-                TriangleVertexShaderInput::desc()),
+                TriangleVertexShaderInput::desc(),
+                &[]),
             vertex_buffers: Vec::new(),
             vertex_inputs: Vec::new(),
         }
@@ -52,14 +54,15 @@ impl TriangleShaderPipeline {
     pub fn draw<'a>(&'a mut self, render_pass: &mut wgpu::RenderPass<'a>, device: &wgpu::Device, queue: &wgpu::Queue) {
         draw_triangle_inputs_batched(
             Self::NAME,
-            100,
+            Self::BATCH_SIZE,
             &mut self.vertex_inputs,
             3,
             &mut self.vertex_buffers,
             &mut self.pipeline,
             render_pass,
             device,
-            queue
+            queue,
+            &[],
         );
     }
 }
