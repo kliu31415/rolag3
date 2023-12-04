@@ -169,8 +169,9 @@ impl RofizState {
         while i < self.nonspectral_units.len() {
             // verify that nsu[i] doesn't overlap with any walls
             let mut nsu_i = self.nonspectral_units[i].as_ref().borrow_mut();
-            for bw_rc in self.basic_walls.iter() {
-                let bw = bw_rc.as_ref().borrow_mut();
+            let mut j = 0;
+            while j < self.basic_walls.len() {
+                let bw = self.basic_walls[j].as_ref().borrow_mut();
                 if shapes_overlap(&nsu_i.temp_hitbox, &bw.shape) {
                     collisions.push(RofizCollision::new(nsu_i.room_object_id, bw.floor_object_id));
                     // keep moving the unit back while both of the following hold:
@@ -178,6 +179,10 @@ impl RofizState {
                     // 2. the different position overlaps with a wall.
                     // Remember, we assert that the unit's original position must never overlap with a basic wall
                     while Self::move_back(&mut nsu_i) && shapes_overlap(&nsu_i.temp_hitbox, &bw.shape) {}
+                    // since the unit moved, it needs to be rechecked against all walls.
+                    j = 0;
+                } else {
+                    j += 1;
                 }
             }
 
@@ -194,9 +199,13 @@ impl RofizState {
                         while Self::move_back(&mut nsu_j) && shapes_overlap(&nsu_i.temp_hitbox, &nsu_j.temp_hitbox) {}
                         // nsus[0..j] are still valid, but nsus[j..i] aren't necessarily, because j was moved.
                         i_override = Some(j);
+                        break;
                     } else {
-                        // nop, because moving nsu_i back is enough to resolve the collision. nsus[0..i] are still 
-                        // in valid final positions, i.e. none of them overlap.
+                        // moving nsu_i back is enough to resolve the collision, and nsus[0..i] are still 
+                        // in valid final positions. However, since nsu_i moved, it needs to be rechecked with all
+                        // other js
+                        j = 0;
+                        continue;
                     }
                 }
                 j += 1;
