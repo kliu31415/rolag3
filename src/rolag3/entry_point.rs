@@ -1,11 +1,11 @@
-use std::{collections::VecDeque, time::{SystemTime, UNIX_EPOCH}};
+use std::collections::VecDeque;
 
 use rand::{rngs::ThreadRng, thread_rng};
 use winit::{event::{Event, WindowEvent, KeyEvent, ElementState, MouseButton}, event_loop::EventLoopWindowTarget, keyboard::{PhysicalKey, KeyCode}};
 
-use crate::{gfx::{self, window::{Window, EventHandler}, renderer::{ColorRGBA32f, ViewSpaceCoordinate, DrawTextPosition, DrawConcentricCircleSectorArgs}}, rolag3::gfx::draw_op::DrawOpTriFan};
+use crate::gfx::{self, window::{Window, EventHandler}, renderer::{ColorRGBA32f, DrawTextPosition, DrawOpCCS, DrawOpText, DrawOpWithMetadata, DrawOp}};
 
-use super::{gfx::draw_op::{process_draw_ops, DrawOpWithMetadata}, floor::{draw::{DrawFloorContext, get_draw_floor_ops}, run::{RunFloorContext, run_floor_frame, PlayerInput, PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, room::Room}};
+use super::floor::{draw::{DrawFloorContext, get_draw_floor_ops}, run::{RunFloorContext, run_floor_frame, PlayerInput, PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, room::Room};
 
 pub fn run() {
     env_logger::init();
@@ -147,90 +147,31 @@ impl Rolag3EventHandler {
             window_height,
             pixels_per_tile
         };
-        let draw_ops_with_md = get_draw_floor_ops(draw_floor_ctx);
-        process_draw_ops(window.get_renderer(), draw_ops_with_md);
+        get_draw_floor_ops(draw_floor_ctx).drain(..).for_each(|x| window.get_renderer().draw(x));
         let fps_text = format!("fps={}", window.get_renderer().get_fps());
-        window.get_renderer().draw_concentric_circle_sector(&DrawConcentricCircleSectorArgs{
-            x: 300.0,
-            y: 300.0,
-            inner_radius: 100.0,
-            outer_radius: 200.0,
-            viewport: None,
-            inner_color: ColorRGBA32f::new(1.0, 0.0, 0.0, 1.0),
-            outer_color: ColorRGBA32f::new(0.0, 1.0, 0.0, 1.0),
-            angle_range: Some((3.4, 4.7)),
-        });
-        window.get_renderer().draw_text(&fps_text, ColorRGBA32f::new(0.8, 0.2, 0.2, 0.7), 0.0, 0.0, 30.0, DrawTextPosition::TopLeft);
+        window.get_renderer().draw(DrawOpWithMetadata {
+            z: 100.0,
+            op: DrawOp::ConcentricCircleSector(DrawOpCCS{
+                x: 300.0,
+                y: 300.0,
+                inner_radius: 100.0,
+                outer_radius: 200.0,
+                viewport: None,
+                inner_color: ColorRGBA32f::new(1.0, 0.0, 0.0, 1.0),
+                outer_color: ColorRGBA32f::new(0.0, 1.0, 0.0, 1.0),
+                angle_range: Some((3.4, 4.7)),
+        })});
+        window.get_renderer().draw(DrawOpWithMetadata {
+            z: 100.0, 
+            op: DrawOp::Text(DrawOpText { 
+                text: fps_text, 
+                color: ColorRGBA32f::new(0.8, 0.2, 0.2, 0.7),
+                x: 0.0,
+                y: 0.0,
+                font_size: 30.0, 
+                position: DrawTextPosition::TopLeft,
+        })});
         let res = window.get_renderer().present(ColorRGBA32f{r: 0.8f32, g: 0.8f32, b: 0.9f32, a: 1.0f32});
-        if let Err(e) = res { eprintln!("error when calling renderer.present(): {}", e) }
-    }
-
-    fn _render_test2(&mut self, window: &mut dyn Window) {
-        let time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs_f64();
-        self.frame_timestamps.push_back(time);
-        while !self.frame_timestamps.is_empty() && *self.frame_timestamps.front().unwrap() < time - 1.0 {
-            self.frame_timestamps.pop_front();
-        }
-        println!("fps={}", self.frame_timestamps.len());
-
-        let mut draw_ops_with_md = Vec::new();
-        let window_w = window.get_width();
-        let window_h = window.get_height();
-        let mut num_shapes_so_far = 0;
-        for x in (0..window_w).step_by(5) {
-            for y in (0..window_h).step_by(5) {
-                let fan = vec![
-                    ViewSpaceCoordinate{x: (30 + x) as f32, y: (30 + y) as f32},
-                    ViewSpaceCoordinate{x: (80 + x) as f32, y: (20 + y) as f32},
-                    ViewSpaceCoordinate{x: (70 + x) as f32, y: (40 + y) as f32},
-                    ViewSpaceCoordinate{x: (50 + x) as f32, y: (50 + y) as f32},
-                ];
-                let color = ColorRGBA32f{
-                    r: (num_shapes_so_far as f32 * 0.05) % 1.0,
-                    g: (num_shapes_so_far as f32 * 0.07) % 1.0,
-                    b: (num_shapes_so_far as f32 * 0.08) % 1.0,
-                    a: 1.0f32
-                };
-                draw_ops_with_md.push(DrawOpWithMetadata::new(
-                    num_shapes_so_far as f64,
-                    Box::new(DrawOpTriFan::new(color, fan)),
-                ));
-                num_shapes_so_far += 1;
-            }
-        }
-        process_draw_ops(window.get_renderer(), draw_ops_with_md);
-
-        let res = window.get_renderer().present(ColorRGBA32f{r: 0.5f32, g: 0.7f32, b: 0.9f32, a: 1.0f32});
-        if let Err(e) = res { eprintln!("error when calling renderer.present(): {}", e) }
-    }
-
-    fn _render_test1(&mut self, window: &mut dyn Window) {
-        let mut fans = Vec::new();
-        let window_w = window.get_width();
-        let window_h = window.get_height();
-        for x in (0..window_w).step_by(100) {
-            for y in (0..window_h).step_by(100) {
-                let fan = vec![
-                    ViewSpaceCoordinate{x: (30 + x) as f32, y: (30 + y) as f32},
-                    ViewSpaceCoordinate{x: (80 + x) as f32, y: (20 + y) as f32},
-                    ViewSpaceCoordinate{x: (70 + x) as f32, y: (40 + y) as f32},
-                    ViewSpaceCoordinate{x: (50 + x) as f32, y: (50 + y) as f32},
-                ];
-                fans.push(fan);
-            }
-        }
-    
-        let renderer = window.get_renderer();
-        for (i, fan) in fans.iter().enumerate() {
-            let color = ColorRGBA32f{
-                r: (i as f32 * 0.05) % 1.0,
-                g: (i as f32 * 0.07) % 1.0,
-                b: (i as f32 * 0.08) % 1.0,
-                a: 1.0f32
-            };
-            renderer.draw_tri_fan(color, fan.as_slice());
-        }
-        let res = renderer.present(ColorRGBA32f{r: 0.5f32, g: 0.7f32, b: 0.9f32, a: 1.0f32});
         if let Err(e) = res { eprintln!("error when calling renderer.present(): {}", e) }
     }
 }

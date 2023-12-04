@@ -1,4 +1,4 @@
-use crate::{rolag3::gfx::draw_op::{DrawOpWithMetadata, DrawOpTriFan}, gfx::renderer::{ColorRGBA32f, ViewSpaceCoordinate}};
+use crate::gfx::renderer::{ColorRGBA32f, ViewSpaceCoordinate, DrawOpWithMetadata, DrawOpTriFan, DrawOp};
 
 use super::{room::Room, rofiz::rofiz_state::RofizState};
 
@@ -70,7 +70,7 @@ impl DrawContext<'_> {
             b: color.b,
             a: color.a,
         };
-        let op = Box::new(DrawOpTriFan::new(color_converted, vs_coords));
+        let op = DrawOp::TriFan(DrawOpTriFan{color: color_converted, vertexes: vs_coords});
         self.draw_ops.push(DrawOpWithMetadata::new(z, op));
     }
 

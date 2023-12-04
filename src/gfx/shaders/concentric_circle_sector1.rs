@@ -40,13 +40,10 @@ impl ConcrenticCircleSectorVertexShaderInput {
 
 pub struct ConcrenticCircleSectorShaderPipeline {
     pipeline: wgpu::RenderPipeline,
-    vertex_buffers: Vec<wgpu::Buffer>, // GPU memory
-    vertex_inputs: Vec<[ConcrenticCircleSectorVertexShaderInput; 3]>, // CPU memory,
 }
 
 impl ConcrenticCircleSectorShaderPipeline {
     const NAME: &'static str = "concrentic_circle_sector1";
-    const BATCH_SIZE: usize = 100;
 
     pub fn new(device: &Device, config: &SurfaceConfiguration) -> Self {
         Self {
@@ -57,25 +54,22 @@ impl ConcrenticCircleSectorShaderPipeline {
                 &config, 
                 ConcrenticCircleSectorVertexShaderInput::desc(),
                 &[]),
-            vertex_buffers: Vec::new(),
-            vertex_inputs: Vec::new(),
         }
     }
 
-    pub fn add_triangle(&mut self, input: &[ConcrenticCircleSectorVertexShaderInput; 3]) {
-        self.vertex_inputs.push(*input);
-    }
-
-    pub fn draw<'a>(&'a mut self, render_pass: &mut wgpu::RenderPass<'a>, device: &wgpu::Device, queue: &wgpu::Queue) {
+    pub fn draw<'a>(
+        &'a self, 
+        render_pass: &mut wgpu::RenderPass<'a>, 
+        queue: &wgpu::Queue,
+        vertex_buffer: &'a wgpu::Buffer,
+        vertex_inputs: Vec<[ConcrenticCircleSectorVertexShaderInput; 3]>,
+    ) {
         draw_triangle_inputs_batched(
-            Self::NAME,
-            Self::BATCH_SIZE,
-            &mut self.vertex_inputs,
+            vertex_inputs,
             3,
-            &mut self.vertex_buffers,
-            &mut self.pipeline,
+            &vertex_buffer,
+            &self.pipeline,
             render_pass,
-            device,
             queue,
             &[],
         );
