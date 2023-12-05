@@ -125,7 +125,7 @@ impl Player {
         let ro_ref = ctx.add_nonspectral_unit(md.get_id(), hitbox);
         Player {
             md,
-            su_common: StandardUnitCommon::new(ro_ref, 20.0, 40.0, Option::Some(1000.0)),
+            su_common: StandardUnitCommon::new(ro_ref, 20.0, 40.0, 500.0),
             since_last_projectile: 0.0,
         }
     }

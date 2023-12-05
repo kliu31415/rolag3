@@ -23,6 +23,7 @@ pub fn run_floor_frame(ctx: RunFloorContext) {
             rng: ctx.rng,
         };
         run_floor_tick(tick_ctx);
+        ctx.room.room_objects.validate();
     }
 }
 
@@ -59,7 +60,7 @@ struct RunFloorTickContext<'a> {
 
 fn run_floor_tick(ctx: RunFloorTickContext) {
     ctx.room.rofiz.start_new_tick();
-    let mut act1_context = Act1Context::new(ctx.player_input, &mut ctx.room.rofiz, &mut ctx.room.room_object_id_counter, ctx.tick_length, ctx.rng);
+    let mut act1_context = Act1Context::new(ctx.player_input, &mut ctx.room.rofiz, &mut ctx.room.room_object_id_counter, ctx.room.player.clone(), ctx.tick_length, ctx.rng);
     ctx.room.room_objects.act1(&mut act1_context);
     let collisions = ctx.room.rofiz.move_objects_and_find_collisions();
     for collision in collisions.iter() {
@@ -99,5 +100,4 @@ fn run_floor_tick(ctx: RunFloorTickContext) {
         }
         ctx.room.room_objects.remove_by_id(to_remove);
     }
-    ctx.room.room_objects.validate();
 }

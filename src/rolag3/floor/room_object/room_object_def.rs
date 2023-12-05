@@ -4,6 +4,8 @@ use rand::{rngs::ThreadRng, Rng};
 
 use crate::rolag3::floor::{draw::DrawContext, run::PlayerInput, rofiz::{rofiz_state::{RofizState, RofizObjectRef}, rofiz_object::Hitbox}};
 
+use super::unit::player::Player;
+
 pub trait RoomObject {
     fn is_player(&self) -> bool {
         false
@@ -78,7 +80,7 @@ impl RoomObjectCollection {
     pub fn act1(&mut self, ctx: &mut Act1Context) {
         let mut responses = Vec::new();
         self.objects.iter().for_each(|x| {
-            ctx.set_self_as_weak(Rc::downgrade(x));
+            ctx.set_self_rc(x.clone());
             responses.push(x.borrow_mut().act1(ctx))}
         );
         let should_remove: Vec<bool> = responses.iter().map(|x| x.get_remove_me()).collect();
@@ -194,18 +196,27 @@ pub struct Act1Context<'a> {
     player_input: &'a PlayerInput,
     rofiz: &'a mut RofizState,
     room_object_id_counter: &'a mut RoomObjectId,
-    self_as_weak: Option<Weak<RefCell<dyn RoomObject>>>,
+    player: Rc<RefCell<Player>>,
+    self_as_rc: Option<Rc<RefCell<dyn RoomObject>>>,
     tick_length: f64,
     rng: &'a mut ThreadRng,
 }
 
 impl<'a> Act1Context<'a> {
-    pub fn new(player_input: &'a PlayerInput, rofiz: &'a mut RofizState, room_object_id_counter: &'a mut RoomObjectId, tick_length: f64, rng: &'a mut ThreadRng) -> Self {
+    pub fn new(
+        player_input: &'a PlayerInput, 
+        rofiz: &'a mut RofizState, 
+        room_object_id_counter: &'a mut RoomObjectId, 
+        player: Rc<RefCell<Player>>,
+        tick_length: f64, 
+        rng: &'a mut ThreadRng
+    ) -> Self {
         Self {
             player_input,
             rofiz,
             room_object_id_counter,
-            self_as_weak: Option::None,
+            player,
+            self_as_rc: Option::None,
             tick_length,
             rng,
         }
@@ -223,17 +234,25 @@ impl<'a> Act1Context<'a> {
         self.tick_length
     }
 
-    pub fn set_self_as_weak(&mut self, weak: Weak<RefCell<dyn RoomObject>>) {
-        self.self_as_weak = Some(weak);
+    pub fn set_self_rc(&mut self, weak: Rc<RefCell<dyn RoomObject>>) {
+        self.self_as_rc = Some(weak);
     }
 
     pub fn self_as_weak(&self) -> Weak<RefCell<dyn RoomObject>> {
-        self.self_as_weak.clone().unwrap()
+        Rc::downgrade(&self.self_as_rc.clone().unwrap())
     }
 
     // in the range [0, 1)
     pub fn get_randf64(&mut self) -> f64 {
         self.rng.gen::<f64>()
+    }
+
+    pub fn get_team_closest_location(&self, team: Team) -> Option<FloorCoordinate> {
+        // the borrow checker could panic here if self_as_rc is the same as a Rc<RefCell<Unit>> we attempt to borrow
+        match team {
+            Team::Player => Some(self.player.borrow().get_center_point(&self.rofiz)),
+            Team::_Enemy => todo!("haven't implemented getting closest enemy unit location yet"),
+        } 
     }
 } 
 

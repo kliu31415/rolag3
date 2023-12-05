@@ -150,6 +150,7 @@ impl RofizState {
         self.spectral_units.retain(|x| !matches!(x.borrow().movement, RofizObjectMovement::Delete()));
         for obj_rc in self.movable_objs_iter() {
             let mut obj = obj_rc.as_ref().borrow_mut();
+            obj.initial_hitbox = obj.current.transformation.get_transformed_shape(&obj.current.shape);
             obj.temp_hitbox = match obj.movement {
                 RofizObjectMovement::NoMove() => obj.current.transformation.get_transformed_shape(&obj.current.shape),
                 RofizObjectMovement::Move(ref t) => (obj.current.transformation.add(t)).get_transformed_shape(&obj.current.shape),
@@ -193,6 +194,28 @@ impl RofizState {
                 if shapes_overlap(&nsu_i.temp_hitbox, &nsu_j.temp_hitbox) {
                     collisions.push(RofizCollision::new(nsu_i.room_object_id, nsu_j.room_object_id));
 
+                    // if this collision can be solved by only one of nsu_i and one of nsu_j moving back, do that.
+                    // This is to avoid deadlock, e.g. object A is right above object B. Object A's velocity is
+                    // (2, 1) and object B's velocity is (2, 2). In this case, object A should ideally move fully, and
+                    // object B might be able to move to a fallback location (rather than stay in its original place).
+
+                    // check if this collision can be solved just by moving nsu_i back. If so, only move nsu_i back.
+                    if !shapes_overlap(&nsu_i.initial_hitbox, &nsu_j.temp_hitbox) {
+                        while Self::move_back(&mut nsu_i) && shapes_overlap(&nsu_i.temp_hitbox, &nsu_j.temp_hitbox) {}
+                        j = 0;
+                        continue;
+                    }
+
+                    // check if this collision can be solved just by moving nsu_j back. If so, only move nsu_j back.
+                    if !shapes_overlap(&nsu_i.temp_hitbox, &nsu_j.initial_hitbox) {
+                        while Self::move_back(&mut nsu_j) && shapes_overlap(&nsu_i.temp_hitbox, &nsu_j.temp_hitbox) {}
+                        i_override = Some(j);
+                        break;
+                    }
+
+                    // Otherwise, move both of them back. Note that we can't just move nsu_i back to its original location,
+                    // because even though nsu_i's original location intersects with nsu_j's current temp location, one
+                    // of nsu_i's intermediate fallback locations might not intersect with nsu_j.
                     while Self::move_back(&mut nsu_i) && shapes_overlap(&nsu_i.temp_hitbox, &nsu_j.temp_hitbox) {}
 
                     if shapes_overlap(&nsu_i.temp_hitbox, &nsu_j.temp_hitbox) {
@@ -312,6 +335,7 @@ impl RofizState {
             movement: RofizObjectMovement::NoMove(), 
             move_with_fallbacks_idx: 0,
             temp_hitbox: Shape::dummy(),
+            initial_hitbox: Shape::dummy(),
             move_successful: false, // dummy
             fallback_idx: 0, // dummy
             room_object_id: floor_object_id,

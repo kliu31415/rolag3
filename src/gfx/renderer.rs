@@ -332,6 +332,7 @@ impl VertexBufferPool {
         Self {buffers: Vec::new()}
     }
     fn allocate(&mut self, device: &wgpu::Device, desired_buffer_sizes: &Vec<u64>) -> Vec<Rc<wgpu::Buffer>> {
+        // TODO: clean up old buffers that haven't been used for a while
         self.buffers.sort_by_key(|x| x.size());
         self.buffers.reverse();
 
@@ -344,7 +345,11 @@ impl VertexBufferPool {
         let mut new_buffers = Vec::new();
         for dbs in dbs_sorted {
             if existing_buffer_idx == self.buffers.len() || self.buffers[existing_buffer_idx].size() < dbs {
-                let new_buffer = Rc::new(Self::make_vertex_buffer(self.buffers.len(), dbs, device));
+                // allocate 1.2x the size of the requested size. This is so that if in consecutive frames, the largest
+                // buffer requested slowly increases like 500, 501, 502, 503, etc., we don't allocate a new buffer
+                // every time
+                let new_buffer_size = (1.2 * (dbs as f64)) as u64;
+                let new_buffer = Rc::new(Self::make_vertex_buffer(self.buffers.len(), new_buffer_size, device));
                 new_buffers.push(new_buffer.clone());
                 buffers_to_use.insert(dbs, new_buffer);
             } else {
@@ -360,7 +365,7 @@ impl VertexBufferPool {
             ret.push(buffer.clone());
             let sz = *size;
             buffers_to_use.remove(&sz);
-        }        
+        }      
         ret
     }
 

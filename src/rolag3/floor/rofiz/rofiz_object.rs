@@ -32,6 +32,7 @@ pub struct RofizObjMovable {
     pub room_object_id: RoomObjectId,
 
     // only used in move_objects_and_find_collisions()
+    pub initial_hitbox: Shape,
     pub temp_hitbox: Shape,
     pub move_successful: bool,
     pub fallback_idx: usize,

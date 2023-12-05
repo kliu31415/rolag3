@@ -4,13 +4,13 @@ use super::{standard_unit::{StandardUnitCommon, StandardUnit}, Unit};
 
 use std::f64::consts::PI;
 
-pub struct Enemy1 {
+pub struct Enemy2 {
     md: RoomObjectMetadata,
     su_common: StandardUnitCommon,
     accel_xy_angle: f64,
 }
 
-impl RoomObject for Enemy1 {
+impl RoomObject for Enemy2 {
     fn get_metadata(&self) -> &RoomObjectMetadata {
         &self.md
     }
@@ -18,16 +18,18 @@ impl RoomObject for Enemy1 {
     fn act1(&mut self, ctx: &mut Act1Context) -> Act1Response {
         let response = Act1Response::new();
         let tick_len = ctx.get_tick_length();
-
-        self.accel_xy_angle += 30.0 * f64::sqrt(tick_len) * (ctx.get_randf64() - 0.5);
-        self.su_common.accelerate_ro_xy(tick_len, f64::cos(self.accel_xy_angle), f64::sin(self.accel_xy_angle));
+        let xform = ctx.get_rofiz().get_movable_object_xform(&self.su_common.get_ro_ref());
+        let player_xy = ctx.get_team_closest_location(Team::Player);
+        match player_xy {
+            Some(xy) => self.su_common.accelerate_ro_xy(tick_len, xy.x - xform.dx, xy.y - xform.dy),
+            None => {}
+        }
         self.su_common.process(ctx.get_rofiz(), tick_len);
-
         response
     }
 
     fn draw(&self, ctx: &mut DrawContext) {
-        let color = self.su_common.get_draw_color(ctx.get_room_time(), Color::new(0.1, 0.1, 1.0, 1.0));
+        let color = self.su_common.get_draw_color(ctx.get_room_time(), Color::new(0.1, 0.8, 0.1, 1.0));
         let xform = ctx.get_rofiz().get_movable_object_xform(&self.su_common.get_ro_ref());
         let x = xform.dx as f32 - Self::ENEMY1_S / 2.0;
         let y = xform.dy as f32 - Self::ENEMY1_S / 2.0;
@@ -71,15 +73,15 @@ impl RoomObject for Enemy1 {
     }
 }
 
-impl Unit for Enemy1 {
+impl Unit for Enemy2 {
 
 }
 
-impl StandardUnit for Enemy1 {
+impl StandardUnit for Enemy2 {
     
 }
 
-impl Enemy1 {
+impl Enemy2 {
     const ENEMY1_S: f32 = 1.2;
 
     pub fn new(ctx: &mut NewRoomObjectContext, x: f64, y: f64) -> Self {
@@ -89,9 +91,9 @@ impl Enemy1 {
         );
         let md = RoomObjectMetadata::new(ctx);
         let ro_ref = ctx.add_nonspectral_unit(md.get_id(), hitbox);
-        Enemy1 {
+        Enemy2 {
             md,
-            su_common: StandardUnitCommon::new(ro_ref, 10.0, 40.0, 50.0),
+            su_common: StandardUnitCommon::new(ro_ref, 10.0, 40.0, 100.0),
             accel_xy_angle: 0.0,
         }
     }

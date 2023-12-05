@@ -23,8 +23,8 @@ impl BudebMaxSpeed {
 
 pub struct StandardUnitCommon {
     ro_ref: RofizObjectRef,
-    max_speed: f64,
-    max_accel: Option<f64>,
+    engine_power: f64, // intuitively, equal to the max speed in tiles/s
+    tire_friction: f64, // intuitively, proportional to how quickly the unit reaches its max speed
     velocity_x: f64,
     velocity_y: f64,
 
@@ -35,13 +35,15 @@ pub struct StandardUnitCommon {
 }
 
 impl StandardUnitCommon {
+    const MASS: f64 = 1.0;
+    const GRAVITY: f64 = 1.0;
     const EPSILON: f64 = 1e-20;
 
-    pub fn new(ro_ref: RofizObjectRef, hp: f64, max_speed: f64, accel: Option<f64>) -> Self {
+    pub fn new(ro_ref: RofizObjectRef, hp: f64, engine_power: f64, tire_friction: f64) -> Self {
         Self {
             ro_ref,
-            max_speed,
-            max_accel: accel,
+            engine_power,
+            tire_friction,
             velocity_x: 0.0,
             velocity_y: 0.0,
 
@@ -66,12 +68,6 @@ impl StandardUnitCommon {
     }
 
     pub fn decelerate_ro_xy(&mut self, tick_length: f64) {
-        if self.max_accel.is_none() {
-            self.velocity_x = 0.0;
-            self.velocity_y = 0.0;
-            return;
-        }
-
         let velocity_norm = f64::hypot(self.velocity_x, self.velocity_y);
         if velocity_norm < Self::EPSILON {
             self.velocity_x = 0.0;
@@ -79,14 +75,28 @@ impl StandardUnitCommon {
             return;
         }
 
-        let decel_x = self.max_accel.unwrap() * tick_length * self.velocity_x / velocity_norm;
+        let f_engine = self.tire_friction * self.engine_power / f64::max(velocity_norm, 0.1);
+        self.decelerate(tick_length, f_engine);
+    }
+
+    fn decelerate(&mut self, tick_length: f64, force: f64) {
+        let velocity_norm = f64::hypot(self.velocity_x, self.velocity_y);
+        if velocity_norm < Self::EPSILON {
+            self.velocity_x = 0.0;
+            self.velocity_y = 0.0;
+            return;
+        }
+
+        let decel = tick_length * force / Self::MASS;
+
+        let decel_x = decel * self.velocity_x / velocity_norm;
         if f64::abs(decel_x) > f64::abs(self.velocity_x) {
             self.velocity_x = 0.0;
         } else {
             self.velocity_x -= decel_x;
         }
 
-        let decel_y = self.max_accel.unwrap() * tick_length * self.velocity_y / velocity_norm;
+        let decel_y = decel * self.velocity_y / velocity_norm;
         if f64::abs(decel_y) > f64::abs(self.velocity_y) {
             self.velocity_y = 0.0;
         } else {
@@ -95,21 +105,15 @@ impl StandardUnitCommon {
     }
 
     pub fn accelerate_ro_xy(&mut self, tick_length: f64, x: f64, y: f64) {
-        if self.max_accel.is_none() {
-            self.velocity_x = x;
-            self.velocity_y = y;
-            self.clamp_velocity();
+        let input_norm = f64::hypot(x, y);
+        if input_norm < Self::EPSILON {
             return;
         }
-
-        let norm = f64::hypot(x, y);
-        if norm < Self::EPSILON {
-            return;
-        }
-
-        self.velocity_x += self.max_accel.unwrap() * tick_length * x / norm;
-        self.velocity_y += self.max_accel.unwrap() * tick_length * y / norm;
-        self.clamp_velocity();
+        let velocity_norm = f64::hypot(self.velocity_x, self.velocity_y);
+        let f_engine = self.tire_friction * self.engine_power / f64::max(velocity_norm, 0.1);
+        let accel = tick_length * f_engine / Self::MASS;
+        self.velocity_x += accel * x / input_norm;
+        self.velocity_y += accel * y / input_norm;
     }
 
     pub fn reset_velocity(&mut self) {
@@ -118,6 +122,12 @@ impl StandardUnitCommon {
     }
 
     pub fn process(&mut self, rofiz: &mut RofizState, tick_length: f64) {
+        // this simulates friction.
+        // TODO: friction is calculated with slightly different velocities than the acceleration calculations. 
+        // Friction is computed with the post-acceleration velocity. This should only make a small difference in
+        // practice, but I'm just making a note in case there are bugs.
+        self.decelerate(tick_length, self.tire_friction * Self::MASS * Self::GRAVITY);
+
         let mut max_speed_mult = 1.0;
         let mut min_speed_mult = 1.0;
 
@@ -146,9 +156,9 @@ impl StandardUnitCommon {
 
         let dxy_r = f64::hypot(dx, dy);
         let dxy_theta = f64::atan2(dy, dx);
-        for i in 1..10 {
+        for i in 1..3 {
             for j in [-1, 1] {
-                let angle = (j * i) as f64 / 10.0 * std::f64::consts::PI / 2.0;
+                let angle = (j * i) as f64 / 3.0 * std::f64::consts::PI / 2.0;
                 let mag_adj = f64::cos(angle);
                 let new_dx = mag_adj * dxy_r * f64::cos(dxy_theta + angle);
                 let new_dy = mag_adj * dxy_r * f64::sin(dxy_theta + angle);
@@ -161,18 +171,6 @@ impl StandardUnitCommon {
 
     pub fn apply_budeb(&mut self, budeb: Budeb) {
         self.budebs.push(budeb);
-    }
-
-    fn clamp_velocity(&mut self) {
-        let velocity_norm = f64::hypot(self.velocity_x, self.velocity_y);
-        if velocity_norm < Self::EPSILON {
-            return;
-        }
-        if velocity_norm > self.max_speed {
-            let adjustment = self.max_speed / velocity_norm;
-            self.velocity_x *= adjustment;
-            self.velocity_y *= adjustment;
-        }
     }
 
     pub fn take_damage(&mut self, room_time: f64, damage: f64) -> TakeDamageResponse {
