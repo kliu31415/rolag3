@@ -69,14 +69,18 @@ pub struct DrawOpGroup {
     pub ops: Box<[DrawOp]>,
 }
 
-pub struct DrawOpTriFan {
+#[derive(Debug)]
+pub struct ColoredTriVertex {
     pub color: ColorRGBA32f,
-    pub vertexes: Box<[ViewSpaceCoordinate]>,
+    pub vertex: ViewSpaceCoordinate,
+}
+
+pub struct DrawOpTriFan {
+    pub vertexes: Box<[ColoredTriVertex]>,
 }
 
 pub struct DrawOpTriStrip {
-    pub color: ColorRGBA32f,
-    pub vertexes: Box<[ViewSpaceCoordinate]>,
+    pub vertexes: Box<[ColoredTriVertex]>,
 }
 
 pub struct DrawOpCCS {
@@ -400,40 +404,38 @@ impl WgpuRenderer {
 
     fn draw_tri_fan(&self, op: &DrawOpTriFan) -> Box<[[TriangleVertexShaderInput; 3]]> {
         if op.vertexes.len() < 3 {
-            panic!("draw_tri_fan() expected at least 3 vertexes, got {}. color={:?}, vertexes={:?}", 
+            panic!("draw_tri_fan() expected at least 3 vertexes, got {}. vertexes={:?}", 
                 op.vertexes.len(),
-                op.color, 
                 op.vertexes);
         }
         let mut ret = Vec::new();
         for i in 2..op.vertexes.len() {
-            ret.push([self.tri_to_gpu( &op.color, &op.vertexes[0]), 
-                self.tri_to_gpu( &op.color, &op.vertexes[i-1]), 
-                self.tri_to_gpu( &op.color, &op.vertexes[i])]);
+            ret.push([self.tri_to_gpu(&op.vertexes[0]), 
+                self.tri_to_gpu(&op.vertexes[i-1]), 
+                self.tri_to_gpu(&op.vertexes[i])]);
         }
         ret.into_boxed_slice()
     }
 
     fn draw_tri_strip(&self, op: &DrawOpTriStrip) -> Box<[[TriangleVertexShaderInput; 3]]> {
         if op.vertexes.len() < 3 {
-            panic!("draw_tri_strip() expected at least 3 vertexes, got {}. color={:?}, vertexes={:?}", 
+            panic!("draw_tri_strip() expected at least 3 vertexes, got {}. vertexes={:?}", 
                 op.vertexes.len(), 
-                op.color, 
                 op.vertexes);
         }
         let mut ret = Vec::new();
         for i in 2..op.vertexes.len() {
-            ret.push([self.tri_to_gpu( &op.color, &op.vertexes[i-2]),
-                self.tri_to_gpu( &op.color, &op.vertexes[i-1]),
-                self.tri_to_gpu( &op.color, &op.vertexes[i])]);
+            ret.push([self.tri_to_gpu(&op.vertexes[i-2]),
+                self.tri_to_gpu(&op.vertexes[i-1]),
+                self.tri_to_gpu(&op.vertexes[i])]);
         }
         ret.into_boxed_slice()
     }
 
-    fn tri_to_gpu(&self, color: &ColorRGBA32f, v: &ViewSpaceCoordinate) -> TriangleVertexShaderInput {
+    fn tri_to_gpu(&self, v: &ColoredTriVertex) -> TriangleVertexShaderInput {
         TriangleVertexShaderInput{
-            position: [self.x_to_ndc(v.x), self.y_to_ndc(v.y)], 
-            color: [color.r, color.g, color.b, color.a],
+            position: [self.x_to_ndc(v.vertex.x), self.y_to_ndc(v.vertex.y)], 
+            color: [v.color.r, v.color.g, v.color.b, v.color.a],
         } 
     }
 

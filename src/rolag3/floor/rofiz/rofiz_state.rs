@@ -64,9 +64,8 @@ impl RofizState {
     }
 
     pub fn finalize_start_floor(&mut self) {
-        if self.floor_started {
-            panic!("attempting to finalize Rofiz on floor twice");
-        }
+        assert!(!self.floor_started, "cannot finalize floor twice");
+
         self.floor_started = true;
 
         let mut max_x = 0;
@@ -89,6 +88,7 @@ impl RofizState {
     }
 
     pub fn start_new_tick(&mut self) {
+        assert!(self.floor_started, "floor must be started before Rofiz starts new tick");
         for obj in self.basic_projectiles.iter_mut()
                 .chain(self.spectral_units.iter_mut())
                 .chain(self.nonspectral_units.iter_mut()) {
@@ -100,12 +100,21 @@ impl RofizState {
         self.basic_walls.iter().for_each(|x| {
             let count = Rc::strong_count(&x.borrow().external_ref_count);
             if count <= 1 {
-                panic!("Basic wall with id {} has Rc={}. Basic walls can't be deleted, so expected Rc>1.", x.borrow().id, count);
+                panic!("Basic wall with id {} has Rc={}. Basic walls can't be deleted after room finalization, so expected Rc>1.", x.borrow().id, count);
             }
         });
     }
 
+    pub fn remove_wall_at(&mut self, x: u32, y: u32) {
+        assert!(!self.floor_started, "cannot remove basic wall after Rofiz floor started");
+        let old_len = self.basic_walls.len();
+        self.basic_walls.retain(|bw| x!=bw.borrow().x || y!=bw.borrow().y);
+        let new_len = self.basic_walls.len();
+        assert!(new_len+1 == old_len, "expected to remove one Rofiz wall at (x, y) = ({}, {}). old_len={}, new_len={}", x, y, old_len, new_len);
+    }
+
     pub fn add_basic_wall(&mut self, floor_object_id: RoomObjectId, x: u32, y: u32) -> RofizObjectRef {
+        assert!(!self.floor_started, "cannot add basic wall after Rofiz floor started");
         let new_wall = Self::new_rofiz_obj_basic_wall(self, floor_object_id, x, y);
         let rc = Rc::new(RefCell::new(new_wall));
         self.basic_walls.push(rc.clone());
@@ -145,6 +154,8 @@ impl RofizState {
     }
     
     pub fn move_objects_and_find_collisions(&mut self) -> Vec<RofizCollision> {
+        assert!(self.floor_started, "floor must be started before Rofiz moves objects and finds collisions");
+
         self.basic_projectiles.retain(|x| !matches!(x.borrow().movement, RofizObjectMovement::Delete()));
         self.nonspectral_units.retain(|x| !matches!(x.borrow().movement, RofizObjectMovement::Delete()));
         self.spectral_units.retain(|x| !matches!(x.borrow().movement, RofizObjectMovement::Delete()));
@@ -200,9 +211,10 @@ impl RofizState {
                     // object B might be able to move to a fallback location (rather than stay in its original place).
 
                     // check if this collision can be solved just by moving nsu_i back. If so, only move nsu_i back.
+                    // nsu_i will need to be rechecked against all walls.
                     if !shapes_overlap(&nsu_i.initial_hitbox, &nsu_j.temp_hitbox) {
                         while Self::move_back(&mut nsu_i) && shapes_overlap(&nsu_i.temp_hitbox, &nsu_j.temp_hitbox) {}
-                        j = 0;
+                        i_override = Some(i);
                         continue;
                     }
 
@@ -226,8 +238,8 @@ impl RofizState {
                     } else {
                         // moving nsu_i back is enough to resolve the collision, and nsus[0..i] are still 
                         // in valid final positions. However, since nsu_i moved, it needs to be rechecked with all
-                        // other js
-                        j = 0;
+                        // other walls and nsu_js
+                        i_override = Some(i);
                         continue;
                     }
                 }

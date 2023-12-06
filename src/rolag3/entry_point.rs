@@ -5,7 +5,7 @@ use winit::{event::{Event, WindowEvent, KeyEvent, ElementState, MouseButton}, ev
 
 use crate::gfx::{self, window::{Window, EventHandler}, renderer::{ColorRGBA32f, DrawTextPosition, DrawOpCCS, DrawOpText, DrawOpWithMetadata, DrawOp}};
 
-use super::floor::{draw::{DrawFloorContext, get_draw_floor_ops}, run::{RunFloorContext, run_floor_frame, PlayerInput, PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, room::Room};
+use super::floor::{draw::{DrawFloorContext, get_draw_floor_ops}, run::{RunFloorContext, run_floor_frame, PlayerInput, PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, floor_def::Floor};
 
 pub fn run() {
     env_logger::init();
@@ -19,7 +19,7 @@ pub fn run() {
 struct Rolag3EventHandler {
     #[allow(dead_code)] // rust falsely thinks frame_timestamps is never read even though its length is printed
     frame_timestamps: VecDeque<f64>,
-    room: Room,
+    floor: Floor,
     rng: ThreadRng,
 }
 
@@ -76,7 +76,7 @@ impl Rolag3EventHandler {
     fn new_test1() -> Rolag3EventHandler {
         Rolag3EventHandler { 
             frame_timestamps: VecDeque::new(),
-            room: Room::new_test_room1(),
+            floor: Floor::new_test1(),
             rng: thread_rng(),
         }
     }
@@ -115,7 +115,7 @@ impl Rolag3EventHandler {
             frame_length = self.frame_timestamps.back().unwrap() - self.frame_timestamps[self.frame_timestamps.len()-2];
         }
 
-        let player_position = self.room.player.borrow().get_center_point(&self.room.rofiz);
+        let player_position = self.floor.get_player_center();
         let pixels_per_tile = 40.0;
         let camera_x = player_position.x - window_width / 2.0 / pixels_per_tile;
         let camera_y = player_position.y - window_height / 2.0 / pixels_per_tile;
@@ -126,7 +126,7 @@ impl Rolag3EventHandler {
         let run_floor_ctx = RunFloorContext {
             num_ticks: 40,
             frame_length,
-            room: &mut self.room,
+            floor: &mut self.floor,
             player_input: &PlayerInput {
                 horizontal_move,
                 vertical_move,
@@ -142,7 +142,7 @@ impl Rolag3EventHandler {
         run_floor_frame(run_floor_ctx);
 
         let draw_floor_ctx = DrawFloorContext {
-            room: &mut self.room,
+            floor: &mut self.floor,
             window_width,
             window_height,
             pixels_per_tile

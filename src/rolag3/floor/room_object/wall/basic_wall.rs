@@ -23,14 +23,14 @@ impl RoomObject for BasicWall {
     }
 
     fn draw(&self, ctx: &mut DrawContext) {
-        let vertexes = &[
+        let vertexes = [
             FloorDrawCoordinate::new(self.x as f32, self.y as f32),
             FloorDrawCoordinate::new((self.x + 1) as f32, self.y as f32),
             FloorDrawCoordinate::new((self.x + 1) as f32, (self.y + 1) as f32),
             FloorDrawCoordinate::new(self.x as f32, (self.y + 1) as f32),
         ];
 
-        ctx.add_draw_op_quad(20.0, self.color, vertexes);
+        ctx.add_draw_op_quad(DrawContext::Z_WALL, self.color, vertexes);
     }
 
     fn handle_collision(&mut self, _ctx: &mut HandleCollisionContext) -> HandleCollisionResponse {
@@ -39,6 +39,10 @@ impl RoomObject for BasicWall {
 
     fn is_wall_like(&self) -> bool {
         true
+    }
+
+    fn is_wall_at(&self, x: u32, y: u32) -> bool {
+        self.x==x && self.y==y
     }
 
     fn is_spectral(&self) -> bool {

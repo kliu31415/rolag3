@@ -2,7 +2,7 @@ use std::{rc::{Rc, Weak}, cell::{RefCell, Ref}, collections::HashSet};
 
 use rand::{rngs::ThreadRng, Rng};
 
-use crate::rolag3::floor::{draw::DrawContext, run::PlayerInput, rofiz::{rofiz_state::{RofizState, RofizObjectRef}, rofiz_object::Hitbox}};
+use crate::rolag3::floor::{draw::DrawContext, run::PlayerInput, rofiz::{rofiz_state::{RofizState, RofizObjectRef}, rofiz_object::Hitbox}, room::Room};
 
 use super::unit::player::Player;
 
@@ -13,6 +13,10 @@ pub trait RoomObject {
     fn get_metadata(&self) -> &RoomObjectMetadata;
     fn act1(&mut self, ctx: &mut Act1Context) -> Act1Response;
     fn draw(&self, ctx: &mut DrawContext);
+    fn handle_room_just_cleared(&self, _ctx: &mut HandleRoomJustClearedContext) {
+        // I don't think any subclass uses this function right now
+        // nop
+    }
 
     fn handle_collision(&mut self, ctx: &mut HandleCollisionContext) -> HandleCollisionResponse;
     fn handle_collision_projectile(&mut self, _: &HcProjectileContext) -> HcProjectileResponse {
@@ -24,7 +28,13 @@ pub trait RoomObject {
     }
 
     fn is_spectral(&self) -> bool;
+    fn blocks_room_clear(&self) -> bool {
+        false
+    }
     fn is_wall_like(&self) -> bool {
+        false
+    }
+    fn is_wall_at(&self, x: u32, y: u32) -> bool {
         false
     }
     fn is_projectile_like(&self) -> bool {
@@ -44,6 +54,13 @@ impl RoomObjectMetadata {
             id: ctx.get_next_floor_object_id(),
         }
     }
+
+    pub fn new_for_player() ->Self {
+        Self {
+            id: Room::PLAYER_ROOM_OBJECT_ID,
+        }
+    }
+
     pub fn get_id(&self) -> RoomObjectId {
         self.id
     }
@@ -51,17 +68,35 @@ impl RoomObjectMetadata {
 
 pub struct RoomObjectCollection {
     objects: Vec<Rc<RefCell<dyn RoomObject>>>,
+    room_already_cleared: bool,
 }
 
 impl RoomObjectCollection {
     pub fn new() -> Self {
         Self {
             objects: Vec::new(),
+            room_already_cleared: false,
         }
+    }
+
+    pub fn remove_player(&mut self) {
+        let old_len = self.objects.len();
+        self.objects.retain(|x| !x.borrow().is_player());
+        let new_len = self.objects.len();
+        assert!(old_len == new_len + 1, "Tried to remove player from RoomObjectCollection. \
+            Expected to remove one object. old_len={}, new_len={}", old_len, new_len);
     }
 
     pub fn add(&mut self, obj: Rc<RefCell<dyn RoomObject>>) {
         self.objects.push(obj);
+    }
+
+    pub fn remove_wall_at(&mut self, x: u32, y: u32) {
+        let old_len = self.objects.len();
+        self.objects.retain(|ro| !ro.borrow().is_wall_at(x, y));
+        let new_len = self.objects.len();
+        assert!(old_len == new_len + 1, "Tried to remove wall at (x, y) = ({}, {}) from RoomObjectCollection. \
+            Expected to remove one object. old_len={}, new_len={}", x, y, old_len, new_len);
     }
 
     pub fn _remove(&mut self, id: RoomObjectId) {
@@ -100,6 +135,31 @@ impl RoomObjectCollection {
         for fo in self.objects.iter() {
             fo.borrow_mut().draw(ctx);
         }
+    }
+
+    pub fn handle_if_room_just_cleared(&mut self, rofiz: &mut RofizState) {
+        if self.room_already_cleared {
+            return;
+        }
+
+        for fo in self.objects.iter() {
+            if fo.borrow().blocks_room_clear() {
+                return;
+            }
+        }
+
+        self.room_already_cleared = true;
+
+        let mut ctx = HandleRoomJustClearedContext {
+            rofiz,
+        };
+        for fo in self.objects.iter() {
+            fo.borrow_mut().handle_room_just_cleared(&mut ctx);
+        }
+    }
+
+    pub fn is_room_cleared(&self) -> bool {
+        self.room_already_cleared
     }
 
     pub fn _apply(&self, f: &mut dyn FnMut(&Ref<dyn RoomObject>)) {
@@ -200,6 +260,7 @@ pub struct Act1Context<'a> {
     self_as_rc: Option<Rc<RefCell<dyn RoomObject>>>,
     tick_length: f64,
     rng: &'a mut ThreadRng,
+    room_cleared_at_time: Option<f64>,
 }
 
 impl<'a> Act1Context<'a> {
@@ -209,7 +270,8 @@ impl<'a> Act1Context<'a> {
         room_object_id_counter: &'a mut RoomObjectId, 
         player: Rc<RefCell<Player>>,
         tick_length: f64, 
-        rng: &'a mut ThreadRng
+        rng: &'a mut ThreadRng,
+        room_cleared_at_time: Option<f64>,
     ) -> Self {
         Self {
             player_input,
@@ -219,6 +281,7 @@ impl<'a> Act1Context<'a> {
             self_as_rc: Option::None,
             tick_length,
             rng,
+            room_cleared_at_time,
         }
     }
 
@@ -245,6 +308,10 @@ impl<'a> Act1Context<'a> {
     // in the range [0, 1)
     pub fn get_randf64(&mut self) -> f64 {
         self.rng.gen::<f64>()
+    }
+
+    pub fn get_room_cleared_at_time(&self) -> Option<f64> {
+        self.room_cleared_at_time
     }
 
     pub fn get_team_closest_location(&self, team: Team) -> Option<FloorCoordinate> {
@@ -286,6 +353,16 @@ impl Act1Response {
         let mut empty_vec = Vec::new();
         std::mem::swap(&mut empty_vec, &mut self.objects_to_add);
         empty_vec
+    }
+}
+
+pub struct HandleRoomJustClearedContext<'a> {
+    rofiz: &'a mut RofizState,
+}
+
+impl<'a> HandleRoomJustClearedContext<'a> {
+    pub fn get_rofiz(&mut self) -> &mut RofizState {
+        self.rofiz
     }
 }
 

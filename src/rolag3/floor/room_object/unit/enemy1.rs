@@ -33,13 +33,13 @@ impl RoomObject for Enemy1 {
         let y = xform.dy as f32 - Self::ENEMY1_S / 2.0;
         let w = Self::ENEMY1_S;
         let h = Self::ENEMY1_S;
-        let vertexes = &[
+        let vertexes = [
             FloorDrawCoordinate::new(x, y),
             FloorDrawCoordinate::new(x + w, y),
             FloorDrawCoordinate::new(x + w, y + h),
             FloorDrawCoordinate::new(x, y + h),
         ];
-        ctx.add_draw_op_quad(20.0, color, vertexes);
+        ctx.add_draw_op_quad(DrawContext::Z_UNIT, color, vertexes);
     }
 
     fn handle_collision(&mut self, ctx: &mut HandleCollisionContext) -> HandleCollisionResponse {
@@ -68,6 +68,9 @@ impl RoomObject for Enemy1 {
 
     fn is_spectral(&self) -> bool {
         false
+    }
+    fn blocks_room_clear(&self) -> bool {
+        true
     }
 }
 

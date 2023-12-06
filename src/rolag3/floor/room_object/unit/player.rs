@@ -7,7 +7,7 @@ use super::{Unit, standard_unit::{StandardUnit, StandardUnitCommon, Budeb, Budeb
 // (x, y) represents the center of the player
 pub struct Player {
     md: RoomObjectMetadata,
-    su_common: StandardUnitCommon,
+    su_common: Option<StandardUnitCommon>,
     since_last_projectile: f64,
 }
 
@@ -28,20 +28,20 @@ impl RoomObject for Player {
 
         // process test input
         if ctx.get_player_input().test_input1 {
-            self.su_common.apply_budeb(Budeb::MaxSpeed(BudebMaxSpeed::new(1.0, 2.5)));
+            self.su_common.as_mut().unwrap().apply_budeb(Budeb::MaxSpeed(BudebMaxSpeed::new(1.0, 2.5)));
         }
 
         // process throwing projectiles
-        if ctx.get_player_input().is_lmb_down && self.since_last_projectile > 0.1 {
+        if ctx.get_player_input().is_lmb_down && self.since_last_projectile > 0.02 {
             self.since_last_projectile = 0.0;
-            let xform = ctx.get_rofiz().get_movable_object_xform(&self.su_common.get_ro_ref());
+            let xform = ctx.get_rofiz().get_movable_object_xform(&self.su_common.as_ref().unwrap().get_ro_ref());
             let player_x = xform.dx;
             let player_y = xform.dy;
             let self_as_weak = ctx.self_as_weak();
             let mut nfo_ctx = NewRoomObjectContext::from_act1_ctx(ctx);
             let proj_velocity = 50.0;
-            let dx = proj_velocity * f64::cos(mouse_theta) + self.su_common.get_velocity_x();
-            let dy = proj_velocity * f64::sin(mouse_theta) + self.su_common.get_velocity_y();
+            let dx = proj_velocity * f64::cos(mouse_theta) + self.su_common.as_ref().unwrap().get_velocity_x();
+            let dy = proj_velocity * f64::sin(mouse_theta) + self.su_common.as_ref().unwrap().get_velocity_y();
             let proj = Rc::new(RefCell::new(BasicProjectile::new(&mut nfo_ctx, Team::Player, self_as_weak, 1.0, player_x, player_y, dx, dy)));
             response.add_room_obj(proj);
         } else {
@@ -62,30 +62,30 @@ impl RoomObject for Player {
 
         // move
         if accel_x.is_some() || accel_y.is_some() {
-            self.su_common.accelerate_ro_xy(tick_len, accel_x.unwrap_or(0.0), accel_y.unwrap_or(0.0));
+            self.su_common.as_mut().unwrap().accelerate_ro_xy(tick_len, accel_x.unwrap_or(0.0), accel_y.unwrap_or(0.0));
         }
         else {
-            self.su_common.decelerate_ro_xy(tick_len);
+            self.su_common.as_mut().unwrap().decelerate_ro_xy(tick_len);
         }
-        self.su_common.process(ctx.get_rofiz(), tick_len);
+        self.su_common.as_mut().unwrap().process(ctx.get_rofiz(), tick_len);
 
         response
     }
 
     fn draw(&self, ctx: &mut DrawContext) {
         let color = Color::new(0.6, 0.4, 0.2, 1.0);
-        let xform = ctx.get_rofiz().get_movable_object_xform(&self.su_common.get_ro_ref());
+        let xform = ctx.get_rofiz().get_movable_object_xform(&self.su_common.as_ref().unwrap().get_ro_ref());
         let player_x = xform.dx as f32 - Self::PLAYER_S / 2.0;
         let player_y = xform.dy as f32 - Self::PLAYER_S / 2.0;
         let player_w = Self::PLAYER_S;
         let player_h = Self::PLAYER_S;
-        let vertexes = &[
+        let vertexes = [
             FloorDrawCoordinate::new(player_x, player_y),
             FloorDrawCoordinate::new(player_x + player_w, player_y),
             FloorDrawCoordinate::new(player_x + player_w, player_y + player_h),
             FloorDrawCoordinate::new(player_x, player_y + player_h),
         ];
-        ctx.add_draw_op_quad(20.0, color, vertexes);
+        ctx.add_draw_op_quad(DrawContext::Z_UNIT_PLAYER, color, vertexes);
     }
 
     fn handle_collision(&mut self, _ctx: &mut HandleCollisionContext) -> HandleCollisionResponse {
@@ -114,23 +114,31 @@ impl StandardUnit for Player {
 impl Player {
     const PLAYER_S: f32 = 1.5;
 
-    pub fn new_test1(ctx: &mut NewRoomObjectContext) -> Player {
+    pub fn new_test1() -> Player {
+        let md = RoomObjectMetadata::new_for_player();
+        Player {
+            md,
+            su_common: None,
+            since_last_projectile: 0.0,
+        }
+    }
+
+    pub fn move_rooms<'a>(&mut self, rofiz: &'a mut RofizState) {
         let x = 10.0;
         let y = 10.0;
         let hitbox = Hitbox::new(
             Transformation::new(x, y, 0.0),
             Shape::of_square(-Self::PLAYER_S / 2.0, - Self::PLAYER_S / 2.0, Self::PLAYER_S),
         );
-        let md = RoomObjectMetadata::new(ctx);
-        let ro_ref = ctx.add_nonspectral_unit(md.get_id(), hitbox);
-        Player {
-            md,
-            su_common: StandardUnitCommon::new(ro_ref, 20.0, 40.0, 500.0),
-            since_last_projectile: 0.0,
-        }
+        let ro_ref = rofiz.add_nonspectral_unit(self.md.get_id(), hitbox);
+
+        // Rofiz will automatically clean up the old su_common.rofiz_object, because it'll detect that no RoomObjects
+        // hold a reference to it anymore.
+        self.su_common = Some(StandardUnitCommon::new(ro_ref, 20.0, 30.0, 500.0));
     }
+
     pub fn get_center_point(&self, rofiz: &RofizState) -> FloorCoordinate {
-        let xform = rofiz.get_movable_object_xform(&self.su_common.get_ro_ref());
+        let xform = rofiz.get_movable_object_xform(&self.su_common.as_ref().unwrap().get_ro_ref());
         FloorCoordinate::new(xform.dx, xform.dy)
     }
 }

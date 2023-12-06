@@ -1,19 +1,43 @@
 use std::{rc::Rc, cell::RefCell};
 
-use super::{room_object::{unit::{player::Player, enemy1::Enemy1, enemy2::Enemy2}, room_object_def::{NewRoomObjectContext, RoomObjectCollection, RoomObjectId}, wall::basic_wall::BasicWall}, draw::Color, rofiz::rofiz_state::RofizState};
+use super::{room_object::{unit::{enemy1::Enemy1, enemy2::Enemy2}, room_object_def::{NewRoomObjectContext, RoomObjectCollection, RoomObjectId}, wall::basic_wall::BasicWall, tiles::room_connection::{RoomConnection, Direction}}, draw::Color, rofiz::rofiz_state::RofizState};
 
 pub struct Room {
-    pub player: Rc<RefCell<Player>>,
     pub room_objects: RoomObjectCollection,
     pub rofiz: RofizState,
     pub room_object_id_counter: RoomObjectId,
     pub room_time: f64,
+    pub room_cleared_at_time: Option<f64>,
 }
 
 impl Room {
+    // ids [0..100] are reserved for now
+    const ROOM_OBJECT_ID_COUNTER_BEGIN: RoomObjectId = 100;
+    pub const PLAYER_ROOM_OBJECT_ID: RoomObjectId = 1;
+
+    pub fn finalize_with_connections(&mut self, connections: Vec<(u32, u32, Direction)>) {
+        for (x, y, dir) in connections.iter() {
+            for (x, y) in RoomConnection::get_occupied_coords(*x, *y, *dir) {
+                self.room_objects.remove_wall_at(x, y);
+                // we have to explicitly remove the basic wall from Rofiz. Rofiz has a built-in assert when running
+                // that ensures all Rofiz objects corresponding to basic walls have Rc > 1, because basic walls 
+                // can never be deleted after the floor starts. If we don't explicitly remove the wall, it'll remain
+                // in Rofiz with Rc=1, which causes a panic.
+                self.rofiz.remove_wall_at(x, y);
+            }
+        }
+
+        let mut new_floor_object_ctx = NewRoomObjectContext::new(&mut self.rofiz, &mut self.room_object_id_counter);
+        for (x, y, dir) in connections {
+            let connection = RoomConnection::new_test1(&mut new_floor_object_ctx, x, y, dir);
+            self.room_objects.add(Rc::new(RefCell::new(connection)));
+        }
+        self.rofiz.finalize_start_floor();
+    }
+
     pub fn new_test_room1() -> Self {
         let mut rofiz = RofizState::new();
-        let mut room_object_id_counter = 0;
+        let mut room_object_id_counter = Self::ROOM_OBJECT_ID_COUNTER_BEGIN;
         let mut new_floor_object_ctx = NewRoomObjectContext::new(&mut rofiz, &mut room_object_id_counter);
         let mut room_objects = RoomObjectCollection::new();
 
@@ -31,9 +55,6 @@ impl Room {
             room_objects.add(Rc::new(RefCell::new(wall)));
         }
 
-        let player = Rc::new(RefCell::new(Player::new_test1(&mut new_floor_object_ctx)));
-        room_objects.add(player.clone());
-
         for i in 1..5 {
             for j in 1..4 {
                 let enemy = Enemy1::new(&mut new_floor_object_ctx, (15 + i*2) as f64, (15 + j*2) as f64);
@@ -45,14 +66,50 @@ impl Room {
             }
         }
 
-        rofiz.finalize_start_floor();
-
         Self {
-            player,
             room_objects,
             rofiz,
             room_object_id_counter,
             room_time: 0.0,
+            room_cleared_at_time: None,
+        }
+    }
+
+    fn new_test_room2() -> Self {
+        let mut rofiz = RofizState::new();
+        let mut room_object_id_counter = Self::ROOM_OBJECT_ID_COUNTER_BEGIN;
+        let mut new_floor_object_ctx = NewRoomObjectContext::new(&mut rofiz, &mut room_object_id_counter);
+        let mut room_objects = RoomObjectCollection::new();
+
+        for i in 0..30 {
+            let wall = BasicWall::new(&mut new_floor_object_ctx, i, 0, Color::new(0.1, 0.2, 0.3, 1.0));
+            room_objects.add(Rc::new(RefCell::new(wall)));
+            let wall = BasicWall::new(&mut new_floor_object_ctx, i, 30, Color::new(0.1, 0.2, 0.3, 1.0));
+            room_objects.add(Rc::new(RefCell::new(wall)));
+        }
+        
+        for i in 1..30 {
+            let wall = BasicWall::new(&mut new_floor_object_ctx, 0, i, Color::new(0.1, 0.2, 0.3, 1.0));
+            room_objects.add(Rc::new(RefCell::new(wall)));
+            let wall = BasicWall::new(&mut new_floor_object_ctx, 29, i, Color::new(0.1, 0.2, 0.3, 1.0));
+            room_objects.add(Rc::new(RefCell::new(wall)));
+        }
+
+        for i in 1..5 {
+            for j in 4..7 {
+                let enemy = Enemy2::new(&mut new_floor_object_ctx, (15 + i*2) as f64, (15 + j*2) as f64);
+                room_objects.add(Rc::new(RefCell::new(enemy)));
+            }
+        }
+
+        rofiz.finalize_start_floor();
+
+        Self {
+            room_objects,
+            rofiz,
+            room_object_id_counter,
+            room_time: 0.0,
+            room_cleared_at_time: None,
         }
     }
 }

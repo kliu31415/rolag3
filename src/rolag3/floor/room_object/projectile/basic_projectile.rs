@@ -42,13 +42,13 @@ impl RoomObject for BasicProjectile {
         let x = xform.dx as f32 - Self::PROJ_S / 2.0;
         let y = xform.dy as f32 - Self::PROJ_S / 2.0;
         let s = Self::PROJ_S;
-        let vertexes = &[
+        let vertexes = [
             FloorDrawCoordinate::new(x, y),
             FloorDrawCoordinate::new(x + s, y),
             FloorDrawCoordinate::new(x + s, y + s),
             FloorDrawCoordinate::new(x, y + s),
         ];
-        ctx.add_draw_op_quad(20.0, color, vertexes);
+        ctx.add_draw_op_quad(DrawContext::Z_PROJECTILE, color, vertexes);
     }
 
     fn handle_collision(&mut self, ctx: &mut HandleCollisionContext) -> HandleCollisionResponse {

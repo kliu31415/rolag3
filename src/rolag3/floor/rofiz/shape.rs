@@ -47,7 +47,7 @@ impl Shape {
         Shape::Polygon(Polygon::new(vertexes))
     }
 
-    pub fn _of_rect(rect: Rect) -> Shape {
+    pub fn of_rect(rect: Rect) -> Shape {
         let vertexes = [
             Point::new(rect.x, rect.y),
             Point::new(rect.x + rect.w, rect.y),
@@ -120,7 +120,7 @@ pub struct Rect {
 }
 
 impl Rect {
-    pub fn _new(x: f32, y: f32, w: f32, h: f32) -> Self {
+    pub fn new(x: f32, y: f32, w: f32, h: f32) -> Self {
         Self {x, y, w, h}
     }
 }
