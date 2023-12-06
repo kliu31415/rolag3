@@ -2,7 +2,7 @@ use std::{rc::{Rc, Weak}, cell::{RefCell, Ref}, collections::HashSet};
 
 use rand::{rngs::ThreadRng, Rng};
 
-use crate::rolag3::floor::{draw::DrawContext, run::PlayerInput, rofiz::{rofiz_state::{RofizState, RofizObjectRef}, rofiz_object::Hitbox}, room::Room};
+use crate::rolag3::floor::{draw::DrawContext, run::PlayerInput, rofiz::{rofiz_state::{RofizState, RofizObjectRef}, rofiz_object::Hitbox}, room::{Room, RoomConnectionInfo}, floor_def::RoomId};
 
 use super::unit::player::Player;
 
@@ -25,6 +25,10 @@ pub trait RoomObject {
             damage_dealt: 0.0,
             room_objects_to_delete: Vec::new(),
         }
+    }
+
+    fn handle_room_connection_collision(&mut self, rci: &RoomConnectionInfo) {
+        // nop by default
     }
 
     fn is_spectral(&self) -> bool;
@@ -192,8 +196,8 @@ impl RoomObjectCollection {
         for ro in self.objects.iter() {
             let ref_count = Rc::strong_count(&ro);
             if ro.borrow().is_player() {
-                if ref_count != 2 {
-                    panic!("RoomObject Player Rc::strong_count()={}. Expected 2. Id={:?}", ref_count, ro.borrow().get_metadata().get_id());
+                if ref_count != 3 {
+                    panic!("RoomObject Player Rc::strong_count()={}. Expected 3. Id={:?}", ref_count, ro.borrow().get_metadata().get_id());
                 }
             } else if ref_count != 1 {
                 panic!("RoomObject Rc::strong_count()={}. Expected 1. Id={:?}", ref_count, ro.borrow().get_metadata().get_id());

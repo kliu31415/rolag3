@@ -1,6 +1,6 @@
 use std::{rc::Rc, cell::RefCell};
 
-use super::{room_object::{unit::{enemy1::Enemy1, enemy2::Enemy2}, room_object_def::{NewRoomObjectContext, RoomObjectCollection, RoomObjectId}, wall::basic_wall::BasicWall, tiles::room_connection::{RoomConnection, Direction}}, draw::Color, rofiz::rofiz_state::RofizState};
+use super::{room_object::{unit::{enemy1::Enemy1, enemy2::Enemy2}, room_object_def::{NewRoomObjectContext, RoomObjectCollection, RoomObjectId}, wall::basic_wall::BasicWall, tiles::room_connection::{RoomConnection, Direction}}, draw::Color, rofiz::rofiz_state::RofizState, floor_def::RoomId};
 
 pub struct Room {
     pub room_objects: RoomObjectCollection,
@@ -10,14 +10,24 @@ pub struct Room {
     pub room_cleared_at_time: Option<f64>,
 }
 
+#[derive(Debug, Copy, Clone)]
+pub struct RoomConnectionInfo {
+    pub x: u32,
+    pub y: u32,
+    pub direction: Direction,
+    pub connects_to_room_id: RoomId,
+    pub connects_to_x: u32,
+    pub connects_to_y: u32,
+}
+
 impl Room {
     // ids [0..100] are reserved for now
     const ROOM_OBJECT_ID_COUNTER_BEGIN: RoomObjectId = 100;
     pub const PLAYER_ROOM_OBJECT_ID: RoomObjectId = 1;
 
-    pub fn finalize_with_connections(&mut self, connections: Vec<(u32, u32, Direction)>) {
-        for (x, y, dir) in connections.iter() {
-            for (x, y) in RoomConnection::get_occupied_coords(*x, *y, *dir) {
+    pub fn finalize_with_connections(&mut self, connections: Vec<RoomConnectionInfo>) {
+        for c in connections.iter() {
+            for (x, y) in RoomConnection::get_occupied_coords(c.x, c.y, c.direction) {
                 self.room_objects.remove_wall_at(x, y);
                 // we have to explicitly remove the basic wall from Rofiz. Rofiz has a built-in assert when running
                 // that ensures all Rofiz objects corresponding to basic walls have Rc > 1, because basic walls 
@@ -28,8 +38,8 @@ impl Room {
         }
 
         let mut new_floor_object_ctx = NewRoomObjectContext::new(&mut self.rofiz, &mut self.room_object_id_counter);
-        for (x, y, dir) in connections {
-            let connection = RoomConnection::new_test1(&mut new_floor_object_ctx, x, y, dir);
+        for c in connections {
+            let connection = RoomConnection::new(&mut new_floor_object_ctx, c);
             self.room_objects.add(Rc::new(RefCell::new(connection)));
         }
         self.rofiz.finalize_start_floor();
@@ -75,7 +85,7 @@ impl Room {
         }
     }
 
-    fn new_test_room2() -> Self {
+    pub fn new_test_room2() -> Self {
         let mut rofiz = RofizState::new();
         let mut room_object_id_counter = Self::ROOM_OBJECT_ID_COUNTER_BEGIN;
         let mut new_floor_object_ctx = NewRoomObjectContext::new(&mut rofiz, &mut room_object_id_counter);
@@ -101,8 +111,6 @@ impl Room {
                 room_objects.add(Rc::new(RefCell::new(enemy)));
             }
         }
-
-        rofiz.finalize_start_floor();
 
         Self {
             room_objects,

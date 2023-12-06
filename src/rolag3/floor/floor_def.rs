@@ -1,6 +1,6 @@
 use std::{collections::HashMap, cell::RefCell, rc::Rc};
 
-use super::{room::Room, room_object::{unit::player::Player, room_object_def::FloorCoordinate, tiles::room_connection::Direction}};
+use super::{room::{Room, RoomConnectionInfo}, room_object::{unit::player::{Player, MoveRooms}, room_object_def::FloorCoordinate, tiles::room_connection::Direction}};
 
 pub struct Floor {
     pub rooms: HashMap<RoomId, Room>,
@@ -9,17 +9,38 @@ pub struct Floor {
     pub floor_time: f64,
 }
 
-type RoomId = usize;
+pub type RoomId = usize;
 
 impl Floor {
     pub fn new_test1() -> Self {
         let player = Rc::new(RefCell::new(Player::new_test1()));
-        let mut room = Room::new_test_room1();
-        room.finalize_with_connections(vec![(0, 10, Direction::Left)]);
-        player.borrow_mut().move_rooms(&mut room.rofiz);
-        room.room_objects.add(player.clone());
+        let mut room1 = Room::new_test_room1();
+        let connection1_info1 = RoomConnectionInfo {
+            x: 29,
+            y: 10,
+            direction: Direction::Right,
+            connects_to_room_id: 2,
+            connects_to_x: 0,
+            connects_to_y: 10,
+        };
+        room1.finalize_with_connections(vec![connection1_info1]);
+        player.borrow_mut().move_rooms(&mut room1.rofiz, MoveRooms::Teleport { x: 10.0, y: 10.0 });
+        room1.room_objects.add(player.clone());
+
+        let connection1_info2 = RoomConnectionInfo {
+            x: 0,
+            y: 10,
+            direction: Direction::Left,
+            connects_to_room_id: 1,
+            connects_to_x: 29,
+            connects_to_y: 10,
+        };
+        let mut room2 = Room::new_test_room2();
+        room2.finalize_with_connections(vec![connection1_info2]);
+
         let mut rooms = HashMap::new();
-        rooms.insert(1, room);
+        rooms.insert(1, room1);
+        rooms.insert(2, room2);
 
         Self {
             rooms,

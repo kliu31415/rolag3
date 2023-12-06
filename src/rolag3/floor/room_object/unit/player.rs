@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
-use crate::rolag3::floor::{run::{PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, draw::{DrawContext, Color, FloorDrawCoordinate}, room_object::{room_object_def::{RoomObject, Act1Context, FloorCoordinate, NewRoomObjectContext, RoomObjectMetadata, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse}, projectile::basic_projectile::BasicProjectile}, rofiz::{rofiz_object::{Hitbox, Transformation}, shape::Shape, rofiz_state::RofizState}};
+use crate::rolag3::floor::{run::{PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, draw::{DrawContext, Color, FloorDrawCoordinate}, room_object::{room_object_def::{RoomObject, Act1Context, FloorCoordinate, NewRoomObjectContext, RoomObjectMetadata, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse}, projectile::basic_projectile::BasicProjectile, tiles::room_connection::{Direction, RoomConnection}}, rofiz::{rofiz_object::{Hitbox, Transformation}, shape::Shape, rofiz_state::RofizState}, room::RoomConnectionInfo};
 
 use super::{Unit, standard_unit::{StandardUnit, StandardUnitCommon, Budeb, BudebMaxSpeed}};
 
@@ -9,6 +9,7 @@ pub struct Player {
     md: RoomObjectMetadata,
     su_common: Option<StandardUnitCommon>,
     since_last_projectile: f64,
+    change_rooms: Option<RoomConnectionInfo>,
 }
 
 impl RoomObject for Player {
@@ -32,7 +33,7 @@ impl RoomObject for Player {
         }
 
         // process throwing projectiles
-        if ctx.get_player_input().is_lmb_down && self.since_last_projectile > 0.02 {
+        if ctx.get_player_input().is_lmb_down && self.since_last_projectile > 0.01 {
             self.since_last_projectile = 0.0;
             let xform = ctx.get_rofiz().get_movable_object_xform(&self.su_common.as_ref().unwrap().get_ro_ref());
             let player_x = xform.dx;
@@ -97,6 +98,10 @@ impl RoomObject for Player {
         HcProjectileResponse::nop()
     }
 
+    fn handle_room_connection_collision(&mut self, rci: &RoomConnectionInfo) {
+        self.change_rooms = Some(rci.clone());
+    }
+
     fn is_spectral(&self) -> bool {
         false
     }
@@ -120,14 +125,22 @@ impl Player {
             md,
             su_common: None,
             since_last_projectile: 0.0,
+            change_rooms: None,
         }
     }
 
-    pub fn move_rooms<'a>(&mut self, rofiz: &'a mut RofizState) {
-        let x = 10.0;
-        let y = 10.0;
+    pub fn move_rooms<'a>(&mut self, rofiz: &'a mut RofizState, mr: MoveRooms) {
+        let (x, y) = match mr {
+            MoveRooms::Connection(rci) => match rci.direction {
+                Direction::Up => (rci.connects_to_x as f32 + 0.5 * RoomConnection::WIDTH, rci.connects_to_y as f32 - 0.0001 - 0.5 * Self::PLAYER_S),
+                Direction::Right => (rci.connects_to_x as f32 + 1.0001 + 0.5 * Self::PLAYER_S, rci.connects_to_y as f32 + 0.5 * RoomConnection::WIDTH),
+                Direction::Down => (rci.connects_to_x as f32 + 0.5 * RoomConnection::WIDTH, rci.connects_to_y as f32 + 1.0001 + 0.5 * Self::PLAYER_S),
+                Direction::Left => (rci.connects_to_x as f32 - 0.0001 - 0.5 * Self::PLAYER_S, rci.connects_to_y as f32 + 0.5 * RoomConnection::WIDTH),
+            },
+            MoveRooms::Teleport { x, y } => (x as f32, y as f32),
+        };
         let hitbox = Hitbox::new(
-            Transformation::new(x, y, 0.0),
+            Transformation::new(x as f64, y as f64, 0.0),
             Shape::of_square(-Self::PLAYER_S / 2.0, - Self::PLAYER_S / 2.0, Self::PLAYER_S),
         );
         let ro_ref = rofiz.add_nonspectral_unit(self.md.get_id(), hitbox);
@@ -141,4 +154,15 @@ impl Player {
         let xform = rofiz.get_movable_object_xform(&self.su_common.as_ref().unwrap().get_ro_ref());
         FloorCoordinate::new(xform.dx, xform.dy)
     }
+
+    pub fn poll_wants_to_move_rooms(&mut self) -> Option<RoomConnectionInfo> {
+        let ret = self.change_rooms;
+        self.change_rooms = None;
+        ret
+    }
+}
+
+pub enum MoveRooms {
+    Connection(RoomConnectionInfo),
+    Teleport{x: f64, y: f64},
 }

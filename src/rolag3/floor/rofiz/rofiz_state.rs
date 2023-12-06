@@ -122,6 +122,8 @@ impl RofizState {
     }
 
     pub fn add_nonspectral_unit(&mut self, floor_object_id: RoomObjectId, hitbox: Hitbox) -> RofizObjectRef {
+        // todo: add logic here to verify that the nonspectral unit doesn't intersect with any other nonspectral unit
+        // or any wall.
         let obj = self.new_rofiz_obj_movable(hitbox, floor_object_id);
         let rc = Rc::new(RefCell::new(obj));
         self.nonspectral_units.push(rc.clone());

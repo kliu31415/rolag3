@@ -2,6 +2,8 @@ use std::collections::HashSet;
 
 use rand::rngs::ThreadRng;
 
+use crate::rolag3::floor::room_object::unit::player::MoveRooms;
+
 use super::{room_object::room_object_def::{Act1Context, HandleCollisionContext}, floor_def::Floor};
 
 pub struct RunFloorContext<'a> {
@@ -63,7 +65,7 @@ fn run_floor_tick(ctx: RunFloorTickContext) {
 
     {
         room.rofiz.start_new_tick();
-        let mut act1_context = Act1Context::new(ctx.player_input, &mut room.rofiz, &mut room.room_object_id_counter, player, ctx.tick_length, ctx.rng, room.room_cleared_at_time);
+        let mut act1_context = Act1Context::new(ctx.player_input, &mut room.rofiz, &mut room.room_object_id_counter, player.clone(), ctx.tick_length, ctx.rng, room.room_cleared_at_time);
         room.room_objects.act1(&mut act1_context);
         let collisions = room.rofiz.move_objects_and_find_collisions();
         for collision in collisions.iter() {
@@ -109,6 +111,17 @@ fn run_floor_tick(ctx: RunFloorTickContext) {
             room.room_cleared_at_time = Some(room.room_time)
         }
     }
-    
+
     room.room_objects.validate();
+
+    let wtmr = player.borrow_mut().poll_wants_to_move_rooms();
+    if let Some(rci) = wtmr {
+        room.room_objects.remove_player();
+        ctx.floor.player_room_id = rci.connects_to_room_id;
+        assert!(ctx.floor.rooms.contains_key(&rci.connects_to_room_id), "player is moving to nonexistent room");
+        let err_msg = format!("player is moving to nonexistent room {}", rci.connects_to_room_id);
+        let rofiz = &mut ctx.floor.rooms.get_mut(&rci.connects_to_room_id).expect(&err_msg).rofiz;
+        player.borrow_mut().move_rooms(rofiz, MoveRooms::Connection(rci));
+        ctx.floor.rooms.get_mut(&rci.connects_to_room_id).expect(&err_msg).room_objects.add(player);
+    }
 }

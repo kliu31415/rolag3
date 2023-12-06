@@ -1,11 +1,8 @@
-use crate::rolag3::floor::{room_object::room_object_def::{RoomObject, RoomObjectMetadata, Act1Context, Act1Response, HandleCollisionContext, HandleCollisionResponse, NewRoomObjectContext, HandleRoomJustClearedContext}, draw::{DrawContext, FloorDrawCoordinate, Color}, rofiz::{rofiz_state::RofizObjectRef, rofiz_object::{Transformation, Hitbox}, shape::{Polygon, Shape, Rect}}};
+use crate::rolag3::floor::{room_object::room_object_def::{RoomObject, RoomObjectMetadata, Act1Context, Act1Response, HandleCollisionContext, HandleCollisionResponse, NewRoomObjectContext}, draw::{DrawContext, FloorDrawCoordinate, Color}, rofiz::{rofiz_state::RofizObjectRef, rofiz_object::{Transformation, Hitbox}, shape::{Shape, Rect}}, room::RoomConnectionInfo};
 
 pub struct RoomConnection {
     md: RoomObjectMetadata,
-    // top left corner
-    x: u32,
-    y: u32,
-    direction: Direction,
+    rci: RoomConnectionInfo,
 
     ro_wall: Option<RofizObjectRef>,
     ro_connection: Option<RofizObjectRef>, 
@@ -31,11 +28,11 @@ impl RoomObject for RoomConnection {
                 if self.ro_wall.is_some() {
                     assert!(self.ro_connection.is_none());
                     self.ro_wall = None;
-                    let shape = match self.direction {
-                        Direction::Up => Shape::of_rect(Rect::new(self.x as f32, self.y as f32, 3.0, 0.2)),
-                        Direction::Right => Shape::of_rect(Rect::new(self.x as f32 + 0.8, self.y as f32, 0.2, 3.0)),
-                        Direction::Down => Shape::of_rect(Rect::new(self.x as f32, self.y as f32 + 0.8, 3.0, 0.2)),
-                        Direction::Left => Shape::of_rect(Rect::new(self.x as f32, self.y as f32, 0.2, 3.0)),
+                    let shape = match self.rci.direction {
+                        Direction::Up => Shape::of_rect(Rect::new(self.rci.x as f32, self.rci.y as f32, 3.0, 0.01)),
+                        Direction::Right => Shape::of_rect(Rect::new(self.rci.x as f32 + 0.99, self.rci.y as f32, 0.01, 3.0)),
+                        Direction::Down => Shape::of_rect(Rect::new(self.rci.x as f32, self.rci.y as f32 + 0.99, 3.0, 0.01)),
+                        Direction::Left => Shape::of_rect(Rect::new(self.rci.x as f32, self.rci.y as f32, 0.01, 3.0)),
                     };
                     let xform = Transformation::new(0.0, 0.0, 0.0);
                     self.ro_connection = Some(ctx.get_rofiz().add_nonspectral_unit(self.md.get_id(), Hitbox::new(xform, shape)));
@@ -49,30 +46,30 @@ impl RoomObject for RoomConnection {
         match ctx.get_room_cleared_at_time() {
             None => {
                 let color = Color::new(0.5, 0.2, 0.0, 1.0);
-                let vertexes = match self.direction {
+                let vertexes = match self.rci.direction {
                     Direction::Left => [
-                        FloorDrawCoordinate::new(self.x as f32, self.y as f32),
-                        FloorDrawCoordinate::new((self.x + 1) as f32, self.y as f32),
-                        FloorDrawCoordinate::new((self.x + 1) as f32, (self.y + 3) as f32),
-                        FloorDrawCoordinate::new(self.x as f32, (self.y + 3) as f32),
+                        FloorDrawCoordinate::new(self.rci.x as f32, self.rci.y as f32),
+                        FloorDrawCoordinate::new((self.rci.x + 1) as f32, self.rci.y as f32),
+                        FloorDrawCoordinate::new((self.rci.x + 1) as f32, (self.rci.y + 3) as f32),
+                        FloorDrawCoordinate::new(self.rci.x as f32, (self.rci.y + 3) as f32),
                     ],
                     Direction::Up => [
-                        FloorDrawCoordinate::new(self.x as f32, self.y as f32),
-                        FloorDrawCoordinate::new((self.x + 3) as f32, self.y as f32),
-                        FloorDrawCoordinate::new((self.x + 3) as f32, (self.y + 1) as f32),
-                        FloorDrawCoordinate::new(self.x as f32, (self.y + 1) as f32),
+                        FloorDrawCoordinate::new(self.rci.x as f32, self.rci.y as f32),
+                        FloorDrawCoordinate::new((self.rci.x + 3) as f32, self.rci.y as f32),
+                        FloorDrawCoordinate::new((self.rci.x + 3) as f32, (self.rci.y + 1) as f32),
+                        FloorDrawCoordinate::new(self.rci.x as f32, (self.rci.y + 1) as f32),
                     ],
                     Direction::Right => [
-                        FloorDrawCoordinate::new(self.x as f32, self.y as f32),
-                        FloorDrawCoordinate::new((self.x + 1) as f32, self.y as f32),
-                        FloorDrawCoordinate::new((self.x + 1) as f32, (self.y + 3) as f32),
-                        FloorDrawCoordinate::new(self.x as f32, (self.y + 3) as f32),
+                        FloorDrawCoordinate::new(self.rci.x as f32, self.rci.y as f32),
+                        FloorDrawCoordinate::new((self.rci.x + 1) as f32, self.rci.y as f32),
+                        FloorDrawCoordinate::new((self.rci.x + 1) as f32, (self.rci.y + 3) as f32),
+                        FloorDrawCoordinate::new(self.rci.x as f32, (self.rci.y + 3) as f32),
                     ],
                     Direction::Down => [
-                        FloorDrawCoordinate::new(self.x as f32, self.y as f32),
-                        FloorDrawCoordinate::new((self.x + 3) as f32, self.y as f32),
-                        FloorDrawCoordinate::new((self.x + 3) as f32, (self.y + 1) as f32),
-                        FloorDrawCoordinate::new(self.x as f32, (self.y + 1) as f32),
+                        FloorDrawCoordinate::new(self.rci.x as f32, self.rci.y as f32),
+                        FloorDrawCoordinate::new((self.rci.x + 3) as f32, self.rci.y as f32),
+                        FloorDrawCoordinate::new((self.rci.x + 3) as f32, (self.rci.y + 1) as f32),
+                        FloorDrawCoordinate::new(self.rci.x as f32, (self.rci.y + 1) as f32),
                     ],
                 };
                 ctx.add_draw_op_quad(DrawContext::Z_WALL, color, vertexes);
@@ -80,30 +77,30 @@ impl RoomObject for RoomConnection {
             Some(_) => {
                 let color_opaque = Color::new(0.0, 0.0, 0.0, 1.0);
                 let color_transparent = Color::new(0.0, 0.0, 0.0, 0.0);
-                let vertexes = match self.direction {
+                let vertexes = match self.rci.direction {
                     Direction::Left => [
-                        (FloorDrawCoordinate::new(self.x as f32, self.y as f32), color_opaque),
-                        (FloorDrawCoordinate::new((self.x + 1) as f32, self.y as f32), color_transparent),
-                        (FloorDrawCoordinate::new((self.x + 1) as f32, (self.y + 3) as f32), color_transparent),
-                        (FloorDrawCoordinate::new(self.x as f32, (self.y + 3) as f32), color_opaque),
+                        (FloorDrawCoordinate::new(self.rci.x as f32, self.rci.y as f32), color_opaque),
+                        (FloorDrawCoordinate::new((self.rci.x + 1) as f32, self.rci.y as f32), color_transparent),
+                        (FloorDrawCoordinate::new((self.rci.x + 1) as f32, (self.rci.y + 3) as f32), color_transparent),
+                        (FloorDrawCoordinate::new(self.rci.x as f32, (self.rci.y + 3) as f32), color_opaque),
                     ],
                     Direction::Up => [
-                        (FloorDrawCoordinate::new(self.x as f32, self.y as f32), color_opaque),
-                        (FloorDrawCoordinate::new((self.x + 3) as f32, self.y as f32), color_opaque),
-                        (FloorDrawCoordinate::new((self.x + 3) as f32, (self.y + 1) as f32), color_transparent),
-                        (FloorDrawCoordinate::new(self.x as f32, (self.y + 1) as f32), color_transparent),
+                        (FloorDrawCoordinate::new(self.rci.x as f32, self.rci.y as f32), color_opaque),
+                        (FloorDrawCoordinate::new((self.rci.x + 3) as f32, self.rci.y as f32), color_opaque),
+                        (FloorDrawCoordinate::new((self.rci.x + 3) as f32, (self.rci.y + 1) as f32), color_transparent),
+                        (FloorDrawCoordinate::new(self.rci.x as f32, (self.rci.y + 1) as f32), color_transparent),
                     ],
                     Direction::Right => [
-                        (FloorDrawCoordinate::new(self.x as f32, self.y as f32), color_transparent),
-                        (FloorDrawCoordinate::new((self.x + 1) as f32, self.y as f32), color_opaque),
-                        (FloorDrawCoordinate::new((self.x + 1) as f32, (self.y + 3) as f32), color_opaque),
-                        (FloorDrawCoordinate::new(self.x as f32, (self.y + 3) as f32), color_transparent),
+                        (FloorDrawCoordinate::new(self.rci.x as f32, self.rci.y as f32), color_transparent),
+                        (FloorDrawCoordinate::new((self.rci.x + 1) as f32, self.rci.y as f32), color_opaque),
+                        (FloorDrawCoordinate::new((self.rci.x + 1) as f32, (self.rci.y + 3) as f32), color_opaque),
+                        (FloorDrawCoordinate::new(self.rci.x as f32, (self.rci.y + 3) as f32), color_transparent),
                     ],
                     Direction::Down => [
-                        (FloorDrawCoordinate::new(self.x as f32, self.y as f32), color_transparent),
-                        (FloorDrawCoordinate::new((self.x + 3) as f32, self.y as f32), color_transparent),
-                        (FloorDrawCoordinate::new((self.x + 3) as f32, (self.y + 1) as f32), color_opaque),
-                        (FloorDrawCoordinate::new(self.x as f32, (self.y + 1) as f32), color_opaque),
+                        (FloorDrawCoordinate::new(self.rci.x as f32, self.rci.y as f32), color_transparent),
+                        (FloorDrawCoordinate::new((self.rci.x + 3) as f32, self.rci.y as f32), color_transparent),
+                        (FloorDrawCoordinate::new((self.rci.x + 3) as f32, (self.rci.y + 1) as f32), color_opaque),
+                        (FloorDrawCoordinate::new(self.rci.x as f32, (self.rci.y + 1) as f32), color_opaque),
                     ],
                 };
                 ctx.add_draw_op_quad_multicolor(DrawContext::Z_ROOM_CONNECTION_TILE, vertexes);
@@ -111,7 +108,8 @@ impl RoomObject for RoomConnection {
         }
     }
 
-    fn handle_collision(&mut self, _ctx: &mut HandleCollisionContext) -> HandleCollisionResponse {
+    fn handle_collision(&mut self, ctx: &mut HandleCollisionContext) -> HandleCollisionResponse {
+        ctx.get_other().borrow_mut().handle_room_connection_collision(&self.rci);
         // todo
         HandleCollisionResponse::new()
     }
@@ -122,19 +120,19 @@ impl RoomObject for RoomConnection {
 }
 
 impl RoomConnection {
-    pub fn new_test1(ctx: &mut NewRoomObjectContext, x: u32, y: u32, direction: Direction) -> Self {
+    pub const WIDTH: f32 = 3.0;
+
+    pub fn new(ctx: &mut NewRoomObjectContext, rci: RoomConnectionInfo) -> Self {
         let md = RoomObjectMetadata::new(ctx);
-        let shape = match direction {
-            Direction::Up | Direction::Down => Shape::of_rect(Rect::new(x as f32, y as f32, 3.0, 1.0)),
-            Direction::Left | Direction::Right => Shape::of_rect(Rect::new(x as f32, y as f32, 1.0, 3.0)),
+        let shape = match rci.direction {
+            Direction::Up | Direction::Down => Shape::of_rect(Rect::new(rci.x as f32, rci.y as f32, 3.0, 1.0)),
+            Direction::Left | Direction::Right => Shape::of_rect(Rect::new(rci.x as f32, rci.y as f32, 1.0, 3.0)),
         };
         let xform = Transformation::new(0.0, 0.0, 0.0);
         let ro_wall = ctx.add_nonspectral_unit(md.get_id(), Hitbox::new(xform, shape));
         Self {
             md,
-            x,
-            y,
-            direction,
+            rci,
             ro_wall: Some(ro_wall),
             ro_connection: None,
         }
