@@ -4,7 +4,7 @@ use wgpu::BufferDescriptor;
 
 use crate::util::time::now_unix;
 
-use super::{shaders::{triangle1::{TriangleVertexShaderInput, TriangleShaderPipeline}, text_texture1::{TextTextureShaderPipeline, TextTextureVertexShaderInput}, concentric_circle_sector1::{ConcrenticCircleSectorShaderPipeline, ConcrenticCircleSectorVertexShaderInput}}, text::font::{FontRasterizer, make_font_rasterizer}};
+use super::{shaders::{triangle1::{TriangleVertexShaderInput, TriangleShaderPipeline}, text_texture1::{TextTextureVertexShaderInput, TextTextureShaderPipeline}, concentric_circle_sector1::{ConcrenticCircleSectorShaderPipeline, ConcrenticCircleSectorVertexShaderInput}}, text::font::{FontRasterizer, make_font_rasterizer}};
 
 pub trait Renderer {
     fn resize(&mut self, width: u32, height: u32);
@@ -14,6 +14,7 @@ pub trait Renderer {
     fn present(&mut self, clear_color: ColorRGBA32f) -> Result<(), wgpu::SurfaceError>;
 }
 
+#[derive(Debug)]
 pub struct DrawOpWithMetadata {
     pub z: f64,
     pub op: DrawOp,
@@ -29,19 +30,20 @@ impl DrawOpWithMetadata {
 enum ShaderId {
     Triangle1,
     ConcentricCircleSector,
-    Text1(CachedTextPipelineK),
+    Text1(String),
 }
 
 enum ShaderInput {
     Triangle1(Vec<[TriangleVertexShaderInput; 3]>),
     ConcentricCircleSector(Vec<[ConcrenticCircleSectorVertexShaderInput; 3]>),
-    Text1(),
+    Text1((Vec<[TextTextureVertexShaderInput; 3]>, usize /* bind_group_idx */)),
 }
 
+#[derive(Debug)]
 pub enum DrawOp {
-    Group(DrawOpGroup),
+    _Group(DrawOpGroup),
     TriFan(DrawOpTriFan),
-    TriStrip(DrawOpTriStrip),
+    _TriStrip(DrawOpTriStrip),
     ConcentricCircleSector(DrawOpCCS),
     Text(DrawOpText),
 }
@@ -49,22 +51,23 @@ pub enum DrawOp {
 impl DrawOp {
     fn get_shader_id(&self) -> ShaderId {
         match self {
-            DrawOp::Group(ref g) => g.ops[0].get_shader_id(),
+            DrawOp::_Group(ref g) => g.ops[0].get_shader_id(),
             DrawOp::TriFan(_) => ShaderId::Triangle1,
-            DrawOp::TriStrip(_) => ShaderId::Triangle1,
+            DrawOp::_TriStrip(_) => ShaderId::Triangle1,
             DrawOp::ConcentricCircleSector(_) => ShaderId::ConcentricCircleSector,
-            DrawOp::Text(ref t) => ShaderId::Text1(t.get_key()),
+            DrawOp::Text(ref t) => ShaderId::Text1(t.text.clone()),
         }
     }
 
     fn flatten(&self) -> Box<dyn Iterator<Item = &DrawOp> + '_> {
         match self {
-            DrawOp::Group(ref g) => Box::new(g.ops.iter().flat_map(|x| x.flatten())),
+            DrawOp::_Group(ref g) => Box::new(g.ops.iter().flat_map(|x| x.flatten())),
             _ => Box::new(std::iter::once(self)),
         }
     }
 }
 
+#[derive(Debug)]
 pub struct DrawOpGroup {
     pub ops: Box<[DrawOp]>,
 }
@@ -75,14 +78,17 @@ pub struct ColoredTriVertex {
     pub vertex: ViewSpaceCoordinate,
 }
 
+#[derive(Debug)]
 pub struct DrawOpTriFan {
     pub vertexes: Box<[ColoredTriVertex]>,
 }
 
+#[derive(Debug)]
 pub struct DrawOpTriStrip {
     pub vertexes: Box<[ColoredTriVertex]>,
 }
 
+#[derive(Debug)]
 pub struct DrawOpCCS {
     pub x: f32,
     pub y: f32,
@@ -94,6 +100,7 @@ pub struct DrawOpCCS {
     pub angle_range: Option<(f32, f32)>,
 }
 
+#[derive(Debug)]
 pub struct DrawOpText {
     pub text: String,
     pub color: ColorRGBA32f, 
@@ -104,8 +111,8 @@ pub struct DrawOpText {
 }
 
 impl DrawOpText {
-    fn get_key(&self) -> CachedTextPipelineK {
-        CachedTextPipelineK { text: self.text.clone(), font_size: self.font_size as u32 }
+    fn get_key(&self) -> CachedTextTextureK {
+        CachedTextTextureK { text: self.text.clone(), font_size: self.font_size as u32 }
     }
 }
 
@@ -126,8 +133,8 @@ impl ColorRGBA32f {
     pub fn new(r: f32, g: f32, b: f32, a: f32) -> Self {
         ColorRGBA32f { r, g, b, a}
     }
-    pub fn to_f32x4(&self) -> [f32; 4] {
-        return [self.r, self.g, self.b, self.a];
+    pub fn to_f32x4(self) -> [f32; 4] {
+        [self.r, self.g, self.b, self.a]
     }
 }
 
@@ -170,22 +177,130 @@ struct WgpuRenderer {
     vertex_buffer_pool: VertexBufferPool,
     triangle_shader_pipeline: TriangleShaderPipeline,
     concentric_circle_sector_shader_pipeline: ConcrenticCircleSectorShaderPipeline,
+    text_shader_pipeline: TextTextureShaderPipeline,
 
-    text_shader_pipelines: HashMap<CachedTextPipelineK, CachedTextPipelineV>,
+    cached_text_textures: HashMap<CachedTextTextureK, CachedTextTextureV>,
     font_rasterizer: Box<dyn FontRasterizer>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
-struct CachedTextPipelineK {
-    text: String,
-    font_size: u32,
+struct TextureAndMetadata {
+    name: String,
+    texture: wgpu::Texture,
+    texture_view: wgpu::TextureView,
+    sampler: wgpu::Sampler,
 }
 
-struct CachedTextPipelineV { 
-    pipeline: TextTextureShaderPipeline,
+struct CachedTextTextureV {
+    tmd: TextureAndMetadata,
     last_used: f64,
-    width: u32,
-    height: u32,
+}
+
+impl TextureAndMetadata {
+    pub fn get_bind_group_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
+        device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        multisampled: false,
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        sample_type: wgpu::TextureSampleType::Float{ filterable: true},
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                    count: None,
+                }
+            ],
+            label: Some("TextureAndMetadata bind group layout {}"),
+        })
+    }
+
+    // creates a new texture with a 1 byte per pixel
+    fn new(device: &wgpu::Device, queue: &wgpu::Queue, name: &str, bytes: &[u8], width: u32, height: u32) -> Self {
+        let texture_size = wgpu::Extent3d {
+            width,
+            height,
+            depth_or_array_layers: 1,
+        };
+
+        let texture = device.create_texture(
+            &wgpu::TextureDescriptor {
+                size: texture_size,
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: wgpu::TextureFormat::R8Unorm, // note there's only one color channel
+                usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+                label: Some(&format!("texture {}", name)),
+                view_formats: &[],
+            }
+        );
+
+        queue.write_texture(
+            wgpu::ImageCopyTexture {
+                texture: &texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            bytes,
+            wgpu::ImageDataLayout {
+                offset: 0,
+                bytes_per_row: Some(width),
+                rows_per_image: Some(height),
+            },
+            texture_size,
+        );
+    
+        let texture_view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            address_mode_u: wgpu::AddressMode::ClampToEdge,
+            address_mode_v: wgpu::AddressMode::ClampToEdge,
+            address_mode_w: wgpu::AddressMode::ClampToEdge,
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Nearest,
+            mipmap_filter: wgpu::FilterMode::Nearest,
+            ..Default::default()
+        });
+
+        Self {
+            name: name.to_owned(),
+            texture,
+            texture_view,
+            sampler,
+        }
+    }
+
+    fn get_bind_group(&self, device: &wgpu::Device) -> wgpu::BindGroup {
+        device.create_bind_group(
+            &wgpu::BindGroupDescriptor {
+                layout: &Self::get_bind_group_layout(device),
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: wgpu::BindingResource::TextureView(&self.texture_view),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: wgpu::BindingResource::Sampler(&self.sampler),
+                    },
+                ],
+                label: Some(&format!("texture bind group {}", self.name)),
+            }
+        )
+    }
+
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+struct CachedTextTextureK {
+    text: String,
+    font_size: u32,
 }
 
 impl Renderer for WgpuRenderer {
@@ -202,6 +317,34 @@ impl Renderer for WgpuRenderer {
     }
 
     fn draw(&mut self, op: DrawOpWithMetadata) {
+        match op.op {
+            DrawOp::Text(ref t) => {
+                let font_size = t.font_size as u32; // we round down to the nearest int for now
+                let k = CachedTextTextureK { text: t.text.clone(), font_size };
+        
+                if !self.cached_text_textures.contains_key(&k) {
+                    let bytes_2d = self.font_rasterizer.rasterize_text_line(&t.text, font_size as f32);
+                    if bytes_2d.is_empty() {
+                        panic!("rasterized 0 bytes while drawing text. Function call draw(args={:?})", op);
+                    }
+                    let width = bytes_2d[0].len() as u32;
+                    let height = bytes_2d.len() as u32;
+                    let bytes_1d: Vec<u8> = bytes_2d.into_iter().flatten().collect();
+                    let texture_and_md = TextureAndMetadata::new(&self.device, &self.queue, &format!("text={}",t.text), &bytes_1d, width, height);
+        
+                    let v = CachedTextTextureV {
+                        tmd: texture_and_md,
+                        last_used: now_unix(),
+                    };
+                    self.cached_text_textures.insert(k, v);
+                } else {
+                    let cached_v = self.cached_text_textures.get_mut(&k).expect("unable to get cached text pipeline (1)");
+                    cached_v.last_used = now_unix();
+                }
+            },
+            _ => {},
+        }
+
         self.draw_ops.push(op);
     }
 
@@ -212,6 +355,7 @@ impl Renderer for WgpuRenderer {
             label: Some("Render Encoder"),
         });
 
+        let mut bind_groups = Vec::new();
         let buffers: Vec<_>;
         let now = now_unix();
         {
@@ -237,6 +381,7 @@ impl Renderer for WgpuRenderer {
                 occlusion_query_set: None,
             });
 
+            // sort DrawOps by z. Order them in a way that minimizes the amount of times the shader pipeline is changed
             self.draw_ops.sort_by(|a, b| a.z.partial_cmp(&b.z).unwrap());
             let mut ops_per_z = vec![Vec::new()];
             let mut ops_this_z = Vec::new();
@@ -258,25 +403,31 @@ impl Renderer for WgpuRenderer {
                     ops.reverse();
                 }
             }
+
+            // convert DrawOps into GPU shader inputs
             let mut ordered_ops = ops_per_z.drain(..).flatten().flat_map(|x| x.flatten()).peekable();
             let mut shader_input_batches = Vec::new();
             let mut triangle1_shader_inputs_batch = Vec::new();
             let mut ccs_inputs_batch = Vec::new();
+            let mut text_inputs_batch_bg = None;
+            let mut text_inputs_batch = Vec::new();
             let mut desired_buffer_sizes = Vec::new();
             while let Some(op) = ordered_ops.next() {
                 match op {
-                    DrawOp::Group(_) => panic!("all DrawOpGroups should have been flattened by this point (1)"),
+                    DrawOp::_Group(_) => panic!("all DrawOpGroups should have been flattened by this point (1)"),
                     DrawOp::TriFan(ref x) => {
                         self.draw_tri_fan(x).iter().for_each(|x| triangle1_shader_inputs_batch.push(*x));
                     }
-                    DrawOp::TriStrip(ref x) => {
+                    DrawOp::_TriStrip(ref x) => {
                         self.draw_tri_strip(x).iter().for_each(|x| triangle1_shader_inputs_batch.push(*x));
                     }
                     DrawOp::ConcentricCircleSector(ref x) => {
                         self.draw_concentric_circle_sector(x).iter().for_each(|x| ccs_inputs_batch.push(*x));
                     }
                     DrawOp::Text(ref x) => {
-                        // TODO self.draw_text(x).iter().for_each(|x| text_inputs_batch.push(*x));
+                        let dt = self.draw_text(x);
+                        dt.0.iter().for_each(|x| text_inputs_batch.push(*x));
+                        text_inputs_batch_bg = Some(dt.1);
                     }
                 }
                 if ordered_ops.peek().is_none() || op.get_shader_id() != ordered_ops.peek().unwrap().get_shader_id() {
@@ -291,11 +442,19 @@ impl Renderer for WgpuRenderer {
                             shader_input_batches.push(ShaderInput::ConcentricCircleSector(ccs_inputs_batch));
                             ccs_inputs_batch = Vec::new();
                         }
-                        ShaderId::Text1(_) => {}, //TODO self.text_shader_pipelines.values_mut().for_each(|x| x.pipeline.draw(&mut render_pass, &self.device, &self.queue)),
+                        ShaderId::Text1(_) => {
+                            desired_buffer_sizes.push(std::mem::size_of::<[TextTextureVertexShaderInput; 3]>() * text_inputs_batch.len());
+                            let bgi = bind_groups.len();
+                            bind_groups.push(vec![text_inputs_batch_bg.unwrap()]);
+                            shader_input_batches.push(ShaderInput::Text1((text_inputs_batch, bgi)));
+                            text_inputs_batch_bg = None;
+                            text_inputs_batch = Vec::new()
+                        }
                     }
                 }
             }
             
+            // send GPU shader inputs to the GPU and execute shaders
             let desired_buffer_sizes: Vec<_> = desired_buffer_sizes.drain(..).map(|x| x as u64).collect();
             buffers = self.vertex_buffer_pool.allocate(&self.device, &desired_buffer_sizes);
             for (i, batch) in shader_input_batches.drain(..).enumerate() {
@@ -306,11 +465,13 @@ impl Renderer for WgpuRenderer {
                     ShaderInput::ConcentricCircleSector(x) => {
                         self.concentric_circle_sector_shader_pipeline.draw(&mut render_pass, &self.queue, buffers[i].as_ref(), x);
                     }
-                    ShaderInput::Text1() => {}// TODO, self.text_shader_pipelines.values_mut().for_each(|x| x.pipeline.draw(&mut render_pass, &self.device, &self.queue)),
+                    ShaderInput::Text1((vi, bgi)) => {
+                        self.text_shader_pipeline.draw(&mut render_pass, &self.queue, buffers[i].as_ref(), vi, &bind_groups[bgi]);
+                    }
                 }
             }
         }
-        self.text_shader_pipelines.retain(|_, v| now - v.last_used < 1.0);
+        self.cached_text_textures.retain(|_, v| now - v.last_used < 1.0);
         self.draw_ops.clear();
 
         self.queue.submit(std::iter::once(encoder.finish()));
@@ -377,7 +538,7 @@ impl VertexBufferPool {
         device.create_buffer(
             &BufferDescriptor { 
                 label: Some(&format!("{} Vertex Buffer", idx)), 
-                size: size, 
+                size, 
                 usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST, 
                 mapped_at_creation: false,
             },
@@ -458,10 +619,10 @@ impl WgpuRenderer {
                 if angle_begin == 0.0 && angle_end == 2.0*std::f32::consts::PI {
                     return ([-100.0, 100.0 + 2.0*std::f32::consts::PI], [DUMMY_ANGLE, DUMMY_ANGLE]);
                 }
-                if angle_begin < 0.0 || angle_begin > 2.0*std::f32::consts::PI {
+                if !(0.0..=2.0*std::f32::consts::PI).contains(&angle_begin) {
                     panic!("concentric circle sector angle_begin between isn't between 0 and 2*PI. Got {}", angle_begin);
                 }
-                if angle_end < 0.0 || angle_end > 2.0*std::f32::consts::PI {
+                if !(0.0..=2.0*std::f32::consts::PI).contains(&angle_end) {
                     panic!("concentric circle sector angle_end between isn't between 0 and 2*PI. Got {}", angle_end);
                 }
 
@@ -500,41 +661,16 @@ impl WgpuRenderer {
         [[vertexes[0], vertexes[1], vertexes[2]], [vertexes[2], vertexes[3], vertexes[0]]]
     }
 
-    fn draw_text(&mut self, args: &DrawOpText) -> Option<[[TextTextureVertexShaderInput; 3]; 2]> {
-        let font_size = args.font_size as u32;
-        let k = CachedTextPipelineK { text: args.text.clone(), font_size };
-
-        if !self.text_shader_pipelines.contains_key(&k) {
-            let bytes_2d = self.font_rasterizer.rasterize_text_line(&args.text, font_size as f32);
-            if bytes_2d.len() == 0 {
-                println!("rasterized 0 bytes in draw_text(str={})", args.text);
-                return None;
-            }
-            let width = bytes_2d[0].len() as u32;
-            let height = bytes_2d.len() as u32;
-            let bytes_1d: Vec<u8> = bytes_2d.into_iter().flatten().collect();
-            let pipeline = TextTextureShaderPipeline::new(&self.queue, &self.device, &self.config, bytes_1d.as_slice(), width, height);
-            let v = CachedTextPipelineV {
-                pipeline,
-                last_used: 0.0, //dummy
-                width,
-                height,
-            };
-            self.text_shader_pipelines.insert(k.clone(), v);
-        } 
-
-        let width: f32;
-        let height: f32;
-        {
-            let cached_v = self.text_shader_pipelines.get_mut(&k).expect("unable to get cached text pipeline (1)");
-            cached_v.last_used = now_unix();
-            width = cached_v.width as f32;
-            height = cached_v.height as f32;
-        }
+    fn draw_text(&self, args: &DrawOpText) -> ([[TextTextureVertexShaderInput; 3]; 2], wgpu::BindGroup) {
+        let k = args.get_key();
+        let v = self.cached_text_textures.get(&k).expect("unable to get cached text texture");
         
         let (x, y) = match args.position {
             DrawTextPosition::TopLeft => (args.x, args.y),
         };
+
+        let width = v.tmd.texture.width() as f32;
+        let height = v.tmd.texture.height() as f32;
 
         let vertexes = &[
             self.text_tri_to_gpu(&args.color, &ViewSpaceCoordinate::new(x, y), [0.0, 0.0]),
@@ -543,8 +679,8 @@ impl WgpuRenderer {
             self.text_tri_to_gpu(&args.color, &ViewSpaceCoordinate::new(x, y + height), [0.0, 1.0]),
         ];
 
-        let cached_v = self.text_shader_pipelines.get_mut(&k).expect("unable to get cached text pipeline (2)");
-        Some([[vertexes[0], vertexes[1], vertexes[2]], [vertexes[2], vertexes[3], vertexes[0]]])
+        ([[vertexes[0], vertexes[1], vertexes[2]], [vertexes[2], vertexes[3], vertexes[0]]], 
+            v.tmd.get_bind_group(&self.device))
     }
 
     fn text_tri_to_gpu(&self, color: &ColorRGBA32f, v: &ViewSpaceCoordinate, tex_coords: [f32; 2]) -> TextTextureVertexShaderInput {
@@ -604,6 +740,7 @@ pub fn make_renderer(window: &winit::window::Window) -> Box<dyn Renderer> {
     let vertex_buffer_pool = VertexBufferPool::new();
     let triangle_shader_pipeline = TriangleShaderPipeline::new(&device, &config);
     let concentric_circle_sector_shader_pipeline = ConcrenticCircleSectorShaderPipeline::new(&device, &config);
+    let text_shader_pipeline = TextTextureShaderPipeline::new(&device, &config, &[&TextureAndMetadata::get_bind_group_layout(&device)]);
 
     let renderer = WgpuRenderer {
         surface,
@@ -615,7 +752,8 @@ pub fn make_renderer(window: &winit::window::Window) -> Box<dyn Renderer> {
         vertex_buffer_pool,
         triangle_shader_pipeline,
         concentric_circle_sector_shader_pipeline,
-        text_shader_pipelines: HashMap::new(),
+        text_shader_pipeline,
+        cached_text_textures: HashMap::new(),
         font_rasterizer: make_font_rasterizer(),
     };
 

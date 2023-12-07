@@ -305,18 +305,18 @@ impl RofizState {
                 } else {
                     rom.temp_hitbox = rom.current.transformation.get_transformed_shape(&rom.current.shape);
                 }
-                return true;
+                true
             } else {
-                return false;
+                false
             }
         }
         _ => {
             if rom.move_successful {
                 rom.move_successful = false;
                 rom.temp_hitbox = rom.current.transformation.get_transformed_shape(&rom.current.shape);
-                return true;
+                true
             } else {
-                return false;
+                false
             }
         }
         }

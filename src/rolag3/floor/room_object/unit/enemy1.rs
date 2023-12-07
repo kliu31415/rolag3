@@ -28,7 +28,7 @@ impl RoomObject for Enemy1 {
 
     fn draw(&self, ctx: &mut DrawContext) {
         let color = self.su_common.get_draw_color(ctx.get_room_time(), Color::new(0.1, 0.1, 1.0, 1.0));
-        let xform = ctx.get_rofiz().get_movable_object_xform(&self.su_common.get_ro_ref());
+        let xform = ctx.get_rofiz().get_movable_object_xform(self.su_common.get_ro_ref());
         let x = xform.dx as f32 - Self::ENEMY1_S / 2.0;
         let y = xform.dy as f32 - Self::ENEMY1_S / 2.0;
         let w = Self::ENEMY1_S;

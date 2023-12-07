@@ -1,4 +1,6 @@
-use super::shader_pipeline::{new_wgpu_shader_pipeline, draw_triangle_inputs_batched};
+use wgpu::SurfaceConfiguration;
+
+use super::shader_pipeline::{new_wgpu_shader_pipeline, draw_triangle_inputs_batched_bg1};
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -23,137 +25,41 @@ impl TextTextureVertexShaderInput {
 // this shader pipeline takes in a 2d pixel array of bytes. Each byte represents the alpha value.
 pub struct TextTextureShaderPipeline {
     pipeline: wgpu::RenderPipeline,
-    bind_groups: Vec<wgpu::BindGroup>,
-    vertex_buffers: Vec<wgpu::Buffer>, // GPU memory
 }
 
 impl TextTextureShaderPipeline {
     const NAME: &'static str = "TextTexture1";
 
-    pub fn new(
-        queue: &wgpu::Queue, 
-        device: &wgpu::Device, 
-        config: &wgpu::SurfaceConfiguration, 
-        bytes: &[u8], 
-        width: u32, 
-        height: u32
-    ) -> Self {
-        let texture_size = wgpu::Extent3d {
-            width,
-            height,
-            depth_or_array_layers: 1,
-        };
-
-        let texture = device.create_texture(
-            &wgpu::TextureDescriptor {
-                size: texture_size,
-                mip_level_count: 1,
-                sample_count: 1,
-                dimension: wgpu::TextureDimension::D2,
-                format: wgpu::TextureFormat::R8Unorm, // note there's only one color channel
-                usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-                label: Some("text texture"),
-                view_formats: &[],
-            }
-        );
-
-        queue.write_texture(
-            wgpu::ImageCopyTexture {
-                texture: &texture,
-                mip_level: 0,
-                origin: wgpu::Origin3d::ZERO,
-                aspect: wgpu::TextureAspect::All,
-            },
-            bytes,
-            wgpu::ImageDataLayout {
-                offset: 0,
-                bytes_per_row: Some(width),
-                rows_per_image: Some(height),
-            },
-            texture_size,
-        );
-    
-        let texture_view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-        let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-            address_mode_u: wgpu::AddressMode::ClampToEdge,
-            address_mode_v: wgpu::AddressMode::ClampToEdge,
-            address_mode_w: wgpu::AddressMode::ClampToEdge,
-            mag_filter: wgpu::FilterMode::Linear,
-            min_filter: wgpu::FilterMode::Nearest,
-            mipmap_filter: wgpu::FilterMode::Nearest,
-            ..Default::default()
-        });
-    
-        let texture_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Texture {
-                        multisampled: false,
-                        view_dimension: wgpu::TextureViewDimension::D2,
-                        sample_type: wgpu::TextureSampleType::Float{ filterable: true},
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-                    count: None,
-                }
-            ],
-            label: Some("text texture bind group layout"),
-        });
-
-        let bind_group = device.create_bind_group(
-            &wgpu::BindGroupDescriptor {
-                layout: &texture_bind_group_layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: wgpu::BindingResource::TextureView(&texture_view),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: wgpu::BindingResource::Sampler(&sampler),
-                    },
-                ],
-                label: Some("text texture bind group"),
-            }
-        );
-
+    pub fn new(device: &wgpu::Device, config: &SurfaceConfiguration, bgl: &[&wgpu::BindGroupLayout]) -> Self {
         let pipeline = new_wgpu_shader_pipeline(
             Self::NAME, 
-            include_str!("text_texture1.wgsl").into(), 
-            &device, 
-            &config, 
+            include_str!("text_texture1.wgsl"), 
+            device, 
+            config, 
             TextTextureVertexShaderInput::desc(),
-            &[&texture_bind_group_layout]);
+            bgl);
 
         Self {
             pipeline,
-            bind_groups: vec![bind_group],
-            vertex_buffers: Vec::new(),
         }
     }
     
     pub fn draw<'a>(
         &'a self,
         render_pass: &mut wgpu::RenderPass<'a>, 
-        device: &wgpu::Device, 
         queue: &wgpu::Queue,
         vertex_buffer: &'a wgpu::Buffer,
         vertex_inputs: Vec<[TextTextureVertexShaderInput; 3]>,
+        bg: &'a [wgpu::BindGroup],
     ) {
-        draw_triangle_inputs_batched(
+        draw_triangle_inputs_batched_bg1(
             vertex_inputs,
             3,
-            &vertex_buffer,
+            vertex_buffer,
             &self.pipeline,
             render_pass,
             queue,
-            self.bind_groups.as_slice(),
+            bg,
         );
     }
 }

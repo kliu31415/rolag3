@@ -148,7 +148,6 @@ impl Rolag3EventHandler {
             pixels_per_tile
         };
         get_draw_floor_ops(draw_floor_ctx).drain(..).for_each(|x| window.get_renderer().draw(x));
-        let fps_text = format!("fps={}", window.get_renderer().get_fps());
         window.get_renderer().draw(DrawOpWithMetadata {
             z: 100.0,
             op: DrawOp::ConcentricCircleSector(DrawOpCCS{
@@ -161,6 +160,7 @@ impl Rolag3EventHandler {
                 outer_color: ColorRGBA32f::new(0.0, 1.0, 0.0, 1.0),
                 angle_range: Some((3.4, 4.7)),
         })});
+        let fps_text = format!("fps={}", window.get_renderer().get_fps());
         window.get_renderer().draw(DrawOpWithMetadata {
             z: 100.0, 
             op: DrawOp::Text(DrawOpText { 
@@ -168,7 +168,7 @@ impl Rolag3EventHandler {
                 color: ColorRGBA32f::new(0.8, 0.2, 0.2, 0.7),
                 x: 0.0,
                 y: 0.0,
-                font_size: 30.0, 
+                font_size: 100.0, 
                 position: DrawTextPosition::TopLeft,
         })});
         let res = window.get_renderer().present(ColorRGBA32f{r: 0.8f32, g: 0.8f32, b: 0.9f32, a: 1.0f32});

@@ -2,7 +2,7 @@ use std::{rc::{Rc, Weak}, cell::{RefCell, Ref}, collections::HashSet};
 
 use rand::{rngs::ThreadRng, Rng};
 
-use crate::rolag3::floor::{draw::DrawContext, run::PlayerInput, rofiz::{rofiz_state::{RofizState, RofizObjectRef}, rofiz_object::Hitbox}, room::{Room, RoomConnectionInfo}, floor_def::RoomId};
+use crate::rolag3::floor::{draw::DrawContext, run::PlayerInput, rofiz::{rofiz_state::{RofizState, RofizObjectRef}, rofiz_object::Hitbox}, room::{Room, RoomConnectionInfo}};
 
 use super::unit::player::Player;
 
@@ -20,14 +20,14 @@ pub trait RoomObject {
 
     fn handle_collision(&mut self, ctx: &mut HandleCollisionContext) -> HandleCollisionResponse;
     fn handle_collision_projectile(&mut self, _: &HcProjectileContext) -> HcProjectileResponse {
-        return HcProjectileResponse {
+        HcProjectileResponse {
             projectile_consumed: false,
             damage_dealt: 0.0,
             room_objects_to_delete: Vec::new(),
         }
     }
 
-    fn handle_room_connection_collision(&mut self, rci: &RoomConnectionInfo) {
+    fn handle_room_connection_collision(&mut self, _rci: &RoomConnectionInfo) {
         // nop by default
     }
 
@@ -38,7 +38,7 @@ pub trait RoomObject {
     fn is_wall_like(&self) -> bool {
         false
     }
-    fn is_wall_at(&self, x: u32, y: u32) -> bool {
+    fn is_wall_at(&self, _x: u32, _y: u32) -> bool {
         false
     }
     fn is_projectile_like(&self) -> bool {
@@ -155,7 +155,7 @@ impl RoomObjectCollection {
         self.room_already_cleared = true;
 
         let mut ctx = HandleRoomJustClearedContext {
-            rofiz,
+            _rofiz: rofiz,
         };
         for fo in self.objects.iter() {
             fo.borrow_mut().handle_room_just_cleared(&mut ctx);
@@ -194,7 +194,7 @@ impl RoomObjectCollection {
 
     pub fn validate(&self) {
         for ro in self.objects.iter() {
-            let ref_count = Rc::strong_count(&ro);
+            let ref_count = Rc::strong_count(ro);
             if ro.borrow().is_player() {
                 if ref_count != 3 {
                     panic!("RoomObject Player Rc::strong_count()={}. Expected 3. Id={:?}", ref_count, ro.borrow().get_metadata().get_id());
@@ -321,7 +321,7 @@ impl<'a> Act1Context<'a> {
     pub fn get_team_closest_location(&self, team: Team) -> Option<FloorCoordinate> {
         // the borrow checker could panic here if self_as_rc is the same as a Rc<RefCell<Unit>> we attempt to borrow
         match team {
-            Team::Player => Some(self.player.borrow().get_center_point(&self.rofiz)),
+            Team::Player => Some(self.player.borrow().get_center_point(self.rofiz)),
             Team::_Enemy => todo!("haven't implemented getting closest enemy unit location yet"),
         } 
     }
@@ -361,12 +361,12 @@ impl Act1Response {
 }
 
 pub struct HandleRoomJustClearedContext<'a> {
-    rofiz: &'a mut RofizState,
+    _rofiz: &'a mut RofizState,
 }
 
 impl<'a> HandleRoomJustClearedContext<'a> {
-    pub fn get_rofiz(&mut self) -> &mut RofizState {
-        self.rofiz
+    pub fn _get_rofiz(&mut self) -> &mut RofizState {
+        self._rofiz
     }
 }
 

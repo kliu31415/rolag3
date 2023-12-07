@@ -18,11 +18,10 @@ impl RoomObject for Enemy2 {
     fn act1(&mut self, ctx: &mut Act1Context) -> Act1Response {
         let response = Act1Response::new();
         let tick_len = ctx.get_tick_length();
-        let xform = ctx.get_rofiz().get_movable_object_xform(&self.su_common.get_ro_ref());
+        let xform = ctx.get_rofiz().get_movable_object_xform(self.su_common.get_ro_ref());
         let player_xy = ctx.get_team_closest_location(Team::Player);
-        match player_xy {
-            Some(xy) => self.su_common.accelerate_ro_xy(tick_len, xy.x - xform.dx, xy.y - xform.dy),
-            None => {}
+        if let Some(xy) = player_xy {
+            self.su_common.accelerate_ro_xy(tick_len, xy.x - xform.dx, xy.y - xform.dy);
         }
         self.su_common.process(ctx.get_rofiz(), tick_len);
         response
@@ -30,7 +29,7 @@ impl RoomObject for Enemy2 {
 
     fn draw(&self, ctx: &mut DrawContext) {
         let color = self.su_common.get_draw_color(ctx.get_room_time(), Color::new(0.1, 0.8, 0.1, 1.0));
-        let xform = ctx.get_rofiz().get_movable_object_xform(&self.su_common.get_ro_ref());
+        let xform = ctx.get_rofiz().get_movable_object_xform(self.su_common.get_ro_ref());
         let x = xform.dx as f32 - Self::ENEMY1_S / 2.0;
         let y = xform.dy as f32 - Self::ENEMY1_S / 2.0;
         let w = Self::ENEMY1_S;

@@ -14,3 +14,11 @@ Test 1
 -fps: 20 with release build, 6/7 with debug build
 -Unsure if this used a discrete GPU or not
 -Might be CPU bound; with the current logic, every frame, one allocation occurs per quad drawn
+
+Test 2
+-Running Rofiz test rooms as usual, but also drawing 10000 copies of "fps=xx", where xx is the fps
+-font rasterization is theoretically cached
+-100 pt font, cosmic text default font
+-2 to 3 fps in debug mode
+-27 fps in release mode
+-

@@ -58,7 +58,6 @@ impl BasicWall {
     pub fn new(ctx: &mut NewRoomObjectContext, x: u32, y: u32, color: Color) -> Self {
         let md = RoomObjectMetadata::new(ctx);
         let _ro_ref = ctx.add_basic_wall(md.get_id(), x, y);
-        let wall = Self {md, _ro_ref, x, y, color};
-        wall
+        Self {md, _ro_ref, x, y, color}
     }
 }

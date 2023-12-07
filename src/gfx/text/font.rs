@@ -16,11 +16,11 @@ impl FontRasterizer for CosmicFontRasterizer {
         let mut buffer = buffer.borrow_with(&mut self.font_system);
         let attrs = Attrs::new();
         buffer.set_size(f32::MAX, f32::MAX);
-        buffer.set_text(&text, attrs, Shaping::Advanced);
+        buffer.set_text(text, attrs, Shaping::Advanced);
         buffer.shape_until_scroll(); // do we need this call?
 
         // rasterize buffer on canvas
-        let mut canvas = vec![vec![0 as u8; 0]; 0];
+        let mut canvas = vec![vec![0u8; 0]; 0];
         let color = Color::rgb(0, 0, 0); // Color doesn't matter, because we only care about alpha, not rgb
         buffer.draw(&mut self.swash_cache, color, |x, y, w, h, color| {
             // are these checks necessary?
@@ -37,12 +37,12 @@ impl FontRasterizer for CosmicFontRasterizer {
             }
             canvas[y][x] = color.a();
         });
-        if canvas.len() == 0 {
+        if canvas.is_empty() {
             return canvas;
         }
         let max_width = canvas.iter().map(|row| row.len()).max().unwrap();
         canvas.iter_mut().for_each(|row| row.resize(max_width, 0u8));
-        return canvas;
+        canvas
     }
 }
 

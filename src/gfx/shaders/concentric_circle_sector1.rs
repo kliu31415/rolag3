@@ -49,9 +49,9 @@ impl ConcrenticCircleSectorShaderPipeline {
         Self {
             pipeline: new_wgpu_shader_pipeline(
                 Self::NAME, 
-                include_str!("concentric_circle_sector1.wgsl").into(), 
-                &device, 
-                &config, 
+                include_str!("concentric_circle_sector1.wgsl"), 
+                device, 
+                config, 
                 ConcrenticCircleSectorVertexShaderInput::desc(),
                 &[]),
         }
@@ -67,11 +67,10 @@ impl ConcrenticCircleSectorShaderPipeline {
         draw_triangle_inputs_batched(
             vertex_inputs,
             3,
-            &vertex_buffer,
+            vertex_buffer,
             &self.pipeline,
             render_pass,
             queue,
-            &[],
         );
     }
 }

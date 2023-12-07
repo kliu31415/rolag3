@@ -64,7 +64,7 @@ impl RoomObject for BasicProjectile {
         if hcp_response.projectile_consumed {
             to_remove.push(self.md.get_id());
         }
-        HandleCollisionResponse::new().remove_room_objs(&to_remove.as_slice())
+        HandleCollisionResponse::new().remove_room_objs(to_remove.as_slice())
     }
 
     fn is_spectral(&self) -> bool {

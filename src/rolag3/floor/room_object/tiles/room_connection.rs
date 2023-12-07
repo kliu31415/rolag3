@@ -10,9 +10,9 @@ pub struct RoomConnection {
 
 #[derive(Debug, Copy, Clone)]
 pub enum Direction {
-    Up,
+    _Up,
     Right,
-    Down,
+    _Down,
     Left
 }
 
@@ -29,9 +29,9 @@ impl RoomObject for RoomConnection {
                     assert!(self.ro_connection.is_none());
                     self.ro_wall = None;
                     let shape = match self.rci.direction {
-                        Direction::Up => Shape::of_rect(Rect::new(self.rci.x as f32, self.rci.y as f32, 3.0, 0.01)),
+                        Direction::_Up => Shape::of_rect(Rect::new(self.rci.x as f32, self.rci.y as f32, 3.0, 0.01)),
                         Direction::Right => Shape::of_rect(Rect::new(self.rci.x as f32 + 0.99, self.rci.y as f32, 0.01, 3.0)),
-                        Direction::Down => Shape::of_rect(Rect::new(self.rci.x as f32, self.rci.y as f32 + 0.99, 3.0, 0.01)),
+                        Direction::_Down => Shape::of_rect(Rect::new(self.rci.x as f32, self.rci.y as f32 + 0.99, 3.0, 0.01)),
                         Direction::Left => Shape::of_rect(Rect::new(self.rci.x as f32, self.rci.y as f32, 0.01, 3.0)),
                     };
                     let xform = Transformation::new(0.0, 0.0, 0.0);
@@ -53,7 +53,7 @@ impl RoomObject for RoomConnection {
                         FloorDrawCoordinate::new((self.rci.x + 1) as f32, (self.rci.y + 3) as f32),
                         FloorDrawCoordinate::new(self.rci.x as f32, (self.rci.y + 3) as f32),
                     ],
-                    Direction::Up => [
+                    Direction::_Up => [
                         FloorDrawCoordinate::new(self.rci.x as f32, self.rci.y as f32),
                         FloorDrawCoordinate::new((self.rci.x + 3) as f32, self.rci.y as f32),
                         FloorDrawCoordinate::new((self.rci.x + 3) as f32, (self.rci.y + 1) as f32),
@@ -65,7 +65,7 @@ impl RoomObject for RoomConnection {
                         FloorDrawCoordinate::new((self.rci.x + 1) as f32, (self.rci.y + 3) as f32),
                         FloorDrawCoordinate::new(self.rci.x as f32, (self.rci.y + 3) as f32),
                     ],
-                    Direction::Down => [
+                    Direction::_Down => [
                         FloorDrawCoordinate::new(self.rci.x as f32, self.rci.y as f32),
                         FloorDrawCoordinate::new((self.rci.x + 3) as f32, self.rci.y as f32),
                         FloorDrawCoordinate::new((self.rci.x + 3) as f32, (self.rci.y + 1) as f32),
@@ -84,7 +84,7 @@ impl RoomObject for RoomConnection {
                         (FloorDrawCoordinate::new((self.rci.x + 1) as f32, (self.rci.y + 3) as f32), color_transparent),
                         (FloorDrawCoordinate::new(self.rci.x as f32, (self.rci.y + 3) as f32), color_opaque),
                     ],
-                    Direction::Up => [
+                    Direction::_Up => [
                         (FloorDrawCoordinate::new(self.rci.x as f32, self.rci.y as f32), color_opaque),
                         (FloorDrawCoordinate::new((self.rci.x + 3) as f32, self.rci.y as f32), color_opaque),
                         (FloorDrawCoordinate::new((self.rci.x + 3) as f32, (self.rci.y + 1) as f32), color_transparent),
@@ -96,7 +96,7 @@ impl RoomObject for RoomConnection {
                         (FloorDrawCoordinate::new((self.rci.x + 1) as f32, (self.rci.y + 3) as f32), color_opaque),
                         (FloorDrawCoordinate::new(self.rci.x as f32, (self.rci.y + 3) as f32), color_transparent),
                     ],
-                    Direction::Down => [
+                    Direction::_Down => [
                         (FloorDrawCoordinate::new(self.rci.x as f32, self.rci.y as f32), color_transparent),
                         (FloorDrawCoordinate::new((self.rci.x + 3) as f32, self.rci.y as f32), color_transparent),
                         (FloorDrawCoordinate::new((self.rci.x + 3) as f32, (self.rci.y + 1) as f32), color_opaque),
@@ -125,7 +125,7 @@ impl RoomConnection {
     pub fn new(ctx: &mut NewRoomObjectContext, rci: RoomConnectionInfo) -> Self {
         let md = RoomObjectMetadata::new(ctx);
         let shape = match rci.direction {
-            Direction::Up | Direction::Down => Shape::of_rect(Rect::new(rci.x as f32, rci.y as f32, 3.0, 1.0)),
+            Direction::_Up | Direction::_Down => Shape::of_rect(Rect::new(rci.x as f32, rci.y as f32, 3.0, 1.0)),
             Direction::Left | Direction::Right => Shape::of_rect(Rect::new(rci.x as f32, rci.y as f32, 1.0, 3.0)),
         };
         let xform = Transformation::new(0.0, 0.0, 0.0);
@@ -140,7 +140,7 @@ impl RoomConnection {
 
     pub fn get_occupied_coords(x: u32, y: u32, direction: Direction) -> [(u32, u32); 3] {
         match direction {
-            Direction::Up | Direction::Down => [(x, y), (x+1, y), (x+2, y)],
+            Direction::_Up | Direction::_Down => [(x, y), (x+1, y), (x+2, y)],
             Direction::Left | Direction::Right => [(x, y), (x, y+1), (x, y+2)],
         }
     }

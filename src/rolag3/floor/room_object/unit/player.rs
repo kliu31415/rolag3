@@ -35,7 +35,7 @@ impl RoomObject for Player {
         // process throwing projectiles
         if ctx.get_player_input().is_lmb_down && self.since_last_projectile > 0.01 {
             self.since_last_projectile = 0.0;
-            let xform = ctx.get_rofiz().get_movable_object_xform(&self.su_common.as_ref().unwrap().get_ro_ref());
+            let xform = ctx.get_rofiz().get_movable_object_xform(self.su_common.as_ref().unwrap().get_ro_ref());
             let player_x = xform.dx;
             let player_y = xform.dy;
             let self_as_weak = ctx.self_as_weak();
@@ -75,7 +75,7 @@ impl RoomObject for Player {
 
     fn draw(&self, ctx: &mut DrawContext) {
         let color = Color::new(0.6, 0.4, 0.2, 1.0);
-        let xform = ctx.get_rofiz().get_movable_object_xform(&self.su_common.as_ref().unwrap().get_ro_ref());
+        let xform = ctx.get_rofiz().get_movable_object_xform(self.su_common.as_ref().unwrap().get_ro_ref());
         let player_x = xform.dx as f32 - Self::PLAYER_S / 2.0;
         let player_y = xform.dy as f32 - Self::PLAYER_S / 2.0;
         let player_w = Self::PLAYER_S;
@@ -99,7 +99,7 @@ impl RoomObject for Player {
     }
 
     fn handle_room_connection_collision(&mut self, rci: &RoomConnectionInfo) {
-        self.change_rooms = Some(rci.clone());
+        self.change_rooms = Some(*rci);
     }
 
     fn is_spectral(&self) -> bool {
@@ -129,12 +129,12 @@ impl Player {
         }
     }
 
-    pub fn move_rooms<'a>(&mut self, rofiz: &'a mut RofizState, mr: MoveRooms) {
+    pub fn move_rooms(&mut self, rofiz: &mut RofizState, mr: MoveRooms) {
         let (x, y) = match mr {
             MoveRooms::Connection(rci) => match rci.direction {
-                Direction::Up => (rci.connects_to_x as f32 + 0.5 * RoomConnection::WIDTH, rci.connects_to_y as f32 - 0.0001 - 0.5 * Self::PLAYER_S),
+                Direction::_Up => (rci.connects_to_x as f32 + 0.5 * RoomConnection::WIDTH, rci.connects_to_y as f32 - 0.0001 - 0.5 * Self::PLAYER_S),
                 Direction::Right => (rci.connects_to_x as f32 + 1.0001 + 0.5 * Self::PLAYER_S, rci.connects_to_y as f32 + 0.5 * RoomConnection::WIDTH),
-                Direction::Down => (rci.connects_to_x as f32 + 0.5 * RoomConnection::WIDTH, rci.connects_to_y as f32 + 1.0001 + 0.5 * Self::PLAYER_S),
+                Direction::_Down => (rci.connects_to_x as f32 + 0.5 * RoomConnection::WIDTH, rci.connects_to_y as f32 + 1.0001 + 0.5 * Self::PLAYER_S),
                 Direction::Left => (rci.connects_to_x as f32 - 0.0001 - 0.5 * Self::PLAYER_S, rci.connects_to_y as f32 + 0.5 * RoomConnection::WIDTH),
             },
             MoveRooms::Teleport { x, y } => (x as f32, y as f32),
@@ -151,7 +151,7 @@ impl Player {
     }
 
     pub fn get_center_point(&self, rofiz: &RofizState) -> FloorCoordinate {
-        let xform = rofiz.get_movable_object_xform(&self.su_common.as_ref().unwrap().get_ro_ref());
+        let xform = rofiz.get_movable_object_xform(self.su_common.as_ref().unwrap().get_ro_ref());
         FloorCoordinate::new(xform.dx, xform.dy)
     }
 

@@ -205,7 +205,7 @@ pub struct TakeDamageResponse {
 }
 
 fn lerp_no_alpha(v: f32, a: Color, b: Color) -> Color {
-    if v < 0.0 || v > 1.0 {
+    if !(0.0..=1.0).contains(&v) {
         panic!("lerp got v={}", v);
     }
     Color::new(

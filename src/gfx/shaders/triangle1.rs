@@ -32,9 +32,9 @@ impl TriangleShaderPipeline {
         Self {
             pipeline: new_wgpu_shader_pipeline(
                 Self::NAME, 
-                include_str!("triangle1.wgsl").into(), 
-                &device, 
-                &config, 
+                include_str!("triangle1.wgsl"), 
+                device, 
+                config, 
                 TriangleVertexShaderInput::desc(),
                 &[]),
         }
@@ -54,7 +54,6 @@ impl TriangleShaderPipeline {
             &self.pipeline,
             render_pass,
             queue,
-            &[],
         );
     }
 }
