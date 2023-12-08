@@ -139,7 +139,7 @@ impl RofizState {
 
     pub fn move_object(&mut self, obj_ref: &RofizObjectRef, movement: RofizObjectMovement) {
         match obj_ref.val {
-            RofizObjectRefVal::BasicWall(_) => panic!("accessing BasicWall in get_rofiz_obj_movable_mut() is not supported"),
+            RofizObjectRefVal::BasicWall(_) => panic!("accessing BasicWall in move_object() is not supported"),
             RofizObjectRefVal::BasicProjectile(ref p) => p.upgrade().unwrap().as_ref().borrow_mut().movement = movement,
             RofizObjectRefVal::_SpectralUnit(ref p) => p.upgrade().unwrap().as_ref().borrow_mut().movement = movement,
             RofizObjectRefVal::NonspectralUnit(ref p) => p.upgrade().unwrap().as_ref().borrow_mut().movement = movement,
@@ -153,6 +153,18 @@ impl RofizState {
             RofizObjectRefVal::_SpectralUnit(ref p) => p.upgrade().unwrap().borrow().current.transformation,
             RofizObjectRefVal::NonspectralUnit(ref p) => p.upgrade().unwrap().borrow().current.transformation,
         }
+    }
+
+    pub fn get_movable_object_xformed_shape(&self, obj_ref: &RofizObjectRef) -> Shape {
+        let wp = match &obj_ref.val {
+            RofizObjectRefVal::BasicWall(_) => panic!("accessing BasicWall in get_movable_object_xform() is not supported"),
+            RofizObjectRefVal::BasicProjectile(p) => p.clone(),
+            RofizObjectRefVal::_SpectralUnit(p) => p.clone(),
+            RofizObjectRefVal::NonspectralUnit(p) => p.clone(),
+        };
+        let rc = wp.upgrade().unwrap();
+        let hitbox = &rc.borrow().current;
+        hitbox.transformation.get_transformed_shape(&hitbox.shape)
     }
     
     pub fn move_objects_and_find_collisions(&mut self) -> Vec<RofizCollision> {

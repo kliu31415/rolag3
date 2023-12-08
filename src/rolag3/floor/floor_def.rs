@@ -24,7 +24,7 @@ impl Floor {
             connects_to_y: 10,
         };
         room1.finalize_with_connections(vec![connection1_info1]);
-        player.borrow_mut().move_rooms(&mut room1.rofiz, MoveRooms::Teleport { x: 10.0, y: 10.0 });
+        player.borrow_mut().move_rooms(&mut room1.rofiz, MoveRooms::Teleport { x: 3.0, y: 3.0 });
         room1.room_objects.add(player.clone());
 
         let connection1_info2 = RoomConnectionInfo {

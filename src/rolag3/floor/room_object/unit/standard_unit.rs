@@ -110,7 +110,7 @@ impl StandardUnitCommon {
             return;
         }
         let velocity_norm = f64::hypot(self.velocity_x, self.velocity_y);
-        let f_engine = self.tire_friction * self.engine_power / f64::max(velocity_norm, 0.1);
+        let f_engine = self.tire_friction * self.engine_power / f64::max(velocity_norm, 1.0);
         let accel = tick_length * f_engine / Self::MASS;
         self.velocity_x += accel * x / input_norm;
         self.velocity_y += accel * y / input_norm;

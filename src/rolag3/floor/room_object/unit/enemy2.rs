@@ -30,10 +30,10 @@ impl RoomObject for Enemy2 {
     fn draw(&self, ctx: &mut DrawContext) {
         let color = self.su_common.get_draw_color(ctx.get_room_time(), Color::new(0.1, 0.8, 0.1, 1.0));
         let xform = ctx.get_rofiz().get_movable_object_xform(self.su_common.get_ro_ref());
-        let x = xform.dx as f32 - Self::ENEMY1_S / 2.0;
-        let y = xform.dy as f32 - Self::ENEMY1_S / 2.0;
-        let w = Self::ENEMY1_S;
-        let h = Self::ENEMY1_S;
+        let x = xform.dx as f32 - Self::ENEMY2_S / 2.0;
+        let y = xform.dy as f32 - Self::ENEMY2_S / 2.0;
+        let w = Self::ENEMY2_S;
+        let h = Self::ENEMY2_S;
         let vertexes = [
             FloorDrawCoordinate::new(x, y),
             FloorDrawCoordinate::new(x + w, y),
@@ -84,12 +84,12 @@ impl StandardUnit for Enemy2 {
 }
 
 impl Enemy2 {
-    const ENEMY1_S: f32 = 1.2;
+    const ENEMY2_S: f32 = 1.2;
 
     pub fn new(ctx: &mut NewRoomObjectContext, x: f64, y: f64) -> Self {
         let hitbox = Hitbox::new(
             Transformation::new(x, y, 0.0),
-            Shape::of_square(-Self::ENEMY1_S / 2.0, - Self::ENEMY1_S / 2.0, Self::ENEMY1_S),
+            Shape::of_square(-Self::ENEMY2_S / 2.0, - Self::ENEMY2_S / 2.0, Self::ENEMY2_S),
         );
         let md = RoomObjectMetadata::new(ctx);
         let ro_ref = ctx.add_nonspectral_unit(md.get_id(), hitbox);

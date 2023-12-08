@@ -68,6 +68,18 @@ impl DrawContext<'_> {
     pub const Z_UNIT: f64 = 30.0;
     pub const Z_PROJECTILE: f64 = 40.0;
 
+    pub fn add_draw_op_tri_fan(&mut self, z: f64, color: Color, vertexes: Box<[FloorDrawCoordinate]>) {
+        let vs_coords = vertexes
+            .iter()
+            .map(|c| ColoredTriVertex {
+                color: Self::color_to_rdr(&color),
+                vertex: ViewSpaceCoordinate{x: self.x_to_vsc(c.x), y: self.y_to_vsc(c.y)}
+            })
+            .collect();
+        let op = DrawOp::TriFan(DrawOpTriFan{vertexes: vs_coords});
+        self.draw_ops.push(DrawOpWithMetadata::new(z, op));
+    }
+
     pub fn add_draw_op_quad(&mut self, z: f64, color: Color, vertexes: [FloorDrawCoordinate; 4]) {
         let vs_coords = vertexes
             .iter()

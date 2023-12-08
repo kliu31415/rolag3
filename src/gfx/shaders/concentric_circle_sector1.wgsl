@@ -13,13 +13,13 @@ struct VertexInput {
 struct VertexOutput {
     @builtin(position) clip_position: vec4<f32>,
     @location(0) pixel_xy: vec2<f32>,
-    @location(1) center: vec2<f32>,
-    @location(2) r1: f32,
-    @location(3) r2: f32,
-    @location(4) color1: vec4<f32>,
-    @location(5) color2: vec4<f32>,
-    @location(6) theta_range1: vec2<f32>,
-    @location(7) theta_range2: vec2<f32>,
+    @location(1) @interpolate(flat) center: vec2<f32>,
+    @location(2) @interpolate(flat) r1: f32,
+    @location(3) @interpolate(flat) r2: f32,
+    @location(4) @interpolate(flat) color1: vec4<f32>,
+    @location(5) @interpolate(flat) color2: vec4<f32>,
+    @location(6) @interpolate(flat) theta_range1: vec2<f32>,
+    @location(7) @interpolate(flat) theta_range2: vec2<f32>,
 };
 
 @vertex

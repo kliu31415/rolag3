@@ -109,7 +109,9 @@ impl RoomObject for RoomConnection {
     }
 
     fn handle_collision(&mut self, ctx: &mut HandleCollisionContext) -> HandleCollisionResponse {
-        ctx.get_other().borrow_mut().handle_room_connection_collision(&self.rci);
+        if self.ro_connection.is_some() {
+            ctx.get_other().borrow_mut().handle_room_connection_collision(&self.rci);
+        }
         // todo
         HandleCollisionResponse::new()
     }

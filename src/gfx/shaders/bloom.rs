@@ -42,7 +42,6 @@ impl BloomBlurUniform {
         }
         for i in 0..num_iterations {
             weights[i as usize] /= weight_sum as f32;
-            println!("{},{}", i, weights[i as usize]);
         }
         Self {
             weights,
@@ -71,7 +70,7 @@ impl BloomPipeline {
         let bg = [&TextureAndMetadata::get_standard_bind_group_layout(&device), &TextureAndMetadata::get_standard_bind_group_layout(&device)];
         let addition_pipeline = new_wgpu_shader_pipeline("bloom_addition", shader, &device, format, &[], &bg);
 
-        let blur_uniform_horizontal_cpu = BloomBlurUniform::new(true, 35, 10.0);
+        let blur_uniform_horizontal_cpu = BloomBlurUniform::new(true, 20, 5.0);
         let blur_uniform_horizontal_gpu = device.create_buffer_init(
             &wgpu::util::BufferInitDescriptor {
                 label: Some("bloom_blur_horizontal_uniform_buffer"),
@@ -92,7 +91,7 @@ impl BloomPipeline {
             }
         );
 
-        let blur_uniform_vertical_cpu = BloomBlurUniform::new(false, 35, 10.0);
+        let blur_uniform_vertical_cpu = BloomBlurUniform::new(false, 20, 5.0);
         let blur_uniform_vertical_gpu = device.create_buffer_init(
             &wgpu::util::BufferInitDescriptor {
                 label: Some("bloom_blur_vertical_uniform_buffer"),
@@ -170,7 +169,7 @@ impl BloomPipeline {
                 view,
                 resolve_target: None,
                 ops: Operations {
-                    load: wgpu::LoadOp::Load,
+                    load: wgpu::LoadOp::Clear(Default::default()),
                     store: wgpu::StoreOp::Store,
                 },
             })],

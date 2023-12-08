@@ -43,7 +43,7 @@ impl Polygon {
 }
 
 impl Shape {
-    pub fn _of_polygon(vertexes: Box<[Point]>) -> Shape {
+    pub fn of_polygon(vertexes: Box<[Point]>) -> Shape {
         Shape::Polygon(Polygon::new(vertexes))
     }
 
@@ -74,6 +74,10 @@ impl Shape {
     pub fn dummy() -> Shape {
         Shape::Circle(Circle::new(0.0, 0.0, 0.0))
     }
+}
+
+pub fn f32pairs_to_shape(vertexes: Box<[(f32, f32)]>) -> Box<[Point]> {
+    vertexes.iter().map(|v| Point::new(v.0, v.1)).collect()
 }
 
 #[derive(Debug, Copy, Clone)]
