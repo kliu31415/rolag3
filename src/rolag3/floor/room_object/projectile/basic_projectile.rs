@@ -37,7 +37,7 @@ impl RoomObject for BasicProjectile {
     }
 
     fn draw(&self, ctx: &mut DrawContext) {
-        let color = Color::new(0.3, 0.2, 0.1, 1.0);
+        let color = Color::new(0.3, 3.2, 0.1, 1.0);
         let xform = ctx.get_rofiz().get_movable_object_xform(&self.ro_ref);
         let x = xform.dx as f32 - Self::PROJ_S / 2.0;
         let y = xform.dy as f32 - Self::PROJ_S / 2.0;

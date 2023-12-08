@@ -1,6 +1,4 @@
-use wgpu::SurfaceConfiguration;
-
-use super::shader_pipeline::{new_wgpu_shader_pipeline, draw_triangle_inputs_batched_bg1};
+use super::util::{new_wgpu_shader_pipeline, draw_triangle_inputs_batched_bg1};
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -30,13 +28,13 @@ pub struct TextTextureShaderPipeline {
 impl TextTextureShaderPipeline {
     const NAME: &'static str = "TextTexture1";
 
-    pub fn new(device: &wgpu::Device, config: &SurfaceConfiguration, bgl: &[&wgpu::BindGroupLayout]) -> Self {
+    pub fn new(device: &wgpu::Device, format: wgpu::TextureFormat, bgl: &[&wgpu::BindGroupLayout]) -> Self {
         let pipeline = new_wgpu_shader_pipeline(
             Self::NAME, 
             include_str!("text_texture1.wgsl"), 
             device, 
-            config, 
-            TextTextureVertexShaderInput::desc(),
+            format, 
+            &[TextTextureVertexShaderInput::desc()],
             bgl);
 
         Self {

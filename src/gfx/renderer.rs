@@ -4,7 +4,7 @@ use wgpu::BufferDescriptor;
 
 use crate::util::time::now_unix;
 
-use super::{shaders::{triangle1::{TriangleVertexShaderInput, TriangleShaderPipeline}, text_texture1::{TextTextureVertexShaderInput, TextTextureShaderPipeline}, concentric_circle_sector1::{ConcrenticCircleSectorShaderPipeline, ConcrenticCircleSectorVertexShaderInput}}, text::font::{FontRasterizer, make_font_rasterizer}};
+use super::{shaders::{triangle1::{TriangleVertexShaderInput, TriangleShaderPipeline}, text_texture1::{TextTextureVertexShaderInput, TextTextureShaderPipeline}, concentric_circle_sector1::{ConcrenticCircleSectorShaderPipeline, ConcrenticCircleSectorVertexShaderInput}, hdr::HdrPipeline, bloom::BloomPipeline}, text::font::{FontRasterizer, make_font_rasterizer}};
 
 pub trait Renderer {
     fn resize(&mut self, width: u32, height: u32);
@@ -178,16 +178,19 @@ struct WgpuRenderer {
     triangle_shader_pipeline: TriangleShaderPipeline,
     concentric_circle_sector_shader_pipeline: ConcrenticCircleSectorShaderPipeline,
     text_shader_pipeline: TextTextureShaderPipeline,
+    bloom_pipeline: BloomPipeline,
+    hdr_pipeline: HdrPipeline,
 
     cached_text_textures: HashMap<CachedTextTextureK, CachedTextTextureV>,
     font_rasterizer: Box<dyn FontRasterizer>,
 }
 
-struct TextureAndMetadata {
-    name: String,
-    texture: wgpu::Texture,
-    texture_view: wgpu::TextureView,
-    sampler: wgpu::Sampler,
+pub struct TextureAndMetadata {
+    pub name: String,
+    pub texture: wgpu::Texture,
+    pub view: wgpu::TextureView,
+    pub bind_group: wgpu::BindGroup,
+    pub sampler: wgpu::Sampler,
 }
 
 struct CachedTextTextureV {
@@ -196,7 +199,7 @@ struct CachedTextTextureV {
 }
 
 impl TextureAndMetadata {
-    pub fn get_bind_group_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
+    pub fn get_standard_bind_group_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
         device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             entries: &[
                 wgpu::BindGroupLayoutEntry {
@@ -216,12 +219,18 @@ impl TextureAndMetadata {
                     count: None,
                 }
             ],
-            label: Some("TextureAndMetadata bind group layout {}"),
+            label: Some("TextureAndMetadata bind group layout"),
         })
     }
 
     // creates a new texture with a 1 byte per pixel
-    fn new(device: &wgpu::Device, queue: &wgpu::Queue, name: &str, bytes: &[u8], width: u32, height: u32) -> Self {
+    pub fn new(
+        device: &wgpu::Device, name: &str, 
+        format: wgpu::TextureFormat, 
+        usage: wgpu::TextureUsages,
+        width: u32, 
+        height: u32,
+    ) -> Self {
         let texture_size = wgpu::Extent3d {
             width,
             height,
@@ -234,30 +243,14 @@ impl TextureAndMetadata {
                 mip_level_count: 1,
                 sample_count: 1,
                 dimension: wgpu::TextureDimension::D2,
-                format: wgpu::TextureFormat::R8Unorm, // note there's only one color channel
-                usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+                format, 
+                usage,
                 label: Some(&format!("texture {}", name)),
                 view_formats: &[],
             }
         );
-
-        queue.write_texture(
-            wgpu::ImageCopyTexture {
-                texture: &texture,
-                mip_level: 0,
-                origin: wgpu::Origin3d::ZERO,
-                aspect: wgpu::TextureAspect::All,
-            },
-            bytes,
-            wgpu::ImageDataLayout {
-                offset: 0,
-                bytes_per_row: Some(width),
-                rows_per_image: Some(height),
-            },
-            texture_size,
-        );
     
-        let texture_view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             address_mode_u: wgpu::AddressMode::ClampToEdge,
             address_mode_v: wgpu::AddressMode::ClampToEdge,
@@ -268,22 +261,63 @@ impl TextureAndMetadata {
             ..Default::default()
         });
 
+        let bind_group = device.create_bind_group(
+            &wgpu::BindGroupDescriptor {
+                layout: &Self::get_standard_bind_group_layout(device),
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: wgpu::BindingResource::TextureView(&view),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: wgpu::BindingResource::Sampler(&sampler),
+                    },
+                ],
+                label: Some(&format!("texture bind group {}", name)),
+            }
+        );
+
         Self {
             name: name.to_owned(),
             texture,
-            texture_view,
+            view,
+            bind_group,
             sampler,
         }
+    }
+
+    fn write_bytes(&mut self, queue: &wgpu::Queue, bytes_per_pixel: u32, bytes: &[u8]) {
+        let texture_size = wgpu::Extent3d {
+            width: self.texture.width(),
+            height: self.texture.height(),
+            depth_or_array_layers: 1,
+        };
+        queue.write_texture(
+            wgpu::ImageCopyTexture {
+                texture: &self.texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            bytes,
+            wgpu::ImageDataLayout {
+                offset: 0,
+                bytes_per_row: Some(self.texture.width() * bytes_per_pixel),
+                rows_per_image: Some(self.texture.height()),
+            },
+            texture_size,
+        );
     }
 
     fn get_bind_group(&self, device: &wgpu::Device) -> wgpu::BindGroup {
         device.create_bind_group(
             &wgpu::BindGroupDescriptor {
-                layout: &Self::get_bind_group_layout(device),
+                layout: &Self::get_standard_bind_group_layout(device),
                 entries: &[
                     wgpu::BindGroupEntry {
                         binding: 0,
-                        resource: wgpu::BindingResource::TextureView(&self.texture_view),
+                        resource: wgpu::BindingResource::TextureView(&self.view),
                     },
                     wgpu::BindGroupEntry {
                         binding: 1,
@@ -309,6 +343,8 @@ impl Renderer for WgpuRenderer {
             self.config.width = width;
             self.config.height = height;
             self.surface.configure(&self.device, &self.config);
+            self.hdr_pipeline.resize( &self.device, Self::INTERMEDIATE_TEXTURE_FORMAT, width, height);
+            self.bloom_pipeline.resize(&self.device, Self::INTERMEDIATE_TEXTURE_FORMAT, width, height);
         }
     }
 
@@ -330,7 +366,9 @@ impl Renderer for WgpuRenderer {
                     let width = bytes_2d[0].len() as u32;
                     let height = bytes_2d.len() as u32;
                     let bytes_1d: Vec<u8> = bytes_2d.into_iter().flatten().collect();
-                    let texture_and_md = TextureAndMetadata::new(&self.device, &self.queue, &format!("text={}",t.text), &bytes_1d, width, height);
+                    let name = format!("text={}", t.text);
+                    let mut texture_and_md = TextureAndMetadata::new(&self.device, &name, wgpu::TextureFormat::R8Unorm, wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST, width, height);
+                    texture_and_md.write_bytes(&self.queue, 1, &bytes_1d);
         
                     let v = CachedTextTextureV {
                         tmd: texture_and_md,
@@ -349,8 +387,6 @@ impl Renderer for WgpuRenderer {
     }
 
     fn present(&mut self, clear_color: ColorRGBA32f) -> Result<(), wgpu::SurfaceError> {
-        let output = self.surface.get_current_texture()?;
-        let view = output.texture.create_view(&wgpu::TextureViewDescriptor::default());
         let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("Render Encoder"),
         });
@@ -362,7 +398,7 @@ impl Renderer for WgpuRenderer {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Render Pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &view,
+                    view: self.bloom_pipeline.get_input_view(),
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(
@@ -474,6 +510,11 @@ impl Renderer for WgpuRenderer {
         self.cached_text_textures.retain(|_, v| now - v.last_used < 1.0);
         self.draw_ops.clear();
 
+        let output = self.surface.get_current_texture()?;
+        let view = output.texture.create_view(&wgpu::TextureViewDescriptor::default());
+        self.bloom_pipeline.process(&mut encoder, &self.hdr_pipeline.get_input_view());
+        self.hdr_pipeline.process(&mut encoder, &view);
+
         self.queue.submit(std::iter::once(encoder.finish()));
 
         let now = now_unix();
@@ -547,6 +588,8 @@ impl VertexBufferPool {
 }
 
 impl WgpuRenderer {
+    const INTERMEDIATE_TEXTURE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+
     fn x_to_ndc(&self, x: f32) -> f32 {
         2.0 * x / (self.config.width as f32) - 1.0
     }
@@ -738,9 +781,12 @@ pub fn make_renderer(window: &winit::window::Window) -> Box<dyn Renderer> {
     surface.configure(&device, &config);
 
     let vertex_buffer_pool = VertexBufferPool::new();
-    let triangle_shader_pipeline = TriangleShaderPipeline::new(&device, &config);
-    let concentric_circle_sector_shader_pipeline = ConcrenticCircleSectorShaderPipeline::new(&device, &config);
-    let text_shader_pipeline = TextTextureShaderPipeline::new(&device, &config, &[&TextureAndMetadata::get_bind_group_layout(&device)]);
+    let format = WgpuRenderer::INTERMEDIATE_TEXTURE_FORMAT;
+    let bloom_pipeline = BloomPipeline::new(&device, format, config.width, config.height);
+    let hdr_pipeline = HdrPipeline::new(&device, format, config.format, config.width, config.height);
+    let triangle_shader_pipeline = TriangleShaderPipeline::new(&device, format);
+    let concentric_circle_sector_shader_pipeline = ConcrenticCircleSectorShaderPipeline::new(&device, format);
+    let text_shader_pipeline = TextTextureShaderPipeline::new(&device, format, &[&TextureAndMetadata::get_standard_bind_group_layout(&device)]);
 
     let renderer = WgpuRenderer {
         surface,
@@ -753,6 +799,8 @@ pub fn make_renderer(window: &winit::window::Window) -> Box<dyn Renderer> {
         triangle_shader_pipeline,
         concentric_circle_sector_shader_pipeline,
         text_shader_pipeline,
+        bloom_pipeline,
+        hdr_pipeline,
         cached_text_textures: HashMap::new(),
         font_rasterizer: make_font_rasterizer(),
     };

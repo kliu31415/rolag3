@@ -1,14 +1,13 @@
 use std::borrow::Cow;
 
 use bytemuck::Pod;
-use wgpu::{SurfaceConfiguration, Device, COPY_BUFFER_ALIGNMENT};
 
 pub fn new_wgpu_shader_pipeline(
     name: &str,
     shader_code: &str, 
-    device: &Device, 
-    config: &SurfaceConfiguration, 
-    vertex_buffer_layout: wgpu::VertexBufferLayout,
+    device: &wgpu::Device, 
+    format: wgpu::TextureFormat, 
+    buffers_layouts: &[wgpu::VertexBufferLayout],
     bind_group_layouts: &[&wgpu::BindGroupLayout],
 ) -> wgpu::RenderPipeline {
     let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -28,15 +27,13 @@ pub fn new_wgpu_shader_pipeline(
         vertex: wgpu::VertexState {
             module: &shader,
             entry_point: "vs_main",
-            buffers: &[
-                vertex_buffer_layout,
-            ],
+            buffers: buffers_layouts,
         },
         fragment: Some(wgpu::FragmentState {
             module: &shader,
             entry_point: "fs_main",
             targets: &[Some(wgpu::ColorTargetState {
-                format: config.format,
+                format,
                 blend: Some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING),
                 write_mask: wgpu::ColorWrites::ALL,
             })]
@@ -70,10 +67,10 @@ pub fn draw_triangle_inputs_batched<'a, T: Pod>(
 ) {
     render_pass.set_pipeline(pipeline);
     let bytes: &[u8] = bytemuck::cast_slice(&vertex_inputs);
-    if bytes.len() % (COPY_BUFFER_ALIGNMENT as usize) != 0 {
+    if bytes.len() % (wgpu::COPY_BUFFER_ALIGNMENT as usize) != 0 {
         todo!("wgpu copy buffer alignment isn't respected. Buffer size={}, desired alignment={}", 
             bytes.len(), 
-            COPY_BUFFER_ALIGNMENT);
+            wgpu::COPY_BUFFER_ALIGNMENT);
     }
     queue.write_buffer(vertex_buffer, 0u64, bytes);
     render_pass.set_vertex_buffer(0, vertex_buffer.slice(0..(bytes.len() as u64)));
@@ -91,10 +88,10 @@ pub fn draw_triangle_inputs_batched_bg1<'a, T: Pod>(
 ) {
     render_pass.set_pipeline(pipeline);
     let bytes: &[u8] = bytemuck::cast_slice(&vertex_inputs);
-    if bytes.len() % (COPY_BUFFER_ALIGNMENT as usize) != 0 {
+    if bytes.len() % (wgpu::COPY_BUFFER_ALIGNMENT as usize) != 0 {
         todo!("wgpu copy buffer alignment isn't respected. Buffer size={}, desired alignment={}", 
             bytes.len(), 
-            COPY_BUFFER_ALIGNMENT);
+            wgpu::COPY_BUFFER_ALIGNMENT);
     }
     for (j, bind_group) in bind_groups.iter().enumerate() {
         render_pass.set_bind_group(j as u32, bind_group, &[]);

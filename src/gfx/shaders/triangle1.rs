@@ -1,6 +1,4 @@
-use wgpu::{SurfaceConfiguration, Device};
-
-use super::shader_pipeline::{new_wgpu_shader_pipeline, draw_triangle_inputs_batched};
+use super::util::{new_wgpu_shader_pipeline, draw_triangle_inputs_batched};
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -28,14 +26,14 @@ pub struct TriangleShaderPipeline {
 impl TriangleShaderPipeline {
     const NAME: &'static str = "triangle1";
 
-    pub fn new(device: &Device, config: &SurfaceConfiguration) -> Self {
+    pub fn new(device: &wgpu::Device, format: wgpu::TextureFormat) -> Self {
         Self {
             pipeline: new_wgpu_shader_pipeline(
                 Self::NAME, 
                 include_str!("triangle1.wgsl"), 
                 device, 
-                config, 
-                TriangleVertexShaderInput::desc(),
+                format, 
+                &[TriangleVertexShaderInput::desc()],
                 &[]),
         }
     }
