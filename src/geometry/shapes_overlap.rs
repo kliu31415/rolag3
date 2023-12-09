@@ -1,6 +1,4 @@
-use crate::rolag3::floor::rofiz::shape::Vector;
-
-use super::shape::{Shape, Polygon, Circle, BoundingBox};
+use super::shape::{Vector, Shape, Circle, Polygon, BoundingBox};
 
 pub fn shapes_overlap(shape1: &Shape, shape2: &Shape) -> bool {
     match shape1 {

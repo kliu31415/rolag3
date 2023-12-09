@@ -1,4 +1,4 @@
-use crate::rolag3::floor::{room_object::room_object_def::{RoomObject, RoomObjectMetadata, Act1Context, Act1Response, HandleCollisionContext, HandleCollisionResponse, NewRoomObjectContext}, draw::{DrawContext, FloorDrawCoordinate, Color}, rofiz::{rofiz_state::RofizObjectRef, rofiz_object::{Transformation, Hitbox}, shape::{Shape, Rect}}, room::RoomConnectionInfo};
+use crate::{rolag3::floor::{room_object::room_object_def::{RoomObject, RoomObjectMetadata, Act1Context, Act1Response, HandleCollisionContext, HandleCollisionResponse, NewRoomObjectContext}, draw::{DrawContext, FloorDrawCoordinate, Color}, rofiz::{rofiz_state::RofizObjectRef, rofiz_object::{Transformation, Hitbox}}, room::RoomConnectionInfo}, geometry::shape::{Shape, Rect}};
 
 pub struct RoomConnection {
     md: RoomObjectMetadata,

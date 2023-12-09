@@ -1,8 +1,8 @@
 use std::{rc::{Rc, Weak}, cell::RefCell};
 
-use crate::rolag3::floor::room_object::room_object_def::RoomObjectId;
+use crate::{rolag3::floor::{room_object::room_object_def::RoomObjectId, rofiz::rofiz_object::RofizObjectMovement}, geometry::{shape::Shape, shapes_overlap::shapes_overlap}};
 
-use super::{rofiz_object::{RofizObjBasicWall, RofizObjMovable, Hitbox, RofizObjectMovement, Transformation}, shape::Shape, shapes_overlap::shapes_overlap};
+use super::rofiz_object::{RofizObjBasicWall, RofizObjMovable, Hitbox, Transformation};
 
 
 #[derive(Debug, Clone)]

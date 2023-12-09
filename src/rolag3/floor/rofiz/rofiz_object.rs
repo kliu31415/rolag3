@@ -1,8 +1,6 @@
 use std::rc::Rc;
 
-use crate::rolag3::floor::room_object::room_object_def::RoomObjectId;
-
-use super::shape::Shape;
+use crate::{rolag3::floor::room_object::room_object_def::RoomObjectId, geometry::shape::Shape};
 
 pub type RofizObjId = usize;
 

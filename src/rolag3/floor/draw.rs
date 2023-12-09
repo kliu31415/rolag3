@@ -1,4 +1,4 @@
-use crate::gfx::renderer::{ColorRGBA32f, ViewSpaceCoordinate, DrawOpWithMetadata, DrawOpTriFan, DrawOp, ColoredTriVertex};
+use crate::gfx::renderer::{ColorRGBA32f, ViewSpaceCoordinate, DrawOpWithMetadata, DrawOpTriFan, DrawOp, ColoredTriVertex, DrawOpCCS, Rect};
 
 use super::{rofiz::rofiz_state::RofizState, floor_def::Floor};
 
@@ -102,6 +102,60 @@ impl DrawContext<'_> {
             .collect();
         let op = DrawOp::TriFan(DrawOpTriFan{vertexes: vs_coords});
         self.draw_ops.push(DrawOpWithMetadata::new(z, op));
+    }
+
+    pub fn add_draw_op_eye(&mut self, z: f64, center: FloorDrawCoordinate, width: f32, height: f32, border_thickness: f32, border_color: Color, sclera_color: Color, _iris_color: Color) {
+        assert!(width >= height, "expected eye width({}) >= height({}). Eyes look buggy otherwise.", width, height);
+        assert!(height >= 0.0);
+        // TODO if the height is 0, we should draw a straight line. Setting the height to a tiny value is a hack that
+        // makes the radii very large, which simulates a straight line. However, this might not be robust.
+        let height = f32::max(height, 1e-4);
+        let middle_radius = (f32::powi(width, 2) + f32::powi(height, 2)) / (4.0 * height);
+        let outer_radius = middle_radius + border_thickness / 2.0;
+        let inner_radius = middle_radius - border_thickness / 2.0;
+
+        let theta = f32::asin((width / 2.0) / middle_radius);
+        let viewport_x1 = center.x - width / 2.0 - border_thickness / 2.0;
+        let viewport_x2 = center.x + width / 2.0 + border_thickness / 2.0;
+        let viewport_y1 = center.y - height / 2.0 - border_thickness / 2.0;
+        let viewport_y2 = center.y;
+        let upper_half = DrawOp::ConcentricCircleSector(DrawOpCCS {
+            x: self.x_to_vsc(center.x),
+            y: self.y_to_vsc(center.y - height / 2.0 + middle_radius),
+            inner_radius: inner_radius * self.pixels_per_tile,
+            outer_radius: outer_radius * self.pixels_per_tile,
+            viewport: Some(self.bounds_to_rect_vsc(viewport_x1, viewport_x2, viewport_y1, viewport_y2)),
+            inner_color: Self::color_to_rdr(&sclera_color),
+            outer_color: Self::color_to_rdr(&border_color),
+            angle_range: Some((std::f32::consts::FRAC_PI_2 - theta, std::f32::consts::FRAC_PI_2 + theta)),
+        });
+        self.draw_ops.push(DrawOpWithMetadata::new(z, upper_half));
+
+        let viewport_y1 = center.y + height / 2.0 + border_thickness / 2.0;
+        let viewport_y2 = center.y;
+        let lower_half = DrawOp::ConcentricCircleSector(DrawOpCCS {
+            x: self.x_to_vsc(center.x),
+            y: self.y_to_vsc(center.y + height / 2.0 - middle_radius),
+            inner_radius: inner_radius * self.pixels_per_tile,
+            outer_radius: outer_radius * self.pixels_per_tile,
+            viewport: Some(self.bounds_to_rect_vsc(viewport_x1, viewport_x2, viewport_y1, viewport_y2)),
+            inner_color: Self::color_to_rdr(&sclera_color),
+            outer_color: Self::color_to_rdr(&border_color),
+            angle_range: Some((3.0 * std::f32::consts::FRAC_PI_2 - theta, 3.0 * std::f32::consts::FRAC_PI_2 + theta)),
+        });
+        self.draw_ops.push(DrawOpWithMetadata::new(z, lower_half));
+    }
+
+    pub fn bounds_to_rect_vsc(&self, x1: f32, x2: f32, y1: f32, y2: f32) -> Rect {
+        let x1 = self.x_to_vsc(x1);
+        let x2 = self.x_to_vsc(x2);
+        let y1 = self.y_to_vsc(y1);
+        let y2 = self.y_to_vsc(y2);
+        let x = f32::min(x1, x2);
+        let w = f32::max(x1, x2) - x;
+        let y = f32::min(y1, y2);
+        let h = f32::max(y1, y2) - y;
+        Rect::new(x, y, w, h)
     }
 
     pub fn get_rofiz(&self) -> &RofizState {

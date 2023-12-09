@@ -557,9 +557,15 @@ impl VertexBufferPool {
                 let new_buffer_size = (1.2 * (dbs as f64)) as u64;
                 let new_buffer = Rc::new(Self::make_vertex_buffer(self.buffers.len(), new_buffer_size, device));
                 new_buffers.push(new_buffer.clone());
-                buffers_to_use.insert(dbs, new_buffer);
+                if !buffers_to_use.contains_key(&dbs) {
+                    buffers_to_use.insert(dbs, Vec::new());
+                }
+                buffers_to_use.get_mut(&dbs).unwrap().push(new_buffer);
             } else {
-                buffers_to_use.insert(dbs, self.buffers[existing_buffer_idx].clone());
+                if !buffers_to_use.contains_key(&dbs) {
+                    buffers_to_use.insert(dbs, Vec::new());
+                }
+                buffers_to_use.get_mut(&dbs).unwrap().push(self.buffers[existing_buffer_idx].clone());
                 existing_buffer_idx += 1;
             }
         }
@@ -567,10 +573,12 @@ impl VertexBufferPool {
 
         let mut ret = Vec::new();
         for dbs in desired_buffer_sizes {
-            let (size, buffer) = buffers_to_use.range(dbs..).next().unwrap();
-            ret.push(buffer.clone());
-            let sz = *size;
-            buffers_to_use.remove(&sz);
+            let (size, buffers)= buffers_to_use.range_mut(dbs..).next().unwrap();
+            ret.push(buffers.pop().unwrap());
+            if buffers.is_empty() {
+                let sz = *size;
+                buffers_to_use.remove(&sz);
+            }
         }      
         ret
     }
@@ -647,10 +655,12 @@ impl WgpuRenderer {
         if args.inner_radius < 0.0 || args.outer_radius < 0.0 || args.inner_radius > args.outer_radius {
             panic!("concentric circle sector inner_radius({}) and outer_radius({}) have bad values", args.inner_radius, args.outer_radius);
         }
+        let full_viewport = Rect::new(args.x - args.outer_radius, args.y - args.outer_radius, args.outer_radius*2.0, args.outer_radius*2.0);
         let viewport = match args.viewport {
             Some(v) => v,
-            None => Rect::new(args.x - args.outer_radius, args.y - args.outer_radius, args.outer_radius*2.0, args.outer_radius*2.0),
+            None => full_viewport,
         };
+
         let position_x = self.x_to_ndc(viewport.x);
         let position_y = self.y_to_ndc(viewport.y);
         let position_w = self.w_to_ndc(viewport.w);
