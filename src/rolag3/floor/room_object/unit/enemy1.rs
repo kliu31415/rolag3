@@ -39,10 +39,12 @@ impl RoomObject for Enemy1 {
             FloorDrawCoordinate::new(x + w, y + h),
             FloorDrawCoordinate::new(x, y + h),
         ];
-        ctx.add_draw_op_quad(DrawContext::Z_UNIT, color, vertexes);
-        ctx.add_draw_op_eye(DrawContext::Z_UNIT + 1.0, FloorDrawCoordinate::new((xform.dx - 0.25) as f32, (xform.dy - 0.25) as f32), 0.4, 0.25, 0.05, Color::new(0.0, 0.0, 0.0, 1.0), Color::new(1.0, 1.0, 1.0, 1.0), Color::new(0.0, 0.0, 3.0, 1.0));
-        ctx.add_draw_op_eye(DrawContext::Z_UNIT + 1.0, FloorDrawCoordinate::new((xform.dx + 0.25) as f32, (xform.dy - 0.25) as f32), 0.4, 0.25, 0.05, Color::new(0.0, 0.0, 0.0, 1.0), Color::new(1.0, 1.0, 1.0, 1.0), Color::new(0.0, 0.0, 3.0, 1.0));
-        ctx.add_mouth_smile_draw_op(DrawContext::Z_UNIT + 1.0, ((1.0 + f64::sin(3.0 * ctx.get_room_time())) / 2.0) as f32, FloorDrawCoordinate::new(xform.dx as f32, (xform.dy + 0.25) as f32), 0.6, 0.29, 0.05, Color::new(0.0, 0.0, 0.0, 1.0), Color::new(0.5, 0.5, 0.5, 1.0));
+        let dop1 = ctx.do_quad(color, vertexes);
+        let dop2 = ctx.do_eye(FloorDrawCoordinate::new((xform.dx - 0.25) as f32, (xform.dy - 0.25) as f32), 0.4, 0.25, 0.05, Color::new(0.0, 0.0, 0.0, 1.0), Color::new(1.0, 1.0, 1.0, 1.0), Color::new(0.0, 0.0, 3.0, 1.0));
+        let dop3 = ctx.do_eye(FloorDrawCoordinate::new((xform.dx + 0.25) as f32, (xform.dy - 0.25) as f32), 0.4, 0.25, 0.05, Color::new(0.0, 0.0, 0.0, 1.0), Color::new(1.0, 1.0, 1.0, 1.0), Color::new(0.0, 0.0, 3.0, 1.0));
+        let dop4 = ctx.do_mouth_smile(((1.0 + f64::sin(3.0 * ctx.get_room_time())) / 2.0) as f32, FloorDrawCoordinate::new(xform.dx as f32, (xform.dy + 0.25) as f32), 0.6, 0.29, 0.05, Color::new(0.0, 0.0, 0.0, 1.0), Color::new(0.5, 0.5, 0.5, 1.0));
+        let dop_group = ctx.dop_group(vec![dop1, dop2, dop3, dop4].into_boxed_slice());
+        ctx.add_draw_op(DrawContext::Z_UNIT, dop_group);
     }
 
     fn handle_collision(&mut self, ctx: &mut HandleCollisionContext) -> HandleCollisionResponse {

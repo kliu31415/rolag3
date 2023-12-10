@@ -72,7 +72,8 @@ impl RoomObject for RoomConnection {
                         FloorDrawCoordinate::new(self.rci.x as f32, (self.rci.y + 1) as f32),
                     ],
                 };
-                ctx.add_draw_op_quad(DrawContext::Z_WALL, color, vertexes);
+                let dop = ctx.do_quad(color, vertexes);
+                ctx.add_draw_op(DrawContext::Z_WALL, dop);
             }
             Some(_) => {
                 let color_opaque = Color::new(0.0, 0.0, 0.0, 1.0);
@@ -103,7 +104,8 @@ impl RoomObject for RoomConnection {
                         (FloorDrawCoordinate::new(self.rci.x as f32, (self.rci.y + 1) as f32), color_opaque),
                     ],
                 };
-                ctx.add_draw_op_quad_multicolor(DrawContext::Z_ROOM_CONNECTION_TILE, vertexes);
+                let dop = ctx.do_quad_multicolor(vertexes);
+                ctx.add_draw_op(DrawContext::Z_ROOM_CONNECTION_TILE, dop);
             }
         }
     }

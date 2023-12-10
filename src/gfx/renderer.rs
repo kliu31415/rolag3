@@ -41,7 +41,7 @@ enum ShaderInput {
 
 #[derive(Debug)]
 pub enum DrawOp {
-    _Group(DrawOpGroup),
+    Group(DrawOpGroup),
     TriFan(DrawOpTriFan),
     _TriStrip(DrawOpTriStrip),
     ConcentricCircleSector(DrawOpCCS),
@@ -51,7 +51,7 @@ pub enum DrawOp {
 impl DrawOp {
     fn get_shader_id(&self) -> ShaderId {
         match self {
-            DrawOp::_Group(ref g) => g.ops[0].get_shader_id(),
+            DrawOp::Group(ref g) => g.ops[0].get_shader_id(),
             DrawOp::TriFan(_) => ShaderId::Triangle1,
             DrawOp::_TriStrip(_) => ShaderId::Triangle1,
             DrawOp::ConcentricCircleSector(_) => ShaderId::ConcentricCircleSector,
@@ -61,7 +61,7 @@ impl DrawOp {
 
     fn flatten(&self) -> Box<dyn Iterator<Item = &DrawOp> + '_> {
         match self {
-            DrawOp::_Group(ref g) => Box::new(g.ops.iter().flat_map(|x| x.flatten())),
+            DrawOp::Group(ref g) => Box::new(g.ops.iter().flat_map(|x| x.flatten())),
             _ => Box::new(std::iter::once(self)),
         }
     }
@@ -70,6 +70,14 @@ impl DrawOp {
 #[derive(Debug)]
 pub struct DrawOpGroup {
     pub ops: Box<[DrawOp]>,
+}
+
+impl DrawOpGroup {
+    pub fn new(ops: Box<[DrawOp]>) -> Self {
+        Self {
+            ops
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -450,7 +458,7 @@ impl Renderer for WgpuRenderer {
             let mut desired_buffer_sizes = Vec::new();
             while let Some(op) = ordered_ops.next() {
                 match op {
-                    DrawOp::_Group(_) => panic!("all DrawOpGroups should have been flattened by this point (1)"),
+                    DrawOp::Group(_) => panic!("all DrawOpGroups should have been flattened by this point (1)"),
                     DrawOp::TriFan(ref x) => {
                         self.draw_tri_fan(x).iter().for_each(|x| triangle1_shader_inputs_batch.push(*x));
                     }

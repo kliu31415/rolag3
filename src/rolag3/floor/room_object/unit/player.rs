@@ -86,7 +86,8 @@ impl RoomObject for Player {
             FloorDrawCoordinate::new(player_x + player_w, player_y + player_h),
             FloorDrawCoordinate::new(player_x, player_y + player_h),
         ];
-        ctx.add_draw_op_quad(DrawContext::Z_UNIT_PLAYER, color, vertexes);
+        let dop = ctx.do_quad(color, vertexes);
+        ctx.add_draw_op(DrawContext::Z_UNIT_PLAYER, dop);
     }
 
     fn handle_collision(&mut self, _ctx: &mut HandleCollisionContext) -> HandleCollisionResponse {

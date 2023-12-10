@@ -40,7 +40,8 @@ impl RoomObject for Enemy2 {
             FloorDrawCoordinate::new(x + w, y + h),
             FloorDrawCoordinate::new(x, y + h),
         ];
-        ctx.add_draw_op_quad(DrawContext::Z_UNIT, color, vertexes);
+        let dop = ctx.do_quad( color, vertexes);
+        ctx.add_draw_op(DrawContext::Z_UNIT, dop);
     }
 
     fn handle_collision(&mut self, ctx: &mut HandleCollisionContext) -> HandleCollisionResponse {

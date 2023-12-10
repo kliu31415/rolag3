@@ -1,4 +1,4 @@
-use crate::gfx::renderer::{ColorRGBA32f, ViewSpaceCoordinate, DrawOpWithMetadata, DrawOpTriFan, DrawOp, ColoredTriVertex, DrawOpCCS, Rect};
+use crate::gfx::renderer::{ColorRGBA32f, ViewSpaceCoordinate, DrawOpWithMetadata, DrawOpTriFan, DrawOp, ColoredTriVertex, DrawOpCCS, Rect, DrawOpGroup};
 
 use super::{rofiz::rofiz_state::RofizState, floor_def::Floor};
 
@@ -68,7 +68,15 @@ impl DrawContext<'_> {
     pub const Z_UNIT: f64 = 30.0;
     pub const Z_PROJECTILE: f64 = 40.0;
 
-    pub fn add_draw_op_tri_fan(&mut self, z: f64, color: Color, vertexes: Box<[FloorDrawCoordinate]>) {
+    pub fn add_draw_op(&mut self, z: f64, op: DrawOp) {
+        self.draw_ops.push(DrawOpWithMetadata::new(z, op));
+    }
+
+    pub fn dop_group(&self, ops: Box<[DrawOp]>) -> DrawOp {
+        DrawOp::Group(DrawOpGroup::new(ops))
+    }
+
+    pub fn do_tri_fan(&self, color: Color, vertexes: Box<[FloorDrawCoordinate]>) -> DrawOp {
         let vs_coords = vertexes
             .iter()
             .map(|c| ColoredTriVertex {
@@ -76,11 +84,10 @@ impl DrawContext<'_> {
                 vertex: ViewSpaceCoordinate{x: self.x_to_vsc(c.x), y: self.y_to_vsc(c.y)}
             })
             .collect();
-        let op = DrawOp::TriFan(DrawOpTriFan{vertexes: vs_coords});
-        self.draw_ops.push(DrawOpWithMetadata::new(z, op));
+        DrawOp::TriFan(DrawOpTriFan{vertexes: vs_coords})
     }
 
-    pub fn add_draw_op_quad(&mut self, z: f64, color: Color, vertexes: [FloorDrawCoordinate; 4]) {
+    pub fn do_quad(&self, color: Color, vertexes: [FloorDrawCoordinate; 4]) -> DrawOp {
         let vs_coords = vertexes
             .iter()
             .map(|c| ColoredTriVertex {
@@ -88,11 +95,10 @@ impl DrawContext<'_> {
                 vertex: ViewSpaceCoordinate{x: self.x_to_vsc(c.x), y: self.y_to_vsc(c.y)}
             })
             .collect();
-        let op = DrawOp::TriFan(DrawOpTriFan{vertexes: vs_coords});
-        self.draw_ops.push(DrawOpWithMetadata::new(z, op));
+        DrawOp::TriFan(DrawOpTriFan{vertexes: vs_coords})
     }
 
-    pub fn add_draw_op_quad_multicolor(&mut self, z: f64, vertexes: [(FloorDrawCoordinate, Color); 4]) {
+    pub fn do_quad_multicolor(&self, vertexes: [(FloorDrawCoordinate, Color); 4]) -> DrawOp {
         let vs_coords = vertexes
             .iter()
             .map(|c| ColoredTriVertex {
@@ -100,24 +106,22 @@ impl DrawContext<'_> {
                 vertex: ViewSpaceCoordinate{x: self.x_to_vsc(c.0.x), y: self.y_to_vsc(c.0.y)}
             })
             .collect();
-        let op = DrawOp::TriFan(DrawOpTriFan{vertexes: vs_coords});
-        self.draw_ops.push(DrawOpWithMetadata::new(z, op));
+        DrawOp::TriFan(DrawOpTriFan{vertexes: vs_coords})
     }
 
-    pub fn add_draw_op_eye(&mut self, z: f64, center: FloorDrawCoordinate, width: f32, height: f32, border_thickness: f32, border_color: Color, sclera_color: Color, _iris_color: Color) {
-        let upper = self.do_eye_half(z, true, center, width, height, border_thickness, border_color, sclera_color);
-        let lower = self.do_eye_half(z, false, center, width, height, border_thickness, border_color, sclera_color);
-        self.draw_ops.push(upper);
-        self.draw_ops.push(lower);
+    pub fn do_eye(&self, center: FloorDrawCoordinate, width: f32, height: f32, border_thickness: f32, border_color: Color, sclera_color: Color, _iris_color: Color) -> DrawOp {
+        let upper = self.do_eye_half(true, center, width, height, border_thickness, border_color, sclera_color);
+        let lower = self.do_eye_half(false, center, width, height, border_thickness, border_color, sclera_color);
 
         // TODO: draw iris. Probably use a DrawOpMulti
         // TODO: the corners where the lower and upper eye meet might appear rough rn. If so, maybe draw a circle on
         // each corner to make the corners smoother.
+        DrawOp::Group(DrawOpGroup::new(vec![upper, lower].into_boxed_slice()))
     }
 
     // height refers to the height of the whole eye, not just this half. The height of this half will be half the 
     // height of the whole eye.
-    fn do_eye_half(&self, z: f64, upper: bool, center: FloorDrawCoordinate, width: f32, mut height: f32, border_thickness: f32, border_color: Color, sclera_color: Color) -> DrawOpWithMetadata {
+    fn do_eye_half(&self, upper: bool, center: FloorDrawCoordinate, width: f32, mut height: f32, border_thickness: f32, border_color: Color, sclera_color: Color) -> DrawOp {
         assert!(width >= 0.0);
         assert!(height >= 0.0);
         if height > width {
@@ -164,20 +168,19 @@ impl DrawContext<'_> {
             outer_color: Self::color_to_rdr(&border_color),
             angle_range,
         });
-        DrawOpWithMetadata::new(z, half)
+        half
     }
 
-    pub fn add_mouth_smile_draw_op(&mut self, z: f64, spit: f32, loc: FloorDrawCoordinate, width: f32, height: f32, border_thickness: f32, border_color: Color, inner_color: Color) {
+    pub fn do_mouth_smile(&self, spit: f32, loc: FloorDrawCoordinate, width: f32, height: f32, border_thickness: f32, border_color: Color, inner_color: Color) -> DrawOp {
         assert!(width >= height*2.0);
         assert!(spit>=0.0 && spit<=1.0);
         let center = FloorDrawCoordinate::new(loc.x, loc.y + spit * (height / 8.0));
         let width = width - spit * (width - height);
         let upper_height = spit * height;
         let lower_height = 2.0 * height * (1.0 - 0.5 * spit);
-        let upper: DrawOpWithMetadata = self.do_eye_half(z, true, center, width, upper_height, border_thickness, border_color, inner_color);
-        let lower = self.do_eye_half(z, false, center, width, lower_height, border_thickness, border_color, inner_color);
-        self.draw_ops.push(upper);
-        self.draw_ops.push(lower);
+        let upper = self.do_eye_half(true, center, width, upper_height, border_thickness, border_color, inner_color);
+        let lower = self.do_eye_half( false, center, width, lower_height, border_thickness, border_color, inner_color);
+        DrawOp::Group(DrawOpGroup::new(vec![upper, lower].into_boxed_slice()))
     }
 
     pub fn bounds_to_rect_vsc(&self, x1: f32, x2: f32, y1: f32, y2: f32) -> Rect {

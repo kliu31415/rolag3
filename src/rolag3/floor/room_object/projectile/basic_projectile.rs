@@ -48,7 +48,8 @@ impl RoomObject for BasicProjectile {
             FloorDrawCoordinate::new(x + s, y + s),
             FloorDrawCoordinate::new(x, y + s),
         ];
-        ctx.add_draw_op_quad(DrawContext::Z_PROJECTILE, color, vertexes);
+        let dop = ctx.do_quad(color, vertexes);
+        ctx.add_draw_op(DrawContext::Z_PROJECTILE, dop);
     }
 
     fn handle_collision(&mut self, ctx: &mut HandleCollisionContext) -> HandleCollisionResponse {

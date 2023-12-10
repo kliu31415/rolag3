@@ -34,7 +34,8 @@ impl RoomObject for Boss1 {
             for v in p.vertexes.iter().chain(std::iter::once(&p.vertexes[0])) {
                 vertexes.push(FloorDrawCoordinate::new(v.x, v.y));
             }
-            ctx.add_draw_op_tri_fan(DrawContext::Z_UNIT, color, vertexes.into_boxed_slice());
+            let dop = ctx.do_tri_fan( color, vertexes.into_boxed_slice());
+            ctx.add_draw_op(DrawContext::Z_UNIT, dop);
         } else {
             panic!("shape is not polygon");
         }

@@ -30,7 +30,8 @@ impl RoomObject for BasicWall {
             FloorDrawCoordinate::new(self.x as f32, (self.y + 1) as f32),
         ];
 
-        ctx.add_draw_op_quad(DrawContext::Z_WALL, self.color, vertexes);
+        let dop = ctx.do_quad( self.color, vertexes);
+        ctx.add_draw_op(DrawContext::Z_WALL, dop);
     }
 
     fn handle_collision(&mut self, _ctx: &mut HandleCollisionContext) -> HandleCollisionResponse {
