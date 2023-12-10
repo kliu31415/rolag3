@@ -42,7 +42,7 @@ impl RoomObject for RoomConnection {
         Act1Response::new()
     }
 
-    fn draw(&self, ctx: &mut DrawContext) {
+    fn draw(&mut self, ctx: &mut DrawContext) {
         match ctx.get_room_cleared_at_time() {
             None => {
                 let color = Color::new(0.5, 0.2, 0.0, 1.0);

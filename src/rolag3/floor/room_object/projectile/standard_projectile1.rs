@@ -37,7 +37,7 @@ impl RoomObject for StandardProjectile1 {
         }
     }
 
-    fn draw(&self, ctx: &mut DrawContext) {
+    fn draw(&mut self, ctx: &mut DrawContext) {
         match &self.shape {
             ProjShape::TriFan { center, color, .. } => {
                 let rofiz_polygon = match ctx.get_rofiz().get_movable_object_xformed_shape(&self.ro_ref) {

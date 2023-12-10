@@ -2,7 +2,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use crate::{rolag3::floor::{run::{PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, draw::{DrawContext, Color, FloorDrawCoordinate}, room_object::{room_object_def::{RoomObject, Act1Context, FloorCoordinate, NewRoomObjectContext, RoomObjectMetadata, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse}, projectile::standard_projectile1::{StandardProjectile1Builder, StandardProjectile1BuilderRequired, ProjShape}, tiles::room_connection::{Direction, RoomConnection}}, rofiz::{rofiz_object::{Hitbox, Transformation}, rofiz_state::RofizState}, room::RoomConnectionInfo}, geometry::shape::{Shape, Point}};
 
-use super::{Unit, standard_unit::{StandardUnit, StandardUnitCommon, Budeb, BudebMaxSpeed}};
+use super::{Unit, standard_unit_common::{StandardUnit, StandardUnitCommon, Budeb, BudebMaxSpeed}};
 
 // (x, y) represents the center of the player
 pub struct Player {
@@ -84,7 +84,7 @@ impl RoomObject for Player {
         response
     }
 
-    fn draw(&self, ctx: &mut DrawContext) {
+    fn draw(&mut self, ctx: &mut DrawContext) {
         let color = self.su_common.as_ref().unwrap().get_draw_color(ctx.get_room_time(), Color::new(0.6, 0.4, 0.2, 1.0));
         let xform = ctx.get_rofiz().get_movable_object_xform(self.su_common.as_ref().unwrap().get_ro_ref());
         let player_x = xform.dx as f32 - Self::PLAYER_S / 2.0;

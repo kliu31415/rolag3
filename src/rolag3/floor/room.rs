@@ -1,6 +1,6 @@
 use std::{rc::Rc, cell::RefCell};
 
-use super::{room_object::{unit::{enemy1::Enemy1, enemy2::Enemy2, boss1::Boss1}, room_object_def::{NewRoomObjectContext, RoomObjectCollection, RoomObjectId}, wall::basic_wall::BasicWall, tiles::room_connection::{RoomConnection, Direction}}, draw::Color, rofiz::rofiz_state::RofizState, floor_def::RoomId};
+use super::{room_object::{unit::{enemy1::Enemy1, enemy2::Enemy2, boss1::Boss1, enemy3::new_enemy3}, room_object_def::{NewRoomObjectContext, RoomObjectCollection, RoomObjectId}, wall::basic_wall::BasicWall, tiles::room_connection::{RoomConnection, Direction}}, draw::Color, rofiz::rofiz_state::RofizState, floor_def::RoomId};
 
 pub struct Room {
     pub room_objects: RoomObjectCollection,
@@ -75,6 +75,9 @@ impl Room {
                 room_objects.add(Rc::new(RefCell::new(enemy)));
             }
         }
+
+        let enemy = new_enemy3(&mut new_floor_object_ctx, 9.0, 25.0);
+        room_objects.add(Rc::new(RefCell::new(enemy)));
 
         let enemy = Boss1::new(&mut new_floor_object_ctx, 5.0, 25.0);
         room_objects.add(Rc::new(RefCell::new(enemy)));

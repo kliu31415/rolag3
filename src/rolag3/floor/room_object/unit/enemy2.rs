@@ -1,6 +1,6 @@
 use crate::{rolag3::floor::{room_object::room_object_def::{RoomObjectMetadata, RoomObject, NewRoomObjectContext, Act1Response, Act1Context, HandleCollisionResponse, HandleCollisionContext, HcProjectileContext, HcProjectileResponse, Team}, rofiz::rofiz_object::{Hitbox, Transformation}, draw::{Color, FloorDrawCoordinate, DrawContext}}, geometry::shape::Shape};
 
-use super::{standard_unit::{StandardUnitCommon, StandardUnit}, Unit};
+use super::{standard_unit_common::{StandardUnitCommon, StandardUnit}, Unit};
 
 use std::f64::consts::PI;
 
@@ -27,7 +27,7 @@ impl RoomObject for Enemy2 {
         response
     }
 
-    fn draw(&self, ctx: &mut DrawContext) {
+    fn draw(&mut self, ctx: &mut DrawContext) {
         let color = self.su_common.get_draw_color(ctx.get_room_time(), Color::new(0.1, 0.8, 0.1, 1.0));
         let xform = ctx.get_rofiz().get_movable_object_xform(self.su_common.get_ro_ref());
         let x = xform.dx as f32 - Self::ENEMY2_S / 2.0;
@@ -71,6 +71,7 @@ impl RoomObject for Enemy2 {
     fn is_spectral(&self) -> bool {
         false
     }
+    
     fn blocks_room_clear(&self) -> bool {
         true
     }

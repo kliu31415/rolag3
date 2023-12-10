@@ -22,7 +22,7 @@ impl RoomObject for BasicWall {
         Act1Response::new()
     }
 
-    fn draw(&self, ctx: &mut DrawContext) {
+    fn draw(&mut self, ctx: &mut DrawContext) {
         let vertexes = [
             FloorDrawCoordinate::new(self.x as f32, self.y as f32),
             FloorDrawCoordinate::new((self.x + 1) as f32, self.y as f32),

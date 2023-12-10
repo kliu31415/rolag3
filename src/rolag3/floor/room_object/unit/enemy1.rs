@@ -1,6 +1,6 @@
 use crate::{rolag3::floor::{room_object::{room_object_def::{RoomObjectMetadata, RoomObject, NewRoomObjectContext, Act1Response, Act1Context, HandleCollisionResponse, HandleCollisionContext, HcProjectileContext, HcProjectileResponse, Team}, projectile::standard_projectile1::{StandardProjectile1Builder, StandardProjectile1BuilderRequired, ProjShape}}, rofiz::rofiz_object::{Hitbox, Transformation}, draw::{Color, FloorDrawCoordinate, DrawContext}}, geometry::shape::{Shape, Point}};
 
-use super::{standard_unit::{StandardUnitCommon, StandardUnit}, Unit};
+use super::{standard_unit_common::{StandardUnitCommon, StandardUnit}, Unit};
 
 use std::{f64::consts::PI, cell::RefCell, rc::Rc};
 
@@ -79,7 +79,7 @@ impl RoomObject for Enemy1 {
         response
     }
 
-    fn draw(&self, ctx: &mut DrawContext) {
+    fn draw(&mut self, ctx: &mut DrawContext) {
         let color = self.su_common.get_draw_color(ctx.get_room_time(), Color::new(0.1, 0.1, 1.0, 1.0));
         let xform = ctx.get_rofiz().get_movable_object_xform(self.su_common.get_ro_ref());
         let x = xform.dx as f32 - Self::ENEMY1_S / 2.0;

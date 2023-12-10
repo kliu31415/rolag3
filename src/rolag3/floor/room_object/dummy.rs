@@ -15,7 +15,7 @@ impl RoomObject for Dummy {
         unimplemented!()
     }
 
-    fn draw(&self, _ctx: &mut crate::rolag3::floor::draw::DrawContext) {
+    fn draw(&mut self, _ctx: &mut crate::rolag3::floor::draw::DrawContext) {
         unimplemented!()
     }
 

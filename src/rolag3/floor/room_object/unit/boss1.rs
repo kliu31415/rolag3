@@ -1,6 +1,6 @@
 use crate::{rolag3::floor::{room_object::room_object_def::{RoomObjectMetadata, RoomObject, NewRoomObjectContext, Act1Response, Act1Context, HandleCollisionResponse, HandleCollisionContext, HcProjectileContext, HcProjectileResponse, Team}, rofiz::rofiz_object::{Hitbox, Transformation}, draw::{Color, FloorDrawCoordinate, DrawContext}}, geometry::{star::get_star_shape, shape::{Shape, f32pairs_to_shape}}};
 
-use super::{standard_unit::{StandardUnitCommon, StandardUnit}, Unit};
+use super::{standard_unit_common::{StandardUnitCommon, StandardUnit}, Unit};
 
 pub struct Boss1 {
     md: RoomObjectMetadata,
@@ -24,7 +24,7 @@ impl RoomObject for Boss1 {
         response
     }
 
-    fn draw(&self, ctx: &mut DrawContext) {
+    fn draw(&mut self, ctx: &mut DrawContext) {
         let color = self.su_common.get_draw_color(ctx.get_room_time(), Color::new(10.0, 0.0, 0.0, 1.0));
         let xform = ctx.get_rofiz().get_movable_object_xform(self.su_common.get_ro_ref());
         let shape = ctx.get_rofiz().get_movable_object_xformed_shape(self.su_common.get_ro_ref());

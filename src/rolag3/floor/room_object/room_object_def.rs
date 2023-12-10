@@ -12,7 +12,7 @@ pub trait RoomObject {
     }
     fn get_metadata(&self) -> &RoomObjectMetadata;
     fn act1(&mut self, ctx: &mut Act1Context) -> Act1Response;
-    fn draw(&self, ctx: &mut DrawContext);
+    fn draw(&mut self, ctx: &mut DrawContext);
     fn handle_room_just_cleared(&self, _ctx: &mut HandleRoomJustClearedContext) {
         // I don't think any subclass uses this function right now
         // nop
@@ -428,7 +428,7 @@ impl HandleCollisionResponse {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum Team {
     Player,
     Enemy,
