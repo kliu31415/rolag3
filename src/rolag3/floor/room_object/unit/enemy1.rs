@@ -40,7 +40,9 @@ impl RoomObject for Enemy1 {
             FloorDrawCoordinate::new(x, y + h),
         ];
         ctx.add_draw_op_quad(DrawContext::Z_UNIT, color, vertexes);
-        ctx.add_draw_op_eye(DrawContext::Z_UNIT + 1.0, FloorDrawCoordinate::new(xform.dx as f32, xform.dy as f32), 0.5, 0.0, 0.05, Color::new(0.0, 0.0, 0.0, 1.0), Color::new(1.0, 1.0, 1.0, 1.0), Color::new(0.0, 0.0, 3.0, 1.0))
+        ctx.add_draw_op_eye(DrawContext::Z_UNIT + 1.0, FloorDrawCoordinate::new((xform.dx - 0.25) as f32, (xform.dy - 0.25) as f32), 0.4, 0.25, 0.05, Color::new(0.0, 0.0, 0.0, 1.0), Color::new(1.0, 1.0, 1.0, 1.0), Color::new(0.0, 0.0, 3.0, 1.0));
+        ctx.add_draw_op_eye(DrawContext::Z_UNIT + 1.0, FloorDrawCoordinate::new((xform.dx + 0.25) as f32, (xform.dy - 0.25) as f32), 0.4, 0.25, 0.05, Color::new(0.0, 0.0, 0.0, 1.0), Color::new(1.0, 1.0, 1.0, 1.0), Color::new(0.0, 0.0, 3.0, 1.0));
+        ctx.add_mouth_smile_draw_op(DrawContext::Z_UNIT + 1.0, ((1.0 + f64::sin(3.0 * ctx.get_room_time())) / 2.0) as f32, FloorDrawCoordinate::new(xform.dx as f32, (xform.dy + 0.25) as f32), 0.6, 0.29, 0.05, Color::new(0.0, 0.0, 0.0, 1.0), Color::new(0.5, 0.5, 0.5, 1.0));
     }
 
     fn handle_collision(&mut self, ctx: &mut HandleCollisionContext) -> HandleCollisionResponse {

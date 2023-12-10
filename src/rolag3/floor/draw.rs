@@ -105,8 +105,28 @@ impl DrawContext<'_> {
     }
 
     pub fn add_draw_op_eye(&mut self, z: f64, center: FloorDrawCoordinate, width: f32, height: f32, border_thickness: f32, border_color: Color, sclera_color: Color, _iris_color: Color) {
-        assert!(width >= height, "expected eye width({}) >= height({}). Eyes look buggy otherwise.", width, height);
+        let upper = self.do_eye_half(z, true, center, width, height, border_thickness, border_color, sclera_color);
+        let lower = self.do_eye_half(z, false, center, width, height, border_thickness, border_color, sclera_color);
+        self.draw_ops.push(upper);
+        self.draw_ops.push(lower);
+
+        // TODO: draw iris. Probably use a DrawOpMulti
+        // TODO: the corners where the lower and upper eye meet might appear rough rn. If so, maybe draw a circle on
+        // each corner to make the corners smoother.
+    }
+
+    // height refers to the height of the whole eye, not just this half. The height of this half will be half the 
+    // height of the whole eye.
+    fn do_eye_half(&self, z: f64, upper: bool, center: FloorDrawCoordinate, width: f32, mut height: f32, border_thickness: f32, border_color: Color, sclera_color: Color) -> DrawOpWithMetadata {
+        assert!(width >= 0.0);
         assert!(height >= 0.0);
+        if height > width {
+            if height - 1e-2 <= width {
+                height = width;
+            } else {
+                panic!("expected eye width({}) >= height({}). Eyes look buggy otherwise.", width, height);
+            }
+        }
         // TODO if the height is 0, we should draw a straight line. Setting the height to a tiny value is a hack that
         // makes the radii very large, which simulates a straight line. However, this might not be robust.
         let height = f32::max(height, 1e-4);
@@ -117,33 +137,47 @@ impl DrawContext<'_> {
         let theta = f32::asin((width / 2.0) / middle_radius);
         let viewport_x1 = center.x - width / 2.0 - border_thickness / 2.0;
         let viewport_x2 = center.x + width / 2.0 + border_thickness / 2.0;
-        let viewport_y1 = center.y - height / 2.0 - border_thickness / 2.0;
-        let viewport_y2 = center.y;
-        let upper_half = DrawOp::ConcentricCircleSector(DrawOpCCS {
+        let viewport_y1 = center.y;
+        let viewport_y2: f32;
+        let y_center_add: f32;
+        let mut angle_range: Option<(f32, f32)>;
+        if upper {
+            viewport_y2 = center.y - height / 2.0 - border_thickness / 2.0;
+            y_center_add = -height / 2.0 + middle_radius;
+            angle_range = Some((std::f32::consts::FRAC_PI_2 - theta, std::f32::consts::FRAC_PI_2 + theta))
+        } else {
+            viewport_y2 = center.y + height / 2.0 + border_thickness / 2.0;
+            y_center_add = height / 2.0 - middle_radius;
+            angle_range = Some((3.0 * std::f32::consts::FRAC_PI_2 - theta, 3.0 * std::f32::consts::FRAC_PI_2 + theta))
+        }
+        if f32::is_nan(theta) {
+            // theta can be NaN due to rounding errors causing asin's input to be slightly out of the domain [-1, 1]
+            angle_range = None;
+        }
+        let half = DrawOp::ConcentricCircleSector(DrawOpCCS {
             x: self.x_to_vsc(center.x),
-            y: self.y_to_vsc(center.y - height / 2.0 + middle_radius),
+            y: self.y_to_vsc(center.y + y_center_add),
             inner_radius: inner_radius * self.pixels_per_tile,
             outer_radius: outer_radius * self.pixels_per_tile,
             viewport: Some(self.bounds_to_rect_vsc(viewport_x1, viewport_x2, viewport_y1, viewport_y2)),
             inner_color: Self::color_to_rdr(&sclera_color),
             outer_color: Self::color_to_rdr(&border_color),
-            angle_range: Some((std::f32::consts::FRAC_PI_2 - theta, std::f32::consts::FRAC_PI_2 + theta)),
+            angle_range,
         });
-        self.draw_ops.push(DrawOpWithMetadata::new(z, upper_half));
+        DrawOpWithMetadata::new(z, half)
+    }
 
-        let viewport_y1 = center.y + height / 2.0 + border_thickness / 2.0;
-        let viewport_y2 = center.y;
-        let lower_half = DrawOp::ConcentricCircleSector(DrawOpCCS {
-            x: self.x_to_vsc(center.x),
-            y: self.y_to_vsc(center.y + height / 2.0 - middle_radius),
-            inner_radius: inner_radius * self.pixels_per_tile,
-            outer_radius: outer_radius * self.pixels_per_tile,
-            viewport: Some(self.bounds_to_rect_vsc(viewport_x1, viewport_x2, viewport_y1, viewport_y2)),
-            inner_color: Self::color_to_rdr(&sclera_color),
-            outer_color: Self::color_to_rdr(&border_color),
-            angle_range: Some((3.0 * std::f32::consts::FRAC_PI_2 - theta, 3.0 * std::f32::consts::FRAC_PI_2 + theta)),
-        });
-        self.draw_ops.push(DrawOpWithMetadata::new(z, lower_half));
+    pub fn add_mouth_smile_draw_op(&mut self, z: f64, spit: f32, loc: FloorDrawCoordinate, width: f32, height: f32, border_thickness: f32, border_color: Color, inner_color: Color) {
+        assert!(width >= height*2.0);
+        assert!(spit>=0.0 && spit<=1.0);
+        let center = FloorDrawCoordinate::new(loc.x, loc.y + spit * (height / 8.0));
+        let width = width - spit * (width - height);
+        let upper_height = spit * height;
+        let lower_height = 2.0 * height * (1.0 - 0.5 * spit);
+        let upper: DrawOpWithMetadata = self.do_eye_half(z, true, center, width, upper_height, border_thickness, border_color, inner_color);
+        let lower = self.do_eye_half(z, false, center, width, lower_height, border_thickness, border_color, inner_color);
+        self.draw_ops.push(upper);
+        self.draw_ops.push(lower);
     }
 
     pub fn bounds_to_rect_vsc(&self, x1: f32, x2: f32, y1: f32, y2: f32) -> Rect {
