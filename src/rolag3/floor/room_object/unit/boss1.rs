@@ -46,7 +46,7 @@ impl RoomObject for Boss1 {
     }
 
     fn handle_collision_projectile(&mut self, ctx: &HcProjectileContext) -> HcProjectileResponse {
-        if matches!(ctx.team, Team::_Enemy) {
+        if matches!(ctx.team, Team::Enemy) {
             return HcProjectileResponse::nop();
         }
         let td_response = self.su_common.take_damage(ctx.room_time, ctx.damage);

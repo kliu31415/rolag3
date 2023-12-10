@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
-use crate::{rolag3::floor::{run::{PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, draw::{DrawContext, Color, FloorDrawCoordinate}, room_object::{room_object_def::{RoomObject, Act1Context, FloorCoordinate, NewRoomObjectContext, RoomObjectMetadata, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse}, projectile::basic_projectile::BasicProjectile, tiles::room_connection::{Direction, RoomConnection}}, rofiz::{rofiz_object::{Hitbox, Transformation}, rofiz_state::RofizState}, room::RoomConnectionInfo}, geometry::shape::Shape};
+use crate::{rolag3::floor::{run::{PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, draw::{DrawContext, Color, FloorDrawCoordinate}, room_object::{room_object_def::{RoomObject, Act1Context, FloorCoordinate, NewRoomObjectContext, RoomObjectMetadata, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse}, projectile::standard_projectile1::{StandardProjectile1Builder, StandardProjectile1BuilderRequired, ProjShape}, tiles::room_connection::{Direction, RoomConnection}}, rofiz::{rofiz_object::{Hitbox, Transformation}, rofiz_state::RofizState}, room::RoomConnectionInfo}, geometry::shape::{Shape, Point}};
 
 use super::{Unit, standard_unit::{StandardUnit, StandardUnitCommon, Budeb, BudebMaxSpeed}};
 
@@ -36,15 +36,26 @@ impl RoomObject for Player {
         if ctx.get_player_input().is_lmb_down && self.since_last_projectile > 0.01 {
             self.since_last_projectile = 0.0;
             let xform = ctx.get_rofiz().get_movable_object_xform(self.su_common.as_ref().unwrap().get_ro_ref());
-            let player_x = xform.dx;
-            let player_y = xform.dy;
             let self_as_weak = ctx.self_as_weak();
             let mut nfo_ctx = NewRoomObjectContext::from_act1_ctx(ctx);
             let proj_velocity = 50.0;
-            let dx = proj_velocity * f64::cos(mouse_theta) + self.su_common.as_ref().unwrap().get_velocity_x();
-            let dy = proj_velocity * f64::sin(mouse_theta) + self.su_common.as_ref().unwrap().get_velocity_y();
-            let proj = Rc::new(RefCell::new(BasicProjectile::new(&mut nfo_ctx, Team::Player, self_as_weak, 1.0, player_x, player_y, dx, dy)));
-            response.add_room_obj(proj);
+            let velocity_x = proj_velocity * f64::cos(mouse_theta) + self.su_common.as_ref().unwrap().get_velocity_x();
+            let velocity_y = proj_velocity * f64::sin(mouse_theta) + self.su_common.as_ref().unwrap().get_velocity_y();
+            let proj = StandardProjectile1Builder::new(StandardProjectile1BuilderRequired {
+                team: Team::Player,
+                shape: ProjShape::TriFan { 
+                    center: Point::new(0.0, 0.0), 
+                    vertexes: vec![Point::new(-0.4, -0.4), Point::new(0.4, -0.4), Point::new(0.4, 0.4), Point::new(-0.4, 0.4)].into_boxed_slice(), 
+                    color: Color::new(0.1, 2.0, 2.0, 1.0) 
+                },
+                lifespan: 1.0,
+                x: xform.dx,
+                y: xform.dy,
+                velocity_x,
+                velocity_y,
+                }).owner(self_as_weak)
+                .build(&mut nfo_ctx);
+            response.add_room_obj(Rc::new(RefCell::new(proj)));
         } else {
             self.since_last_projectile += tick_len;
         }
@@ -74,7 +85,7 @@ impl RoomObject for Player {
     }
 
     fn draw(&self, ctx: &mut DrawContext) {
-        let color = Color::new(0.6, 0.4, 0.2, 1.0);
+        let color = self.su_common.as_ref().unwrap().get_draw_color(ctx.get_room_time(), Color::new(0.6, 0.4, 0.2, 1.0));
         let xform = ctx.get_rofiz().get_movable_object_xform(self.su_common.as_ref().unwrap().get_ro_ref());
         let player_x = xform.dx as f32 - Self::PLAYER_S / 2.0;
         let player_y = xform.dy as f32 - Self::PLAYER_S / 2.0;
@@ -94,9 +105,20 @@ impl RoomObject for Player {
         HandleCollisionResponse::new()
     }
 
-    fn handle_collision_projectile(&mut self, _ctx: &HcProjectileContext) -> HcProjectileResponse {
-        // nop so far
-        HcProjectileResponse::nop()
+    fn handle_collision_projectile(&mut self, ctx: &HcProjectileContext) -> HcProjectileResponse {
+        if matches!(ctx.team, Team::Player) {
+            return HcProjectileResponse::nop();
+        }
+        let td_response = self.su_common.as_mut().unwrap().take_damage(ctx.room_time, ctx.damage);
+        let mut room_objects_to_delete = Vec::new();
+        if td_response.dead {
+            room_objects_to_delete.push(self.md.get_id());
+        }
+        HcProjectileResponse { 
+            projectile_consumed: true,
+            damage_dealt: td_response.damage_taken,
+            room_objects_to_delete,
+        }
     }
 
     fn handle_room_connection_collision(&mut self, rci: &RoomConnectionInfo) {
@@ -148,7 +170,7 @@ impl Player {
 
         // Rofiz will automatically clean up the old su_common.rofiz_object, because it'll detect that no RoomObjects
         // hold a reference to it anymore.
-        self.su_common = Some(StandardUnitCommon::new(ro_ref, 20.0, 30.0, 500.0));
+        self.su_common = Some(StandardUnitCommon::new(ro_ref, 200.0, 30.0, 500.0));
     }
 
     pub fn get_center_point(&self, rofiz: &RofizState) -> FloorCoordinate {

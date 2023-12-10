@@ -119,7 +119,7 @@ impl RoomObjectCollection {
     pub fn act1(&mut self, ctx: &mut Act1Context) {
         let mut responses = Vec::new();
         self.objects.iter().for_each(|x| {
-            ctx.set_self_rc(x.clone());
+            ctx.self_as_rc = Some(x.clone());
             responses.push(x.borrow_mut().act1(ctx))}
         );
         let should_remove: Vec<bool> = responses.iter().map(|x| x.get_remove_me()).collect();
@@ -263,6 +263,7 @@ pub struct Act1Context<'a> {
     player: Rc<RefCell<Player>>,
     self_as_rc: Option<Rc<RefCell<dyn RoomObject>>>,
     tick_length: f64,
+    room_time: f64,
     rng: &'a mut ThreadRng,
     room_cleared_at_time: Option<f64>,
 }
@@ -274,6 +275,7 @@ impl<'a> Act1Context<'a> {
         room_object_id_counter: &'a mut RoomObjectId, 
         player: Rc<RefCell<Player>>,
         tick_length: f64, 
+        room_time: f64,
         rng: &'a mut ThreadRng,
         room_cleared_at_time: Option<f64>,
     ) -> Self {
@@ -284,6 +286,7 @@ impl<'a> Act1Context<'a> {
             player,
             self_as_rc: Option::None,
             tick_length,
+            room_time,
             rng,
             room_cleared_at_time,
         }
@@ -301,8 +304,8 @@ impl<'a> Act1Context<'a> {
         self.tick_length
     }
 
-    pub fn set_self_rc(&mut self, weak: Rc<RefCell<dyn RoomObject>>) {
-        self.self_as_rc = Some(weak);
+    pub fn get_room_time(&self) -> f64 {
+        self.room_time
     }
 
     pub fn self_as_weak(&self) -> Weak<RefCell<dyn RoomObject>> {
@@ -322,7 +325,7 @@ impl<'a> Act1Context<'a> {
         // the borrow checker could panic here if self_as_rc is the same as a Rc<RefCell<Unit>> we attempt to borrow
         match team {
             Team::Player => Some(self.player.borrow().get_center_point(self.rofiz)),
-            Team::_Enemy => todo!("haven't implemented getting closest enemy unit location yet"),
+            Team::Enemy => todo!("haven't implemented getting closest enemy unit location yet"),
         } 
     }
 } 
@@ -428,7 +431,7 @@ impl HandleCollisionResponse {
 #[derive(Debug, Copy, Clone)]
 pub enum Team {
     Player,
-    _Enemy,
+    Enemy,
 }
 
 pub struct HcProjectileContext {

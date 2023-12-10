@@ -79,7 +79,7 @@ impl Projectile for BasicProjectile {
 
 impl BasicProjectile {
     const PROJ_S: f32 = 0.8;
-    pub fn new(ctx: &mut NewRoomObjectContext, team: Team, owner: Weak<RefCell<dyn RoomObject>>, lifespan: f64, x: f64, y: f64, dx: f64, dy: f64) -> Self {
+    pub fn _new(ctx: &mut NewRoomObjectContext, team: Team, owner: Weak<RefCell<dyn RoomObject>>, lifespan: f64, x: f64, y: f64, dx: f64, dy: f64) -> Self {
         let md = RoomObjectMetadata::new(ctx);
         let hitbox = Hitbox::new(
             Transformation::new(x, y, 0.0),

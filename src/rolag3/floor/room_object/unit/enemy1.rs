@@ -1,13 +1,21 @@
-use crate::{rolag3::floor::{room_object::room_object_def::{RoomObjectMetadata, RoomObject, NewRoomObjectContext, Act1Response, Act1Context, HandleCollisionResponse, HandleCollisionContext, HcProjectileContext, HcProjectileResponse, Team}, rofiz::rofiz_object::{Hitbox, Transformation}, draw::{Color, FloorDrawCoordinate, DrawContext}}, geometry::shape::Shape};
+use crate::{rolag3::floor::{room_object::{room_object_def::{RoomObjectMetadata, RoomObject, NewRoomObjectContext, Act1Response, Act1Context, HandleCollisionResponse, HandleCollisionContext, HcProjectileContext, HcProjectileResponse, Team}, projectile::standard_projectile1::{StandardProjectile1Builder, StandardProjectile1BuilderRequired, ProjShape}}, rofiz::rofiz_object::{Hitbox, Transformation}, draw::{Color, FloorDrawCoordinate, DrawContext}}, geometry::shape::{Shape, Point}};
 
 use super::{standard_unit::{StandardUnitCommon, StandardUnit}, Unit};
 
-use std::f64::consts::PI;
+use std::{f64::consts::PI, cell::RefCell, rc::Rc};
 
 pub struct Enemy1 {
     md: RoomObjectMetadata,
     su_common: StandardUnitCommon,
     accel_xy_angle: f64,
+    spit_projectile_start: Option<SpitProjectileInfo>,
+}
+
+struct SpitProjectileInfo {
+    start: f64,
+    proj_spit: bool,
+    proj_dx: f64,
+    proj_dy: f64,
 }
 
 impl RoomObject for Enemy1 {
@@ -16,11 +24,56 @@ impl RoomObject for Enemy1 {
     }
 
     fn act1(&mut self, ctx: &mut Act1Context) -> Act1Response {
-        let response = Act1Response::new();
+        let mut response = Act1Response::new();
         let tick_len = ctx.get_tick_length();
 
-        self.accel_xy_angle += 30.0 * f64::sqrt(tick_len) * (ctx.get_randf64() - 0.5);
-        self.su_common.accelerate_ro_xy(tick_len, f64::cos(self.accel_xy_angle), f64::sin(self.accel_xy_angle));
+        if self.spit_projectile_start.is_none() && ctx.get_randf64() < tick_len {
+            if let Some(player_xy) = ctx.get_team_closest_location(Team::Player) {
+                let xform = ctx.get_rofiz().get_movable_object_xform(self.su_common.get_ro_ref());
+                let proj_velocity = 25.0;
+                let theta = f64::atan2(player_xy.y - xform.dy, player_xy.x - xform.dx);
+                let proj_dx = proj_velocity * f64::cos(theta);
+                let proj_dy = proj_velocity * f64::sin(theta);
+                self.spit_projectile_start = Some(SpitProjectileInfo { start: ctx.get_room_time(), proj_spit: false, proj_dx, proj_dy });
+            }
+        }
+
+        if let Some(ref mut sps) = self.spit_projectile_start {
+            if !sps.proj_spit && ctx.get_room_time() - sps.start > 0.5 {
+                sps.proj_spit = true;
+                let xform = ctx.get_rofiz().get_movable_object_xform(self.su_common.get_ro_ref());
+                let self_as_weak = ctx.self_as_weak();
+                let mut nfo_ctx = NewRoomObjectContext::from_act1_ctx(ctx);
+                let proj = StandardProjectile1Builder::new(StandardProjectile1BuilderRequired {
+                    team: Team::Enemy,
+                    shape: ProjShape::TriFan { 
+                        center: Point::new(0.0, 0.0), 
+                        vertexes: vec![Point::new(-0.3, -0.3), Point::new(0.3, -0.3), Point::new(0.3, 0.3), Point::new(-0.3, 0.3)].into_boxed_slice(), 
+                        color: Color::new(0.0, 0.0, 15.0, 1.0) 
+                    },
+                    lifespan: 1.0,
+                    x: xform.dx,
+                    y: xform.dy,
+                    velocity_x: sps.proj_dx,
+                    velocity_y: sps.proj_dy,
+                    }).owner(self_as_weak)
+                    .build(&mut nfo_ctx);
+                response.add_room_obj(Rc::new(RefCell::new(proj)));
+            }
+            if ctx.get_room_time() - sps.start > 1.0 {
+                self.spit_projectile_start = None;
+            }
+        }
+
+        match self.spit_projectile_start {
+            Some(_) => {
+                self.su_common.reset_velocity();
+            }
+            None => {
+                self.accel_xy_angle += 10.0 * f64::sqrt(tick_len) * (ctx.get_randf64() - 0.5);
+                self.su_common.accelerate_ro_xy(tick_len, f64::cos(self.accel_xy_angle), f64::sin(self.accel_xy_angle));
+            }
+        }
         self.su_common.process(ctx.get_rofiz(), tick_len);
 
         response
@@ -56,7 +109,7 @@ impl RoomObject for Enemy1 {
     }
 
     fn handle_collision_projectile(&mut self, ctx: &HcProjectileContext) -> HcProjectileResponse {
-        if matches!(ctx.team, Team::_Enemy) {
+        if matches!(ctx.team, Team::Enemy) {
             return HcProjectileResponse::nop();
         }
         let td_response = self.su_common.take_damage(ctx.room_time, ctx.damage);
@@ -101,6 +154,7 @@ impl Enemy1 {
             md,
             su_common: StandardUnitCommon::new(ro_ref, 10.0, 40.0, 50.0),
             accel_xy_angle: 0.0,
+            spit_projectile_start: None,
         }
     }
 }

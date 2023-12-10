@@ -3,3 +3,4 @@ pub mod unit;
 pub mod wall;
 pub mod projectile;
 pub mod tiles;
+pub mod dummy;
