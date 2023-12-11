@@ -4,7 +4,6 @@ use crate::{rolag3::floor::{run::{PlayerHorizontalMoveInput, PlayerVerticalMoveI
 
 use super::{Unit, standard_unit_common::{StandardUnitCommon, Budeb, BudebMaxSpeed}};
 
-// (x, y) represents the center of the player
 pub struct Player {
     md: RoomObjectMetadata,
     su_common: Option<StandardUnitCommon>,
