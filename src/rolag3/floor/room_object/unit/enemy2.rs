@@ -1,13 +1,10 @@
 use crate::{rolag3::floor::{room_object::room_object_def::{RoomObjectMetadata, RoomObject, NewRoomObjectContext, Act1Response, Act1Context, HandleCollisionResponse, HandleCollisionContext, HcProjectileContext, HcProjectileResponse, Team}, rofiz::rofiz_object::{Hitbox, Transformation}, draw::{Color, FloorDrawCoordinate, DrawContext}}, geometry::shape::Shape};
 
-use super::{standard_unit_common::{StandardUnitCommon, StandardUnit}, Unit};
-
-use std::f64::consts::PI;
+use super::{standard_unit_common::StandardUnitCommon, Unit};
 
 pub struct Enemy2 {
     md: RoomObjectMetadata,
     su_common: StandardUnitCommon,
-    accel_xy_angle: f64,
 }
 
 impl RoomObject for Enemy2 {
@@ -47,7 +44,6 @@ impl RoomObject for Enemy2 {
     fn handle_collision(&mut self, ctx: &mut HandleCollisionContext) -> HandleCollisionResponse {
         if !ctx.get_other().borrow().is_spectral() {
             self.su_common.reset_velocity();
-            self.accel_xy_angle = 2.0 * PI * ctx.get_randf64();
         }
         HandleCollisionResponse::new()
     }
@@ -81,10 +77,6 @@ impl Unit for Enemy2 {
 
 }
 
-impl StandardUnit for Enemy2 {
-    
-}
-
 impl Enemy2 {
     const ENEMY2_S: f32 = 1.2;
 
@@ -98,7 +90,6 @@ impl Enemy2 {
         Enemy2 {
             md,
             su_common: StandardUnitCommon::new(ro_ref, 10.0, 40.0, 100.0),
-            accel_xy_angle: 0.0,
         }
     }
 }

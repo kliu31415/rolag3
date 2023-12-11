@@ -1,6 +1,6 @@
 use crate::{rolag3::floor::{room_object::room_object_def::{RoomObjectMetadata, RoomObject, NewRoomObjectContext, Act1Response, Act1Context, HandleCollisionResponse, HandleCollisionContext, HcProjectileContext, HcProjectileResponse, Team}, rofiz::rofiz_object::{Hitbox, Transformation}, draw::{Color, FloorDrawCoordinate, DrawContext}}, geometry::{star::get_star_shape, shape::{Shape, f32pairs_to_shape}}};
 
-use super::{standard_unit_common::{StandardUnitCommon, StandardUnit}, Unit};
+use super::{standard_unit_common::StandardUnitCommon, Unit};
 
 pub struct Boss1 {
     md: RoomObjectMetadata,
@@ -71,10 +71,6 @@ impl RoomObject for Boss1 {
 
 impl Unit for Boss1 {
 
-}
-
-impl StandardUnit for Boss1 {
-    
 }
 
 impl Boss1 {

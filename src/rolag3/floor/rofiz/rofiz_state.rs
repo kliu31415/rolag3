@@ -179,7 +179,7 @@ impl RofizState {
             obj.temp_hitbox = match obj.movement {
                 RofizObjectMovement::NoMove() => obj.current.transformation.get_transformed_shape(&obj.current.shape),
                 RofizObjectMovement::Move(ref t) => (obj.current.transformation.add(t)).get_transformed_shape(&obj.current.shape),
-                RofizObjectMovement::_MoveWithFallbacks(ref v) => (obj.current.transformation.add(&v[0])).get_transformed_shape(&obj.current.shape),
+                RofizObjectMovement::MoveWithFallbacks(ref v) => (obj.current.transformation.add(&v[0])).get_transformed_shape(&obj.current.shape),
                 RofizObjectMovement::_NewHitbox(_) => todo!(), 
                 RofizObjectMovement::Delete() => panic!("there should be no rofiz objects with Delete movement. Loc 1."),
             };
@@ -288,7 +288,7 @@ impl RofizState {
         // wrap up by officially moving objects
         for mo_rc in self.movable_objs_iter() {
             let mut mo = mo_rc.as_ref().borrow_mut();
-            if let RofizObjectMovement::_MoveWithFallbacks(ref v) = mo.movement {
+            if let RofizObjectMovement::MoveWithFallbacks(ref v) = mo.movement {
                 if mo.fallback_idx < v.len() {
                     mo.current.transformation = mo.current.transformation.add(&v[mo.fallback_idx]);
                 }
@@ -296,7 +296,7 @@ impl RofizState {
                 match mo.movement {
                     RofizObjectMovement::NoMove() => {},
                     RofizObjectMovement::Move(ref t) => mo.current.transformation = mo.current.transformation.add(t),
-                    RofizObjectMovement::_MoveWithFallbacks(_) => panic!("Rofiz MoveWithFallbacks should not be hit here"),
+                    RofizObjectMovement::MoveWithFallbacks(_) => panic!("Rofiz MoveWithFallbacks should not be hit here"),
                     RofizObjectMovement::_NewHitbox(_) => todo!(),
                     RofizObjectMovement::Delete() => panic!("there should be no rofiz objects with Delete movement. Loc 2."),
                 }
@@ -308,7 +308,7 @@ impl RofizState {
     // returns true if the object was moved back to a different location
     fn move_back(rom: &mut RofizObjMovable) -> bool {
         match rom.movement {
-        RofizObjectMovement::_MoveWithFallbacks(ref v) => {
+        RofizObjectMovement::MoveWithFallbacks(ref v) => {
             if rom.fallback_idx < v.len() {
                 rom.fallback_idx += 1;
                 if rom.fallback_idx < v.len() {

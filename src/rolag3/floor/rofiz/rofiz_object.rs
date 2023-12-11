@@ -39,7 +39,7 @@ pub struct RofizObjMovable {
 pub enum RofizObjectMovement {
     NoMove(),
     Move(Transformation),
-    _MoveWithFallbacks(Vec<Transformation>),
+    MoveWithFallbacks(Vec<Transformation>),
     _NewHitbox(Hitbox),
     Delete(),
 }
@@ -55,17 +55,27 @@ impl Transformation {
     pub fn new(dx: f64, dy: f64, dtheta: f64) -> Self {
         Self {dx, dy, dtheta}
     }
+
     pub fn get_transformed_shape(&self, shape: &Shape) -> Shape {
         match shape {
             Shape::Circle(c) => Shape::of_circle(c.x + self.dx as f32, c.y + self.dy as f32, c.r),
             Shape::Polygon(ref p) => Shape::Polygon(p.rotated_and_translated(self.dtheta as f32, self.dx as f32, self.dy as f32)),
         }
     }
+
     pub fn add(&self, rhs: &Transformation) -> Transformation {
         Transformation { 
             dx: self.dx + rhs.dx, 
             dy: self.dy + rhs.dy, 
             dtheta: self.dtheta + rhs.dtheta, 
+        }
+    }
+
+    pub fn sub(&self, rhs: &Transformation) -> Transformation {
+        Transformation { 
+            dx: self.dx - rhs.dx, 
+            dy: self.dy - rhs.dy, 
+            dtheta: self.dtheta - rhs.dtheta, 
         }
     }
 }

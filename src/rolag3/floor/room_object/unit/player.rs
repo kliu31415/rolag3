@@ -2,7 +2,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use crate::{rolag3::floor::{run::{PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, draw::{DrawContext, Color, FloorDrawCoordinate}, room_object::{room_object_def::{RoomObject, Act1Context, FloorCoordinate, NewRoomObjectContext, RoomObjectMetadata, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse}, projectile::standard_projectile1::{StandardProjectile1Builder, StandardProjectile1BuilderRequired, ProjShape}, tiles::room_connection::{Direction, RoomConnection}}, rofiz::{rofiz_object::{Hitbox, Transformation}, rofiz_state::RofizState}, room::RoomConnectionInfo}, geometry::shape::{Shape, Point}};
 
-use super::{Unit, standard_unit_common::{StandardUnit, StandardUnitCommon, Budeb, BudebMaxSpeed}};
+use super::{Unit, standard_unit_common::{StandardUnitCommon, Budeb, BudebMaxSpeed}};
 
 // (x, y) represents the center of the player
 pub struct Player {
@@ -133,11 +133,6 @@ impl RoomObject for Player {
 impl Unit for Player {
     
 }
-
-impl StandardUnit for Player {
-    
-}
-
 
 impl Player {
     const PLAYER_S: f32 = 1.5;

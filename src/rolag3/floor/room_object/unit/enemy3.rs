@@ -61,8 +61,6 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
         },
     }
 
-    ctx.su_ctx.su_common.process(ctx.act1_ctx.get_rofiz(), tick_len);
-
     Act1Response::new()
 }
 

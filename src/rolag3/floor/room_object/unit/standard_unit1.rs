@@ -40,7 +40,10 @@ impl RoomObject for StandardUnit1 {
             su_ctx: &mut su_ctx,
             act1_ctx: ctx,
         };
-        (self.specific.act1_fn)(&mut su_act1_ctx)
+        let resp = (self.specific.act1_fn)(&mut su_act1_ctx);
+        let tick_len = ctx.get_tick_length();
+        self.common.su_common.process(ctx.get_rofiz(), tick_len);
+        resp
     }
 
     fn draw<'a>(&'a mut self, ctx: &'a mut DrawContext) {
@@ -56,9 +59,9 @@ impl RoomObject for StandardUnit1 {
     fn handle_collision(&mut self, ctx: &mut HandleCollisionContext) -> HandleCollisionResponse {
         let mut su_ctx= self.common.get_su_ctx();
         let su_hc_ctx = &mut SuHandleCollisionContext {
-            _us_data: self.specific.us_data.as_mut(),
-            _su_ctx: &mut su_ctx,
-            _hc_ctx: ctx,
+            us_data: self.specific.us_data.as_mut(),
+            su_ctx: &mut su_ctx,
+            hc_ctx: ctx,
         };
         (self.specific.handle_collision_fn)(su_hc_ctx)
     }
@@ -116,6 +119,7 @@ pub struct StandardUnit1Builder {
 
 pub enum HandleCollisionLogic {
     Nop,
+    CustomFn(Box<HandleCollisionFnT>),
 }
 
 pub enum HcProjectileLogic {
@@ -154,6 +158,11 @@ impl StandardUnit1Builder {
         self
     }
 
+    pub fn handle_collision_logic(mut self, hc_logic: HandleCollisionLogic) -> Self {
+        self.handle_collision_logic = hc_logic;
+        self
+    }
+
     pub fn hitbox(mut self, xform: Transformation, shape: Shape) -> Self {
         self.hitbox = Some((xform, shape));
         self
@@ -162,7 +171,7 @@ impl StandardUnit1Builder {
     pub fn build(self, ctx: &mut NewRoomObjectContext) -> StandardUnit1 {
         let (xform, shape) = match self.hitbox {
             Some(x) => x,
-            None => todo!("all standard units must have hitboxes as of now"),
+            None => todo!("all standard units must have hitboxes right now (may be changed in the future)"),
         };
         let md = RoomObjectMetadata::new(ctx);
         let hitbox = Hitbox::new(xform, shape);
@@ -171,6 +180,7 @@ impl StandardUnit1Builder {
         
         let handle_collision_fn = match self.handle_collision_logic {
             HandleCollisionLogic::Nop => Box::new(handle_collision_nop),
+            HandleCollisionLogic::CustomFn(x) => x,
         };
 
         let hc_projectile_fn = match self.hc_projectile_logic {
@@ -220,10 +230,10 @@ fn draw_nop(_ctx: &mut SuDrawContext) {
 
 }
 
-struct SuHandleCollisionContext<'a> {
-    _us_data: &'a dyn Any,
-    _su_ctx: &'a mut SuContext<'a>,
-    _hc_ctx: &'a HandleCollisionContext<'a>,
+pub struct SuHandleCollisionContext<'a, 'b> {
+    pub us_data: &'a mut dyn Any,
+    pub su_ctx: &'a mut SuContext<'a>,
+    pub hc_ctx: &'a mut HandleCollisionContext<'b>,
 }
 
 fn handle_collision_nop(_ctx: &mut SuHandleCollisionContext) -> HandleCollisionResponse {

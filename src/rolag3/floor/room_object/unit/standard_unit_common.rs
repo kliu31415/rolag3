@@ -1,11 +1,5 @@
 use crate::rolag3::floor::{rofiz::{rofiz_object::{RofizObjectMovement, Transformation}, rofiz_state::{RofizState, RofizObjectRef}}, draw::Color};
 
-use super::Unit;
-
-pub trait StandardUnit: Unit {
-
-}
-
 pub enum Budeb {
     MaxSpeed(BudebMaxSpeed),
 }
@@ -28,6 +22,9 @@ pub struct StandardUnitCommon {
     velocity_x: f64,
     velocity_y: f64,
 
+    prev_position: Option<Transformation>,
+    prev_desired_movement: Option<Transformation>,
+
     hp: f64,
     last_damaged_time: f64,
 
@@ -46,6 +43,8 @@ impl StandardUnitCommon {
             tire_friction,
             velocity_x: 0.0,
             velocity_y: 0.0,
+            prev_position: None,
+            prev_desired_movement: None,
 
             hp,
             last_damaged_time: -100.0,
@@ -122,6 +121,23 @@ impl StandardUnitCommon {
     }
 
     pub fn process(&mut self, rofiz: &mut RofizState, tick_length: f64) {
+        let position = rofiz.get_movable_object_xform(&self.ro_ref);
+
+        if let Some(prev_position) = self.prev_position {
+            let prev_desired_movement = self.prev_desired_movement.unwrap();
+            let actual_movement = position.sub(&prev_position);
+            let accel_xform = actual_movement.sub(&prev_desired_movement);
+            let accel_norm = f64::hypot(accel_xform.dx, accel_xform.dy);
+            if accel_norm > 1e-10 {
+                let prev_velocity = f64::hypot(prev_desired_movement.dx, prev_desired_movement.dy);
+                self.velocity_x += 10.0 * prev_velocity * tick_length * accel_xform.dx / accel_norm;
+                self.velocity_y += 10.0 * prev_velocity * tick_length * accel_xform.dy / accel_norm;
+            }
+
+            self.prev_position = None;
+            self.prev_desired_movement = None;
+        }
+
         // this simulates friction.
         // TODO: friction is calculated with slightly different velocities than the acceleration calculations. 
         // Friction is computed with the post-acceleration velocity. This should only make a small difference in
@@ -152,7 +168,7 @@ impl StandardUnitCommon {
         let dy = self.velocity_y * tick_length * max_speed_mult * min_speed_mult;
         let dtheta = 0.0;
 
-        let mut move_fallbacks = vec![Transformation::new(dx, dy, dtheta)];
+        let mut movement_and_fallbacks = vec![Transformation::new(dx, dy, dtheta)];
 
         let dxy_r = f64::hypot(dx, dy);
         let dxy_theta = f64::atan2(dy, dx);
@@ -162,10 +178,12 @@ impl StandardUnitCommon {
                 let mag_adj = f64::cos(angle);
                 let new_dx = mag_adj * dxy_r * f64::cos(dxy_theta + angle);
                 let new_dy = mag_adj * dxy_r * f64::sin(dxy_theta + angle);
-                move_fallbacks.push(Transformation::new(new_dx, new_dy, dtheta));
+                movement_and_fallbacks.push(Transformation::new(new_dx, new_dy, dtheta));
             }
         }
-        let movement = RofizObjectMovement::_MoveWithFallbacks(move_fallbacks);
+        let movement = RofizObjectMovement::MoveWithFallbacks(movement_and_fallbacks.clone());
+        self.prev_position = Some(position);
+        self.prev_desired_movement = Some(Transformation::new(dx, dy, dtheta));
         rofiz.move_object(&self.ro_ref, movement);
     }
 
