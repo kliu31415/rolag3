@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::{rolag3::floor::room_object::room_object_def::RoomObjectId, geometry::shape::Shape};
+use crate::{rolag3::floor::room_object::room_object_def::RoomObjectId, geometry::shape::{Shape, Polygon, Point}};
 
 pub type RofizObjId = usize;
 
@@ -40,7 +40,7 @@ pub enum RofizObjectMovement {
     NoMove(),
     Move(Transformation),
     MoveWithFallbacks(Vec<Transformation>),
-    _NewHitbox(Hitbox),
+    NewHitbox(Hitbox),
     Delete(),
 }
 
@@ -59,8 +59,20 @@ impl Transformation {
     pub fn get_transformed_shape(&self, shape: &Shape) -> Shape {
         match shape {
             Shape::Circle(c) => Shape::of_circle(c.x + self.dx as f32, c.y + self.dy as f32, c.r),
-            Shape::Polygon(ref p) => Shape::Polygon(p.rotated_and_translated(self.dtheta as f32, self.dx as f32, self.dy as f32)),
+            Shape::Polygon(ref p) => Shape::Polygon(self.get_transformed_polygon(p)),
         }
+    }
+
+    pub fn get_transformed_polygon(&self, polygon: &Polygon) -> Polygon {
+        polygon.rotated_and_translated(self.dx as f32, self.dy as f32, self.dtheta as f32)
+    }
+
+    pub fn get_transformed_point(&self, p: Point) -> Point {
+        let cos_theta = f32::cos(self.dtheta as f32);
+        let sin_theta = f32::sin(self.dtheta as f32);
+        let rot_x = cos_theta * p.x - sin_theta * p.y;
+        let rot_y = sin_theta * p.x + cos_theta * p.y;
+        Point::new(self.dx as f32 + rot_x, self.dy as f32 + rot_y)
     }
 
     pub fn add(&self, rhs: &Transformation) -> Transformation {
@@ -80,6 +92,7 @@ impl Transformation {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct Hitbox {
     pub transformation: Transformation,
     pub shape: Shape,

@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
-use crate::{rolag3::floor::{run::{PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, draw::{DrawContext, Color, FloorDrawCoordinate}, room_object::{room_object_def::{RoomObject, Act1Context, FloorCoordinate, NewRoomObjectContext, RoomObjectMetadata, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse}, projectile::standard_projectile1::{StandardProjectile1Builder, StandardProjectile1BuilderRequired, ProjShape}, tiles::room_connection::{Direction, RoomConnection}}, rofiz::{rofiz_object::{Hitbox, Transformation}, rofiz_state::RofizState}, room::RoomConnectionInfo}, geometry::shape::{Shape, Point}};
+use crate::{rolag3::floor::{run::{PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, draw::{DrawContext, Color, FloorDrawCoordinate}, room_object::{room_object_def::{RoomObject, Act1Context, FloorCoordinate, NewRoomObjectContext, RoomObjectMetadata, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse}, projectile::projectile2::NewProjectile2Args, tiles::room_connection::{Direction, RoomConnection}}, rofiz::{rofiz_object::{Hitbox, Transformation}, rofiz_state::RofizState}, room::RoomConnectionInfo}, geometry::shape::{Shape, Point}};
 
 use super::{Unit, standard_unit_common::{StandardUnitCommon, Budeb, BudebMaxSpeed}};
 
@@ -40,20 +40,17 @@ impl RoomObject for Player {
             let proj_velocity = 50.0;
             let velocity_x = proj_velocity * f64::cos(mouse_theta) + self.su_common.as_ref().unwrap().get_velocity_x();
             let velocity_y = proj_velocity * f64::sin(mouse_theta) + self.su_common.as_ref().unwrap().get_velocity_y();
-            let proj = StandardProjectile1Builder::new(StandardProjectile1BuilderRequired {
+            let proj = NewProjectile2Args{
                 team: Team::Player,
-                shape: ProjShape::TriFan { 
-                    center: Point::new(0.0, 0.0), 
-                    vertexes: vec![Point::new(-0.4, -0.4), Point::new(0.4, -0.4), Point::new(0.4, 0.4), Point::new(-0.4, 0.4)].into_boxed_slice(), 
-                    color: Color::new(0.1, 2.0, 2.0, 1.0) 
-                },
-                lifespan: 1.0,
-                x: xform.dx,
-                y: xform.dy,
+                owner: self_as_weak,
+                lifespan: 2.0,
                 velocity_x,
                 velocity_y,
-                }).owner(self_as_weak)
-                .build(&mut nfo_ctx);
+                xform,
+                center: Point::new(0.0, 0.0), 
+                vertexes: vec![Point::new(-0.4, -0.4), Point::new(0.4, -0.4), Point::new(0.4, 0.4), Point::new(-0.4, 0.4)].into_boxed_slice(), 
+                color: Color::new(0.1, 2.0, 2.0, 1.0),
+            }.new(&mut nfo_ctx);
             response.add_room_obj(Rc::new(RefCell::new(proj)));
         } else {
             self.since_last_projectile += tick_len;

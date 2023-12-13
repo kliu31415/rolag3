@@ -1,4 +1,4 @@
-use crate::gfx::renderer::{ColorRGBA32f, ViewSpaceCoordinate, DrawOpWithMetadata, DrawOpTriFan, DrawOp, ColoredTriVertex, DrawOpCCS, Rect, DrawOpGroup};
+use crate::gfx::renderer::{ColorRGBA32f, ViewSpaceCoordinate, DrawOpWithMetadata, DrawOpTriFan, DrawOp, ColoredTriVertex, DrawOpCCS, DrawOpGroup, Rect};
 
 use super::{rofiz::rofiz_state::RofizState, floor_def::Floor};
 
@@ -87,6 +87,25 @@ impl DrawContext<'_> {
         DrawOp::TriFan(DrawOpTriFan{vertexes: vs_coords})
     }
 
+    // only works for convex quads
+    pub fn do_rect(&self, color: Color, x: f32, y: f32, w: f32, h: f32) -> DrawOp {
+        let vertexes = [
+            FloorDrawCoordinate::new(x, y),
+            FloorDrawCoordinate::new(x + w, y),
+            FloorDrawCoordinate::new(x + w, y + h),
+            FloorDrawCoordinate::new(x, y + h),
+        ];
+        let vs_coords = vertexes
+            .iter()
+            .map(|c| ColoredTriVertex {
+                color: Self::color_to_rdr(&color),
+                vertex: ViewSpaceCoordinate{x: self.x_to_vsc(c.x), y: self.y_to_vsc(c.y)}
+            })
+            .collect();
+        DrawOp::TriFan(DrawOpTriFan{vertexes: vs_coords})
+    }
+
+    // only works for convex quads
     pub fn do_quad(&self, color: Color, vertexes: [FloorDrawCoordinate; 4]) -> DrawOp {
         let vs_coords = vertexes
             .iter()
@@ -109,14 +128,24 @@ impl DrawContext<'_> {
         DrawOp::TriFan(DrawOpTriFan{vertexes: vs_coords})
     }
 
-    pub fn do_eye(&self, center: FloorDrawCoordinate, width: f32, height: f32, border_thickness: f32, border_color: Color, sclera_color: Color, _iris_color: Color) -> DrawOp {
+    pub fn do_eye(&self, center: FloorDrawCoordinate, iris_center: FloorDrawCoordinate, width: f32, height: f32, iris_radius: f32, border_thickness: f32, border_color: Color, sclera_color: Color, iris_color: Color) -> DrawOp {
         let upper = self.do_eye_half(true, center, width, height, border_thickness, border_color, sclera_color);
         let lower = self.do_eye_half(false, center, width, height, border_thickness, border_color, sclera_color);
+        let iris = DrawOp::ConcentricCircleSector(DrawOpCCS {
+            x: self.x_to_vsc(iris_center.x),
+            y: self.y_to_vsc(iris_center.y),
+            inner_radius: iris_radius * self.pixels_per_tile,
+            outer_radius: iris_radius * self.pixels_per_tile,
+            viewport: None,
+            inner_color: Self::color_to_rdr(&iris_color),
+            outer_color: Self::color_to_rdr(&iris_color),
+            angle_range: None,
+        });
 
         // TODO: draw iris. Probably use a DrawOpMulti
         // TODO: the corners where the lower and upper eye meet might appear rough rn. If so, maybe draw a circle on
         // each corner to make the corners smoother.
-        DrawOp::Group(DrawOpGroup::new(vec![upper, lower].into_boxed_slice()))
+        DrawOp::Group(DrawOpGroup::new(vec![upper, lower, iris].into_boxed_slice()))
     }
 
     // height refers to the height of the whole eye, not just this half. The height of this half will be half the 

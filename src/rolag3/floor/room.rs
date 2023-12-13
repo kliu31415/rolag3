@@ -37,7 +37,7 @@ impl Room {
             }
         }
 
-        let mut new_floor_object_ctx = NewRoomObjectContext::new(&mut self.rofiz, &mut self.room_object_id_counter);
+        let mut new_floor_object_ctx = NewRoomObjectContext::new(&mut self.rofiz, &mut self.room_object_id_counter, 0.0);
         for c in connections {
             let connection = RoomConnection::new(&mut new_floor_object_ctx, c);
             self.room_objects.add(Rc::new(RefCell::new(connection)));
@@ -48,7 +48,7 @@ impl Room {
     pub fn new_test_room1() -> Self {
         let mut rofiz = RofizState::new();
         let mut room_object_id_counter = Self::ROOM_OBJECT_ID_COUNTER_BEGIN;
-        let mut new_floor_object_ctx = NewRoomObjectContext::new(&mut rofiz, &mut room_object_id_counter);
+        let mut new_floor_object_ctx = NewRoomObjectContext::new(&mut rofiz, &mut room_object_id_counter, 0.0);
         let mut room_objects = RoomObjectCollection::new();
 
         for i in 0..30 {
@@ -94,7 +94,7 @@ impl Room {
     pub fn new_test_room2() -> Self {
         let mut rofiz = RofizState::new();
         let mut room_object_id_counter = Self::ROOM_OBJECT_ID_COUNTER_BEGIN;
-        let mut new_floor_object_ctx = NewRoomObjectContext::new(&mut rofiz, &mut room_object_id_counter);
+        let mut new_floor_object_ctx = NewRoomObjectContext::new(&mut rofiz, &mut room_object_id_counter, 0.0);
         let mut room_objects = RoomObjectCollection::new();
 
         for i in 0..30 {

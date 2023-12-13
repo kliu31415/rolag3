@@ -209,13 +209,15 @@ impl RoomObjectCollection {
 pub struct NewRoomObjectContext<'a> {
     rofiz: &'a mut RofizState,
     room_object_id_counter: &'a mut RoomObjectId,
+    room_time: f64,
 }
 
 impl<'a> NewRoomObjectContext<'a> {
-    pub fn new(rofiz: &'a mut RofizState, room_object_id_counter: &'a mut RoomObjectId) -> Self {
+    pub fn new(rofiz: &'a mut RofizState, room_object_id_counter: &'a mut RoomObjectId, room_time: f64) -> Self {
         Self {
             rofiz,
             room_object_id_counter,
+            room_time,
         }
     }
 
@@ -223,12 +225,17 @@ impl<'a> NewRoomObjectContext<'a> {
         Self {
             rofiz: act1_ctx.rofiz,
             room_object_id_counter: act1_ctx.room_object_id_counter,
+            room_time: act1_ctx.room_time,
         }
     }
 
     pub fn get_next_floor_object_id(&mut self) -> RoomObjectId {
         *self.room_object_id_counter += 1;
         *self.room_object_id_counter
+    }
+
+    pub fn get_room_time(&mut self) -> f64 {
+        self.room_time
     }
 
     pub fn add_basic_wall(&mut self, floor_object_id: RoomObjectId, x: u32, y: u32) -> RofizObjectRef {

@@ -124,7 +124,7 @@ impl Rolag3EventHandler {
         let mouse_theta_relative_to_player = (mouse_y - player_position.y).atan2(mouse_x - player_position.x);
 
         let run_floor_ctx = RunFloorContext {
-            num_ticks: 20,
+            ticks_per_frame: 20,
             frame_length,
             floor: &mut self.floor,
             player_input: &PlayerInput {

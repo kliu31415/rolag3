@@ -1,4 +1,4 @@
-use crate::{rolag3::floor::{room_object::room_object_def::{NewRoomObjectContext, Team, Act1Response}, rofiz::rofiz_object::Transformation, draw::{Color, FloorDrawCoordinate, DrawContext}}, geometry::shape::Shape};
+use crate::{rolag3::floor::{room_object::room_object_def::{NewRoomObjectContext, Team, Act1Response}, rofiz::rofiz_object::Transformation, draw::{Color, DrawContext}}, geometry::shape::Shape};
 
 use super::standard_unit1::{StandardUnit1Builder, StandardUnit1BuilderReq, StandardUnit1, SuAct1Context, SuDrawContext};
 
@@ -34,7 +34,7 @@ struct MoveCharge {
 }
 
 fn act1(ctx: &mut SuAct1Context) -> Act1Response {
-    let us_data = ctx.us_data.downcast_mut::<Enemy3Data>().unwrap();
+    let us_data = ctx.su_ctx.us_data.downcast_mut::<Enemy3Data>().unwrap();
     let tick_len = ctx.act1_ctx.get_tick_length();
 
     match us_data.move_charge {
@@ -69,14 +69,7 @@ fn draw(ctx: &mut SuDrawContext) {
     let xform = ctx.draw_ctx.get_rofiz().get_movable_object_xform(ctx.su_ctx.su_common.get_ro_ref());
     let x = xform.dx as f32 - SIDE_LEN / 2.0;
     let y = xform.dy as f32 - SIDE_LEN / 2.0;
-    let w = SIDE_LEN;
-    let h = SIDE_LEN;
-    let vertexes = [
-        FloorDrawCoordinate::new(x, y),
-        FloorDrawCoordinate::new(x + w, y),
-        FloorDrawCoordinate::new(x + w, y + h),
-        FloorDrawCoordinate::new(x, y + h),
-    ];
-    let dop = ctx.draw_ctx.do_quad( color, vertexes);
+    let s = SIDE_LEN;
+    let dop = ctx.draw_ctx.do_rect(color, x, y, s, s);
     ctx.draw_ctx.add_draw_op(DrawContext::Z_UNIT, dop);
 }

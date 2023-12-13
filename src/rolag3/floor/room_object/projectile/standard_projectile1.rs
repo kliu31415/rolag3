@@ -1,77 +1,84 @@
-use std::{cell::RefCell, rc::Weak};
+use std::{cell::RefCell, rc::Weak, any::Any};
 
-use crate::{rolag3::floor::{room_object::{room_object_def::{RoomObject, RoomObjectMetadata, Act1Context, NewRoomObjectContext, Act1Response, HandleCollisionContext, HandleCollisionResponse, HcProjectileContext, Team}, dummy::Dummy}, draw::{DrawContext, Color, FloorDrawCoordinate}, rofiz::{rofiz_object::{Hitbox, Transformation, RofizObjectMovement}, rofiz_state::RofizObjectRef}}, geometry::shape::{Shape, Point}};
+use crate::{rolag3::floor::{room_object::{room_object_def::{RoomObject, RoomObjectMetadata, Act1Context, NewRoomObjectContext, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team}, dummy::Dummy}, draw::DrawContext, rofiz::{rofiz_object::{Hitbox, Transformation}, rofiz_state::RofizObjectRef}}, geometry::shape::Shape};
 
 use super::Projectile;
 
+type Act1FnT = dyn Fn(&mut SpAct1Context) -> Act1Response;
+type DrawFnT = dyn Fn(&mut SpDrawContext);
+type HandleCollisionFnT = dyn Fn(&mut SpHandleCollisionContext) -> HandleCollisionResponse;
+
 pub struct StandardProjectile1 {
-    md: RoomObjectMetadata,
-    team: Team,
-    shape: ProjShape,
-    owner: Weak<RefCell<dyn RoomObject>>,
-    ro_ref: RofizObjectRef,
-    lifespan_left: f64,
-    dx: f64,
-    dy: f64,
+    data: Sp1Data,
+    logic: Sp1UnitSpecificLogic,
 }
+
+struct Sp1Data {
+    ps_data: Box<dyn Any>,
+    md: RoomObjectMetadata,
+    ro_ref: RofizObjectRef,
+    team: Team,
+    owner: Weak<RefCell<dyn RoomObject>>,
+    lifespan_left: f64,
+}
+
+struct Sp1UnitSpecificLogic {
+    act1_fn: Box<Act1FnT>,
+    draw_fn: Box<DrawFnT>,
+    handle_collision_fn: Box<HandleCollisionFnT>,
+}
+
+impl Sp1Data {
+    fn get_sp_ctx(&mut self) -> SpContext {
+        SpContext { 
+            ps_data: self.ps_data.as_mut(),
+            md: &self.md,
+            team: self.team,
+            ro_ref: &mut self.ro_ref,
+        }
+    }
+}
+
 
 impl RoomObject for StandardProjectile1 {
     fn get_metadata(&self) -> &RoomObjectMetadata {
-        &self.md
+        &self.data.md
     }
 
     fn act1(&mut self, ctx: &mut Act1Context) -> Act1Response {
         let tick_len = ctx.get_tick_length();
-        self.lifespan_left -= tick_len;
-        if self.lifespan_left < 0.0 {
-            if let Some(_owner) = self.owner.upgrade() {
+        self.data.lifespan_left -= tick_len;
+        if self.data.lifespan_left < 0.0 {
+            if let Some(_owner) = self.data.owner.upgrade() {
                 // notify owner?
             }
-            ctx.get_rofiz().move_object(&self.ro_ref, RofizObjectMovement::Delete());
-            Act1Response::new().remove_me()
-        } else {
-            let dx = self.dx * tick_len;
-            let dy = self.dy * tick_len;
-            ctx.get_rofiz().move_object(&self.ro_ref, RofizObjectMovement::Move(Transformation::new(dx, dy, 0.0)));
-            Act1Response::new()
+            return Act1Response::new().remove_me();
         }
+
+        let mut sp_ctx = self.data.get_sp_ctx();
+        let mut sp_act1_ctx = SpAct1Context {
+            sp_ctx: &mut sp_ctx,
+            act1_ctx: ctx,
+        };
+        (self.logic.act1_fn)(&mut sp_act1_ctx)
     }
 
     fn draw(&mut self, ctx: &mut DrawContext) {
-        match &self.shape {
-            ProjShape::TriFan { center, color, .. } => {
-                let rofiz_polygon = match ctx.get_rofiz().get_movable_object_xformed_shape(&self.ro_ref) {
-                    Shape::Polygon(p) => p,
-                    Shape::Circle(_) => panic!("expected polygon from Rofiz"),
-                };
-                let xform = ctx.get_rofiz().get_movable_object_xform(&self.ro_ref);
-                let xformed_center = FloorDrawCoordinate::new(center.x + xform.dx as f32, center.y + xform.dy as f32);
-
-                let vertexes = std::iter::once(xformed_center)
-                    .chain(rofiz_polygon.vertexes.iter().map(|v| FloorDrawCoordinate::new(v.x, v.y)))
-                    .chain(std::iter::once(FloorDrawCoordinate::new(rofiz_polygon.vertexes[0].x, rofiz_polygon.vertexes[1].y)))
-                    .collect();
-
-                let dop = ctx.do_tri_fan(*color, vertexes);
-                ctx.add_draw_op(DrawContext::Z_PROJECTILE, dop);
-            }
-        }
+        let mut sp_ctx = self.data.get_sp_ctx();
+        let mut sp_draw_ctx = SpDrawContext {
+            sp_ctx: &mut sp_ctx,
+            draw_ctx: ctx,
+        };
+        (self.logic.draw_fn)(&mut sp_draw_ctx)
     }
 
     fn handle_collision(&mut self, ctx: &mut HandleCollisionContext) -> HandleCollisionResponse {
-        if ctx.get_other().borrow().is_wall_like() {
-            return HandleCollisionResponse::new().remove_room_obj(self.md.get_id());
-        }
-        let hcp_response = ctx.get_other().borrow_mut().handle_collision_projectile(&HcProjectileContext{
-            team: self.team,
-            damage: 3.0,
-            room_time: ctx.get_room_time(),
-        });
-        let mut to_remove = hcp_response.room_objects_to_delete;
-        if hcp_response.projectile_consumed {
-            to_remove.push(self.md.get_id());
-        }
-        HandleCollisionResponse::new().remove_room_objs(to_remove.as_slice())
+        let mut sp_ctx = self.data.get_sp_ctx();
+        let mut sp_hc_ctx = SpHandleCollisionContext {
+            sp_ctx: &mut sp_ctx,
+            hc_ctx: ctx,
+        };
+        (self.logic.handle_collision_fn)(&mut sp_hc_ctx)
     }
 
     fn is_spectral(&self) -> bool {
@@ -83,27 +90,33 @@ impl Projectile for StandardProjectile1 {
 
 }
 
-pub struct StandardProjectile1BuilderRequired {
+pub struct Sp1BuilderReq {
     pub team: Team,
-    pub shape: ProjShape,
     pub lifespan: f64,
-    pub x: f64,
-    pub y: f64,
-    pub velocity_x: f64,
-    pub velocity_y: f64,
+    pub xform: Transformation,
+    pub shape: Shape,
 }
 
-pub struct StandardProjectile1Builder {
-    required: StandardProjectile1BuilderRequired,
+pub struct Sp1Builder {
+    req: Sp1BuilderReq,
 
     owner: Weak<RefCell<dyn RoomObject>>,
+    
+    ps_data: Box<dyn Any>,
+    act1_fn: Box<Act1FnT>,
+    draw_fn: Box<DrawFnT>,
+    handle_collision_fn: Box<HandleCollisionFnT>,
 }
 
-impl StandardProjectile1Builder {
-    pub fn new(required: StandardProjectile1BuilderRequired) -> Self {
+impl Sp1Builder {
+    pub fn new(req: Sp1BuilderReq) -> Self {
         Self {
-            required,
+            req,
             owner: Weak::<RefCell<Dummy>>::new(),
+            ps_data: Box::new(Dummy {}),
+            act1_fn: Box::new(act1_nop),
+            draw_fn: Box::new(draw_nop),
+            handle_collision_fn: Box::new(handle_collision_nop),
         }
     }
 
@@ -112,27 +125,79 @@ impl StandardProjectile1Builder {
         self
     }
 
+    pub fn ps_data(mut self, ps_data: Box<dyn Any>) -> Self {
+        self.ps_data = ps_data;
+        self
+    }
+
+    pub fn act1_fn(mut self, act1_fn: Box<Act1FnT>) -> Self {
+        self.act1_fn = act1_fn;
+        self
+    }
+
+    pub fn draw_fn(mut self, draw_fn: Box<DrawFnT>) -> Self {
+        self.draw_fn = draw_fn;
+        self
+    }
+
+    pub fn handle_collision_fn(mut self, handle_collision_fn: Box<HandleCollisionFnT>) -> Self {
+        self.handle_collision_fn = handle_collision_fn;
+        self
+    }
+
     pub fn build(self, ctx: &mut NewRoomObjectContext) -> StandardProjectile1 {
         let md = RoomObjectMetadata::new(ctx);
-        let xform = Transformation::new(self.required.x, self.required.y, 0.0);
-        let shape = match self.required.shape {
-            ProjShape::TriFan{ref vertexes, ..} => Shape::of_polygon(vertexes.clone()),
-        };
-        let hitbox = Hitbox::new(xform, shape);
+        let hitbox = Hitbox::new(self.req.xform, self.req.shape);
         let ro_ref = ctx.add_basic_projectile(md.get_id(), hitbox);
-        StandardProjectile1 { 
-            md, 
-            team: self.required.team, 
-            shape: self.required.shape,
-            owner: self.owner,
-            ro_ref, 
-            lifespan_left: self.required.lifespan, 
-            dx: self.required.velocity_x, 
-            dy: self.required.velocity_y, 
+        StandardProjectile1 {
+            data: Sp1Data { 
+                ps_data: self.ps_data, 
+                md,
+                ro_ref,
+                team: self.req.team,
+                owner: self.owner,
+                lifespan_left: self.req.lifespan,
+            },
+            logic: Sp1UnitSpecificLogic {
+                act1_fn: self.act1_fn,
+                draw_fn: self.draw_fn,
+                handle_collision_fn: self.handle_collision_fn,
+            },
         }
     }
 }
 
-pub enum ProjShape {
-    TriFan{center: Point, vertexes: Box<[Point]>, color: Color},
+pub struct SpContext<'a> {
+    pub ps_data: &'a mut dyn Any,
+    pub md: &'a RoomObjectMetadata,
+    pub team: Team,
+    pub ro_ref: &'a mut RofizObjectRef,
+}
+
+pub struct SpAct1Context<'a, 'b> {
+    pub sp_ctx: &'a mut SpContext<'a>,
+    pub act1_ctx: &'a mut Act1Context<'b>,
+}
+
+fn act1_nop(_ctx: &mut SpAct1Context) -> Act1Response {
+    Act1Response::new()
+}
+
+
+pub struct SpDrawContext<'a, 'b> {
+    pub sp_ctx: &'a mut SpContext<'a>,
+    pub draw_ctx: &'a mut DrawContext<'b>,
+}
+
+fn draw_nop(_ctx: &mut SpDrawContext) {
+
+}
+
+pub struct SpHandleCollisionContext<'a, 'b> {
+    pub sp_ctx: &'a mut SpContext<'a>,
+    pub hc_ctx: &'a mut HandleCollisionContext<'b>,
+}
+
+fn handle_collision_nop(_ctx: &mut SpHandleCollisionContext) -> HandleCollisionResponse {
+    HandleCollisionResponse::new()
 }

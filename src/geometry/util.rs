@@ -3,7 +3,7 @@
     This function fails on some edge cases. 
     Currently, it only handles the case where the inner polygon has the same number of vertices.
 */
-pub fn _get_inner_polygon(border_thickness: f32, vertexes: &[(f32, f32)]) -> Box<[(f32, f32)]> {
+pub fn get_inner_polygon(border_thickness: f32, vertexes: &[(f32, f32)]) -> Box<[(f32, f32)]> {
     let mut inner = vec![(0.0, 0.0); vertexes.len()];
     for i in 0..vertexes.len() {
         let prev: (f32, f32);
@@ -26,7 +26,7 @@ pub fn _get_inner_polygon(border_thickness: f32, vertexes: &[(f32, f32)]) -> Box
         let b = (next.0 - cur.0, next.1 - cur.1);
         let a_norm = f32::hypot(a.0, a.1);
         let b_norm = f32::hypot(b.0, b.1);
-        let angle = (a.0*b.0 + a.1*b.1) / (a_norm * b_norm);
+        let angle = f32::acos((a.0*b.0 + a.1*b.1) / (a_norm * b_norm));
         let inner_vertex_dist = border_thickness / f32::sin(angle / 2.0);
         // TODO: handle the case when angle == PI, in which case mid_vec = 0
         let mid_vec = (a.0 + b.0, a.1 + b.1);
@@ -35,7 +35,7 @@ pub fn _get_inner_polygon(border_thickness: f32, vertexes: &[(f32, f32)]) -> Box
         if angle > std::f32::consts::PI {
             multiplier *= -1.0;
         }
-        inner.push((cur.0 + mid_vec.0 * multiplier, cur.1 + mid_vec.1 * multiplier));
+        inner[i] = (cur.0 + mid_vec.0 * multiplier, cur.1 + mid_vec.1 * multiplier);
     }
     inner.into_boxed_slice()
 }

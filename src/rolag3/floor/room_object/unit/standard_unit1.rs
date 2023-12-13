@@ -10,18 +10,18 @@ type HandleCollisionFnT = dyn Fn(&mut SuHandleCollisionContext) -> HandleCollisi
 type HcProjectileFnT = dyn Fn(&mut SuHcProjectileContext) -> HcProjectileResponse;
 
 pub struct StandardUnit1 {
-    common: Su1CommonData,
-    specific: Su1UnitSpecificData,
+    data: Su1Data,
+    logic: Su1Logic,
 }
 
-pub struct Su1CommonData {
+pub struct Su1Data {
+    us_data: Box<dyn Any>,
     md: RoomObjectMetadata,
     team: Team,
     su_common: StandardUnitCommon,
 }
 
-pub struct Su1UnitSpecificData {
-    us_data: Box<dyn Any>,
+pub struct Su1Logic {
     act1_fn: Box<Act1FnT>,
     draw_fn: Box<DrawFnT>,
     handle_collision_fn: Box<HandleCollisionFnT>,
@@ -30,50 +30,46 @@ pub struct Su1UnitSpecificData {
 
 impl RoomObject for StandardUnit1 {
     fn get_metadata(&self) -> &RoomObjectMetadata {
-        &self.common.md
+        &self.data.md
     }
 
     fn act1<'a>(&'a mut self, ctx: &'a mut Act1Context) -> Act1Response {
-        let mut su_ctx= self.common.get_su_ctx();
+        let mut su_ctx= self.data.get_su_ctx();
         let mut su_act1_ctx = SuAct1Context {
-            us_data: self.specific.us_data.as_mut(),
             su_ctx: &mut su_ctx,
             act1_ctx: ctx,
         };
-        let resp = (self.specific.act1_fn)(&mut su_act1_ctx);
+        let resp = (self.logic.act1_fn)(&mut su_act1_ctx);
         let tick_len = ctx.get_tick_length();
-        self.common.su_common.process(ctx.get_rofiz(), tick_len);
+        self.data.su_common.process(ctx.get_rofiz(), tick_len);
         resp
     }
 
     fn draw<'a>(&'a mut self, ctx: &'a mut DrawContext) {
-        let mut su_ctx= self.common.get_su_ctx();
+        let mut su_ctx= self.data.get_su_ctx();
         let mut su_draw_ctx = SuDrawContext {
-            us_data: self.specific.us_data.as_mut(),
             su_ctx: &mut su_ctx,
             draw_ctx: ctx,
         };
-        (self.specific.draw_fn)(&mut su_draw_ctx)
+        (self.logic.draw_fn)(&mut su_draw_ctx)
     }
 
     fn handle_collision(&mut self, ctx: &mut HandleCollisionContext) -> HandleCollisionResponse {
-        let mut su_ctx= self.common.get_su_ctx();
+        let mut su_ctx= self.data.get_su_ctx();
         let su_hc_ctx = &mut SuHandleCollisionContext {
-            us_data: self.specific.us_data.as_mut(),
             su_ctx: &mut su_ctx,
             hc_ctx: ctx,
         };
-        (self.specific.handle_collision_fn)(su_hc_ctx)
+        (self.logic.handle_collision_fn)(su_hc_ctx)
     }
 
     fn handle_collision_projectile(&mut self, ctx: &HcProjectileContext) -> HcProjectileResponse {
-        let mut su_ctx= self.common.get_su_ctx();
+        let mut su_ctx= self.data.get_su_ctx();
         let su_hcp_ctx = &mut SuHcProjectileContext {
-            _us_data: self.specific.us_data.as_mut(),
             su_ctx: &mut su_ctx,
             hcp_ctx: ctx,
         };
-        (self.specific.hc_projectile_fn)(su_hcp_ctx)
+        (self.logic.hc_projectile_fn)(su_hcp_ctx)
     }
 
     fn is_spectral(&self) -> bool {
@@ -89,9 +85,10 @@ impl Unit for StandardUnit1 {
 
 }
 
-impl Su1CommonData {
+impl Su1Data {
     fn get_su_ctx<'a>(&'a mut self) -> SuContext<'a> {
         SuContext {
+            us_data: self.us_data.as_mut(),
             md: &self.md,
             team: self.team,
             su_common: &mut self.su_common,
@@ -123,6 +120,7 @@ pub enum HandleCollisionLogic {
 }
 
 pub enum HcProjectileLogic {
+    _ShouldNeverHappen,
     Default_,
 }
 
@@ -183,18 +181,19 @@ impl StandardUnit1Builder {
             HandleCollisionLogic::CustomFn(x) => x,
         };
 
-        let hc_projectile_fn = match self.hc_projectile_logic {
+        let hc_projectile_fn: Box<HcProjectileFnT> = match self.hc_projectile_logic {
             HcProjectileLogic::Default_ => Box::new(hc_projectile_default),
+            HcProjectileLogic::_ShouldNeverHappen => Box::new(hc_projectile_panic),
         };
 
         StandardUnit1 { 
-            common: Su1CommonData { 
+            data: Su1Data { 
+                us_data: self.us_data,
                 md, 
                 team: self.req.team, 
                 su_common, 
             },
-            specific: Su1UnitSpecificData {
-                us_data: self.us_data,
+            logic: Su1Logic {
                 act1_fn: self.act1_fn,
                 draw_fn: self.draw_fn,
                 handle_collision_fn,
@@ -205,13 +204,13 @@ impl StandardUnit1Builder {
 }
 
 pub struct SuContext<'a> {
+    pub us_data: &'a mut dyn Any,
     pub md: &'a RoomObjectMetadata,
     pub team: Team,
     pub su_common: &'a mut StandardUnitCommon,
 }
 
 pub struct SuAct1Context<'a, 'b> {
-    pub us_data: &'a mut dyn Any,
     pub su_ctx: &'a mut SuContext<'a>,
     pub act1_ctx: &'a mut Act1Context<'b>,
 }
@@ -221,7 +220,6 @@ fn act1_nop(_ctx: &mut SuAct1Context) -> Act1Response {
 }
 
 pub struct SuDrawContext<'a, 'b> {
-    pub us_data: &'a dyn Any,
     pub su_ctx: &'a mut SuContext<'a>,
     pub draw_ctx: &'a mut DrawContext<'b>,
 }
@@ -231,7 +229,6 @@ fn draw_nop(_ctx: &mut SuDrawContext) {
 }
 
 pub struct SuHandleCollisionContext<'a, 'b> {
-    pub us_data: &'a mut dyn Any,
     pub su_ctx: &'a mut SuContext<'a>,
     pub hc_ctx: &'a mut HandleCollisionContext<'b>,
 }
@@ -241,7 +238,6 @@ fn handle_collision_nop(_ctx: &mut SuHandleCollisionContext) -> HandleCollisionR
 }
 
 struct SuHcProjectileContext<'a> {
-    _us_data: &'a dyn Any,
     su_ctx: &'a mut SuContext<'a>,
     hcp_ctx: &'a HcProjectileContext,
 }
@@ -262,4 +258,8 @@ fn hc_projectile_default(ctx: &mut SuHcProjectileContext) -> HcProjectileRespons
         damage_dealt: td_response.damage_taken,
         room_objects_to_delete,
     }
+}
+
+fn hc_projectile_panic(_ctx: &mut SuHcProjectileContext) -> HcProjectileResponse {
+    panic!("handle_collision_projectile called for StandardUnit1, but it's expected to never happen")
 }

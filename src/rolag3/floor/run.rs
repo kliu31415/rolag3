@@ -7,7 +7,7 @@ use crate::rolag3::floor::room_object::unit::player::MoveRooms;
 use super::{room_object::room_object_def::{Act1Context, HandleCollisionContext}, floor_def::Floor};
 
 pub struct RunFloorContext<'a> {
-    pub num_ticks: u32,
+    pub ticks_per_frame: u32,
     pub frame_length: f64,
     pub floor: &'a mut Floor,
     pub player_input: &'a PlayerInput,
@@ -15,8 +15,8 @@ pub struct RunFloorContext<'a> {
 }
 
 pub fn run_floor_frame(ctx: RunFloorContext) {
-    let tick_length = ctx.frame_length / (ctx.num_ticks as f64);
-    for _ in 0 .. ctx.num_ticks {
+    let tick_length = ctx.frame_length / (ctx.ticks_per_frame as f64);
+    for _ in 0 .. ctx.ticks_per_frame {
         let tick_ctx = RunFloorTickContext {
             floor: ctx.floor,
             player_input: ctx.player_input,

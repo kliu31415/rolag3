@@ -180,7 +180,7 @@ impl RofizState {
                 RofizObjectMovement::NoMove() => obj.current.transformation.get_transformed_shape(&obj.current.shape),
                 RofizObjectMovement::Move(ref t) => (obj.current.transformation.add(t)).get_transformed_shape(&obj.current.shape),
                 RofizObjectMovement::MoveWithFallbacks(ref v) => (obj.current.transformation.add(&v[0])).get_transformed_shape(&obj.current.shape),
-                RofizObjectMovement::_NewHitbox(_) => todo!(), 
+                RofizObjectMovement::NewHitbox(ref h) => h.transformation.get_transformed_shape(&h.shape), 
                 RofizObjectMovement::Delete() => panic!("there should be no rofiz objects with Delete movement. Loc 1."),
             };
             obj.fallback_idx = 0;
@@ -229,7 +229,7 @@ impl RofizState {
                     if !shapes_overlap(&nsu_i.initial_hitbox, &nsu_j.temp_hitbox) {
                         while Self::move_back(&mut nsu_i) && shapes_overlap(&nsu_i.temp_hitbox, &nsu_j.temp_hitbox) {}
                         i_override = Some(i);
-                        continue;
+                        break;
                     }
 
                     // check if this collision can be solved just by moving nsu_j back. If so, only move nsu_j back.
@@ -254,7 +254,7 @@ impl RofizState {
                         // in valid final positions. However, since nsu_i moved, it needs to be rechecked with all
                         // other walls and nsu_js
                         i_override = Some(i);
-                        continue;
+                        break;
                     }
                 }
                 j += 1;
@@ -297,7 +297,7 @@ impl RofizState {
                     RofizObjectMovement::NoMove() => {},
                     RofizObjectMovement::Move(ref t) => mo.current.transformation = mo.current.transformation.add(t),
                     RofizObjectMovement::MoveWithFallbacks(_) => panic!("Rofiz MoveWithFallbacks should not be hit here"),
-                    RofizObjectMovement::_NewHitbox(_) => todo!(),
+                    RofizObjectMovement::NewHitbox(ref h) => mo.current = h.clone(),
                     RofizObjectMovement::Delete() => panic!("there should be no rofiz objects with Delete movement. Loc 2."),
                 }
             }

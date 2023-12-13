@@ -1,16 +1,17 @@
+#[derive(Debug, Clone)]
 pub enum Shape {
     Polygon(Polygon),
     Circle(Circle),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Polygon {
     pub vertexes: Box<[Point]>,
     pub bounding_box: BoundingBox,
 }
 
 impl Polygon {
-    fn new(vertexes: Box<[Point]>) -> Polygon {
+    pub fn new(vertexes: Box<[Point]>) -> Polygon {
         let mut bounding_box = BoundingBox {
             x1: f32::MAX,
             x2: f32::MIN,
@@ -26,11 +27,11 @@ impl Polygon {
         Self {vertexes, bounding_box}
     }
 
-    pub fn rotated_and_translated(&self, theta: f32, dx: f32, dy: f32) -> Self {
+    pub fn rotated_and_translated(&self, dx: f32, dy: f32, dtheta: f32) -> Self {
         let mut new_v = self.vertexes.clone();
 
-        let cos_theta = f32::cos(theta);
-        let sin_theta = f32::sin(theta);
+        let cos_theta = f32::cos(dtheta);
+        let sin_theta = f32::sin(dtheta);
         for p in new_v.iter_mut() {
             let rot_x = cos_theta * p.x - sin_theta * p.y;
             let rot_y = sin_theta * p.x + cos_theta * p.y;
@@ -76,7 +77,7 @@ impl Shape {
     }
 }
 
-pub fn f32pairs_to_shape(vertexes: Box<[(f32, f32)]>) -> Box<[Point]> {
+pub fn f32pairs_to_points(vertexes: Box<[(f32, f32)]>) -> Box<[Point]> {
     vertexes.iter().map(|v| Point::new(v.0, v.1)).collect()
 }
 
@@ -129,7 +130,7 @@ impl Rect {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct BoundingBox {
     x1: f32,
     x2: f32,
