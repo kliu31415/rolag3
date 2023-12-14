@@ -1,5 +1,7 @@
 use std::{collections::HashMap, cell::RefCell, rc::Rc};
 
+use rand::rngs::ThreadRng;
+
 use super::{room::{Room, RoomConnectionInfo}, room_object::{unit::player::{Player, MoveRooms}, room_object_def::FloorCoordinate, tiles::room_connection::Direction}};
 
 pub struct Floor {
@@ -12,9 +14,9 @@ pub struct Floor {
 pub type RoomId = usize;
 
 impl Floor {
-    pub fn new_test1() -> Self {
+    pub fn new_test1(rng: &mut ThreadRng) -> Self {
         let player = Rc::new(RefCell::new(Player::new_test1()));
-        let mut room1 = Room::new_test_room1();
+        let mut room1 = Room::new_test_room1(rng);
         let connection1_info1 = RoomConnectionInfo {
             x: 29,
             y: 10,
@@ -23,7 +25,7 @@ impl Floor {
             connects_to_x: 0,
             connects_to_y: 10,
         };
-        room1.finalize_with_connections(vec![connection1_info1]);
+        room1.finalize_with_connections(vec![connection1_info1], rng);
         player.borrow_mut().move_rooms(&mut room1.rofiz, MoveRooms::Teleport { x: 3.0, y: 3.0 });
         room1.room_objects.add(player.clone());
 
@@ -35,8 +37,8 @@ impl Floor {
             connects_to_x: 29,
             connects_to_y: 10,
         };
-        let mut room2 = Room::new_test_room2();
-        room2.finalize_with_connections(vec![connection1_info2]);
+        let mut room2 = Room::new_test_room2(rng);
+        room2.finalize_with_connections(vec![connection1_info2], rng);
 
         let mut rooms = HashMap::new();
         rooms.insert(1, room1);

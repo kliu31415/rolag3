@@ -1,6 +1,8 @@
 use std::{rc::Rc, cell::RefCell};
 
-use super::{room_object::{unit::{enemy2::new_enemy2, enemy3::new_enemy3, enemy1::new_enemy1, boss1::new_boss1}, room_object_def::{NewRoomObjectContext, RoomObjectCollection, RoomObjectId}, wall::basic_wall::BasicWall, tiles::room_connection::{RoomConnection, Direction}}, draw::Color, rofiz::rofiz_state::RofizState, floor_def::RoomId};
+use rand::rngs::ThreadRng;
+
+use super::{room_object::{unit::{enemy2::new_enemy2, enemy3::new_enemy3, enemy1::new_enemy1, boss1::new_boss1, enemy4::new_enemy4}, room_object_def::{NewRoomObjectContext, RoomObjectCollection, RoomObjectId}, wall::basic_wall::BasicWall, tiles::room_connection::{RoomConnection, Direction}}, draw::Color, rofiz::rofiz_state::RofizState, floor_def::RoomId};
 
 pub struct Room {
     pub room_objects: RoomObjectCollection,
@@ -25,7 +27,7 @@ impl Room {
     const ROOM_OBJECT_ID_COUNTER_BEGIN: RoomObjectId = 100;
     pub const PLAYER_ROOM_OBJECT_ID: RoomObjectId = 1;
 
-    pub fn finalize_with_connections(&mut self, connections: Vec<RoomConnectionInfo>) {
+    pub fn finalize_with_connections(&mut self, connections: Vec<RoomConnectionInfo>, rng: &mut ThreadRng) {
         for c in connections.iter() {
             for (x, y) in RoomConnection::get_occupied_coords(c.x, c.y, c.direction) {
                 self.room_objects.remove_wall_at(x, y);
@@ -37,7 +39,7 @@ impl Room {
             }
         }
 
-        let mut new_floor_object_ctx = NewRoomObjectContext::new(&mut self.rofiz, &mut self.room_object_id_counter, 0.0);
+        let mut new_floor_object_ctx = NewRoomObjectContext::new(&mut self.rofiz, &mut self.room_object_id_counter, 0.0, rng);
         for c in connections {
             let connection = RoomConnection::new(&mut new_floor_object_ctx, c);
             self.room_objects.add(Rc::new(RefCell::new(connection)));
@@ -45,10 +47,10 @@ impl Room {
         self.rofiz.finalize_start_floor();
     }
 
-    pub fn new_test_room1() -> Self {
+    pub fn new_test_room1(rng: &mut ThreadRng) -> Self {
         let mut rofiz = RofizState::new();
         let mut room_object_id_counter = Self::ROOM_OBJECT_ID_COUNTER_BEGIN;
-        let mut new_floor_object_ctx = NewRoomObjectContext::new(&mut rofiz, &mut room_object_id_counter, 0.0);
+        let mut new_floor_object_ctx = NewRoomObjectContext::new(&mut rofiz, &mut room_object_id_counter, 0.0, rng);
         let mut room_objects = RoomObjectCollection::new();
 
         for i in 0..30 {
@@ -79,6 +81,10 @@ impl Room {
         let enemy = new_enemy3(&mut new_floor_object_ctx, 9.0, 25.0);
         room_objects.add(Rc::new(RefCell::new(enemy)));
 
+        let enemy = new_enemy4(&mut new_floor_object_ctx, 12.0, 25.0);
+        room_objects.add(Rc::new(RefCell::new(enemy)));
+
+
         let enemy = new_boss1(&mut new_floor_object_ctx, 5.0, 25.0);
         room_objects.add(Rc::new(RefCell::new(enemy)));
 
@@ -91,10 +97,10 @@ impl Room {
         }
     }
 
-    pub fn new_test_room2() -> Self {
+    pub fn new_test_room2(rng: &mut ThreadRng) -> Self {
         let mut rofiz = RofizState::new();
         let mut room_object_id_counter = Self::ROOM_OBJECT_ID_COUNTER_BEGIN;
-        let mut new_floor_object_ctx = NewRoomObjectContext::new(&mut rofiz, &mut room_object_id_counter, 0.0);
+        let mut new_floor_object_ctx = NewRoomObjectContext::new(&mut rofiz, &mut room_object_id_counter, 0.0, rng);
         let mut room_objects = RoomObjectCollection::new();
 
         for i in 0..30 {

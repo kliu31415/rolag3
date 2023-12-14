@@ -60,14 +60,14 @@ fn draw(ctx: &mut SpDrawContext) {
 
     let rofiz_polygon = match ctx.draw_ctx.get_rofiz().get_movable_object_xformed_shape(&ctx.sp_ctx.ro_ref) {
         Shape::Polygon(p) => p,
-        Shape::Circle(_) => panic!("expected polygon from Rofiz"),
+        Shape::Circle(_) => panic!("expected polygon projectile from Rofiz in draw()"),
     };
     let xform = ctx.draw_ctx.get_rofiz().get_movable_object_xform(&ctx.sp_ctx.ro_ref);
     let xformed_center = FloorDrawCoordinate::new(ps_data.center.x + xform.dx as f32, ps_data.center.y + xform.dy as f32);
 
     let vertexes = std::iter::once(xformed_center)
         .chain(rofiz_polygon.vertexes.iter().map(|v| FloorDrawCoordinate::new(v.x, v.y)))
-        .chain(std::iter::once(FloorDrawCoordinate::new(rofiz_polygon.vertexes[0].x, rofiz_polygon.vertexes[1].y)))
+        .chain(std::iter::once(FloorDrawCoordinate::new(rofiz_polygon.vertexes[0].x, rofiz_polygon.vertexes[0].y)))
         .collect();
 
     let dop = ctx.draw_ctx.do_tri_fan(ps_data.color, vertexes);

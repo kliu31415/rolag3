@@ -74,10 +74,12 @@ const PLAYER_TEST_INPUT1: PhysicalKey = PhysicalKey::Code(KeyCode::Space);
 
 impl Rolag3EventHandler {
     fn new_test1() -> Rolag3EventHandler {
+        let mut rng = thread_rng();
+        let floor = Floor::new_test1(&mut rng);
         Rolag3EventHandler { 
             frame_timestamps: VecDeque::new(),
-            floor: Floor::new_test1(),
-            rng: thread_rng(),
+            floor,
+            rng,
         }
     }
 

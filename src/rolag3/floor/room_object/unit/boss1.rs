@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
-use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Act1Response, Team}, projectile::projectile3::NewProjectile3Args}, rofiz::rofiz_object::Transformation, draw::{Color, FloorDrawCoordinate, DrawContext}}, geometry::{star::get_star_shape, shape::{Shape, f32pairs_to_points, Polygon, Point}, util::get_inner_polygon}};
+use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Act1Response, Team}, projectile::projectile3::NewProjectile3Args}, rofiz::rofiz_object::Transformation, draw::{Color, FloorDrawCoordinate, DrawContext}}, geometry::{star::get_star_shape, shape::{Shape, Polygon, Point}, util::get_inner_polygon}};
 
 use super::standard_unit1::{StandardUnit1, StandardUnit1Builder, StandardUnit1BuilderReq, SuAct1Context, SuDrawContext};
 
@@ -17,10 +17,10 @@ enum Action {
 pub fn new_boss1(ctx: &mut NewRoomObjectContext, x: f64, y: f64) -> StandardUnit1 {
     let xform = Transformation::new(x, y, -std::f64::consts::PI / 10.0);
     let outer_vertexes = get_star_shape(5, 2.0, 3.0, 0.0);
-    let shape = Shape::of_polygon(f32pairs_to_points(outer_vertexes.clone()));
+    let shape = Shape::of_polygon(outer_vertexes.clone());
     let us_data: Boss1 = Boss1 { 
-        outer: Polygon::new(f32pairs_to_points(outer_vertexes.clone())),
-        inner: Polygon::new(f32pairs_to_points(get_inner_polygon(0.2, &outer_vertexes))),
+        outer: Polygon::new(outer_vertexes.clone()),
+        inner: Polygon::new(get_inner_polygon(0.2, &outer_vertexes)),
         action: None,
     };
 

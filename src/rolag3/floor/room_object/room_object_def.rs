@@ -1,4 +1,4 @@
-use std::{rc::{Rc, Weak}, cell::{RefCell, Ref}, collections::HashSet};
+use std::{rc::{Rc, Weak}, cell::{RefCell, Ref}, collections::HashSet, ops::Range};
 
 use rand::{rngs::ThreadRng, Rng};
 
@@ -210,14 +210,16 @@ pub struct NewRoomObjectContext<'a> {
     rofiz: &'a mut RofizState,
     room_object_id_counter: &'a mut RoomObjectId,
     room_time: f64,
+    rng: &'a mut ThreadRng,
 }
 
 impl<'a> NewRoomObjectContext<'a> {
-    pub fn new(rofiz: &'a mut RofizState, room_object_id_counter: &'a mut RoomObjectId, room_time: f64) -> Self {
+    pub fn new(rofiz: &'a mut RofizState, room_object_id_counter: &'a mut RoomObjectId, room_time: f64, rng: &'a mut ThreadRng,) -> Self {
         Self {
             rofiz,
             room_object_id_counter,
             room_time,
+            rng,
         }
     }
 
@@ -226,6 +228,7 @@ impl<'a> NewRoomObjectContext<'a> {
             rofiz: act1_ctx.rofiz,
             room_object_id_counter: act1_ctx.room_object_id_counter,
             room_time: act1_ctx.room_time,
+            rng: act1_ctx.rng,
         }
     }
 
@@ -236,6 +239,15 @@ impl<'a> NewRoomObjectContext<'a> {
 
     pub fn get_room_time(&mut self) -> f64 {
         self.room_time
+    }
+    
+    // in the range [0, 1)
+    pub fn get_randf64(&mut self) -> f64 {
+        self.rng.gen::<f64>()
+    }
+
+    pub fn get_randu64(&mut self, r: Range<u64>) -> u64 {
+        self.rng.gen_range(r)
     }
 
     pub fn add_basic_wall(&mut self, floor_object_id: RoomObjectId, x: u32, y: u32) -> RofizObjectRef {
@@ -402,6 +414,10 @@ impl<'a> HandleCollisionContext<'a> {
     // in the range [0, 1)
     pub fn get_randf64(&mut self) -> f64 {
         self.rng.gen::<f64>()
+    }
+
+    pub fn get_randu64(&mut self, r: Range<u64>) -> u64 {
+        self.rng.gen_range(r)
     }
 
     pub fn get_room_time(&self) -> f64 {
