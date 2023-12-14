@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Weak};
 
-use crate::{rolag3::floor::{room_object::room_object_def::{RoomObject, RoomObjectMetadata, Act1Context, NewRoomObjectContext, Act1Response, HandleCollisionContext, HandleCollisionResponse, HcProjectileContext, Team}, draw::{DrawContext, Color, FloorDrawCoordinate}, rofiz::{rofiz_object::{Hitbox, Transformation, RofizObjectMovement}, rofiz_state::RofizObjectRef}}, geometry::shape::Shape};
+use crate::{rolag3::floor::{room_object::room_object_def::{RoomObject, RoomObjectMetadata, Act1Context, NewRoomObjectContext, Act1Response, HandleCollisionContext, HandleCollisionResponse, HcProjectileContext, Team}, draw::{DrawContext, Color}, rofiz::{rofiz_object::{Hitbox, Transformation, RofizObjectMovement}, rofiz_state::RofizObjectRef}}, geometry::shape::{Shape, Point}};
 
 use super::Projectile;
 
@@ -43,10 +43,10 @@ impl RoomObject for BasicProjectile {
         let y = xform.dy as f32 - Self::PROJ_S / 2.0;
         let s = Self::PROJ_S;
         let vertexes = [
-            FloorDrawCoordinate::new(x, y),
-            FloorDrawCoordinate::new(x + s, y),
-            FloorDrawCoordinate::new(x + s, y + s),
-            FloorDrawCoordinate::new(x, y + s),
+            Point::new(x, y),
+            Point::new(x + s, y),
+            Point::new(x + s, y + s),
+            Point::new(x, y + s),
         ];
         let dop = ctx.do_quad(color, vertexes);
         ctx.add_draw_op(DrawContext::Z_PROJECTILE, dop);

@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Weak};
 
-use crate::{rolag3::floor::{room_object::room_object_def::{RoomObject, NewRoomObjectContext, Act1Response, HandleCollisionResponse, HcProjectileContext, Team}, draw::{DrawContext, Color, FloorDrawCoordinate}, rofiz::rofiz_object::{Transformation, RofizObjectMovement}}, geometry::shape::{Shape, Point}};
+use crate::{rolag3::floor::{room_object::room_object_def::{RoomObject, NewRoomObjectContext, Act1Response, HandleCollisionResponse, HcProjectileContext, Team}, draw::{DrawContext, Color}, rofiz::rofiz_object::{Transformation, RofizObjectMovement}}, geometry::shape::{Shape, Point}};
 
 use super::standard_projectile1::{Sp1Builder, Sp1BuilderReq, StandardProjectile1, SpAct1Context, SpDrawContext, SpHandleCollisionContext};
 
@@ -63,11 +63,11 @@ fn draw(ctx: &mut SpDrawContext) {
         Shape::Circle(_) => panic!("expected polygon projectile from Rofiz in draw()"),
     };
     let xform = ctx.draw_ctx.get_rofiz().get_movable_object_xform(&ctx.sp_ctx.ro_ref);
-    let xformed_center = FloorDrawCoordinate::new(ps_data.center.x + xform.dx as f32, ps_data.center.y + xform.dy as f32);
+    let xformed_center = Point::new(ps_data.center.x + xform.dx as f32, ps_data.center.y + xform.dy as f32);
 
     let vertexes = std::iter::once(xformed_center)
-        .chain(rofiz_polygon.vertexes.iter().map(|v| FloorDrawCoordinate::new(v.x, v.y)))
-        .chain(std::iter::once(FloorDrawCoordinate::new(rofiz_polygon.vertexes[0].x, rofiz_polygon.vertexes[0].y)))
+        .chain(rofiz_polygon.vertexes.iter().map(|v| Point::new(v.x, v.y)))
+        .chain(std::iter::once(Point::new(rofiz_polygon.vertexes[0].x, rofiz_polygon.vertexes[0].y)))
         .collect();
 
     let dop = ctx.draw_ctx.do_tri_fan(ps_data.color, vertexes);

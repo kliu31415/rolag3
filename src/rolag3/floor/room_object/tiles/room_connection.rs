@@ -1,4 +1,4 @@
-use crate::{rolag3::floor::{room_object::room_object_def::{RoomObject, RoomObjectMetadata, Act1Context, Act1Response, HandleCollisionContext, HandleCollisionResponse, NewRoomObjectContext}, draw::{DrawContext, FloorDrawCoordinate, Color}, rofiz::{rofiz_state::RofizObjectRef, rofiz_object::{Transformation, Hitbox}}, room::RoomConnectionInfo}, geometry::shape::{Shape, Rect}};
+use crate::{rolag3::floor::{room_object::room_object_def::{RoomObject, RoomObjectMetadata, Act1Context, Act1Response, HandleCollisionContext, HandleCollisionResponse, NewRoomObjectContext}, draw::{DrawContext, Color}, rofiz::{rofiz_state::RofizObjectRef, rofiz_object::{Transformation, Hitbox}}, room::RoomConnectionInfo}, geometry::shape::{Shape, Rect, Point}};
 
 pub struct RoomConnection {
     md: RoomObjectMetadata,
@@ -48,28 +48,28 @@ impl RoomObject for RoomConnection {
                 let color = Color::new(0.5, 0.2, 0.0, 1.0);
                 let vertexes = match self.rci.direction {
                     Direction::Left => [
-                        FloorDrawCoordinate::new(self.rci.x as f32, self.rci.y as f32),
-                        FloorDrawCoordinate::new((self.rci.x + 1) as f32, self.rci.y as f32),
-                        FloorDrawCoordinate::new((self.rci.x + 1) as f32, (self.rci.y + 3) as f32),
-                        FloorDrawCoordinate::new(self.rci.x as f32, (self.rci.y + 3) as f32),
+                        Point::new(self.rci.x as f32, self.rci.y as f32),
+                        Point::new((self.rci.x + 1) as f32, self.rci.y as f32),
+                        Point::new((self.rci.x + 1) as f32, (self.rci.y + 3) as f32),
+                        Point::new(self.rci.x as f32, (self.rci.y + 3) as f32),
                     ],
                     Direction::_Up => [
-                        FloorDrawCoordinate::new(self.rci.x as f32, self.rci.y as f32),
-                        FloorDrawCoordinate::new((self.rci.x + 3) as f32, self.rci.y as f32),
-                        FloorDrawCoordinate::new((self.rci.x + 3) as f32, (self.rci.y + 1) as f32),
-                        FloorDrawCoordinate::new(self.rci.x as f32, (self.rci.y + 1) as f32),
+                        Point::new(self.rci.x as f32, self.rci.y as f32),
+                        Point::new((self.rci.x + 3) as f32, self.rci.y as f32),
+                        Point::new((self.rci.x + 3) as f32, (self.rci.y + 1) as f32),
+                        Point::new(self.rci.x as f32, (self.rci.y + 1) as f32),
                     ],
                     Direction::Right => [
-                        FloorDrawCoordinate::new(self.rci.x as f32, self.rci.y as f32),
-                        FloorDrawCoordinate::new((self.rci.x + 1) as f32, self.rci.y as f32),
-                        FloorDrawCoordinate::new((self.rci.x + 1) as f32, (self.rci.y + 3) as f32),
-                        FloorDrawCoordinate::new(self.rci.x as f32, (self.rci.y + 3) as f32),
+                        Point::new(self.rci.x as f32, self.rci.y as f32),
+                        Point::new((self.rci.x + 1) as f32, self.rci.y as f32),
+                        Point::new((self.rci.x + 1) as f32, (self.rci.y + 3) as f32),
+                        Point::new(self.rci.x as f32, (self.rci.y + 3) as f32),
                     ],
                     Direction::_Down => [
-                        FloorDrawCoordinate::new(self.rci.x as f32, self.rci.y as f32),
-                        FloorDrawCoordinate::new((self.rci.x + 3) as f32, self.rci.y as f32),
-                        FloorDrawCoordinate::new((self.rci.x + 3) as f32, (self.rci.y + 1) as f32),
-                        FloorDrawCoordinate::new(self.rci.x as f32, (self.rci.y + 1) as f32),
+                        Point::new(self.rci.x as f32, self.rci.y as f32),
+                        Point::new((self.rci.x + 3) as f32, self.rci.y as f32),
+                        Point::new((self.rci.x + 3) as f32, (self.rci.y + 1) as f32),
+                        Point::new(self.rci.x as f32, (self.rci.y + 1) as f32),
                     ],
                 };
                 let dop = ctx.do_quad(color, vertexes);
@@ -80,28 +80,28 @@ impl RoomObject for RoomConnection {
                 let color_transparent = Color::new(0.0, 0.0, 0.0, 0.0);
                 let vertexes = match self.rci.direction {
                     Direction::Left => [
-                        (FloorDrawCoordinate::new(self.rci.x as f32, self.rci.y as f32), color_opaque),
-                        (FloorDrawCoordinate::new((self.rci.x + 1) as f32, self.rci.y as f32), color_transparent),
-                        (FloorDrawCoordinate::new((self.rci.x + 1) as f32, (self.rci.y + 3) as f32), color_transparent),
-                        (FloorDrawCoordinate::new(self.rci.x as f32, (self.rci.y + 3) as f32), color_opaque),
+                        (Point::new(self.rci.x as f32, self.rci.y as f32), color_opaque),
+                        (Point::new((self.rci.x + 1) as f32, self.rci.y as f32), color_transparent),
+                        (Point::new((self.rci.x + 1) as f32, (self.rci.y + 3) as f32), color_transparent),
+                        (Point::new(self.rci.x as f32, (self.rci.y + 3) as f32), color_opaque),
                     ],
                     Direction::_Up => [
-                        (FloorDrawCoordinate::new(self.rci.x as f32, self.rci.y as f32), color_opaque),
-                        (FloorDrawCoordinate::new((self.rci.x + 3) as f32, self.rci.y as f32), color_opaque),
-                        (FloorDrawCoordinate::new((self.rci.x + 3) as f32, (self.rci.y + 1) as f32), color_transparent),
-                        (FloorDrawCoordinate::new(self.rci.x as f32, (self.rci.y + 1) as f32), color_transparent),
+                        (Point::new(self.rci.x as f32, self.rci.y as f32), color_opaque),
+                        (Point::new((self.rci.x + 3) as f32, self.rci.y as f32), color_opaque),
+                        (Point::new((self.rci.x + 3) as f32, (self.rci.y + 1) as f32), color_transparent),
+                        (Point::new(self.rci.x as f32, (self.rci.y + 1) as f32), color_transparent),
                     ],
                     Direction::Right => [
-                        (FloorDrawCoordinate::new(self.rci.x as f32, self.rci.y as f32), color_transparent),
-                        (FloorDrawCoordinate::new((self.rci.x + 1) as f32, self.rci.y as f32), color_opaque),
-                        (FloorDrawCoordinate::new((self.rci.x + 1) as f32, (self.rci.y + 3) as f32), color_opaque),
-                        (FloorDrawCoordinate::new(self.rci.x as f32, (self.rci.y + 3) as f32), color_transparent),
+                        (Point::new(self.rci.x as f32, self.rci.y as f32), color_transparent),
+                        (Point::new((self.rci.x + 1) as f32, self.rci.y as f32), color_opaque),
+                        (Point::new((self.rci.x + 1) as f32, (self.rci.y + 3) as f32), color_opaque),
+                        (Point::new(self.rci.x as f32, (self.rci.y + 3) as f32), color_transparent),
                     ],
                     Direction::_Down => [
-                        (FloorDrawCoordinate::new(self.rci.x as f32, self.rci.y as f32), color_transparent),
-                        (FloorDrawCoordinate::new((self.rci.x + 3) as f32, self.rci.y as f32), color_transparent),
-                        (FloorDrawCoordinate::new((self.rci.x + 3) as f32, (self.rci.y + 1) as f32), color_opaque),
-                        (FloorDrawCoordinate::new(self.rci.x as f32, (self.rci.y + 1) as f32), color_opaque),
+                        (Point::new(self.rci.x as f32, self.rci.y as f32), color_transparent),
+                        (Point::new((self.rci.x + 3) as f32, self.rci.y as f32), color_transparent),
+                        (Point::new((self.rci.x + 3) as f32, (self.rci.y + 1) as f32), color_opaque),
+                        (Point::new(self.rci.x as f32, (self.rci.y + 1) as f32), color_opaque),
                     ],
                 };
                 let dop = ctx.do_quad_multicolor(vertexes);

@@ -1,4 +1,4 @@
-use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Act1Response, HandleCollisionResponse, Team}, projectile::projectile2::NewProjectile2Args}, rofiz::rofiz_object::Transformation, draw::{Color, FloorDrawCoordinate, DrawContext}}, geometry::shape::{Shape, Point}};
+use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Act1Response, HandleCollisionResponse, Team}, projectile::projectile2::NewProjectile2Args}, rofiz::rofiz_object::Transformation, draw::{Color, DrawContext}}, geometry::shape::{Shape, Point}};
 
 use super::standard_unit1::{StandardUnit1, StandardUnit1Builder, StandardUnit1BuilderReq, SuAct1Context, SuDrawContext, SuHandleCollisionContext, HandleCollisionLogic};
 
@@ -101,20 +101,20 @@ fn draw(ctx: &mut SuDrawContext) {
     let w = SIDE_LEN;
     let h = SIDE_LEN;
     let vertexes = [
-        FloorDrawCoordinate::new(x, y),
-        FloorDrawCoordinate::new(x + w, y),
-        FloorDrawCoordinate::new(x + w, y + h),
-        FloorDrawCoordinate::new(x, y + h),
+        Point::new(x, y),
+        Point::new(x + w, y),
+        Point::new(x + w, y + h),
+        Point::new(x, y + h),
     ];
     let dop1 = ctx.draw_ctx.do_quad(color, vertexes);
     let eye_border_color = ctx.su_ctx.su_common.get_draw_color(ctx.draw_ctx.get_room_time(), Color::new(0.0, 0.0, 0.0, 1.0));
     let eye_sclera_color = ctx.su_ctx.su_common.get_draw_color(ctx.draw_ctx.get_room_time(), Color::new(1.0, 1.0, 1.0, 1.0));
     let eye_iris_color = ctx.su_ctx.su_common.get_draw_color(ctx.draw_ctx.get_room_time(), Color::new(0.0, 0.0, 0.0, 1.0));
-    let dop2 = ctx.draw_ctx.do_eye(FloorDrawCoordinate::new((xform.dx - 0.25) as f32, (xform.dy - 0.25) as f32), FloorDrawCoordinate::new((xform.dx - 0.25) as f32, (xform.dy - 0.25) as f32), 0.4, 0.25, 0.1, 0.05, eye_border_color, eye_sclera_color, eye_iris_color);
-    let dop3 = ctx.draw_ctx.do_eye(FloorDrawCoordinate::new((xform.dx + 0.25) as f32, (xform.dy - 0.25) as f32), FloorDrawCoordinate::new((xform.dx + 0.25) as f32, (xform.dy - 0.25) as f32), 0.4, 0.25, 0.1, 0.05, eye_border_color, eye_sclera_color, eye_iris_color);
+    let dop2 = ctx.draw_ctx.do_eye(Point::new((xform.dx - 0.25) as f32, (xform.dy - 0.25) as f32), Point::new((xform.dx - 0.25) as f32, (xform.dy - 0.25) as f32), 0.4, 0.25, 0.1, 0.05, eye_border_color, eye_sclera_color, eye_iris_color);
+    let dop3 = ctx.draw_ctx.do_eye(Point::new((xform.dx + 0.25) as f32, (xform.dy - 0.25) as f32), Point::new((xform.dx + 0.25) as f32, (xform.dy - 0.25) as f32), 0.4, 0.25, 0.1, 0.05, eye_border_color, eye_sclera_color, eye_iris_color);
     let mouth_border_color = ctx.su_ctx.su_common.get_draw_color(ctx.draw_ctx.get_room_time(), Color::new(0.0, 0.0, 0.0, 1.0));
     let mouth_inner_color = ctx.su_ctx.su_common.get_draw_color(ctx.draw_ctx.get_room_time(), Color::new(0.5, 0.5, 0.5, 1.0));
-    let dop4 = ctx.draw_ctx.do_mouth_smile(((1.0 + f64::sin(3.0 * ctx.draw_ctx.get_room_time())) / 2.0) as f32, FloorDrawCoordinate::new(xform.dx as f32, (xform.dy + 0.25) as f32), 0.6, 0.29, 0.05, mouth_border_color, mouth_inner_color);
+    let dop4 = ctx.draw_ctx.do_mouth_smile(((1.0 + f64::sin(3.0 * ctx.draw_ctx.get_room_time())) / 2.0) as f32, Point::new(xform.dx as f32, (xform.dy + 0.25) as f32), 0.6, 0.29, 0.05, mouth_border_color, mouth_inner_color);
     let dop_group = ctx.draw_ctx.dop_group(vec![dop1, dop2, dop3, dop4].into_boxed_slice());
     ctx.draw_ctx.add_draw_op(DrawContext::Z_UNIT, dop_group);
 }

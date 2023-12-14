@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
-use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Act1Response, Team}, projectile::projectile3::NewProjectile3Args}, rofiz::rofiz_object::Transformation, draw::{Color, FloorDrawCoordinate, DrawContext}}, geometry::{star::get_star_shape, shape::{Shape, Polygon, Point}, util::get_inner_polygon}};
+use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Act1Response, Team}, projectile::projectile3::NewProjectile3Args}, rofiz::rofiz_object::Transformation, draw::{Color, DrawContext}}, geometry::{star::get_star_shape, shape::{Shape, Polygon, Point}, util::get_inner_polygon}};
 
 use super::standard_unit1::{StandardUnit1, StandardUnit1Builder, StandardUnit1BuilderReq, SuAct1Context, SuDrawContext};
 
@@ -125,15 +125,15 @@ fn draw(ctx: &mut SuDrawContext) {
     let inner_xformed = xform.get_transformed_polygon(&us_data.inner);
     let mut draw_ops = Vec::new();
     let mut vertexes = Vec::new();
-    vertexes.push(FloorDrawCoordinate::new(xform.dx as f32, xform.dy as f32));
+    vertexes.push(Point::new(xform.dx as f32, xform.dy as f32));
     for v in inner_xformed.vertexes.iter().chain(std::iter::once(&inner_xformed.vertexes[0])) {
-        vertexes.push(FloorDrawCoordinate::new(v.x, v.y));
+        vertexes.push(Point::new(v.x, v.y));
     }
     draw_ops.push(ctx.draw_ctx.do_tri_fan(color, vertexes.into_boxed_slice()));
 
     let color = ctx.su_ctx.su_common.get_draw_color(ctx.draw_ctx.get_room_time(), Color::new(0.0, 2.0, 0.0, 1.0));
     for quad in get_border_quads(xform, &us_data.outer, &us_data.inner).into_iter() {
-        let vertexes = quad.into_iter().map(|p| FloorDrawCoordinate::new(p.x, p.y)).collect();
+        let vertexes = quad.into_iter().map(|p| Point::new(p.x, p.y)).collect();
         draw_ops.push(ctx.draw_ctx.do_tri_fan(color, vertexes));
     }
 

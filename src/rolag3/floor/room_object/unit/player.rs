@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
-use crate::{rolag3::floor::{run::{PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, draw::{DrawContext, Color, FloorDrawCoordinate}, room_object::{room_object_def::{RoomObject, Act1Context, FloorCoordinate, NewRoomObjectContext, RoomObjectMetadata, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse}, projectile::projectile2::NewProjectile2Args, tiles::room_connection::{Direction, RoomConnection}}, rofiz::{rofiz_object::{Hitbox, Transformation}, rofiz_state::RofizState}, room::RoomConnectionInfo}, geometry::shape::{Shape, Point}};
+use crate::{rolag3::floor::{run::{PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, draw::{DrawContext, Color}, room_object::{room_object_def::{RoomObject, Act1Context, FloorCoordinate, NewRoomObjectContext, RoomObjectMetadata, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse}, projectile::projectile2::NewProjectile2Args, tiles::room_connection::{Direction, RoomConnection}}, rofiz::{rofiz_object::{Hitbox, Transformation}, rofiz_state::RofizState}, room::RoomConnectionInfo}, geometry::shape::{Shape, Point}};
 
 use super::{Unit, standard_unit_common::{StandardUnitCommon, Budeb, BudebMaxSpeed}};
 
@@ -88,10 +88,10 @@ impl RoomObject for Player {
         let player_w = Self::PLAYER_S;
         let player_h = Self::PLAYER_S;
         let vertexes = [
-            FloorDrawCoordinate::new(player_x, player_y),
-            FloorDrawCoordinate::new(player_x + player_w, player_y),
-            FloorDrawCoordinate::new(player_x + player_w, player_y + player_h),
-            FloorDrawCoordinate::new(player_x, player_y + player_h),
+            Point::new(player_x, player_y),
+            Point::new(player_x + player_w, player_y),
+            Point::new(player_x + player_w, player_y + player_h),
+            Point::new(player_x, player_y + player_h),
         ];
         let dop = ctx.do_quad(color, vertexes);
         ctx.add_draw_op(DrawContext::Z_UNIT_PLAYER, dop);

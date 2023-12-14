@@ -1,4 +1,4 @@
-use crate::gfx::renderer::{ColorRGBA32f, ViewSpaceCoordinate, DrawOpWithMetadata, DrawOpTriFan, DrawOp, ColoredTriVertex, DrawOpCCS, DrawOpGroup, Rect};
+use crate::{gfx::renderer::{ColorRGBA32f, ViewSpaceCoordinate, DrawOpWithMetadata, DrawOpTriFan, DrawOp, ColoredTriVertex, DrawOpCCS, DrawOpGroup, Rect}, geometry::shape::Point};
 
 use super::{rofiz::rofiz_state::RofizState, floor_def::Floor};
 
@@ -33,18 +33,6 @@ pub struct DrawContext<'a> {
     rofiz: &'a RofizState,
     room_time: f64,
     room_cleared_at_time: Option<f64>,
-}
-
-#[derive(Debug, Copy, Clone)]
-pub struct FloorDrawCoordinate {
-    pub x: f32,
-    pub y: f32,
-}
-
-impl FloorDrawCoordinate {
-    pub fn new(x: f32, y: f32) -> Self {
-        Self {x, y}
-    }
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -85,7 +73,7 @@ impl DrawContext<'_> {
         DrawOp::Group(DrawOpGroup::new(ops))
     }
 
-    pub fn do_tri_fan(&self, color: Color, vertexes: Box<[FloorDrawCoordinate]>) -> DrawOp {
+    pub fn do_tri_fan(&self, color: Color, vertexes: Box<[Point]>) -> DrawOp {
         let vs_coords = vertexes
             .iter()
             .map(|c| ColoredTriVertex {
@@ -99,10 +87,10 @@ impl DrawContext<'_> {
     // only works for convex quads
     pub fn do_rect(&self, color: Color, x: f32, y: f32, w: f32, h: f32) -> DrawOp {
         let vertexes = [
-            FloorDrawCoordinate::new(x, y),
-            FloorDrawCoordinate::new(x + w, y),
-            FloorDrawCoordinate::new(x + w, y + h),
-            FloorDrawCoordinate::new(x, y + h),
+            Point::new(x, y),
+            Point::new(x + w, y),
+            Point::new(x + w, y + h),
+            Point::new(x, y + h),
         ];
         let vs_coords = vertexes
             .iter()
@@ -115,7 +103,7 @@ impl DrawContext<'_> {
     }
 
     // only works for convex quads
-    pub fn do_quad(&self, color: Color, vertexes: [FloorDrawCoordinate; 4]) -> DrawOp {
+    pub fn do_quad(&self, color: Color, vertexes: [Point; 4]) -> DrawOp {
         let vs_coords = vertexes
             .iter()
             .map(|c| ColoredTriVertex {
@@ -126,7 +114,7 @@ impl DrawContext<'_> {
         DrawOp::TriFan(DrawOpTriFan{vertexes: vs_coords})
     }
 
-    pub fn do_quad_multicolor(&self, vertexes: [(FloorDrawCoordinate, Color); 4]) -> DrawOp {
+    pub fn do_quad_multicolor(&self, vertexes: [(Point, Color); 4]) -> DrawOp {
         let vs_coords = vertexes
             .iter()
             .map(|c| ColoredTriVertex {
@@ -137,7 +125,7 @@ impl DrawContext<'_> {
         DrawOp::TriFan(DrawOpTriFan{vertexes: vs_coords})
     }
 
-    pub fn do_eye(&self, center: FloorDrawCoordinate, iris_center: FloorDrawCoordinate, width: f32, height: f32, iris_radius: f32, border_thickness: f32, border_color: Color, sclera_color: Color, iris_color: Color) -> DrawOp {
+    pub fn do_eye(&self, center: Point, iris_center: Point, width: f32, height: f32, iris_radius: f32, border_thickness: f32, border_color: Color, sclera_color: Color, iris_color: Color) -> DrawOp {
         let upper = self.do_eye_half(true, center, width, height, border_thickness, border_color, sclera_color);
         let lower = self.do_eye_half(false, center, width, height, border_thickness, border_color, sclera_color);
         let iris = DrawOp::ConcentricCircleSector(DrawOpCCS {
@@ -159,7 +147,7 @@ impl DrawContext<'_> {
 
     // height refers to the height of the whole eye, not just this half. The height of this half will be half the 
     // height of the whole eye.
-    fn do_eye_half(&self, upper: bool, center: FloorDrawCoordinate, width: f32, mut height: f32, border_thickness: f32, border_color: Color, sclera_color: Color) -> DrawOp {
+    fn do_eye_half(&self, upper: bool, center: Point, width: f32, mut height: f32, border_thickness: f32, border_color: Color, sclera_color: Color) -> DrawOp {
         assert!(width >= 0.0);
         assert!(height >= 0.0);
         if height > width {
@@ -209,10 +197,10 @@ impl DrawContext<'_> {
         half
     }
 
-    pub fn do_mouth_smile(&self, spit: f32, loc: FloorDrawCoordinate, width: f32, height: f32, border_thickness: f32, border_color: Color, inner_color: Color) -> DrawOp {
+    pub fn do_mouth_smile(&self, spit: f32, loc: Point, width: f32, height: f32, border_thickness: f32, border_color: Color, inner_color: Color) -> DrawOp {
         assert!(width >= height*2.0);
         assert!(spit>=0.0 && spit<=1.0);
-        let center = FloorDrawCoordinate::new(loc.x, loc.y + spit * (height / 8.0));
+        let center = Point::new(loc.x, loc.y + spit * (height / 8.0));
         let width = width - spit * (width - height);
         let upper_height = spit * height;
         let lower_height = 2.0 * height * (1.0 - 0.5 * spit);

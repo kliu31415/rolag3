@@ -1,4 +1,4 @@
-use crate::rolag3::floor::{room_object::room_object_def::{RoomObject, Act1Context, NewRoomObjectContext, RoomObjectMetadata, Act1Response, HandleCollisionContext, HandleCollisionResponse}, draw::{DrawContext, Color, FloorDrawCoordinate}, rofiz::rofiz_state::RofizObjectRef};
+use crate::{rolag3::floor::{room_object::room_object_def::{RoomObject, Act1Context, NewRoomObjectContext, RoomObjectMetadata, Act1Response, HandleCollisionContext, HandleCollisionResponse}, draw::{DrawContext, Color}, rofiz::rofiz_state::RofizObjectRef}, geometry::shape::Point};
 
 use super::Wall;
 
@@ -24,10 +24,10 @@ impl RoomObject for BasicWall {
 
     fn draw(&mut self, ctx: &mut DrawContext) {
         let vertexes = [
-            FloorDrawCoordinate::new(self.x as f32, self.y as f32),
-            FloorDrawCoordinate::new((self.x + 1) as f32, self.y as f32),
-            FloorDrawCoordinate::new((self.x + 1) as f32, (self.y + 1) as f32),
-            FloorDrawCoordinate::new(self.x as f32, (self.y + 1) as f32),
+            Point::new(self.x as f32, self.y as f32),
+            Point::new((self.x + 1) as f32, self.y as f32),
+            Point::new((self.x + 1) as f32, (self.y + 1) as f32),
+            Point::new(self.x as f32, (self.y + 1) as f32),
         ];
 
         let dop = ctx.do_quad( self.color, vertexes);

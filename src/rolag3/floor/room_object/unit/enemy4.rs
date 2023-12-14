@@ -1,4 +1,4 @@
-use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Act1Response, HandleCollisionResponse, Team}, projectile::projectile2::NewProjectile2Args}, rofiz::rofiz_object::Transformation, draw::{Color, FloorDrawCoordinate, DrawContext}}, geometry::{shape::{Shape, Polygon, Point}, util::regular_polygon}};
+use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Act1Response, HandleCollisionResponse, Team}, projectile::projectile2::NewProjectile2Args}, rofiz::rofiz_object::Transformation, draw::{Color, DrawContext}}, geometry::{shape::{Shape, Polygon, Point}, util::regular_polygon}};
 
 use super::standard_unit1::{StandardUnit1, StandardUnit1Builder, StandardUnit1BuilderReq, SuAct1Context, SuDrawContext, SuHandleCollisionContext, HandleCollisionLogic};
 
@@ -112,10 +112,10 @@ fn draw(ctx: &mut SuDrawContext) {
     let inner = xform.get_transformed_polygon(&us_data.inner).vertexes;
     for i in 0..3 {
         let quad = [
-            FloorDrawCoordinate::new(outer[i].x, outer[i].y),
-            FloorDrawCoordinate::new(border[i].x, border[i].y),
-            FloorDrawCoordinate::new(border[(i+1)%3].x, border[(i+1)%3].y),
-            FloorDrawCoordinate::new(outer[(i+1)%3].x, outer[(i+1)%3].y),
+            Point::new(outer[i].x, outer[i].y),
+            Point::new(border[i].x, border[i].y),
+            Point::new(border[(i+1)%3].x, border[(i+1)%3].y),
+            Point::new(outer[(i+1)%3].x, outer[(i+1)%3].y),
         ];
         let dop = ctx.draw_ctx.do_tri_fan(BORDER_COLOR, Box::new(quad));
         ctx.draw_ctx.add_draw_op(DrawContext::Z_UNIT, dop);
@@ -123,19 +123,19 @@ fn draw(ctx: &mut SuDrawContext) {
 
     for i in 0..3 {
         let quad = [
-            FloorDrawCoordinate::new(inner[i].x, inner[i].y),
-            FloorDrawCoordinate::new(outer[i].x, outer[i].y),
-            FloorDrawCoordinate::new(outer[(i+1)%3].x, outer[(i+1)%3].y),
-            FloorDrawCoordinate::new(inner[(i+1)%3].x, inner[(i+1)%3].y),
+            Point::new(inner[i].x, inner[i].y),
+            Point::new(outer[i].x, outer[i].y),
+            Point::new(outer[(i+1)%3].x, outer[(i+1)%3].y),
+            Point::new(inner[(i+1)%3].x, inner[(i+1)%3].y),
         ];
         let dop = ctx.draw_ctx.do_tri_fan(OUTER_COLOR, Box::new(quad));
         ctx.draw_ctx.add_draw_op(DrawContext::Z_UNIT, dop);
     }
 
     let inner_draw = [
-        FloorDrawCoordinate::new(inner[0].x, inner[0].y),
-        FloorDrawCoordinate::new(inner[1].x, inner[1].y),
-        FloorDrawCoordinate::new(inner[2].x, inner[2].y),
+        Point::new(inner[0].x, inner[0].y),
+        Point::new(inner[1].x, inner[1].y),
+        Point::new(inner[2].x, inner[2].y),
     ];
 
     let inner_color = match us_data.spit_projectile_start {
