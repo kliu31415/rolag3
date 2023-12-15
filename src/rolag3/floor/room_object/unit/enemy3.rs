@@ -1,6 +1,6 @@
 use crate::{rolag3::floor::{room_object::room_object_def::{NewRoomObjectContext, Team, Act1Response}, rofiz::rofiz_object::Transformation, draw::{Color, DrawContext}}, geometry::shape::Shape};
 
-use super::standard_unit1::{StandardUnit1Builder, StandardUnit1BuilderReq, StandardUnit1, SuAct1Context, SuDrawContext};
+use super::{standard_unit1::{StandardUnit1Builder, StandardUnit1BuilderReq, StandardUnit1, SuAct1Context, SuDrawContext}, standard_unit_common::TranslateMove};
 
 const SIDE_LEN: f32 = 1.8;
 
@@ -41,14 +41,14 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
         Some(ref mc) => {
             let since_start = ctx.act1_ctx.get_room_time() - mc.started_at;
             if since_start > 1.0 {
-                ctx.su_ctx.su_common.accelerate_ro_xy(tick_len, mc.velocity_x, mc.velocity_y);
+                ctx.su_ctx.su_common.set_translate_move(TranslateMove::Accelerate{ax: mc.velocity_x, ay: mc.velocity_y});
                 if since_start > 4.0 {
                     us_data.move_charge = None;
                 }
             }
         },
         None => {
-            ctx.su_ctx.su_common.decelerate_ro_xy(tick_len);
+            ctx.su_ctx.su_common.set_translate_move(TranslateMove::Decelerate);
             if us_data.move_charge.is_none() && ctx.act1_ctx.get_randf64() < tick_len {
                 if let Some(player_xy) = ctx.act1_ctx.get_team_closest_location(Team::Player) {
                     let xform = ctx.act1_ctx.get_rofiz().get_movable_object_xform(ctx.su_ctx.su_common.get_ro_ref());

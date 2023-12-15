@@ -7,7 +7,7 @@ pub trait Window {
     fn get_height(&self) -> u32;
     fn get_id(&self) -> WindowId;
     fn get_renderer(&mut self) -> &mut dyn Renderer;
-    fn get_input_state(&mut self) -> &InputState;
+    fn get_input_state_mut(&mut self) -> &mut InputState;
     fn run_event_loop(&mut self, event_handler: &mut dyn EventHandler); // can only be called once per window
 }
 
@@ -36,8 +36,8 @@ impl Window for WinitWindow {
     fn get_renderer(&mut self) -> &mut dyn Renderer {
         self.renderer.as_mut()
     }
-    fn get_input_state(&mut self) -> &InputState {
-        &self.input_state
+    fn get_input_state_mut(&mut self) -> &mut InputState {
+        &mut self.input_state
     }
     fn run_event_loop(&mut self, event_handler: &mut dyn EventHandler) {
         let event_loop = std::mem::take(&mut self.event_loop).expect("in Window::run_event_loop(), event loop is none.");

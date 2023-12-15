@@ -246,7 +246,11 @@ impl<'a> NewRoomObjectContext<'a> {
         self.rng.gen::<f64>()
     }
 
-    pub fn get_randu64(&mut self, r: Range<u64>) -> u64 {
+    pub fn _get_randu64(&mut self, r: Range<u64>) -> u64 {
+        self.rng.gen_range(r)
+    }
+
+    pub fn get_randi64(&mut self, r: Range<i64>) -> i64 {
         self.rng.gen_range(r)
     }
 
@@ -412,11 +416,15 @@ impl<'a> HandleCollisionContext<'a> {
     }
 
     // in the range [0, 1)
-    pub fn get_randf64(&mut self) -> f64 {
+    pub fn _get_randf64(&mut self) -> f64 {
         self.rng.gen::<f64>()
     }
 
-    pub fn get_randu64(&mut self, r: Range<u64>) -> u64 {
+    pub fn _get_randu64(&mut self, r: Range<u64>) -> u64 {
+        self.rng.gen_range(r)
+    }
+
+    pub fn get_randi64(&mut self, r: Range<i64>) -> i64 {
         self.rng.gen_range(r)
     }
 

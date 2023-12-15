@@ -3,7 +3,7 @@ use std::collections::VecDeque;
 use rand::{rngs::ThreadRng, thread_rng};
 use winit::{event::{Event, WindowEvent, KeyEvent, ElementState, MouseButton}, event_loop::EventLoopWindowTarget, keyboard::{PhysicalKey, KeyCode}};
 
-use crate::gfx::{self, window::{Window, EventHandler}, renderer::{ColorRGBA32f, DrawTextPosition, DrawOpCCS, DrawOpText, DrawOpWithMetadata, DrawOp}};
+use crate::gfx::{self, window::{Window, EventHandler}, renderer::{ColorRGBA32f, DrawTextPosition, DrawOpCCS, DrawOpText, DrawOpWithMetadata, DrawOp}, input::PollableInput};
 
 use super::floor::{draw::{DrawFloorContext, get_draw_floor_ops}, run::{RunFloorContext, run_floor_frame, PlayerInput, PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, floor_def::Floor};
 
@@ -21,6 +21,7 @@ struct Rolag3EventHandler {
     frame_timestamps: VecDeque<f64>,
     floor: Floor,
     rng: ThreadRng,
+    prev_mouse_xy: Option<(f64, f64)>,
 }
 
 impl EventHandler for Rolag3EventHandler {
@@ -80,13 +81,14 @@ impl Rolag3EventHandler {
             frame_timestamps: VecDeque::new(),
             floor,
             rng,
+            prev_mouse_xy: None,
         }
     }
 
     fn run_frame(&mut self, window: &mut dyn Window) {
         let window_width = window.get_width() as f64;
         let window_height = window.get_height() as f64;
-        let input_state = window.get_input_state();
+        let input_state = window.get_input_state_mut();
 
         let mut horizontal_move = PlayerHorizontalMoveInput::None;
         if input_state.is_key_down(&PLAYER_MOVE_LEFT) && 
@@ -125,11 +127,23 @@ impl Rolag3EventHandler {
         let mouse_y = camera_y + input_state.get_mouse_y() / pixels_per_tile;
         let mouse_theta_relative_to_player = (mouse_y - player_position.y).atan2(mouse_x - player_position.x);
 
+        let (prev_mouse_x, prev_mouse_y) = match self.prev_mouse_xy {
+            Some(v) => v,
+            None => (mouse_x, mouse_y),
+        };
+
+        let mut mouse_wheel_line_deltas = Vec::new();
+        for input in input_state.poll_all_pollable_input() {
+            match input {
+                PollableInput::MouseWheelLineDelta(x, y) => mouse_wheel_line_deltas.push((x, y)),
+            }
+        }
+
         let run_floor_ctx = RunFloorContext {
             ticks_per_frame: 20,
             frame_length,
             floor: &mut self.floor,
-            player_input: &PlayerInput {
+            player_input: PlayerInput {
                 horizontal_move,
                 vertical_move,
                 mouse_x,
@@ -137,11 +151,15 @@ impl Rolag3EventHandler {
                 mouse_theta_relative_to_player,
                 is_lmb_down: input_state.is_mouse_button_down(&MouseButton::Left),
                 is_rmb_down: input_state.is_mouse_button_down(&MouseButton::Right),
+                mouse_wheel_line_deltas: mouse_wheel_line_deltas.into_boxed_slice(),
                 test_input1: input_state.is_key_down(&PLAYER_TEST_INPUT1),
             },
+            prev_mouse_x,
+            prev_mouse_y,
             rng: &mut self.rng,
         };
         run_floor_frame(run_floor_ctx);
+        self.prev_mouse_xy = Some((mouse_x, mouse_y));
 
         let draw_floor_ctx = DrawFloorContext {
             floor: &mut self.floor,

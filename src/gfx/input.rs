@@ -1,5 +1,7 @@
+use std::collections::VecDeque;
+
 pub use winit::dpi::PhysicalPosition as MousePos;
-use winit::{event::{ElementState, MouseButton, KeyEvent, Event, WindowEvent}, keyboard::{PhysicalKey, PhysicalKey::{*}}, dpi::PhysicalPosition, window::WindowId};
+use winit::{event::{ElementState, MouseButton, KeyEvent, Event, WindowEvent, MouseScrollDelta}, keyboard::{PhysicalKey, PhysicalKey::{*}}, dpi::PhysicalPosition, window::WindowId};
 
 use crate::util::time::now_unix;
 
@@ -12,8 +14,14 @@ pub struct InputState {
     mouse_button_last_down_time: Box<[f64]>,
     mouse_button_last_up_time: Box<[f64]>,
     
+    pollable_input: VecDeque<PollableInput>,
+    
     mouse_x: f64,
     mouse_y: f64,
+}
+
+pub enum PollableInput {
+    MouseWheelLineDelta(f32, f32),
 }
 
 //winit defines 255 keys. We place these in 0..255. The 255th index is a dummy, mainly used for error handling.
@@ -27,6 +35,7 @@ impl InputState {
             key_last_down_time: vec![0.0; NUM_KEYS].into_boxed_slice(),
             key_last_up_time: vec![0.0; NUM_KEYS].into_boxed_slice(),
             is_mouse_button_down: vec![false; NUM_MOUSE_BUTTONS].into_boxed_slice(),
+            pollable_input: VecDeque::new(),
             mouse_button_last_down_time: vec![0.0; NUM_MOUSE_BUTTONS].into_boxed_slice(),
             mouse_button_last_up_time: vec![0.0; NUM_MOUSE_BUTTONS].into_boxed_slice(),
             mouse_x: 0.0,
@@ -46,6 +55,12 @@ impl InputState {
         self.is_mouse_button_down[Self::mouse_button_to_usize(button)]
     }
 
+    pub fn poll_all_pollable_input(&mut self) -> VecDeque<PollableInput> {
+        let mut v = VecDeque::new();
+        std::mem::swap(&mut v, &mut self.pollable_input);
+        v
+    }
+
     pub fn handle_event(&mut self, source_window_id: WindowId, event: &Event<()>) {
         if let Event::WindowEvent {ref event, window_id} = event {
             if *window_id != source_window_id {
@@ -54,6 +69,7 @@ impl InputState {
             match event {
                 WindowEvent::KeyboardInput { event, ..} => self.process_key_event(event),
                 WindowEvent::MouseInput {button, state, .. } => self.process_mouse_input(button, state),
+                WindowEvent::MouseWheel { delta, .. } => self.process_mouse_wheel(delta),
                 WindowEvent::CursorMoved {position, ..} => self.process_cursor_move(position),
                 _ => {},
             }
@@ -114,6 +130,13 @@ impl InputState {
                 self.is_mouse_button_down[button_idx] = false;
                 self.mouse_button_last_up_time[button_idx] = now_unix();
             }
+        }
+    }
+
+    fn process_mouse_wheel(&mut self, delta: &MouseScrollDelta) {
+        match delta {
+            MouseScrollDelta::LineDelta(x, y) => self.pollable_input.push_back(PollableInput::MouseWheelLineDelta(*x, *y)),
+            MouseScrollDelta::PixelDelta(_) => eprintln!("unable to process MouseScrollDelta::PixelDelta {:?}", delta),
         }
     }
 

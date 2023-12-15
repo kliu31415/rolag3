@@ -10,21 +10,32 @@ pub struct RunFloorContext<'a> {
     pub ticks_per_frame: u32,
     pub frame_length: f64,
     pub floor: &'a mut Floor,
-    pub player_input: &'a PlayerInput,
+    pub player_input: PlayerInput,
+    pub prev_mouse_x: f64,
+    pub prev_mouse_y: f64,
     pub rng: &'a mut ThreadRng,
 }
 
-pub fn run_floor_frame(ctx: RunFloorContext) {
+pub fn run_floor_frame(mut ctx: RunFloorContext) {
     let tick_length = ctx.frame_length / (ctx.ticks_per_frame as f64);
-    for _ in 0 .. ctx.ticks_per_frame {
+    let next_mouse_x = ctx.player_input.mouse_x;
+    let next_mouse_y = ctx.player_input.mouse_y;
+    for i in 0 .. ctx.ticks_per_frame {
+        ctx.player_input.mouse_x = lerp(ctx.prev_mouse_x, next_mouse_x, i as f64 / (ctx.ticks_per_frame as f64 - 1.0));
+        ctx.player_input.mouse_y = lerp(ctx.prev_mouse_y, next_mouse_y, i as f64 / (ctx.ticks_per_frame as f64 - 1.0));
         let tick_ctx = RunFloorTickContext {
             floor: ctx.floor,
-            player_input: ctx.player_input,
+            player_input: &ctx.player_input,
             tick_length,
             rng: ctx.rng,
         };
         run_floor_tick(tick_ctx);
+        ctx.player_input.mouse_wheel_line_deltas = Box::new([]);
     }
+}
+
+fn lerp(x: f64, y: f64, a: f64) -> f64 {
+    x * (1.0 - a) + y * a
 }
 
 pub enum PlayerHorizontalMoveInput {
@@ -48,6 +59,7 @@ pub struct PlayerInput {
     pub mouse_theta_relative_to_player: f64,
     pub is_lmb_down: bool, // lmb = left mouse button
     pub is_rmb_down: bool, // rmb = right mouse button
+    pub mouse_wheel_line_deltas: Box<[(f32, f32)]>, // winit also provides pixel delta, but I'm ignoring that for now
     pub test_input1: bool, // used for testing purposes
 }
 

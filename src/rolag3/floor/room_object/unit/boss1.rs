@@ -2,7 +2,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Act1Response, Team}, projectile::projectile3::NewProjectile3Args}, rofiz::rofiz_object::Transformation, draw::{Color, DrawContext}}, geometry::{star::get_star_shape, shape::{Shape, Polygon, Point}, util::get_inner_polygon}};
 
-use super::standard_unit1::{StandardUnit1, StandardUnit1Builder, StandardUnit1BuilderReq, SuAct1Context, SuDrawContext};
+use super::{standard_unit1::{StandardUnit1, StandardUnit1Builder, StandardUnit1BuilderReq, SuAct1Context, SuDrawContext}, standard_unit_common::TranslateMove};
 
 struct Boss1 {
     outer: Polygon,
@@ -112,7 +112,7 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
 
     let player_xy = ctx.act1_ctx.get_team_closest_location(Team::Player);
     if let Some(xy) = player_xy {
-        ctx.su_ctx.su_common.accelerate_ro_xy(tick_len, xy.x - xform.dx, xy.y - xform.dy);
+        ctx.su_ctx.su_common.set_translate_move(TranslateMove::Accelerate { ax: xy.x - xform.dx, ay: xy.y - xform.dy});
     }
     response
 }

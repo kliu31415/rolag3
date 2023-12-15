@@ -19,8 +19,17 @@ pub struct StandardUnitCommon {
     ro_ref: RofizObjectRef,
     engine_power: f64, // intuitively, equal to the max speed in tiles/s
     tire_friction: f64, // intuitively, proportional to how quickly the unit reaches its max speed
+    angular_power: f64,
+    angular_traction: f64,
+
     velocity_x: f64,
     velocity_y: f64,
+    velocity_theta: f64,
+
+    act1_started: bool,
+    room_tick_length: f64,
+    translate: TranslateMove,
+    rotate: RotateMove,
 
     prev_position: Option<Transformation>,
     prev_desired_movement: Option<Transformation>,
@@ -31,18 +40,43 @@ pub struct StandardUnitCommon {
     budebs: Vec<Budeb>,
 }
 
+#[derive(Debug)]
+pub enum TranslateMove {
+    Nop,
+    Accelerate{ax: f64, ay: f64},
+    Decelerate,
+    ResetVelocity,
+}
+
+#[derive(Debug)]
+pub enum RotateMove {
+    Nop,
+    Accelerate{atheta: f64},
+    Decelerate,
+    ResetVelocity,
+}
+
 impl StandardUnitCommon {
     const MASS: f64 = 1.0;
     const GRAVITY: f64 = 1.0;
     const EPSILON: f64 = 1e-20;
 
-    pub fn new(ro_ref: RofizObjectRef, hp: f64, engine_power: f64, tire_friction: f64) -> Self {
+    pub fn new(ro_ref: RofizObjectRef, hp: f64, engine_power: f64, tire_friction: f64, angular_power: f64, angular_traction: f64) -> Self {
         Self {
             ro_ref,
             engine_power,
             tire_friction,
+            angular_power,
+            angular_traction,
             velocity_x: 0.0,
             velocity_y: 0.0,
+            velocity_theta: 0.0,
+
+            act1_started: false,
+            room_tick_length: 0.0,
+            translate: TranslateMove::Nop,
+            rotate: RotateMove::Nop,
+
             prev_position: None,
             prev_desired_movement: None,
 
@@ -61,24 +95,11 @@ impl StandardUnitCommon {
         self.velocity_y
     }
 
-
     pub fn get_ro_ref(&self) -> &RofizObjectRef {
         &self.ro_ref
     }
 
-    pub fn decelerate_ro_xy(&mut self, tick_length: f64) {
-        let velocity_norm = f64::hypot(self.velocity_x, self.velocity_y);
-        if velocity_norm < Self::EPSILON {
-            self.velocity_x = 0.0;
-            self.velocity_y = 0.0;
-            return;
-        }
-
-        let f_engine = self.tire_friction * self.engine_power / f64::max(velocity_norm, 0.1);
-        self.decelerate(tick_length, f_engine);
-    }
-
-    fn decelerate(&mut self, tick_length: f64, force: f64) {
+    fn decelerate_xy(&mut self, tick_length: f64, force: f64) {
         let velocity_norm = f64::hypot(self.velocity_x, self.velocity_y);
         if velocity_norm < Self::EPSILON {
             self.velocity_x = 0.0;
@@ -103,24 +124,97 @@ impl StandardUnitCommon {
         }
     }
 
-    pub fn accelerate_ro_xy(&mut self, tick_length: f64, x: f64, y: f64) {
-        let input_norm = f64::hypot(x, y);
-        if input_norm < Self::EPSILON {
+    fn decelerate_theta(&mut self, tick_length: f64, force: f64) {
+        if f64::abs(self.velocity_theta) < Self::EPSILON {
+            self.velocity_theta = 0.0;
             return;
         }
-        let velocity_norm = f64::hypot(self.velocity_x, self.velocity_y);
-        let f_engine = self.tire_friction * self.engine_power / f64::max(velocity_norm, 1.0);
-        let accel = tick_length * f_engine / Self::MASS;
-        self.velocity_x += accel * x / input_norm;
-        self.velocity_y += accel * y / input_norm;
+
+        let decel = tick_length * force / Self::MASS;
+
+        if f64::abs(decel) > f64::abs(self.velocity_theta) {
+            self.velocity_theta = 0.0;
+        } else {
+            self.velocity_theta -= decel;
+        }
     }
 
-    pub fn reset_velocity(&mut self) {
-        self.velocity_x = 0.0;
-        self.velocity_y = 0.0;
+    pub fn start_act1(&mut self, room_tick_length: f64) {
+        assert!(!self.act1_started, "cannot call standard_unit_common::start_act1() twice for standard_unit_common");
+        self.act1_started = true;
+        self.room_tick_length = room_tick_length;
     }
 
-    pub fn process(&mut self, rofiz: &mut RofizState, tick_length: f64) {
+    pub fn set_translate_move(&mut self, translate: TranslateMove) {
+        assert!(self.act1_started, "cannot call standard_unit_common::set_translate_move() before act1 starts");
+        self.translate = translate;
+    }
+
+    pub fn set_rotate_move(&mut self, rotate: RotateMove) {
+        assert!(self.act1_started, "cannot call standard_unit_common::set_rotate_move() before act1 starts");
+        self.rotate = rotate;
+    }
+
+    pub fn end_act1(&mut self, rofiz: &mut RofizState) {
+        assert!(self.act1_started, "cannot call standard_unit_common::end_act1() before act1 has started");
+
+        let tick_length = self.room_tick_length;
+        let min_velocity = 0.5;
+
+        match self.translate {
+            TranslateMove::Nop => {},
+            TranslateMove::Accelerate { ax, ay, .. } => (||{
+                let axay_norm = f64::hypot(ax, ay);
+                if axay_norm < Self::EPSILON {
+                    return;
+                }
+                let velocity_norm = f64::hypot(self.velocity_x, self.velocity_y);
+                let f_engine = self.tire_friction * self.engine_power / f64::max(velocity_norm, min_velocity);
+                let accel = tick_length * f_engine / Self::MASS;
+                self.velocity_x += accel * ax / axay_norm;
+                self.velocity_y += accel * ay / axay_norm;
+            })(),
+            TranslateMove::Decelerate => (||{
+                let velocity_norm = f64::hypot(self.velocity_x, self.velocity_y);
+                if velocity_norm < Self::EPSILON {
+                    self.velocity_x = 0.0;
+                    self.velocity_y = 0.0;
+                    return;
+                }
+        
+                let f_engine = self.tire_friction * self.engine_power / f64::max(velocity_norm, min_velocity);
+                self.decelerate_xy(tick_length, f_engine);
+            })(),
+            TranslateMove::ResetVelocity => {
+                self.velocity_x = 0.0;
+                self.velocity_y = 0.0;
+            }
+        }
+
+        match self.rotate {
+            RotateMove::Nop => {}
+            RotateMove::Accelerate { atheta } => (||{
+                if f64::abs(atheta) < Self::EPSILON {
+                    return;
+                }
+                let f_angular = self.angular_traction * self.angular_power / f64::max(self.velocity_theta, min_velocity);
+                let accel = tick_length * f_angular / Self::MASS;
+                self.velocity_theta += accel;
+            })(),
+            RotateMove::Decelerate => (||{
+                if f64::abs(self.velocity_theta) < Self::EPSILON {
+                    self.velocity_theta = 0.0;
+                    return;
+                }
+        
+                let f_angular = self.angular_traction * self.angular_power / f64::max(self.velocity_theta, min_velocity);
+                self.decelerate_theta(tick_length, f_angular);
+            })(),
+            RotateMove::ResetVelocity => {
+                self.velocity_theta = 0.0;
+            }
+        }
+
         let position = rofiz.get_movable_object_xform(&self.ro_ref);
 
         if let Some(prev_position) = self.prev_position {
@@ -142,7 +236,7 @@ impl StandardUnitCommon {
         // TODO: friction is calculated with slightly different velocities than the acceleration calculations. 
         // Friction is computed with the post-acceleration velocity. This should only make a small difference in
         // practice, but I'm just making a note in case there are bugs.
-        self.decelerate(tick_length, self.tire_friction * Self::MASS * Self::GRAVITY);
+        self.decelerate_xy(tick_length, self.tire_friction * Self::MASS * Self::GRAVITY);
 
         let mut max_speed_mult = 1.0;
         let mut min_speed_mult = 1.0;
@@ -166,7 +260,7 @@ impl StandardUnitCommon {
 
         let dx = self.velocity_x * tick_length * max_speed_mult * min_speed_mult;
         let dy = self.velocity_y * tick_length * max_speed_mult * min_speed_mult;
-        let dtheta = 0.0;
+        let dtheta = self.velocity_theta * tick_length * max_speed_mult * min_speed_mult;
 
         let mut movement_and_fallbacks = vec![Transformation::new(dx, dy, dtheta)];
 
@@ -178,12 +272,17 @@ impl StandardUnitCommon {
                 let mag_adj = f64::cos(angle);
                 let new_dx = mag_adj * dxy_r * f64::cos(dxy_theta + angle);
                 let new_dy = mag_adj * dxy_r * f64::sin(dxy_theta + angle);
-                movement_and_fallbacks.push(Transformation::new(new_dx, new_dy, dtheta));
+                movement_and_fallbacks.push(Transformation::new(new_dx, new_dy, f64::abs(i as f64) / 3.0 * dtheta));
             }
         }
         let movement = RofizObjectMovement::MoveWithFallbacks(movement_and_fallbacks.clone());
         self.prev_position = Some(position);
         self.prev_desired_movement = Some(Transformation::new(dx, dy, dtheta));
+
+        self.act1_started = false;
+        self.translate = TranslateMove::Nop;
+        self.rotate = RotateMove::Nop;
+
         rofiz.move_object(&self.ro_ref, movement);
     }
 

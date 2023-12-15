@@ -1,6 +1,6 @@
 use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Act1Response, HandleCollisionResponse, Team}, projectile::projectile2::NewProjectile2Args}, rofiz::rofiz_object::Transformation, draw::{Color, DrawContext}}, geometry::{shape::{Shape, Polygon, Point}, util::regular_polygon}};
 
-use super::standard_unit1::{StandardUnit1, StandardUnit1Builder, StandardUnit1BuilderReq, SuAct1Context, SuDrawContext, SuHandleCollisionContext, HandleCollisionLogic};
+use super::{standard_unit1::{StandardUnit1, StandardUnit1Builder, StandardUnit1BuilderReq, SuAct1Context, SuDrawContext, SuHandleCollisionContext, HandleCollisionLogic}, standard_unit_common::{TranslateMove, RotateMove}};
 
 use std::{cell::RefCell, rc::Rc};
 
@@ -14,7 +14,9 @@ pub struct Enemy4 {
     border: Polygon,
     outer: Polygon,
     inner: Polygon,
-    movement_dir: u64,
+    translate_dir: i64,
+    rotate_dir: i64,
+    should_reset_velocity: bool,
 }
 
 struct SpitProjectileInfo {
@@ -33,7 +35,9 @@ pub fn new_enemy4(ctx: &mut NewRoomObjectContext, x: f64, y: f64) -> StandardUni
         border,
         outer,
         inner,
-        movement_dir: ctx.get_randu64(0..3),
+        translate_dir: ctx.get_randi64(0..3),
+        rotate_dir: 2 * ctx.get_randi64(0..1) - 1,
+        should_reset_velocity: false,
     };
 
     StandardUnit1Builder::new(StandardUnit1BuilderReq {
@@ -41,7 +45,9 @@ pub fn new_enemy4(ctx: &mut NewRoomObjectContext, x: f64, y: f64) -> StandardUni
         hp: 30.0,
         engine_power: 20.0,
         tire_traction: 50.0,
-    }).act1_fn(Box::new(act1))
+    }).angular_power(1.0)
+        .angular_traction(30.0)
+        .act1_fn(Box::new(act1))
         .draw_fn(Box::new(draw))
         .handle_collision_logic(HandleCollisionLogic::CustomFn(Box::new(handle_collision)))
         .hitbox(xform, shape)
@@ -89,13 +95,21 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
 
     match us_data.spit_projectile_start {
         Some(_) => {
-            ctx.su_ctx.su_common.decelerate_ro_xy(tick_len);
+            ctx.su_ctx.su_common.set_translate_move(TranslateMove::Decelerate);
+            ctx.su_ctx.su_common.set_rotate_move(RotateMove::Decelerate);
         }
         None => {
             let xform = ctx.act1_ctx.get_rofiz().get_movable_object_xform(ctx.su_ctx.su_common.get_ro_ref());
-            let theta = xform.dtheta + (us_data.movement_dir as f64) * 2.0/3.0 * std::f64::consts::PI;
-            ctx.su_ctx.su_common.accelerate_ro_xy(tick_len, f64::cos(theta), f64::sin(theta));
+            let theta = xform.dtheta + (us_data.translate_dir as f64) * 2.0/3.0 * std::f64::consts::PI;
+            ctx.su_ctx.su_common.set_translate_move(TranslateMove::Accelerate { ax: f64::cos(theta), ay: f64::sin(theta)});
+            ctx.su_ctx.su_common.set_rotate_move(RotateMove::Accelerate { atheta: us_data.rotate_dir as f64 });
         }
+    }
+
+    if us_data.should_reset_velocity {
+        us_data.should_reset_velocity = false;
+        ctx.su_ctx.su_common.set_translate_move(TranslateMove::ResetVelocity);
+        ctx.su_ctx.su_common.set_rotate_move(RotateMove::ResetVelocity);
     }
 
     response
@@ -149,7 +163,9 @@ fn draw(ctx: &mut SuDrawContext) {
 fn handle_collision(ctx: &mut SuHandleCollisionContext) -> HandleCollisionResponse {
     let us_data = ctx.su_ctx.us_data.downcast_mut::<Enemy4>().unwrap();
     if !ctx.hc_ctx.get_other().borrow().is_spectral() {
-        us_data.movement_dir = ctx.hc_ctx.get_randu64(0..3);
+        us_data.should_reset_velocity = true;
+        us_data.translate_dir = ctx.hc_ctx.get_randi64(0..3);
+        us_data.rotate_dir = 2 * ctx.hc_ctx.get_randi64(0..1) - 1;
     }
     HandleCollisionResponse::new()
 }

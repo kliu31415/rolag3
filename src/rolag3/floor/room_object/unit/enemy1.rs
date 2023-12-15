@@ -1,6 +1,6 @@
 use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Act1Response, HandleCollisionResponse, Team}, projectile::projectile2::NewProjectile2Args}, rofiz::rofiz_object::Transformation, draw::{Color, DrawContext}}, geometry::shape::{Shape, Point}};
 
-use super::standard_unit1::{StandardUnit1, StandardUnit1Builder, StandardUnit1BuilderReq, SuAct1Context, SuDrawContext, SuHandleCollisionContext, HandleCollisionLogic};
+use super::{standard_unit1::{StandardUnit1, StandardUnit1Builder, StandardUnit1BuilderReq, SuAct1Context, SuDrawContext, SuHandleCollisionContext, HandleCollisionLogic}, standard_unit_common::TranslateMove};
 
 use std::{f64::consts::PI, cell::RefCell, rc::Rc};
 
@@ -9,6 +9,7 @@ const SIDE_LEN: f32 = 1.2;
 pub struct Enemy1 {
     accel_xy_angle: f64,
     spit_projectile_start: Option<SpitProjectileInfo>,
+    should_reset_velocity: bool,
 }
 
 struct SpitProjectileInfo {
@@ -22,8 +23,9 @@ pub fn new_enemy1(ctx: &mut NewRoomObjectContext, x: f64, y: f64) -> StandardUni
     let xform = Transformation::new(x, y, 0.0);
     let shape = Shape::of_square(-SIDE_LEN/2.0, -SIDE_LEN/2.0, SIDE_LEN);
     let us_data = Enemy1 {
-        accel_xy_angle: 0.0,
+        accel_xy_angle: 2.0 * PI * ctx.get_randf64(),
         spit_projectile_start: None,
+        should_reset_velocity: false,
     };
 
     StandardUnit1Builder::new(StandardUnit1BuilderReq {
@@ -80,13 +82,19 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
         }
     }
 
-    match us_data.spit_projectile_start {
-        Some(_) => {
-            ctx.su_ctx.su_common.reset_velocity();
-        }
-        None => {
-            us_data.accel_xy_angle += 10.0 * f64::sqrt(tick_len) * (ctx.act1_ctx.get_randf64() - 0.5);
-            ctx.su_ctx.su_common.accelerate_ro_xy(tick_len, f64::cos(us_data.accel_xy_angle), f64::sin(us_data.accel_xy_angle));
+    if us_data.should_reset_velocity {
+        ctx.su_ctx.su_common.set_translate_move(TranslateMove::ResetVelocity);
+        us_data.accel_xy_angle = 2.0 * PI * ctx.act1_ctx.get_randf64();
+        us_data.should_reset_velocity = false;
+    } else {
+        match us_data.spit_projectile_start {
+            Some(_) => {
+                ctx.su_ctx.su_common.set_translate_move(TranslateMove::ResetVelocity);
+            }
+            None => {
+                us_data.accel_xy_angle += 10.0 * f64::sqrt(tick_len) * (ctx.act1_ctx.get_randf64() - 0.5);
+                ctx.su_ctx.su_common.set_translate_move(TranslateMove::Accelerate { ax: f64::cos(us_data.accel_xy_angle), ay: f64::sin(us_data.accel_xy_angle)});
+            }
         }
     }
 
@@ -122,8 +130,7 @@ fn draw(ctx: &mut SuDrawContext) {
 fn handle_collision(ctx: &mut SuHandleCollisionContext) -> HandleCollisionResponse {
     let us_data = ctx.su_ctx.us_data.downcast_mut::<Enemy1>().unwrap();
     if !ctx.hc_ctx.get_other().borrow().is_spectral() {
-        ctx.su_ctx.su_common.reset_velocity();
-        us_data.accel_xy_angle = 2.0 * PI * ctx.hc_ctx.get_randf64();
+        us_data.should_reset_velocity = true;
     }
     HandleCollisionResponse::new()
 }

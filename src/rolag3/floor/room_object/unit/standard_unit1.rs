@@ -34,14 +34,15 @@ impl RoomObject for StandardUnit1 {
     }
 
     fn act1<'a>(&'a mut self, ctx: &'a mut Act1Context) -> Act1Response {
+        let tick_len = ctx.get_tick_length();
+        self.data.su_common.start_act1(tick_len);
         let mut su_ctx= self.data.get_su_ctx();
         let mut su_act1_ctx = SuAct1Context {
             su_ctx: &mut su_ctx,
             act1_ctx: ctx,
         };
         let resp = (self.logic.act1_fn)(&mut su_act1_ctx);
-        let tick_len = ctx.get_tick_length();
-        self.data.su_common.process(ctx.get_rofiz(), tick_len);
+        self.data.su_common.end_act1(ctx.get_rofiz());
         resp
     }
 
@@ -106,6 +107,9 @@ pub struct StandardUnit1BuilderReq {
 pub struct StandardUnit1Builder {
     req: StandardUnit1BuilderReq,
 
+    angular_power: f64,
+    angular_traction: f64,
+
     us_data: Box<dyn Any>,
     act1_fn: Box<Act1FnT>,
     draw_fn: Box<DrawFnT>,
@@ -132,6 +136,8 @@ impl StandardUnit1Builder {
     pub fn new(req: StandardUnit1BuilderReq) -> Self {
         Self {
             req,
+            angular_power: 0.0,
+            angular_traction: 0.0,
             us_data: Box::new(UsDataDummy{}),
             act1_fn: Box::new(act1_nop),
             draw_fn: Box::new(draw_nop),
@@ -140,6 +146,17 @@ impl StandardUnit1Builder {
             hitbox: None,
         }
     }
+
+    pub fn angular_power(mut self, angular_power: f64) -> Self {
+        self.angular_power = angular_power;
+        self
+    }
+
+    pub fn angular_traction(mut self, angular_traction: f64) -> Self {
+        self.angular_traction = angular_traction;
+        self
+    }
+
 
     pub fn us_data(mut self, us_data: Box<dyn Any>) -> Self {
         self.us_data = us_data;
@@ -174,7 +191,7 @@ impl StandardUnit1Builder {
         let md = RoomObjectMetadata::new(ctx);
         let hitbox = Hitbox::new(xform, shape);
         let ro_ref = ctx.add_nonspectral_unit(md.get_id(), hitbox);
-        let su_common = StandardUnitCommon::new(ro_ref, self.req.hp, self.req.engine_power, self.req.tire_traction);
+        let su_common = StandardUnitCommon::new(ro_ref, self.req.hp, self.req.engine_power, self.req.tire_traction, self.angular_power, self.angular_traction);
         
         let handle_collision_fn = match self.handle_collision_logic {
             HandleCollisionLogic::Nop => Box::new(handle_collision_nop),
