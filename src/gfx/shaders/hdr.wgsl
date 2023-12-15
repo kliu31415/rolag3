@@ -1,6 +1,6 @@
 // Maps HDR values to linear values
 // Based on http://www.oscars.org/science-technology/sci-tech-projects/aces
-fn hdr_to_linear(hdr: vec3<f32>) -> vec3<f32> {
+fn hdr_to_linear_aces(hdr: vec3<f32>) -> vec3<f32> {
     let m1 = mat3x3(
         0.59719, 0.07600, 0.02840,
         0.35458, 0.90834, 0.13383,
@@ -15,6 +15,10 @@ fn hdr_to_linear(hdr: vec3<f32>) -> vec3<f32> {
     let a = v * (v + 0.0245786) - 0.000090537;
     let b = v * (0.983729 * v + 0.4329510) + 0.238081;
     return clamp(m2 * (a / b), vec3(0.0), vec3(1.0));
+}
+
+fn hdr_to_linear_simple(hdr: vec3<f32>) -> vec3<f32> {
+    return hdr / (1.0 + hdr);
 }
 
 struct VertexOutput {
@@ -68,7 +72,7 @@ var hdr_sampler: sampler;
 @fragment
 fn fs_main(vs: VertexOutput) -> @location(0) vec4<f32> {
     let hdr = textureSample(hdr_texture, hdr_sampler, vs.xy);
-    let srgb = hdr_to_linear(hdr.rgb);
+    let srgb = hdr_to_linear_simple(hdr.rgb);
     return vec4(srgb, hdr.a);
 }
  

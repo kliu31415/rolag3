@@ -1,6 +1,6 @@
 use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Act1Response, HandleCollisionResponse, Team}, projectile::projectile2::NewProjectile2Args, damage::DamageColor}, rofiz::rofiz_object::Transformation, draw::{Color, DrawContext}}, geometry::{shape::{Shape, Polygon, Point}, util::regular_polygon}};
 
-use super::{standard_unit1::{StandardUnit1, StandardUnit1Builder, StandardUnit1BuilderReq, SuAct1Context, SuDrawContext, SuHandleCollisionContext, HandleCollisionLogic}, standard_unit_common::{TranslateMove, RotateMove}};
+use super::{standard_unit1::{StandardUnit1, StandardUnit1Builder, StandardUnit1BuilderReq, SuAct1Context, SuDrawContext, SuHandleCollisionContext, HandleCollisionLogic}, standard_unit_common::TranslateMove};
 
 use std::{cell::RefCell, rc::Rc};
 
@@ -9,13 +9,12 @@ const OUTER_COLOR: Color = Color::new(2.0, 0.0, 0.0, 1.0);
 const INNER_COLOR: Color = Color::new(3.0, 0.0, 0.0, 1.0);
 const PROJ_COLOR: Color = Color::new(6.0, 0.0, 0.0, 1.0);
 
-pub struct Enemy4 {
+pub struct Enemy5 {
     spit_projectile_start: Option<SpitProjectileInfo>,
     border: Polygon,
     outer: Polygon,
     inner: Polygon,
     translate_dir: i64,
-    rotate_dir: i64,
     should_reset_velocity: bool,
 }
 
@@ -24,19 +23,18 @@ struct SpitProjectileInfo {
     proj_spit: bool,
 }
 
-pub fn new_enemy4(ctx: &mut NewRoomObjectContext, x: f64, y: f64) -> StandardUnit1 {
-    let xform = Transformation::new(x, y, 2.0 * std::f64::consts::PI * ctx.get_randf64());
-    let border = Polygon::new(regular_polygon(3, 2.0));
-    let outer = Polygon::new(regular_polygon(3, 1.8));
-    let inner = Polygon::new(regular_polygon(3, 1.0));
+pub fn new_enemy5(ctx: &mut NewRoomObjectContext, x: f64, y: f64) -> StandardUnit1 {
+    let xform = Transformation::new(x, y, std::f64::consts::FRAC_PI_4);
+    let border = Polygon::new(regular_polygon(4, 2.0));
+    let outer = Polygon::new(regular_polygon(4, 1.8));
+    let inner = Polygon::new(regular_polygon(4, 0.8));
     let shape = Shape::Polygon(border.clone());
-    let us_data = Enemy4 {
+    let us_data = Enemy5 {
         spit_projectile_start: None,
         border,
         outer,
         inner,
-        translate_dir: ctx.get_randi64(0..3),
-        rotate_dir: 2 * ctx.get_randi64(0..1) - 1,
+        translate_dir: ctx.get_randi64(0..4),
         should_reset_velocity: false,
     };
 
@@ -46,9 +44,7 @@ pub fn new_enemy4(ctx: &mut NewRoomObjectContext, x: f64, y: f64) -> StandardUni
         hp: 30.0,
         engine_power: 20.0,
         tire_traction: 50.0,
-    }).angular_power(1.0)
-        .angular_traction(30.0)
-        .act1_fn(Box::new(act1))
+    }).act1_fn(Box::new(act1))
         .draw_fn(Box::new(draw))
         .handle_collision_logic(HandleCollisionLogic::CustomFn(Box::new(handle_collision)))
         .hitbox(xform, shape)
@@ -57,7 +53,7 @@ pub fn new_enemy4(ctx: &mut NewRoomObjectContext, x: f64, y: f64) -> StandardUni
 }
 
 fn act1(ctx: &mut SuAct1Context) -> Act1Response {
-    let us_data = ctx.su_ctx.us_data.downcast_mut::<Enemy4>().unwrap();
+    let us_data = ctx.su_ctx.us_data.downcast_mut::<Enemy5>().unwrap();
 
     let mut response = Act1Response::new();
     let tick_len = ctx.act1_ctx.get_tick_length();
@@ -72,8 +68,8 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
             let xform = ctx.act1_ctx.get_rofiz().get_movable_object_xform(ctx.su_ctx.su_common.get_ro_ref());
             let self_as_weak = ctx.act1_ctx.self_as_weak();
             let mut nfo_ctx = NewRoomObjectContext::from_act1_ctx(ctx.act1_ctx);
-            for i in 0..3 {
-                let angle = xform.dtheta + (i as f64) * 2.0/3.0 * std::f64::consts::PI;
+            for i in 0..4 {
+                let angle = (i as f64) * 1.0/2.0 * std::f64::consts::PI;
                 let proj_speed = 25.0;
                 let proj = NewProjectile2Args{
                     team: Team::Enemy,
@@ -98,76 +94,65 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
     match us_data.spit_projectile_start {
         Some(_) => {
             ctx.su_ctx.su_common.set_translate_move(TranslateMove::Decelerate);
-            ctx.su_ctx.su_common.set_rotate_move(RotateMove::Decelerate);
         }
         None => {
-            let xform = ctx.act1_ctx.get_rofiz().get_movable_object_xform(ctx.su_ctx.su_common.get_ro_ref());
-            let theta = xform.dtheta + (us_data.translate_dir as f64) * 2.0/3.0 * std::f64::consts::PI;
+            let theta = (us_data.translate_dir as f64) * 1.0/2.0 * std::f64::consts::PI;
             ctx.su_ctx.su_common.set_translate_move(TranslateMove::Accelerate { ax: f64::cos(theta), ay: f64::sin(theta)});
-            ctx.su_ctx.su_common.set_rotate_move(RotateMove::Accelerate { atheta: us_data.rotate_dir as f64 });
         }
     }
 
     if us_data.should_reset_velocity {
         us_data.should_reset_velocity = false;
         ctx.su_ctx.su_common.set_translate_move(TranslateMove::ResetVelocity);
-        ctx.su_ctx.su_common.set_rotate_move(RotateMove::ResetVelocity);
     }
 
     response
 }
 
 fn draw(ctx: &mut SuDrawContext) {
-    let us_data = ctx.su_ctx.us_data.downcast_mut::<Enemy4>().unwrap();
-    assert!(us_data.border.vertexes.len() == 3);
-    assert!(us_data.outer.vertexes.len() == 3);
-    assert!(us_data.inner.vertexes.len() == 3);
+    let us_data = ctx.su_ctx.us_data.downcast_mut::<Enemy5>().unwrap();
+    assert!(us_data.border.vertexes.len() == 4);
+    assert!(us_data.outer.vertexes.len() == 4);
+    assert!(us_data.inner.vertexes.len() == 4);
     let xform = ctx.draw_ctx.get_rofiz().get_movable_object_xform(ctx.su_ctx.su_common.get_ro_ref());
     let border = xform.get_transformed_polygon(&us_data.border).vertexes;
     let outer = xform.get_transformed_polygon(&us_data.outer).vertexes;
     let inner = xform.get_transformed_polygon(&us_data.inner).vertexes;
-    for i in 0..3 {
+    for i in 0..4 {
         let quad = [
-            Point::new(outer[i].x, outer[i].y),
-            Point::new(border[i].x, border[i].y),
-            Point::new(border[(i+1)%3].x, border[(i+1)%3].y),
-            Point::new(outer[(i+1)%3].x, outer[(i+1)%3].y),
+            outer[i],
+            border[i],
+            border[(i+1)%4],
+            outer[(i+1)%4],
         ];
         let dop = ctx.draw_ctx.do_tri_fan(BORDER_COLOR, Box::new(quad));
         ctx.draw_ctx.add_draw_op(DrawContext::Z_UNIT, dop);
     }
 
-    for i in 0..3 {
+    for i in 0..4 {
         let quad = [
-            Point::new(inner[i].x, inner[i].y),
-            Point::new(outer[i].x, outer[i].y),
-            Point::new(outer[(i+1)%3].x, outer[(i+1)%3].y),
-            Point::new(inner[(i+1)%3].x, inner[(i+1)%3].y),
+            inner[i],
+            outer[i],
+            outer[(i+1)%4],
+            inner[(i+1)%4],
         ];
         let dop = ctx.draw_ctx.do_tri_fan(OUTER_COLOR, Box::new(quad));
         ctx.draw_ctx.add_draw_op(DrawContext::Z_UNIT, dop);
     }
 
-    let inner_draw = [
-        Point::new(inner[0].x, inner[0].y),
-        Point::new(inner[1].x, inner[1].y),
-        Point::new(inner[2].x, inner[2].y),
-    ];
-
     let inner_color = match us_data.spit_projectile_start {
         Some(ref x) => Color::lerp(PROJ_COLOR, INNER_COLOR, 2.0 * f64::abs(0.5 - (ctx.draw_ctx.get_room_time() - x.start)) as f32),
         None => INNER_COLOR,
     };
-    let dop = ctx.draw_ctx.do_tri_fan(inner_color, Box::new(inner_draw));
+    let dop = ctx.draw_ctx.do_tri_fan(inner_color, inner);
     ctx.draw_ctx.add_draw_op(DrawContext::Z_UNIT, dop);
 }
 
 fn handle_collision(ctx: &mut SuHandleCollisionContext) -> HandleCollisionResponse {
-    let us_data = ctx.su_ctx.us_data.downcast_mut::<Enemy4>().unwrap();
+    let us_data = ctx.su_ctx.us_data.downcast_mut::<Enemy5>().unwrap();
     if !ctx.hc_ctx.get_other().borrow().is_spectral() {
         us_data.should_reset_velocity = true;
-        us_data.translate_dir = ctx.hc_ctx.get_randi64(0..3);
-        us_data.rotate_dir = 2 * ctx.hc_ctx.get_randi64(0..1) - 1;
+        us_data.translate_dir = ctx.hc_ctx.get_randi64(0..4);
     }
     HandleCollisionResponse::new()
 }

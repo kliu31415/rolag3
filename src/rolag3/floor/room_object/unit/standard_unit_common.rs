@@ -43,7 +43,7 @@ pub struct StandardUnitCommon {
 #[derive(Debug)]
 pub enum TranslateMove {
     Nop,
-    Accelerate{ax: f64, ay: f64},
+    Accelerate{ax: f64, ay: f64}, // ax and ay will be normalized to engine power and traction
     Decelerate,
     ResetVelocity,
 }
@@ -51,7 +51,7 @@ pub enum TranslateMove {
 #[derive(Debug)]
 pub enum RotateMove {
     Nop,
-    Accelerate{atheta: f64},
+    Accelerate{atheta: f64}, // atheta will be normalized to engine power and traction
     Decelerate,
     ResetVelocity,
 }
@@ -294,6 +294,14 @@ impl StandardUnitCommon {
         if damage < 0.0 {
             panic!("damage < 0. Expected positive damage.");
         }
+        
+        if damage == 0.0 {
+            return TakeDamageResponse {
+                dead: false,
+                damage_taken: 0.0,
+            };
+        }
+
         let damage_taken: f64;
         if self.hp < damage {
             damage_taken = self.hp;

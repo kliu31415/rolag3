@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
-use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Act1Response, Team}, projectile::projectile3::NewProjectile3Args}, rofiz::rofiz_object::Transformation, draw::{Color, DrawContext}}, geometry::{star::get_star_shape, shape::{Shape, Polygon, Point}, util::get_inner_polygon}};
+use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Act1Response, Team}, projectile::projectile3::NewProjectile3Args, damage::DamageColor}, rofiz::rofiz_object::Transformation, draw::{Color, DrawContext}}, geometry::{star::get_star_shape, shape::{Shape, Polygon, Point}, util::get_inner_polygon}};
 
 use super::{standard_unit1::{StandardUnit1, StandardUnit1Builder, StandardUnit1BuilderReq, SuAct1Context, SuDrawContext}, standard_unit_common::TranslateMove};
 
@@ -26,6 +26,7 @@ pub fn new_boss1(ctx: &mut NewRoomObjectContext, x: f64, y: f64) -> StandardUnit
 
     StandardUnit1Builder::new(StandardUnit1BuilderReq {
         team: Team::Enemy,
+        damage_color: DamageColor::Red,
         hp: 1e5,
         engine_power: 10.0,
         tire_traction: 20.0,
@@ -89,6 +90,7 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
                         let mut nfo_ctx = NewRoomObjectContext::from_act1_ctx(ctx.act1_ctx);
                         let proj = NewProjectile3Args {
                             team: Team::Enemy,
+                        damage_color: DamageColor::Green,
                             owner: self_as_weak,
                             lifespan: 5.0,
                             damage: 2.0,

@@ -41,7 +41,7 @@ pub enum RofizObjectMovement {
     Move(Transformation),
     MoveWithFallbacks(Vec<Transformation>),
     NewHitbox(Hitbox),
-    Delete(),
+    _Delete(),
 }
 
 #[derive(Debug, Copy, Clone)]

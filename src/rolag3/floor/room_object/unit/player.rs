@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::{Rc, Weak}};
 
-use crate::{rolag3::floor::{run::{PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, draw::{DrawContext, Color}, room_object::{room_object_def::{RoomObject, Act1Context, FloorCoordinate, NewRoomObjectContext, RoomObjectMetadata, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse}, projectile::projectile2::NewProjectile2Args, tiles::room_connection::{Direction, RoomConnection}}, rofiz::{rofiz_object::{Hitbox, Transformation}, rofiz_state::RofizState}, room::RoomConnectionInfo}, geometry::shape::{Shape, Point}};
+use crate::{rolag3::floor::{run::{PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, draw::{DrawContext, Color}, room_object::{room_object_def::{RoomObject, Act1Context, FloorCoordinate, NewRoomObjectContext, RoomObjectMetadata, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse}, projectile::projectile2::NewProjectile2Args, tiles::room_connection::{Direction, RoomConnection}, damage::DamageColor}, rofiz::{rofiz_object::{Hitbox, Transformation}, rofiz_state::RofizState}, room::RoomConnectionInfo}, geometry::shape::{Shape, Point}};
 
 use super::{Unit, standard_unit_common::{StandardUnitCommon, Budeb, BudebMaxSpeed, TranslateMove}};
 
@@ -233,6 +233,7 @@ fn weapon1_fire_projectile(mut args: MakeWeaponProjectileFnContext) -> Vec<Rc<Re
 
     let proj = NewProjectile2Args{
         team: args.owner_team,
+        damage_color: DamageColor::Green,
         owner: args.owner,
         lifespan: 2.0,
         velocity_x,
@@ -263,6 +264,7 @@ fn weapon2_fire_projectile(mut args: MakeWeaponProjectileFnContext) -> Vec<Rc<Re
         let velocity_y = args.owner_velocity_y + proj_velocity * f64::sin(angle);
         let proj = NewProjectile2Args{
             team: args.owner_team,
+            damage_color: DamageColor::Blue,
             owner: args.owner.clone(),
             lifespan: 2.0,
             velocity_x,

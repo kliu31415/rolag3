@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Weak};
 
-use crate::{rolag3::floor::{room_object::room_object_def::{RoomObject, NewRoomObjectContext, Act1Response, HandleCollisionResponse, HcProjectileContext, Team}, draw::{DrawContext, Color}, rofiz::rofiz_object::{Transformation, RofizObjectMovement}}, geometry::shape::{Shape, Point}};
+use crate::{rolag3::floor::{room_object::{room_object_def::{RoomObject, NewRoomObjectContext, Act1Response, HandleCollisionResponse, HcProjectileContext, Team}, damage::DamageColor}, draw::{DrawContext, Color}, rofiz::rofiz_object::{Transformation, RofizObjectMovement}}, geometry::shape::{Shape, Point}};
 
 use super::standard_projectile1::{Sp1Builder, Sp1BuilderReq, StandardProjectile1, SpAct1Context, SpDrawContext, SpHandleCollisionContext};
 
@@ -13,6 +13,7 @@ pub struct Projectile2Data {
 
 pub struct NewProjectile2Args {
     pub team: Team, 
+    pub damage_color: DamageColor,
     pub owner: Weak<RefCell<dyn RoomObject>>, 
     pub lifespan: f64,
     pub velocity_x: f64,
@@ -34,6 +35,7 @@ impl NewProjectile2Args {
         let shape = Shape::of_polygon(self.vertexes);
         Sp1Builder::new(Sp1BuilderReq {
             team: self.team,
+            damage_color: self.damage_color,
             lifespan: self.lifespan,
             xform: self.xform,
             shape,
@@ -80,6 +82,7 @@ fn handle_collision(ctx: &mut SpHandleCollisionContext) -> HandleCollisionRespon
     }
     let hcp_response = ctx.hc_ctx.get_other().borrow_mut().handle_collision_projectile(&HcProjectileContext{
         team: ctx.sp_ctx.team,
+        damage_color: ctx.sp_ctx.damage_color,
         damage: 3.0,
         room_time: ctx.hc_ctx.get_room_time(),
     });

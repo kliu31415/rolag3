@@ -7,6 +7,7 @@ pub mod enemy1;
 pub mod enemy2;
 pub mod enemy3;
 pub mod enemy4;
+pub mod enemy5;
 pub mod boss1;
 
 pub trait Unit: RoomObject {

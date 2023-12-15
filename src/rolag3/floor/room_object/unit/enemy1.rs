@@ -1,4 +1,4 @@
-use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Act1Response, HandleCollisionResponse, Team}, projectile::projectile2::NewProjectile2Args}, rofiz::rofiz_object::Transformation, draw::{Color, DrawContext}}, geometry::shape::{Shape, Point}};
+use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Act1Response, HandleCollisionResponse, Team}, projectile::projectile2::NewProjectile2Args, damage::DamageColor}, rofiz::rofiz_object::Transformation, draw::{Color, DrawContext}}, geometry::shape::{Shape, Point}};
 
 use super::{standard_unit1::{StandardUnit1, StandardUnit1Builder, StandardUnit1BuilderReq, SuAct1Context, SuDrawContext, SuHandleCollisionContext, HandleCollisionLogic}, standard_unit_common::TranslateMove};
 
@@ -30,6 +30,7 @@ pub fn new_enemy1(ctx: &mut NewRoomObjectContext, x: f64, y: f64) -> StandardUni
 
     StandardUnit1Builder::new(StandardUnit1BuilderReq {
         team: Team::Enemy,
+        damage_color: DamageColor::Blue,
         hp: 30.0,
         engine_power: 40.0,
         tire_traction: 50.0,
@@ -66,6 +67,7 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
             let mut nfo_ctx = NewRoomObjectContext::from_act1_ctx(ctx.act1_ctx);
             let proj = NewProjectile2Args{
                 team: Team::Enemy,
+                damage_color: DamageColor::Blue,
                 owner: self_as_weak,
                 lifespan: 2.0,
                 velocity_x: sps.proj_dx,

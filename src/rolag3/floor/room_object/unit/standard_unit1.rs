@@ -1,6 +1,6 @@
 use std::any::Any;
 
-use crate::{rolag3::floor::{room_object::room_object_def::{NewRoomObjectContext, RoomObject, RoomObjectMetadata, Act1Context, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse}, draw::DrawContext, rofiz::rofiz_object::{Transformation, Hitbox}}, geometry::shape::Shape};
+use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, RoomObject, RoomObjectMetadata, Act1Context, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse}, damage::DamageColor}, draw::DrawContext, rofiz::rofiz_object::{Transformation, Hitbox}}, geometry::shape::Shape};
 
 use super::{Unit, standard_unit_common::StandardUnitCommon};
 
@@ -18,6 +18,7 @@ pub struct Su1Data {
     us_data: Box<dyn Any>,
     md: RoomObjectMetadata,
     team: Team,
+    damage_color: DamageColor,
     su_common: StandardUnitCommon,
 }
 
@@ -92,6 +93,7 @@ impl Su1Data {
             us_data: self.us_data.as_mut(),
             md: &self.md,
             team: self.team,
+            damage_color: self.damage_color,
             su_common: &mut self.su_common,
         }
     }
@@ -99,6 +101,7 @@ impl Su1Data {
 
 pub struct StandardUnit1BuilderReq {
     pub team: Team,
+    pub damage_color: DamageColor,
     pub hp: f64,
     pub engine_power: f64,
     pub tire_traction: f64,
@@ -208,6 +211,7 @@ impl StandardUnit1Builder {
                 us_data: self.us_data,
                 md, 
                 team: self.req.team, 
+                damage_color: self.req.damage_color,
                 su_common, 
             },
             logic: Su1Logic {
@@ -224,6 +228,7 @@ pub struct SuContext<'a> {
     pub us_data: &'a mut dyn Any,
     pub md: &'a RoomObjectMetadata,
     pub team: Team,
+    pub damage_color: DamageColor,
     pub su_common: &'a mut StandardUnitCommon,
 }
 
@@ -265,7 +270,8 @@ fn hc_projectile_default(ctx: &mut SuHcProjectileContext) -> HcProjectileRespons
     if unit_team == projectile_team {
         return HcProjectileResponse::nop();
     }
-    let td_response = ctx.su_ctx.su_common.take_damage(ctx.hcp_ctx.room_time, ctx.hcp_ctx.damage);
+    let damage_mult = DamageColor::get_damage_mult(ctx.hcp_ctx.damage_color, ctx.su_ctx.damage_color);
+    let td_response = ctx.su_ctx.su_common.take_damage(ctx.hcp_ctx.room_time, ctx.hcp_ctx.damage * damage_mult);
     let mut room_objects_to_delete = Vec::new();
     if td_response.dead {
         room_objects_to_delete.push(ctx.su_ctx.md.get_id());

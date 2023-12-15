@@ -4,7 +4,7 @@ use rand::{rngs::ThreadRng, Rng};
 
 use crate::rolag3::floor::{draw::DrawContext, run::PlayerInput, rofiz::{rofiz_state::{RofizState, RofizObjectRef}, rofiz_object::Hitbox}, room::{Room, RoomConnectionInfo}};
 
-use super::unit::player::Player;
+use super::{unit::player::Player, damage::DamageColor};
 
 pub trait RoomObject {
     fn is_player(&self) -> bool {
@@ -467,6 +467,7 @@ pub enum Team {
 
 pub struct HcProjectileContext {
     pub team: Team,
+    pub damage_color: DamageColor,
     pub damage: f64,
     pub room_time: f64,
 }

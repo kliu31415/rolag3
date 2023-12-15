@@ -1,4 +1,4 @@
-use crate::{rolag3::floor::{room_object::room_object_def::{NewRoomObjectContext, Team, Act1Response}, rofiz::rofiz_object::Transformation, draw::{Color, DrawContext}}, geometry::shape::Shape};
+use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Team, Act1Response}, damage::DamageColor}, rofiz::rofiz_object::Transformation, draw::{Color, DrawContext}}, geometry::shape::Shape};
 
 use super::{standard_unit1::{StandardUnit1Builder, StandardUnit1BuilderReq, StandardUnit1, SuAct1Context, SuDrawContext}, standard_unit_common::TranslateMove};
 
@@ -13,6 +13,7 @@ pub fn new_enemy3(ctx: &mut NewRoomObjectContext, x: f64, y: f64) -> StandardUni
 
     StandardUnit1Builder::new(StandardUnit1BuilderReq {
         team: Team::Enemy,
+        damage_color: DamageColor::Red,
         hp: 30.0,
         engine_power: 40.0,
         tire_traction: 10.0,

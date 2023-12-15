@@ -170,9 +170,9 @@ impl RofizState {
     pub fn move_objects_and_find_collisions(&mut self) -> Vec<RofizCollision> {
         assert!(self.floor_started, "floor must be started before Rofiz moves objects and finds collisions");
 
-        self.basic_projectiles.retain(|x| !matches!(x.borrow().movement, RofizObjectMovement::Delete()));
-        self.nonspectral_units.retain(|x| !matches!(x.borrow().movement, RofizObjectMovement::Delete()));
-        self.spectral_units.retain(|x| !matches!(x.borrow().movement, RofizObjectMovement::Delete()));
+        self.basic_projectiles.retain(|x| !matches!(x.borrow().movement, RofizObjectMovement::_Delete()));
+        self.nonspectral_units.retain(|x| !matches!(x.borrow().movement, RofizObjectMovement::_Delete()));
+        self.spectral_units.retain(|x| !matches!(x.borrow().movement, RofizObjectMovement::_Delete()));
         for obj_rc in self.movable_objs_iter() {
             let mut obj = obj_rc.as_ref().borrow_mut();
             obj.initial_hitbox = obj.current.transformation.get_transformed_shape(&obj.current.shape);
@@ -181,7 +181,7 @@ impl RofizState {
                 RofizObjectMovement::Move(ref t) => (obj.current.transformation.add(t)).get_transformed_shape(&obj.current.shape),
                 RofizObjectMovement::MoveWithFallbacks(ref v) => (obj.current.transformation.add(&v[0])).get_transformed_shape(&obj.current.shape),
                 RofizObjectMovement::NewHitbox(ref h) => h.transformation.get_transformed_shape(&h.shape), 
-                RofizObjectMovement::Delete() => panic!("there should be no rofiz objects with Delete movement. Loc 1."),
+                RofizObjectMovement::_Delete() => panic!("there should be no rofiz objects with Delete movement. Loc 1."),
             };
             obj.fallback_idx = 0;
             obj.move_successful = true;
@@ -298,7 +298,7 @@ impl RofizState {
                     RofizObjectMovement::Move(ref t) => mo.current.transformation = mo.current.transformation.add(t),
                     RofizObjectMovement::MoveWithFallbacks(_) => panic!("Rofiz MoveWithFallbacks should not be hit here"),
                     RofizObjectMovement::NewHitbox(ref h) => mo.current = h.clone(),
-                    RofizObjectMovement::Delete() => panic!("there should be no rofiz objects with Delete movement. Loc 2."),
+                    RofizObjectMovement::_Delete() => panic!("there should be no rofiz objects with Delete movement. Loc 2."),
                 }
             }
         }

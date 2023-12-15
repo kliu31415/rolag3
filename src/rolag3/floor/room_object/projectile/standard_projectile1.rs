@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Weak, any::Any};
 
-use crate::{rolag3::floor::{room_object::{room_object_def::{RoomObject, RoomObjectMetadata, Act1Context, NewRoomObjectContext, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team}, dummy::Dummy}, draw::DrawContext, rofiz::{rofiz_object::{Hitbox, Transformation}, rofiz_state::RofizObjectRef}}, geometry::shape::Shape};
+use crate::{rolag3::floor::{room_object::{room_object_def::{RoomObject, RoomObjectMetadata, Act1Context, NewRoomObjectContext, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team}, dummy::Dummy, damage::DamageColor}, draw::DrawContext, rofiz::{rofiz_object::{Hitbox, Transformation}, rofiz_state::RofizObjectRef}}, geometry::shape::Shape};
 
 use super::Projectile;
 
@@ -19,6 +19,7 @@ struct Sp1Data {
     ro_ref: RofizObjectRef,
     team: Team,
     owner: Weak<RefCell<dyn RoomObject>>,
+    damage_color: DamageColor,
     lifespan_left: f64,
 }
 
@@ -34,6 +35,7 @@ impl Sp1Data {
             ps_data: self.ps_data.as_mut(),
             md: &self.md,
             team: self.team,
+            damage_color: self.damage_color,
             ro_ref: &mut self.ro_ref,
         }
     }
@@ -92,6 +94,7 @@ impl Projectile for StandardProjectile1 {
 
 pub struct Sp1BuilderReq {
     pub team: Team,
+    pub damage_color: DamageColor,
     pub lifespan: f64,
     pub xform: Transformation,
     pub shape: Shape,
@@ -155,6 +158,7 @@ impl Sp1Builder {
                 md,
                 ro_ref,
                 team: self.req.team,
+                damage_color: self.req.damage_color,
                 owner: self.owner,
                 lifespan_left: self.req.lifespan,
             },
@@ -171,6 +175,7 @@ pub struct SpContext<'a> {
     pub ps_data: &'a mut dyn Any,
     pub md: &'a RoomObjectMetadata,
     pub team: Team,
+    pub damage_color: DamageColor,
     pub ro_ref: &'a mut RofizObjectRef,
 }
 
