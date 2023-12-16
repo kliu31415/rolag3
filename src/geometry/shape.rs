@@ -68,12 +68,12 @@ impl Shape {
         Shape::Polygon(Polygon::new(Box::new(vertexes)))
     }
 
-    pub fn of_circle(x: f32, y: f32, r: f32) -> Shape {
-        Shape::Circle(Circle::new(x, y, r))
+    pub fn of_circle(center: Point, r: f32) -> Shape {
+        Shape::Circle(Circle::new(center, r))
     }
 
     pub fn dummy() -> Shape {
-        Shape::Circle(Circle::new(0.0, 0.0, 0.0))
+        Shape::Circle(Circle::new(Point::new(0.0, 0.0), 0.0))
     }
 }
 
@@ -111,8 +111,13 @@ impl Vector {
     pub fn new(x: f32, y: f32) -> Self {
         Self {x, y}
     }
+
     pub fn cross_product(v1: Vector, v2: Vector) -> f32 {
         v1.x * v2.y - v2.x * v1.y
+    }
+
+    pub fn dot(v1: Vector, v2: Vector) -> f32 {
+        v1.x * v2.x + v1.y * v2.y
     }
 }
 
@@ -147,13 +152,12 @@ impl BoundingBox {
 
 #[derive(Debug, Copy, Clone)]
 pub struct Circle {
+    pub center: Point,
     pub r: f32,
-    pub x: f32,
-    pub y: f32,
 }
 
 impl Circle {
-    fn new(r: f32, x: f32, y: f32) -> Self {
-        Self {r, x, y}
+    fn new(center: Point, r: f32) -> Self {
+        Self {center, r}
     }
 }

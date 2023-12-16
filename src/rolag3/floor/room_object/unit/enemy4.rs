@@ -1,4 +1,4 @@
-use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Act1Response, HandleCollisionResponse, Team}, projectile::projectile2::NewProjectile2Args, damage::DamageColor}, rofiz::rofiz_object::Transformation, draw::{Color, DrawContext}}, geometry::{shape::{Shape, Polygon, Point}, util::regular_polygon}};
+use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Act1Response, HandleCollisionResponse, Team}, projectile::projectile2::{NewProjectile2Args, Proj2Shape}, damage::DamageColor}, rofiz::rofiz_object::Transformation, draw::{Color, DrawContext}}, geometry::{shape::{Shape, Polygon, Point}, util::regular_polygon}};
 
 use super::{standard_unit1::{StandardUnit1, StandardUnit1Builder, StandardUnit1BuilderReq, SuAct1Context, SuDrawContext, SuHandleCollisionContext, HandleCollisionLogic}, standard_unit_common::{TranslateMove, RotateMove}};
 
@@ -12,7 +12,7 @@ use std::{cell::RefCell, rc::Rc};
 const BORDER_COLOR: Color = Color::new(0.0, 0.0, 0.0, 1.0);
 const OUTER_COLOR: Color = Color::new(2.0, 0.0, 0.0, 1.0);
 const INNER_COLOR: Color = Color::new(3.0, 0.0, 0.0, 1.0);
-const PROJ_COLOR: Color = Color::new(6.0, 0.0, 0.0, 1.0);
+const PROJ_COLOR: Color = Color::new(7.0, 0.3, 0.3, 1.0);
 
 pub struct Enemy4 {
     spit_projectile_start: Option<SpitProjectileInfo>,
@@ -80,16 +80,20 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
             for i in 0..3 {
                 let angle = xform.dtheta + (i as f64) * 2.0/3.0 * std::f64::consts::PI;
                 let proj_speed = 25.0;
+                let shape = Proj2Shape::TriFan {
+                    center: Point::new(0.0, 0.0), 
+                    vertexes: us_data.inner.vertexes.clone(),
+                };
                 let proj = NewProjectile2Args{
                     team: Team::Enemy,
                     damage_color: DamageColor::Red,
+                    damage: 3.0,
                     owner: self_as_weak.clone(),
                     lifespan: 2.0,
                     velocity_x: proj_speed * f64::cos(angle),
                     velocity_y: proj_speed * f64::sin(angle),
                     xform,
-                    center: Point::new(0.0, 0.0), 
-                    vertexes: us_data.inner.vertexes.clone(), 
+                    shape,
                     color: PROJ_COLOR,
                 }.new(&mut nfo_ctx);
                 response.add_room_obj(Rc::new(RefCell::new(proj)));

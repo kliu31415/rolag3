@@ -84,6 +84,24 @@ impl DrawContext<'_> {
         DrawOp::TriFan(DrawOpTriFan{vertexes: vs_coords})
     }
 
+    pub fn do_circle(&self, color: Color, x: f32, y: f32, r: f32) -> DrawOp {
+        let color = Self::color_to_rdr(&color);
+        let x = self.x_to_vsc(x);
+        let y = self.y_to_vsc(y);
+        let r = r * self.pixels_per_tile;
+        DrawOp::ConcentricCircleSector(
+            DrawOpCCS {
+                x,
+                y,
+                inner_radius: 0.0,
+                outer_radius: r, 
+                viewport: None,
+                inner_color: color, 
+                outer_color: color, 
+                angle_range: None,
+        })
+    }
+
     // only works for convex quads
     pub fn do_rect(&self, color: Color, x: f32, y: f32, w: f32, h: f32) -> DrawOp {
         let vertexes = [

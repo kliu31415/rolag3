@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::{Rc, Weak}};
 
-use crate::{rolag3::floor::{run::{PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, draw::{DrawContext, Color}, room_object::{room_object_def::{RoomObject, Act1Context, FloorCoordinate, NewRoomObjectContext, RoomObjectMetadata, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse, RoomObjectType, RoQueryUnitInfoContext, RoQueryUnitInfoResponse}, projectile::projectile2::NewProjectile2Args, tiles::room_connection::{Direction, RoomConnection}, damage::DamageColor}, rofiz::{rofiz_object::{Hitbox, Transformation}, rofiz_state::RofizState}, room::RoomConnectionInfo}, geometry::shape::{Shape, Point}};
+use crate::{rolag3::floor::{run::{PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, draw::{DrawContext, Color}, room_object::{room_object_def::{RoomObject, Act1Context, FloorCoordinate, NewRoomObjectContext, RoomObjectMetadata, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse, RoomObjectType, RoQueryUnitInfoContext, RoQueryUnitInfoResponse}, projectile::projectile2::{NewProjectile2Args, Proj2Shape}, tiles::room_connection::{Direction, RoomConnection}, damage::DamageColor}, rofiz::{rofiz_object::{Hitbox, Transformation}, rofiz_state::RofizState}, room::RoomConnectionInfo}, geometry::shape::{Shape, Point}};
 
 use super::{Unit, standard_unit_common::{StandardUnitCommon, Budeb, BudebMaxSpeed, TranslateMove}};
 
@@ -170,7 +170,7 @@ impl Player {
             su_common: None,
             since_last_projectile: 0.0,
             change_rooms: None,
-            weapons: vec![make_weapon1(), make_weapon2()],
+            weapons: vec![make_weapon1(), make_weapon2(), make_weapon3()],
             weapon_idx: 0,
         }
     }
@@ -244,17 +244,20 @@ fn weapon1_fire_projectile(mut args: MakeWeaponProjectileFnContext) -> Vec<Rc<Re
     let proj_velocity = 100.0;
     let velocity_x = args.owner_velocity_x + proj_velocity * f64::cos(args.fire_polar_angle);
     let velocity_y = args.owner_velocity_y + proj_velocity * f64::sin(args.fire_polar_angle);
-
+    let shape = Proj2Shape::TriFan {
+        center: Point::new(0.0, 0.0), 
+        vertexes: vec![Point::new(-0.2, -0.2), Point::new(0.2, -0.2), Point::new(0.2, 0.2), Point::new(-0.2, 0.2)].into_boxed_slice() 
+    };
     let proj = NewProjectile2Args{
         team: args.owner_team,
         damage_color: DamageColor::Green,
+        damage: 2.0,
         owner: args.owner,
         lifespan: 2.0,
         velocity_x,
         velocity_y,
         xform: args.owner_xform,
-        center: Point::new(0.0, 0.0), 
-        vertexes: vec![Point::new(-0.2, -0.2), Point::new(0.2, -0.2), Point::new(0.2, 0.2), Point::new(-0.2, 0.2)].into_boxed_slice(), 
+        shape,
         color: Color::new(0.0, 1.6, 0.0, 1.0),
     }.new(&mut args.nro_ctx);
     vec![Rc::new(RefCell::new(proj))]
@@ -276,17 +279,55 @@ fn weapon2_fire_projectile(mut args: MakeWeaponProjectileFnContext) -> Vec<Rc<Re
         let angle = args.fire_polar_angle + (i as f64) * std::f64::consts::FRAC_PI_6;
         let velocity_x = args.owner_velocity_x + proj_velocity * f64::cos(angle);
         let velocity_y = args.owner_velocity_y + proj_velocity * f64::sin(angle);
+        let shape = Proj2Shape::TriFan {
+            center: Point::new(0.0, 0.0), 
+            vertexes: vec![Point::new(-0.2, -0.2), Point::new(0.2, -0.2), Point::new(0.2, 0.2), Point::new(-0.2, 0.2)].into_boxed_slice() 
+        };
         let proj = NewProjectile2Args{
             team: args.owner_team,
             damage_color: DamageColor::Blue,
+            damage: 7.0,
             owner: args.owner.clone(),
             lifespan: 2.0,
             velocity_x,
             velocity_y,
             xform: args.owner_xform,
-            center: Point::new(0.0, 0.0), 
-            vertexes: vec![Point::new(-0.2, -0.2), Point::new(0.2, -0.2), Point::new(0.2, 0.2), Point::new(-0.2, 0.2)].into_boxed_slice(), 
+            shape,
             color: Color::new(0.0, 0.0, 16.0, 1.0),
+        }.new(&mut args.nro_ctx);
+        ret.push(Rc::new(RefCell::new(proj)));
+    }
+    ret
+}
+
+fn make_weapon3() -> Weapon {
+    Weapon {
+        make_projectile: Box::new(weapon3_fire_projectile),
+        attack_interval: 0.2,
+        since_last_attack: 0.2,
+    }
+}
+
+fn weapon3_fire_projectile(mut args: MakeWeaponProjectileFnContext) -> Vec<Rc<RefCell<dyn RoomObject>>> {
+    let proj_velocity = 60.0;
+
+    let mut ret: Vec<Rc<RefCell<dyn RoomObject>>> = Vec::new();
+    for i in -1..2 {
+        let angle = args.fire_polar_angle + (i as f64) * std::f64::consts::FRAC_PI_6;
+        let velocity_x = args.owner_velocity_x + proj_velocity * f64::cos(angle);
+        let velocity_y = args.owner_velocity_y + proj_velocity * f64::sin(angle);
+        let shape = Proj2Shape::Circle {x: 0.0, y: 0.0, r: 0.4};
+        let proj = NewProjectile2Args{
+            team: args.owner_team,
+            damage_color: DamageColor::Red,
+            damage: 3.0,
+            owner: args.owner.clone(),
+            lifespan: 2.0,
+            velocity_x,
+            velocity_y,
+            xform: args.owner_xform,
+            shape,
+            color: Color::new(6.0, 0.0, 0.0, 1.0),
         }.new(&mut args.nro_ctx);
         ret.push(Rc::new(RefCell::new(proj)));
     }

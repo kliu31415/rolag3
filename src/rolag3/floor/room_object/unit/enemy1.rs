@@ -1,4 +1,4 @@
-use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Act1Response, HandleCollisionResponse, Team, Act1QueryArgs, Act1QueryResult}, projectile::projectile2::NewProjectile2Args, damage::DamageColor}, rofiz::rofiz_object::Transformation, draw::{Color, DrawContext}}, geometry::shape::{Shape, Point}};
+use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Act1Response, HandleCollisionResponse, Team, Act1QueryArgs, Act1QueryResult}, projectile::projectile2::{NewProjectile2Args, Proj2Shape}, damage::DamageColor}, rofiz::rofiz_object::Transformation, draw::{Color, DrawContext}}, geometry::shape::{Shape, Point}};
 
 use super::{standard_unit1::{StandardUnit1, StandardUnit1Builder, StandardUnit1BuilderReq, SuAct1Context, SuDrawContext, SuHandleCollisionContext, HandleCollisionLogic}, standard_unit_common::TranslateMove};
 
@@ -82,16 +82,20 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
             sps.proj_spit = true;
             let self_as_weak = ctx.act1_ctx.get_self_as_weak();
             let mut nfo_ctx = NewRoomObjectContext::from_act1_ctx(ctx.act1_ctx);
+            let shape = Proj2Shape::TriFan {
+                center: Point::new(0.0, 0.0), 
+                vertexes: vec![Point::new(-0.4, -0.4), Point::new(0.4, -0.4), Point::new(0.4, 0.4), Point::new(-0.4, 0.4)].into_boxed_slice(), 
+            };
             let proj = NewProjectile2Args{
                 team: Team::Enemy,
                 damage_color: DamageColor::Blue,
+                damage: 3.0,
                 owner: self_as_weak,
                 lifespan: 2.0,
                 velocity_x: sps.proj_dx,
                 velocity_y: sps.proj_dy,
                 xform,
-                center: Point::new(0.0, 0.0), 
-                vertexes: vec![Point::new(-0.4, -0.4), Point::new(0.4, -0.4), Point::new(0.4, 0.4), Point::new(-0.4, 0.4)].into_boxed_slice(), 
+                shape,
                 color: Color::new(0.0, 0.0, 15.0, 1.0),
             }.new(&mut nfo_ctx);
             response.add_room_obj(Rc::new(RefCell::new(proj)));

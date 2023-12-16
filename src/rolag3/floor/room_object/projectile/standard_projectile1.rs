@@ -20,6 +20,7 @@ struct Sp1Data {
     team: Team,
     owner: Weak<RefCell<dyn RoomObject>>,
     damage_color: DamageColor,
+    damage: f64,
     lifespan_left: f64,
 }
 
@@ -36,6 +37,7 @@ impl Sp1Data {
             md: &self.md,
             team: self.team,
             damage_color: self.damage_color,
+            damage: self.damage,
             ro_ref: &mut self.ro_ref,
         }
     }
@@ -99,6 +101,7 @@ impl Projectile for StandardProjectile1 {
 pub struct Sp1BuilderReq {
     pub team: Team,
     pub damage_color: DamageColor,
+    pub damage: f64,
     pub lifespan: f64,
     pub xform: Transformation,
     pub shape: Shape,
@@ -163,6 +166,7 @@ impl Sp1Builder {
                 ro_ref,
                 team: self.req.team,
                 damage_color: self.req.damage_color,
+                damage: self.req.damage,
                 owner: self.owner,
                 lifespan_left: self.req.lifespan,
             },
@@ -180,6 +184,7 @@ pub struct SpContext<'a> {
     pub md: &'a RoomObjectMetadata,
     pub team: Team,
     pub damage_color: DamageColor,
+    pub damage: f64,
     pub ro_ref: &'a mut RofizObjectRef,
 }
 

@@ -1,24 +1,47 @@
-use super::shape::{Vector, Shape, Circle, Polygon, BoundingBox};
+use super::shape::{Vector, Shape, Circle, Polygon, BoundingBox, Point};
 
 pub fn shapes_overlap(shape1: &Shape, shape2: &Shape) -> bool {
     match shape1 {
         Shape::Polygon(p1) => match shape2 {
             Shape::Polygon(p2) => polygon_overlaps_overlap(p1, p2),
-            Shape::Circle(c2) => circle_overlaps_polygon(c2, p1),
+            Shape::Circle(c2) => polygon_overlaps_circle(p1, c2),
         }
         Shape::Circle(c1) => match shape2 {
-            Shape::Polygon(p2) => circle_overlaps_polygon(c1, p2),
+            Shape::Polygon(p2) => polygon_overlaps_circle(p2, c1),
             Shape::Circle(c2) => circles_overlaps_circle(c1, c2),
         }
     }
 }
 
 fn circles_overlaps_circle(c1: &Circle, c2: &Circle) -> bool {
-    f32::hypot(c2.x - c1.x, c2.y - c1.y) < c1.r + c2.r
+    f32::hypot(c2.center.x - c1.center.x, c2.center.y - c1.center.y) < c1.r + c2.r
 }
 
-fn circle_overlaps_polygon(_c1: &Circle, _p2: &Polygon) -> bool {
-    todo!();
+fn polygon_overlaps_circle(p1: &Polygon, c2: &Circle) -> bool {
+    let rsq = f32::powi(c2.r, 2);
+    // remember to iterate over the edge connecting vertexes with index n-1 and 0
+    for i in 0..p1.vertexes.len() {
+        let s = if i == 0 {p1.vertexes[p1.vertexes.len()-1]} else {p1.vertexes[i-1]};
+        let e = p1.vertexes[i];
+        let v = e - s;
+        let f = s - Point::new(c2.center.x, c2.center.y);
+        let a = Vector::dot(v, v);
+        let b = 2.0 * Vector::dot(v, f);
+        let c = Vector::dot(f, f) - rsq;
+        let discriminant = f32::powi(b, 2) - 4.0 * a * c;
+        // ignore the case where discriminant == 0, because it's ok to treat case that as non-intersecting
+        if discriminant > 0.0 {
+            let n1 = -b;
+            let n2 = f32::sqrt(discriminant);
+            let d = 2.0 * a;
+            let r1 = (n1 - n2) / d;
+            let r2 = (n1 + n2) / d;
+            if (r1>=0.0 && r1<=1.0) || (r2>=0.0 && r2<=1.0) {
+                return true;
+            } 
+        }
+    }
+    false
 }
 
 fn polygon_overlaps_overlap(p1: &Polygon, p2: &Polygon) -> bool {

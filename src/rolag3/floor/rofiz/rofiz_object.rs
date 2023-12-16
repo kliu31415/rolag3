@@ -58,7 +58,7 @@ impl Transformation {
 
     pub fn get_transformed_shape(&self, shape: &Shape) -> Shape {
         match shape {
-            Shape::Circle(c) => Shape::of_circle(c.x + self.dx as f32, c.y + self.dy as f32, c.r),
+            Shape::Circle(c) => Shape::of_circle(Point::new(c.center.x + self.dx as f32, c.center.y + self.dy as f32), c.r),
             Shape::Polygon(ref p) => Shape::Polygon(self.get_transformed_polygon(p)),
         }
     }
