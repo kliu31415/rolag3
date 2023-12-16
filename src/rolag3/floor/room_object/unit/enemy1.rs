@@ -1,8 +1,11 @@
-use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Act1Response, HandleCollisionResponse, Team}, projectile::projectile2::NewProjectile2Args, damage::DamageColor}, rofiz::rofiz_object::Transformation, draw::{Color, DrawContext}}, geometry::shape::{Shape, Point}};
+use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Act1Response, HandleCollisionResponse, Team, Act1QueryArgs, Act1QueryResult}, projectile::projectile2::NewProjectile2Args, damage::DamageColor}, rofiz::rofiz_object::Transformation, draw::{Color, DrawContext}}, geometry::shape::{Shape, Point}};
 
 use super::{standard_unit1::{StandardUnit1, StandardUnit1Builder, StandardUnit1BuilderReq, SuAct1Context, SuDrawContext, SuHandleCollisionContext, HandleCollisionLogic}, standard_unit_common::TranslateMove};
 
 use std::{f64::consts::PI, cell::RefCell, rc::Rc};
+
+/* Enemy1 is blue square that randomly translates. Enemy1 occasionally spits a projectile in the player's direction.
+*/
 
 const SIDE_LEN: f32 = 1.2;
 
@@ -10,6 +13,7 @@ pub struct Enemy1 {
     accel_xy_angle: f64,
     spit_projectile_start: Option<SpitProjectileInfo>,
     should_reset_velocity: bool,
+    query_result: Option<Rc<RefCell<Act1QueryResult>>>,
 }
 
 struct SpitProjectileInfo {
@@ -26,6 +30,7 @@ pub fn new_enemy1(ctx: &mut NewRoomObjectContext, x: f64, y: f64) -> StandardUni
         accel_xy_angle: 2.0 * PI * ctx.get_randf64(),
         spit_projectile_start: None,
         should_reset_velocity: false,
+        query_result: None,
     };
 
     StandardUnit1Builder::new(StandardUnit1BuilderReq {
@@ -47,22 +52,34 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
 
     let mut response = Act1Response::new();
     let tick_len = ctx.act1_ctx.get_tick_length();
+    let xform = ctx.act1_ctx.get_rofiz().get_movable_object_xform(ctx.su_ctx.su_common.get_ro_ref());
+
+    if let Some(ref qr) = us_data.query_result {
+        match &*qr.borrow() {
+            Act1QueryResult::ClosestUnit(v) => {
+                if let Some(closest) = v {
+                    let proj_velocity = 25.0;
+                    let theta = f64::atan2(closest.y - xform.dy, closest.x - xform.dx);
+                    let proj_dx = proj_velocity * f64::cos(theta);
+                    let proj_dy = proj_velocity * f64::sin(theta);
+                    us_data.spit_projectile_start = Some(SpitProjectileInfo { start: ctx.act1_ctx.get_room_time(), proj_spit: false, proj_dx, proj_dy });
+                }
+            }
+            _ => panic!("unexpected Act1QueryResult. Expected ClosestUnit, got {:?}", qr),
+        }
+        us_data.query_result = None;
+    }
 
     if us_data.spit_projectile_start.is_none() && ctx.act1_ctx.get_randf64() < tick_len {
-        if let Some(player_xy) = ctx.act1_ctx.get_team_closest_location(Team::Player) {
-            let xform = ctx.act1_ctx.get_rofiz().get_movable_object_xform(ctx.su_ctx.su_common.get_ro_ref());
-            let proj_velocity = 25.0;
-            let theta = f64::atan2(player_xy.y - xform.dy, player_xy.x - xform.dx);
-            let proj_dx = proj_velocity * f64::cos(theta);
-            let proj_dy = proj_velocity * f64::sin(theta);
-            us_data.spit_projectile_start = Some(SpitProjectileInfo { start: ctx.act1_ctx.get_room_time(), proj_spit: false, proj_dx, proj_dy });
-        }
+        // x and y in the query shouldn't matter because there's usually one player. I set them anyway in case there are
+        // multiple players in the future
+        let query = Act1QueryArgs::ClosestUnit { x: xform.dx, y: xform.dy, team_filter: Some(Team::Player) };
+        us_data.query_result = Some(response.add_query(query));
     }
 
     if let Some(ref mut sps) = us_data.spit_projectile_start {
         if !sps.proj_spit && ctx.act1_ctx.get_room_time() - sps.start > 0.5 {
             sps.proj_spit = true;
-            let xform = ctx.act1_ctx.get_rofiz().get_movable_object_xform(ctx.su_ctx.su_common.get_ro_ref());
             let self_as_weak = ctx.act1_ctx.get_self_as_weak();
             let mut nfo_ctx = NewRoomObjectContext::from_act1_ctx(ctx.act1_ctx);
             let proj = NewProjectile2Args{

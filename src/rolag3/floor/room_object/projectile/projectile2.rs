@@ -4,7 +4,7 @@ use crate::{rolag3::floor::{room_object::{room_object_def::{RoomObject, NewRoomO
 
 use super::standard_projectile1::{Sp1Builder, Sp1BuilderReq, StandardProjectile1, SpAct1Context, SpDrawContext, SpHandleCollisionContext};
 
-// Projectile2 is a normal projectile. It moves at a constant velocity
+// Projectile2 is a normal projectile shaped like a triangle fan. It moves at a constant velocity
 
 pub struct Projectile2Data {
     center: Point,

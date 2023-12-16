@@ -4,6 +4,9 @@ use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext
 
 use super::{standard_unit1::{StandardUnit1, StandardUnit1Builder, StandardUnit1BuilderReq, SuAct1Context, SuDrawContext}, standard_unit_common::TranslateMove};
 
+/* Enemy2 is a green square that continuously moves in the direction of the player.
+*/
+
 const SIDE_LEN: f32 = 1.2;
 
 pub struct Enemy2 {

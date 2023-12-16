@@ -4,7 +4,7 @@ use rand::{rngs::ThreadRng, Rng};
 
 use crate::rolag3::floor::{draw::DrawContext, run::PlayerInput, rofiz::{rofiz_state::{RofizState, RofizObjectRef}, rofiz_object::Hitbox}, room::{Room, RoomConnectionInfo}};
 
-use super::{unit::player::Player, damage::DamageColor};
+use super::damage::DamageColor;
 
 pub trait RoomObject {
     fn is_player(&self) -> bool {
@@ -47,6 +47,7 @@ pub trait RoomObject {
 }
 
 pub struct RoQueryUnitInfoContext<'a> {
+    self_as_weak: Weak<RefCell<dyn RoomObject>>,
     rofiz: &'a RofizState,
 }
 
@@ -54,10 +55,15 @@ impl<'a> RoQueryUnitInfoContext<'a> {
     pub fn get_rofiz(&self) -> &RofizState {
         &self.rofiz
     }
+
+    pub fn get_self_as_weak(&self) -> Weak<RefCell<dyn RoomObject>> {
+        self.self_as_weak.clone()
+    }
 }
 
 #[derive(Debug)]
 pub struct RoQueryUnitInfoResponse {
+    pub unit: Weak<RefCell<dyn RoomObject>>,
     pub team: Team,
     pub x: f64,
     pub y: f64,
@@ -176,11 +182,14 @@ impl RoomObjectCollection {
         for (qargs, qresult) in queries {
             match qargs {
                 Act1QueryArgs::ClosestUnit { x, y, team_filter } => {
-                    let rqui_ctx = RoQueryUnitInfoContext {
-                        rofiz: &ctx.rofiz,
-                    };
                     let closest = self.ro_unit.iter().chain(self.player.iter())
-                        .map(|x| x.borrow().handle_query_unit_info(&rqui_ctx))
+                        .map(|x| {
+                            let rqui_ctx = RoQueryUnitInfoContext {
+                                self_as_weak: Rc::downgrade(x),
+                                rofiz: &ctx.rofiz,
+                            };
+                            x.borrow().handle_query_unit_info(&rqui_ctx)
+                        })
                         .filter(|x| team_filter.is_none() || team_filter.unwrap() == x.team)
                         .min_by(|a, b| {
                             let dist_a = f64::powi(a.x - x, 2) + f64::powi(a.y - y, 2);
@@ -188,7 +197,15 @@ impl RoomObjectCollection {
                             dist_a.partial_cmp(&dist_b).unwrap()
                         });
                     match closest {
-                        Some(c) => qresult.replace(Act1QueryResult::ClosestUnit(Some(UnitInfo { team: c.team, x: c.x, y: c.y }))),
+                        Some(c) => qresult.replace(
+                            Act1QueryResult::ClosestUnit(Some(UnitInfo { 
+                                unit: c.unit,
+                                distance: f64::hypot(c.x - x, c.y - y),
+                                team: c.team,
+                                x: c.x, 
+                                y: c.y,
+                            }))
+                        ),
                         None => qresult.replace(Act1QueryResult::ClosestUnit(None)),
                     };
                 }
@@ -345,7 +362,6 @@ pub struct Act1Context<'a> {
     player_input: &'a PlayerInput,
     rofiz: &'a mut RofizState,
     room_object_id_counter: &'a mut RoomObjectId,
-    player: Rc<RefCell<Player>>,
     self_as_rc: Option<Rc<RefCell<dyn RoomObject>>>,
     tick_length: f64,
     room_time: f64,
@@ -358,7 +374,6 @@ impl<'a> Act1Context<'a> {
         player_input: &'a PlayerInput, 
         rofiz: &'a mut RofizState, 
         room_object_id_counter: &'a mut RoomObjectId, 
-        player: Rc<RefCell<Player>>,
         tick_length: f64, 
         room_time: f64,
         rng: &'a mut ThreadRng,
@@ -368,7 +383,6 @@ impl<'a> Act1Context<'a> {
             player_input,
             rofiz,
             room_object_id_counter,
-            player,
             self_as_rc: Option::None,
             tick_length,
             room_time,
@@ -405,14 +419,6 @@ impl<'a> Act1Context<'a> {
     pub fn get_room_cleared_at_time(&self) -> Option<f64> {
         self.room_cleared_at_time
     }
-
-    pub fn get_team_closest_location(&self, team: Team) -> Option<FloorCoordinate> {
-        // the borrow checker could panic here if self_as_rc is the same as a Rc<RefCell<Unit>> we attempt to borrow
-        match team {
-            Team::Player => Some(self.player.borrow().get_center_point(self.rofiz)),
-            Team::Enemy => todo!("haven't implemented getting closest enemy unit location yet"),
-        } 
-    }
 }
 
 pub enum Act1QueryArgs {
@@ -427,6 +433,8 @@ pub enum Act1QueryResult {
 
 #[derive(Debug)]
 pub struct UnitInfo {
+    pub unit: Weak<RefCell<dyn RoomObject>>,
+    pub distance: f64,
     pub team: Team,
     pub x: f64,
     pub y: f64,

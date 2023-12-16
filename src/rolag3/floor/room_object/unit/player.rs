@@ -148,6 +148,7 @@ impl RoomObject for Player {
     fn handle_query_unit_info(&self, ctx: &RoQueryUnitInfoContext) -> RoQueryUnitInfoResponse {
         let xform = ctx.get_rofiz().get_movable_object_xform(self.su_common.as_ref().unwrap().get_ro_ref());
         RoQueryUnitInfoResponse { 
+            unit: ctx.get_self_as_weak(),
             team: Team::Player, 
             x: xform.dx, 
             y: xform.dy,

@@ -4,6 +4,10 @@ use super::{standard_unit1::{StandardUnit1, StandardUnit1Builder, StandardUnit1B
 
 use std::{cell::RefCell, rc::Rc};
 
+/* Enemy5 is a red square that randomly translates in cardinal directions and periodically shoots a 
+   wave of 4 projectiles in the cardinal directions. It changes directions upon colliding with a nonspectral object.
+*/
+
 const BORDER_COLOR: Color = Color::new(0.0, 0.0, 0.0, 1.0);
 const OUTER_COLOR: Color = Color::new(2.0, 0.0, 0.0, 1.0);
 const INNER_COLOR: Color = Color::new(3.0, 0.0, 0.0, 1.0);

@@ -4,6 +4,11 @@ use super::{standard_unit1::{StandardUnit1, StandardUnit1Builder, StandardUnit1B
 
 use std::{cell::RefCell, rc::Rc};
 
+/* Enemy4 is a regular red triangle that randomly rotates and translates in the direction of one of its vertices. 
+   It periodically slows down and shoots a wave of 3 triangular projectiles following each vertex.
+   It changes directions upon colliding with a nonspectral object.
+*/
+
 const BORDER_COLOR: Color = Color::new(0.0, 0.0, 0.0, 1.0);
 const OUTER_COLOR: Color = Color::new(2.0, 0.0, 0.0, 1.0);
 const INNER_COLOR: Color = Color::new(3.0, 0.0, 0.0, 1.0);

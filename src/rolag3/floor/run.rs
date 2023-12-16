@@ -76,7 +76,7 @@ fn run_floor_tick(ctx: RunFloorTickContext) {
     {
         room.room_time += ctx.tick_length;
         room.rofiz.start_new_tick();
-        let mut act1_context = Act1Context::new(ctx.player_input, &mut room.rofiz, &mut room.room_object_id_counter, player.clone(), ctx.tick_length, room.room_time, ctx.rng, room.room_cleared_at_time);
+        let mut act1_context = Act1Context::new(ctx.player_input, &mut room.rofiz, &mut room.room_object_id_counter,  ctx.tick_length, room.room_time, ctx.rng, room.room_cleared_at_time);
         room.room_objects.act1(&mut act1_context);
         let collisions = room.rofiz.move_objects_and_find_collisions();
         for collision in collisions.iter() {
