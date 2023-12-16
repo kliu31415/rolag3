@@ -79,41 +79,32 @@ fn run_floor_tick(ctx: RunFloorTickContext) {
         let mut act1_context = Act1Context::new(ctx.player_input, &mut room.rofiz, &mut room.room_object_id_counter,  ctx.tick_length, room.room_time, ctx.rng, room.room_cleared_at_time);
         room.room_objects.act1(&mut act1_context);
         let collisions = room.rofiz.move_objects_and_find_collisions();
+        let ids_in_collisions = collisions.iter().flat_map(|x| [x.room_obj_id1, x.room_obj_id2]).collect();
+        let mut id_to_obj = room.room_objects.get_multi(ids_in_collisions);
         for collision in collisions.iter() {
             if collision.room_obj_id1 == collision.room_obj_id2 {
                 panic!("found collision between object and itself. id={}", collision.room_obj_id1);
             }
 
-            let mut hc1r = None;
-            let mut hc2r = None;
-            {
-                let obj1 = room.room_objects.get(collision.room_obj_id1);
-                let obj2 = room.room_objects.get(collision.room_obj_id2);
-                if obj1.is_some() && obj2.is_some() {
-                    let mut hc_ctx = HandleCollisionContext::new(obj2.unwrap(), ctx.rng, room.room_time);
-                    hc1r = Some(obj1.unwrap().borrow_mut().handle_collision(&mut hc_ctx));
-                }
+            let obj1 = id_to_obj.get(&collision.room_obj_id1);
+            let obj2 = id_to_obj.get(&collision.room_obj_id2);
+            if obj1.is_none() || obj2.is_none() {
+                continue;
             }
-            
-            {
-                let obj1 = room.room_objects.get(collision.room_obj_id1);
-                let obj2 = room.room_objects.get(collision.room_obj_id2);
-                if obj1.is_some() && obj2.is_some() {
-                    let mut hc_ctx = HandleCollisionContext::new(obj1.unwrap(), ctx.rng, room.room_time);
-                    hc2r = Some(obj2.unwrap().borrow_mut().handle_collision(&mut hc_ctx));
-                }
-            }
+
+            let mut hc_ctx = HandleCollisionContext::new(obj2.unwrap().clone(), ctx.rng, room.room_time);
+            let hc1r = obj1.unwrap().borrow_mut().handle_collision(&mut hc_ctx);
+
+            let mut hc_ctx = HandleCollisionContext::new(obj1.unwrap().clone(), ctx.rng, room.room_time);
+            let hc2r = obj2.unwrap().borrow_mut().handle_collision(&mut hc_ctx);
 
             // remove these objects immediately so that during future collisions, they're considered invalid.
             // This also prevents RoomObjects holding WeakRefs from accessing deleted objects during future
             // handle_collisions() in the same tick, which is desirable.
             let mut to_remove = HashSet::new();
-            if let Some(hc) = hc1r {
-                to_remove.extend(hc.get_room_objects_to_remove());
-            }
-            if let Some(hc) = hc2r {
-                to_remove.extend(hc.get_room_objects_to_remove());
-            }
+            to_remove.extend(hc1r.get_room_objects_to_remove());
+            to_remove.extend(hc2r.get_room_objects_to_remove());
+            to_remove.iter().for_each(|id| {id_to_obj.remove(id);});
             room.room_objects.remove_by_id(to_remove);
         }
 

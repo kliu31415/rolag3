@@ -1,4 +1,4 @@
-use std::{rc::{Rc, Weak}, cell::RefCell, collections::HashSet, ops::Range};
+use std::{rc::{Rc, Weak}, cell::RefCell, collections::{HashSet, HashMap}, ops::Range};
 
 use rand::{rngs::ThreadRng, Rng};
 
@@ -262,13 +262,15 @@ impl RoomObjectCollection {
         self.vec_mut_all_objects().iter_mut().for_each(|v| v.retain(|_| {idx += 1; !should_remove[idx - 1]}));
     }
 
-    pub fn get(&self, id: RoomObjectId) -> Option<Rc<RefCell<dyn RoomObject>>> {
+    pub fn get_multi(&self, ids: HashSet<RoomObjectId>) -> HashMap<RoomObjectId, Rc<RefCell<dyn RoomObject>>> {
+        let mut res = HashMap::new();
         for fo in self.iter() {
-            if id == fo.borrow().get_metadata().get_id() {
-                return Some(fo.clone());
+            let id = fo.borrow().get_metadata().get_id();
+            if ids.contains(&id) {
+                res.insert(id, fo.clone());
             }
         }
-        None
+        res
     }
 
     pub fn validate(&self) {

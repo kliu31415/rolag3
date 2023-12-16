@@ -48,6 +48,8 @@ pub struct RofizState {
     has_wall_at_coordinate: Vec<Vec<Option<Rc<RefCell<RofizObjBasicWall>>>>>,
 
     obj_creation_counter: usize,
+
+    spatial_grid: Vec<Vec<Vec<usize>>>,
 }
 
 impl RofizState {
@@ -64,6 +66,7 @@ impl RofizState {
             wall_y_end: 0,
             has_wall_at_coordinate: Vec::new(),
             obj_creation_counter: 0,
+            spatial_grid: Vec::new(),
         }
     }
 
@@ -85,12 +88,13 @@ impl RofizState {
 
         self.wall_x_end = (max_x + 1) as usize;
         self.wall_y_end = (max_y + 1) as usize;
-        let mut has_wall_at_coordinate = vec![vec![None; (max_y+1) as usize]; (max_x+1) as usize];
+        let mut has_wall_at_coordinate = vec![vec![None; self.wall_y_end]; self.wall_x_end];
         for bw in self.basic_walls.iter().map(|x| x) {
             has_wall_at_coordinate[bw.borrow().x as usize][bw.borrow().y as usize] = Some(bw.clone());
         }
 
         self.has_wall_at_coordinate = has_wall_at_coordinate;
+        self.spatial_grid = vec![vec![Vec::new(); self.wall_y_end]; self.wall_x_end]
     }
 
     pub fn start_new_tick(&mut self) {
@@ -318,12 +322,28 @@ impl RofizState {
             }
         }
 
+        self.spatial_grid.iter_mut().for_each(|column| column.iter_mut().for_each(|cell| cell.clear()));
+        for i in 0..self.nonspectral_units.len() {
+            let nsu_i = self.nonspectral_units[i].borrow();
+            let xstart = usize::clamp(nsu_i.bounding_box.x1 as usize, 0, self.wall_x_end);
+            let xend = usize::clamp(nsu_i.bounding_box.x2 as usize + 1, 0, self.wall_x_end);
+            let ystart = usize::clamp(nsu_i.bounding_box.y1 as usize, 0, self.wall_y_end);
+            let yend = usize::clamp(nsu_i.bounding_box.y2 as usize + 1, 0, self.wall_y_end);
+
+            for x in xstart..xend {
+                for y in ystart..yend {
+                    self.spatial_grid[x][y].push(i);
+                }
+            }
+        }
+
         // Phase 2: Spectral units (TODO)
 
         // Phase 3: Projectiles
         for bp_rc in self.basic_projectiles.iter() {
             let bp: std::cell::RefMut<'_, RofizObjMovable> = bp_rc.as_ref().borrow_mut();
 
+            let mut spatial_grid_ids = Vec::<usize>::new();
             // [start, end). Note that half-open interval
             let xstart = usize::clamp(bp.bounding_box.x1 as usize, 0, self.wall_x_end);
             let xend = usize::clamp(bp.bounding_box.x2 as usize + 1, 0, self.wall_x_end);
@@ -337,11 +357,16 @@ impl RofizState {
                             collisions.push(RofizCollision::new(bp.room_object_id, bw.room_object_id));
                         }
                     }
+
+                    spatial_grid_ids.extend(self.spatial_grid[x][y].iter());
                 }
             }
 
-            for nsu_rc in self.nonspectral_units.iter() {
-                let nsu = nsu_rc.as_ref().borrow_mut();
+            spatial_grid_ids.sort_unstable();
+            spatial_grid_ids.dedup();
+
+            for sg_id in spatial_grid_ids {
+                let nsu = self.nonspectral_units[sg_id].as_ref().borrow_mut();
                 if bp.overlaps_ro_movable(&nsu) {
                     collisions.push(RofizCollision::new(bp.room_object_id, nsu.room_object_id));
                 }
@@ -365,6 +390,9 @@ impl RofizState {
                 }
             }
         }
+
+        collisions.sort_unstable();
+        collisions.dedup();
         collisions
     }
 
@@ -436,6 +464,7 @@ impl RofizState {
     }
 }
 
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct RofizCollision {
     pub room_obj_id1: RoomObjectId,
     pub room_obj_id2: RoomObjectId,
