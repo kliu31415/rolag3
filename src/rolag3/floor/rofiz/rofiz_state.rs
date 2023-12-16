@@ -76,7 +76,7 @@ impl RofizState {
         }
 
         if max_x > Self::MAX_XY_WARN || max_y > Self::MAX_XY_WARN {
-            println!("basic wall max_x({}) and max_y({}) are large. This has negative performance implications", max_x, max_y);
+            log::warn!("basic wall max_x({}) and max_y({}) are large. This has negative performance implications", max_x, max_y);
         }
 
         let mut has_wall_at_coordinate = vec![vec![false; (max_y+1) as usize]; (max_x+1) as usize];

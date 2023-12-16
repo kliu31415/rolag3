@@ -8,12 +8,13 @@ use crate::gfx::{self, window::{Window, EventHandler}, renderer::{ColorRGBA32f, 
 use super::floor::{draw::{DrawFloorContext, get_draw_floor_ops}, run::{RunFloorContext, run_floor_frame, PlayerInput, PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, floor_def::Floor};
 
 pub fn run() {
+    std::env::set_var("RUST_BACKTRACE", "full");
+    std::env::set_var("RUST_LOG", "warn");
     env_logger::init();
-    std::env::set_var("RUST_BACKTRACE", "1");
     let mut window = gfx::window::make_window_and_renderer("Rolag3", 640, 360, 2560, 1440);
     let mut event_handler = Rolag3EventHandler::new_test1();
     window.run_event_loop(&mut event_handler);
-    println!("exiting");
+    log::info!("exiting");
 }
 
 struct Rolag3EventHandler {
@@ -42,14 +43,14 @@ impl EventHandler for Rolag3EventHandler {
                         ..
                     } => {
                         elwt.exit();
-                        println!("exit signal detected. Exiting");
+                        log::info!("exit signal detected. Exiting");
                     }
                     WindowEvent::Resized(size) => {
-                        println!("window resized");
+                        log::info!("window resized");
                         window.get_renderer().resize(size.width, size.height);
                     }
                     WindowEvent::ScaleFactorChanged {..} => {
-                        println!("window scale factor changed");
+                        log::info!("window scale factor changed");
                         // do something here?
                     }
                     WindowEvent::RedrawRequested => {
@@ -192,6 +193,6 @@ impl Rolag3EventHandler {
                 position: DrawTextPosition::TopLeft,
         })});
         let res = window.get_renderer().present(ColorRGBA32f{r: 0.8f32, g: 0.8f32, b: 0.9f32, a: 1.0f32});
-        if let Err(e) = res { eprintln!("error when calling renderer.present(): {}", e) }
+        if let Err(e) = res { log::error!("error when calling renderer.present(): {}", e) }
     }
 }

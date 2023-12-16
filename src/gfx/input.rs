@@ -79,7 +79,7 @@ impl InputState {
     pub fn key_to_usize(key: &PhysicalKey) -> usize {
         match key {
             Code(k) => *k as usize,
-            Unidentified(k) => {eprintln!("attempting to convert PhysicalKey::Unidentified({:?}) to usize", k); 255},
+            Unidentified(k) => {log::warn!("attempting to convert PhysicalKey::Unidentified({:?}) to usize", k); 255},
         }
     }
 
@@ -113,7 +113,7 @@ impl InputState {
             MouseButton::Back => 3,
             MouseButton::Forward => 4,
             MouseButton::Other(v) => {
-                eprintln!("attempting to convert MouseButton::Other({:?}) to usize", v);
+                log::warn!("attempting to convert MouseButton::Other({:?}) to usize", v);
                 *v as usize
             }
         }
@@ -136,7 +136,7 @@ impl InputState {
     fn process_mouse_wheel(&mut self, delta: &MouseScrollDelta) {
         match delta {
             MouseScrollDelta::LineDelta(x, y) => self.pollable_input.push_back(PollableInput::MouseWheelLineDelta(*x, *y)),
-            MouseScrollDelta::PixelDelta(_) => eprintln!("unable to process MouseScrollDelta::PixelDelta {:?}", delta),
+            MouseScrollDelta::PixelDelta(_) => log::info!("ignoring input MouseScrollDelta::PixelDelta {:?}", delta),
         }
     }
 
