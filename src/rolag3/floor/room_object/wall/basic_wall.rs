@@ -1,4 +1,4 @@
-use crate::{rolag3::floor::{room_object::room_object_def::{RoomObject, Act1Context, NewRoomObjectContext, RoomObjectMetadata, Act1Response, HandleCollisionContext, HandleCollisionResponse}, draw::{DrawContext, Color}, rofiz::rofiz_state::RofizObjectRef}, geometry::shape::Point};
+use crate::{rolag3::floor::{room_object::room_object_def::{RoomObject, Act1Context, NewRoomObjectContext, RoomObjectMetadata, Act1Response, HandleCollisionContext, HandleCollisionResponse, RoomObjectType}, draw::{DrawContext, Color}, rofiz::rofiz_state::RofizObjectRef}, geometry::shape::Point};
 
 use super::Wall;
 
@@ -48,6 +48,10 @@ impl RoomObject for BasicWall {
 
     fn is_spectral(&self) -> bool {
         false
+    }
+
+    fn get_room_object_type(&self) -> RoomObjectType {
+        RoomObjectType::Wall
     }
 }
 

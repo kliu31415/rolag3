@@ -1,4 +1,4 @@
-use super::room_object_def::RoomObject;
+use super::room_object_def::{RoomObject, RoomObjectType};
 
 pub struct Dummy {
 
@@ -25,5 +25,9 @@ impl RoomObject for Dummy {
 
     fn is_spectral(&self) -> bool {
         unimplemented!()
+    }
+
+    fn get_room_object_type(&self) -> RoomObjectType {
+        RoomObjectType::Other
     }
 }

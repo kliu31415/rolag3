@@ -1,6 +1,6 @@
 use std::any::Any;
 
-use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, RoomObject, RoomObjectMetadata, Act1Context, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse}, damage::DamageColor}, draw::DrawContext, rofiz::rofiz_object::{Transformation, Hitbox}}, geometry::shape::Shape};
+use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, RoomObject, RoomObjectMetadata, Act1Context, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse, RoomObjectType}, damage::DamageColor}, draw::DrawContext, rofiz::rofiz_object::{Transformation, Hitbox}}, geometry::shape::Shape};
 
 use super::{Unit, standard_unit_common::StandardUnitCommon};
 
@@ -80,6 +80,10 @@ impl RoomObject for StandardUnit1 {
 
     fn blocks_room_clear(&self) -> bool {
         true
+    }
+
+    fn get_room_object_type(&self) -> RoomObjectType {
+        RoomObjectType::Unit
     }
 }
 

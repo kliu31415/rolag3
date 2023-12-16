@@ -1,4 +1,4 @@
-use crate::{rolag3::floor::{room_object::room_object_def::{RoomObject, RoomObjectMetadata, Act1Context, Act1Response, HandleCollisionContext, HandleCollisionResponse, NewRoomObjectContext}, draw::{DrawContext, Color}, rofiz::{rofiz_state::RofizObjectRef, rofiz_object::{Transformation, Hitbox}}, room::RoomConnectionInfo}, geometry::shape::{Shape, Rect, Point}};
+use crate::{rolag3::floor::{room_object::room_object_def::{RoomObject, RoomObjectMetadata, Act1Context, Act1Response, HandleCollisionContext, HandleCollisionResponse, NewRoomObjectContext, RoomObjectType}, draw::{DrawContext, Color}, rofiz::{rofiz_state::RofizObjectRef, rofiz_object::{Transformation, Hitbox}}, room::RoomConnectionInfo}, geometry::shape::{Shape, Rect, Point}};
 
 pub struct RoomConnection {
     md: RoomObjectMetadata,
@@ -120,6 +120,10 @@ impl RoomObject for RoomConnection {
 
     fn is_spectral(&self) -> bool {
         false
+    }
+
+    fn get_room_object_type(&self) -> RoomObjectType {
+        RoomObjectType::Other
     }
 }
 

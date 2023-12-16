@@ -1,4 +1,4 @@
-use std::{rc::{Rc, Weak}, cell::{RefCell, Ref}, collections::HashSet, ops::Range};
+use std::{rc::{Rc, Weak}, cell::RefCell, collections::HashSet, ops::Range};
 
 use rand::{rngs::ThreadRng, Rng};
 
@@ -31,6 +31,8 @@ pub trait RoomObject {
         // nop by default
     }
 
+    fn get_room_object_type(&self) -> RoomObjectType;
+
     fn is_spectral(&self) -> bool;
     fn blocks_room_clear(&self) -> bool {
         false
@@ -44,6 +46,13 @@ pub trait RoomObject {
     fn is_projectile_like(&self) -> bool {
         false
     }
+}
+
+pub enum RoomObjectType {
+    Wall,
+    Projectile,
+    Unit,
+    Other,
 }
 
 pub struct RoomObjectMetadata {
@@ -71,72 +80,93 @@ impl RoomObjectMetadata {
 }
 
 pub struct RoomObjectCollection {
-    objects: Vec<Rc<RefCell<dyn RoomObject>>>,
+    player: Vec<Rc<RefCell<dyn RoomObject>>>, // size 0 (player not present in room) or 1 (player present)
+    ro_wall: Vec<Rc<RefCell<dyn RoomObject>>>,
+    ro_projectile: Vec<Rc<RefCell<dyn RoomObject>>>,
+    ro_unit: Vec<Rc<RefCell<dyn RoomObject>>>,
+    ro_other: Vec<Rc<RefCell<dyn RoomObject>>>,
     room_already_cleared: bool,
 }
 
 impl RoomObjectCollection {
     pub fn new() -> Self {
         Self {
-            objects: Vec::new(),
+            player: Vec::new(),
+            ro_wall: Vec::new(),
+            ro_projectile: Vec::new(),
+            ro_unit: Vec::new(),
+            ro_other: Vec::new(),
             room_already_cleared: false,
         }
     }
 
+    fn vec_mut_all_objects(&mut self) -> Vec<&mut Vec<Rc<RefCell<dyn RoomObject>>>> {
+        vec![&mut self.player, &mut self.ro_wall, &mut self.ro_projectile, &mut self.ro_unit, &mut self.ro_other]
+    }
+
+    fn vec_all_objects(&self) -> Vec<&Vec<Rc<RefCell<dyn RoomObject>>>> {
+        vec![&self.player, &self.ro_wall, &self.ro_projectile, &self.ro_unit, &self.ro_other]
+    }
+
+    fn iter(&self) -> impl Iterator<Item = &Rc<RefCell<dyn RoomObject>>> {
+        self.vec_all_objects().into_iter().flatten()
+    }
+
+    fn object_count(&self) -> usize {
+        self.vec_all_objects().into_iter().map(|v| v.len()).sum()
+    }
+
     pub fn remove_player(&mut self) {
-        let old_len = self.objects.len();
-        self.objects.retain(|x| !x.borrow().is_player());
-        let new_len = self.objects.len();
-        assert!(old_len == new_len + 1, "Tried to remove player from RoomObjectCollection. \
-            Expected to remove one object. old_len={}, new_len={}", old_len, new_len);
+        assert!(self.player.len() == 1, "remove_player() called when player is not present");
+        self.player.clear();
     }
 
     pub fn add(&mut self, obj: Rc<RefCell<dyn RoomObject>>) {
-        self.objects.push(obj);
+        if obj.borrow().is_player() {
+            assert!(self.player.is_empty(), "cannot add player to room when player is already in room");
+            self.player.push(obj);
+            return;
+        }
+        let ro_type = obj.borrow().get_room_object_type();
+        match ro_type {
+            RoomObjectType::Wall => self.ro_wall.push(obj),
+            RoomObjectType::Projectile => self.ro_projectile.push(obj),
+            RoomObjectType::Unit => self.ro_unit.push(obj),
+            RoomObjectType::Other => self.ro_other.push(obj),
+        }
     }
 
     pub fn remove_wall_at(&mut self, x: u32, y: u32) {
-        let old_len = self.objects.len();
-        self.objects.retain(|ro| !ro.borrow().is_wall_at(x, y));
-        let new_len = self.objects.len();
+        let old_len = self.ro_wall.len();
+        self.ro_wall.retain(|ro| !ro.borrow().is_wall_at(x, y));
+        let new_len = self.ro_wall.len();
         assert!(old_len == new_len + 1, "Tried to remove wall at (x, y) = ({}, {}) from RoomObjectCollection. \
             Expected to remove one object. old_len={}, new_len={}", x, y, old_len, new_len);
     }
 
-    pub fn _remove(&mut self, id: RoomObjectId) {
-        let current_count = self.objects.len();
-        self.objects.retain(|x| x.borrow().get_metadata().get_id() != id);
-        let new_count = self.objects.len();
-        if new_count + 1 != current_count {
-            panic!("expected to remove 1 RoomObject, but didn't. Prev count={}, new count = {}", current_count, new_count);
-        }
-    }
-
-    pub fn _count(&self) -> usize {
-        self.objects.len()
-    }
-
     pub fn act1(&mut self, ctx: &mut Act1Context) {
         let mut responses = Vec::new();
-        self.objects.iter().for_each(|x| {
+        self.iter().for_each(|x| {
             ctx.self_as_rc = Some(x.clone());
             responses.push(x.borrow_mut().act1(ctx))}
         );
         let should_remove: Vec<bool> = responses.iter().map(|x| x.get_remove_me()).collect();
         self.remove_all_using_bool_array(should_remove.as_slice());
 
-        responses.iter_mut().flat_map(|x| x.steal_room_objs_to_add()).for_each(|x| self.objects.push(x));
+        responses.iter_mut().flat_map(|x| x.steal_room_objs_to_add()).for_each(|x| self.add(x));
     }
 
     pub fn remove_by_id(&mut self, to_remove: HashSet<RoomObjectId>) {
         if to_remove.is_empty() {
             return;
         }
-        self.objects.retain(|x| !to_remove.contains(&x.borrow().get_metadata().get_id()));
+        self.vec_mut_all_objects().iter_mut().for_each(
+            |ro_v| ro_v.retain(
+                |x| !to_remove.contains(&x.borrow().get_metadata().get_id())));
     }
 
     pub fn draw(&mut self, ctx: &mut DrawContext) {
-        for fo in self.objects.iter() {
+        for fo in self.iter() {
             fo.borrow_mut().draw(ctx);
         }
     }
@@ -146,7 +176,7 @@ impl RoomObjectCollection {
             return;
         }
 
-        for fo in self.objects.iter() {
+        for fo in self.iter() {
             if fo.borrow().blocks_room_clear() {
                 return;
             }
@@ -157,7 +187,7 @@ impl RoomObjectCollection {
         let mut ctx = HandleRoomJustClearedContext {
             _rofiz: rofiz,
         };
-        for fo in self.objects.iter() {
+        for fo in self.iter() {
             fo.borrow_mut().handle_room_just_cleared(&mut ctx);
         }
     }
@@ -166,25 +196,17 @@ impl RoomObjectCollection {
         self.room_already_cleared
     }
 
-    pub fn _apply(&self, f: &mut dyn FnMut(&Ref<dyn RoomObject>)) {
-        let iter = self.objects.iter().map(|x| x.borrow());
-        for fo in iter {
-            f(&fo);
-        }
-    }
-
     pub fn remove_all_using_bool_array(&mut self, should_remove: &[bool]) {
-        let obj_count = self.objects.len();
+        let obj_count = self.object_count();
         if should_remove.len() != obj_count {
             panic!("should_remove.len() != obj_count. Values: {} != {}", should_remove.len(), obj_count)
         }
         let mut idx = 0;
-        self.objects.retain(|_| {idx += 1; !should_remove[idx - 1]});
+        self.vec_mut_all_objects().iter_mut().for_each(|v| v.retain(|_| {idx += 1; !should_remove[idx - 1]}));
     }
 
     pub fn get(&self, id: RoomObjectId) -> Option<Rc<RefCell<dyn RoomObject>>> {
-        let iter = self.objects.iter();
-        for fo in iter {
+        for fo in self.iter() {
             if id == fo.borrow().get_metadata().get_id() {
                 return Some(fo.clone());
             }
@@ -193,7 +215,7 @@ impl RoomObjectCollection {
     }
 
     pub fn validate(&self) {
-        for ro in self.objects.iter() {
+        for ro in self.iter() {
             let ref_count = Rc::strong_count(ro);
             if ro.borrow().is_player() {
                 if ref_count != 3 {

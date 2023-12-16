@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Weak, any::Any};
 
-use crate::{rolag3::floor::{room_object::{room_object_def::{RoomObject, RoomObjectMetadata, Act1Context, NewRoomObjectContext, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team}, dummy::Dummy, damage::DamageColor}, draw::DrawContext, rofiz::{rofiz_object::{Hitbox, Transformation}, rofiz_state::RofizObjectRef}}, geometry::shape::Shape};
+use crate::{rolag3::floor::{room_object::{room_object_def::{RoomObject, RoomObjectMetadata, Act1Context, NewRoomObjectContext, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, RoomObjectType}, dummy::Dummy, damage::DamageColor}, draw::DrawContext, rofiz::{rofiz_object::{Hitbox, Transformation}, rofiz_state::RofizObjectRef}}, geometry::shape::Shape};
 
 use super::Projectile;
 
@@ -85,6 +85,10 @@ impl RoomObject for StandardProjectile1 {
 
     fn is_spectral(&self) -> bool {
         true
+    }
+
+    fn get_room_object_type(&self) -> RoomObjectType {
+        RoomObjectType::Projectile
     }
 }
 

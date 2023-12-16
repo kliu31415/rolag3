@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::{Rc, Weak}};
 
-use crate::{rolag3::floor::{run::{PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, draw::{DrawContext, Color}, room_object::{room_object_def::{RoomObject, Act1Context, FloorCoordinate, NewRoomObjectContext, RoomObjectMetadata, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse}, projectile::projectile2::NewProjectile2Args, tiles::room_connection::{Direction, RoomConnection}, damage::DamageColor}, rofiz::{rofiz_object::{Hitbox, Transformation}, rofiz_state::RofizState}, room::RoomConnectionInfo}, geometry::shape::{Shape, Point}};
+use crate::{rolag3::floor::{run::{PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, draw::{DrawContext, Color}, room_object::{room_object_def::{RoomObject, Act1Context, FloorCoordinate, NewRoomObjectContext, RoomObjectMetadata, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse, RoomObjectType}, projectile::projectile2::NewProjectile2Args, tiles::room_connection::{Direction, RoomConnection}, damage::DamageColor}, rofiz::{rofiz_object::{Hitbox, Transformation}, rofiz_state::RofizState}, room::RoomConnectionInfo}, geometry::shape::{Shape, Point}};
 
 use super::{Unit, standard_unit_common::{StandardUnitCommon, Budeb, BudebMaxSpeed, TranslateMove}};
 
@@ -139,6 +139,10 @@ impl RoomObject for Player {
 
     fn is_spectral(&self) -> bool {
         false
+    }
+
+    fn get_room_object_type(&self) -> RoomObjectType {
+        RoomObjectType::Unit
     }
 }
 
