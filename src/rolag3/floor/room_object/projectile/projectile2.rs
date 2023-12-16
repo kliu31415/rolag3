@@ -1,8 +1,10 @@
 use std::{cell::RefCell, rc::Weak};
 
-use crate::{rolag3::floor::{room_object::{room_object_def::{RoomObject, NewRoomObjectContext, Act1Response, HandleCollisionResponse, HcProjectileContext, Team}, damage::DamageColor}, draw::{DrawContext, Color}, rofiz::rofiz_object::{Transformation, RofizObjectMovement}}, geometry::shape::{Shape, Point}};
+use crate::{rolag3::floor::{room_object::{room_object_def::{RoomObject, NewRoomObjectContext, Act1Response, HandleCollisionResponse, HcProjectileContext, Team, RoomObjectType}, damage::DamageColor}, draw::{DrawContext, Color}, rofiz::rofiz_object::{Transformation, RofizObjectMovement}}, geometry::shape::{Shape, Point}};
 
 use super::standard_projectile1::{Sp1Builder, Sp1BuilderReq, StandardProjectile1, SpAct1Context, SpDrawContext, SpHandleCollisionContext};
+
+// Projectile2 is a normal projectile. It moves at a constant velocity
 
 pub struct Projectile2Data {
     center: Point,
@@ -77,7 +79,7 @@ fn draw(ctx: &mut SpDrawContext) {
 }
 
 fn handle_collision(ctx: &mut SpHandleCollisionContext) -> HandleCollisionResponse {
-    if ctx.hc_ctx.get_other().borrow().is_wall_like() {
+    if ctx.hc_ctx.get_other().borrow().get_room_object_type() == RoomObjectType::Wall {
         return HandleCollisionResponse::new().remove_room_obj(ctx.sp_ctx.md.get_id());
     }
     let hcp_response = ctx.hc_ctx.get_other().borrow_mut().handle_collision_projectile(&HcProjectileContext{

@@ -63,7 +63,7 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
         if !sps.proj_spit && ctx.act1_ctx.get_room_time() - sps.start > 0.5 {
             sps.proj_spit = true;
             let xform = ctx.act1_ctx.get_rofiz().get_movable_object_xform(ctx.su_ctx.su_common.get_ro_ref());
-            let self_as_weak = ctx.act1_ctx.self_as_weak();
+            let self_as_weak = ctx.act1_ctx.get_self_as_weak();
             let mut nfo_ctx = NewRoomObjectContext::from_act1_ctx(ctx.act1_ctx);
             let proj = NewProjectile2Args{
                 team: Team::Enemy,

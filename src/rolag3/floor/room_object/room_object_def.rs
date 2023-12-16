@@ -37,17 +37,33 @@ pub trait RoomObject {
     fn blocks_room_clear(&self) -> bool {
         false
     }
-    fn is_wall_like(&self) -> bool {
-        false
-    }
     fn is_wall_at(&self, _x: u32, _y: u32) -> bool {
         false
     }
-    fn is_projectile_like(&self) -> bool {
-        false
+
+    fn handle_query_unit_info(&self, _ctx: &RoQueryUnitInfoContext) -> RoQueryUnitInfoResponse {
+        unimplemented!("handle_query_unit_info() can only be called for units. Called for {:?}", self.get_room_object_type());
     }
 }
 
+pub struct RoQueryUnitInfoContext<'a> {
+    rofiz: &'a RofizState,
+}
+
+impl<'a> RoQueryUnitInfoContext<'a> {
+    pub fn get_rofiz(&self) -> &RofizState {
+        &self.rofiz
+    }
+}
+
+#[derive(Debug)]
+pub struct RoQueryUnitInfoResponse {
+    pub team: Team,
+    pub x: f64,
+    pub y: f64,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum RoomObjectType {
     Wall,
     Projectile,
@@ -145,15 +161,39 @@ impl RoomObjectCollection {
     }
 
     pub fn act1(&mut self, ctx: &mut Act1Context) {
-        let mut responses = Vec::new();
+        let mut responses: Vec<Act1Response> = Vec::new();
         self.iter().for_each(|x| {
             ctx.self_as_rc = Some(x.clone());
             responses.push(x.borrow_mut().act1(ctx))}
         );
+
         let should_remove: Vec<bool> = responses.iter().map(|x| x.get_remove_me()).collect();
         self.remove_all_using_bool_array(should_remove.as_slice());
 
         responses.iter_mut().flat_map(|x| x.steal_room_objs_to_add()).for_each(|x| self.add(x));
+
+        let queries = responses.iter_mut().map(|x| x.steal_queries()).flatten();
+        for (qargs, qresult) in queries {
+            match qargs {
+                Act1QueryArgs::ClosestUnit { x, y, team_filter } => {
+                    let rqui_ctx = RoQueryUnitInfoContext {
+                        rofiz: &ctx.rofiz,
+                    };
+                    let closest = self.ro_unit.iter().chain(self.player.iter())
+                        .map(|x| x.borrow().handle_query_unit_info(&rqui_ctx))
+                        .filter(|x| team_filter.is_none() || team_filter.unwrap() == x.team)
+                        .min_by(|a, b| {
+                            let dist_a = f64::powi(a.x - x, 2) + f64::powi(a.y - y, 2);
+                            let dist_b = f64::powi(b.x - x, 2) + f64::powi(b.y - y, 2);
+                            dist_a.partial_cmp(&dist_b).unwrap()
+                        });
+                    match closest {
+                        Some(c) => qresult.replace(Act1QueryResult::ClosestUnit(Some(UnitInfo { team: c.team, x: c.x, y: c.y }))),
+                        None => qresult.replace(Act1QueryResult::ClosestUnit(None)),
+                    };
+                }
+            }
+        }
     }
 
     pub fn remove_by_id(&mut self, to_remove: HashSet<RoomObjectId>) {
@@ -353,7 +393,7 @@ impl<'a> Act1Context<'a> {
         self.room_time
     }
 
-    pub fn self_as_weak(&self) -> Weak<RefCell<dyn RoomObject>> {
+    pub fn get_self_as_weak(&self) -> Weak<RefCell<dyn RoomObject>> {
         Rc::downgrade(&self.self_as_rc.clone().unwrap())
     }
 
@@ -373,11 +413,29 @@ impl<'a> Act1Context<'a> {
             Team::Enemy => todo!("haven't implemented getting closest enemy unit location yet"),
         } 
     }
-} 
+}
+
+pub enum Act1QueryArgs {
+    ClosestUnit{x: f64, y: f64, team_filter: Option<Team>}
+}
+
+#[derive(Debug)]
+pub enum Act1QueryResult {
+    NotSet,
+    ClosestUnit(Option<UnitInfo>),
+}
+
+#[derive(Debug)]
+pub struct UnitInfo {
+    pub team: Team,
+    pub x: f64,
+    pub y: f64,
+}
 
 pub struct Act1Response {
     should_remove_me: bool,
     objects_to_add: Vec<Rc<RefCell<dyn RoomObject>>>,
+    act1_queries: Vec<(Act1QueryArgs, Rc<RefCell<Act1QueryResult>>)>,
 }
 
 impl Act1Response {
@@ -385,6 +443,7 @@ impl Act1Response {
         Self {
             should_remove_me: false,
             objects_to_add: Vec::new(),
+            act1_queries: Vec::new(),
         }
     }
 
@@ -405,6 +464,18 @@ impl Act1Response {
         let mut empty_vec = Vec::new();
         std::mem::swap(&mut empty_vec, &mut self.objects_to_add);
         empty_vec
+    }
+
+    pub fn add_query(&mut self, args: Act1QueryArgs) -> Rc<RefCell<Act1QueryResult>> {
+        let rc_result = Rc::new(RefCell::new(Act1QueryResult::NotSet));
+        self.act1_queries.push((args, rc_result.clone()));
+        rc_result
+    }
+
+    pub fn steal_queries(&mut self) -> Vec<(Act1QueryArgs, Rc<RefCell<Act1QueryResult>>)> {
+        let mut q = Vec::new();
+        std::mem::swap(&mut q, &mut self.act1_queries);
+        q
     }
 }
 

@@ -1,17 +1,19 @@
-use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Act1Response, Team}, damage::DamageColor}, rofiz::rofiz_object::Transformation, draw::{Color, DrawContext}}, geometry::shape::{Shape, Point}};
+use std::{cell::RefCell, rc::Rc};
+
+use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Act1Response, Team, Act1QueryArgs, Act1QueryResult}, damage::DamageColor}, rofiz::rofiz_object::Transformation, draw::{Color, DrawContext}}, geometry::shape::{Shape, Point}};
 
 use super::{standard_unit1::{StandardUnit1, StandardUnit1Builder, StandardUnit1BuilderReq, SuAct1Context, SuDrawContext}, standard_unit_common::TranslateMove};
 
 const SIDE_LEN: f32 = 1.2;
 
 pub struct Enemy2 {
-
+    query_result: Option<Rc<RefCell<Act1QueryResult>>>,
 }
 
 pub fn new_enemy2(ctx: &mut NewRoomObjectContext, x: f64, y: f64) -> StandardUnit1 {
     let xform = Transformation::new(x, y, 0.0);
     let shape = Shape::of_square(-SIDE_LEN/2.0, -SIDE_LEN/2.0, SIDE_LEN);
-    let us_data = Enemy2 { };
+    let us_data = Enemy2 { query_result: None };
 
     StandardUnit1Builder::new(StandardUnit1BuilderReq {
         team: Team::Enemy,
@@ -27,12 +29,26 @@ pub fn new_enemy2(ctx: &mut NewRoomObjectContext, x: f64, y: f64) -> StandardUni
 }
 
 fn act1(ctx: &mut SuAct1Context) -> Act1Response {
+    let us_data = ctx.su_ctx.us_data.downcast_mut::<Enemy2>().unwrap();
     let xform = ctx.act1_ctx.get_rofiz().get_movable_object_xform(ctx.su_ctx.su_common.get_ro_ref());
-    let player_xy = ctx.act1_ctx.get_team_closest_location(Team::Player);
-    if let Some(xy) = player_xy {
-        ctx.su_ctx.su_common.set_translate_move(TranslateMove::Accelerate { ax: xy.x - xform.dx, ay: xy.y - xform.dy});
+    if let Some(ref qr) = us_data.query_result {
+        match &*qr.borrow() {
+            Act1QueryResult::ClosestUnit(v) => {
+                if let Some(closest) = v {
+                    ctx.su_ctx.su_common.set_translate_move(TranslateMove::Accelerate { ax: closest.x - xform.dx, ay: closest.y - xform.dy});
+                }
+            }
+            _ => panic!("unexpected Act1QueryResult. Expected ClosestUnit, got {:?}", qr),
+        }
+        us_data.query_result = None;
     }
-    Act1Response::new()
+
+    // x and y in the query shouldn't matter because there's usually one player. I set them anyway in case there are
+    // multiple players in the future
+    let query = Act1QueryArgs::ClosestUnit { x: xform.dx, y: xform.dy, team_filter: Some(Team::Player) };
+    let mut response = Act1Response::new();
+    us_data.query_result = Some(response.add_query(query));
+    response
 }
 
 fn draw(ctx: &mut SuDrawContext) {

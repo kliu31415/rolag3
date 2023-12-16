@@ -1,6 +1,6 @@
 use std::any::Any;
 
-use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, RoomObject, RoomObjectMetadata, Act1Context, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse, RoomObjectType}, damage::DamageColor}, draw::DrawContext, rofiz::rofiz_object::{Transformation, Hitbox}}, geometry::shape::Shape};
+use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, RoomObject, RoomObjectMetadata, Act1Context, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse, RoomObjectType, RoQueryUnitInfoContext, RoQueryUnitInfoResponse}, damage::DamageColor}, draw::DrawContext, rofiz::rofiz_object::{Transformation, Hitbox}}, geometry::shape::Shape};
 
 use super::{Unit, standard_unit_common::StandardUnitCommon};
 
@@ -84,6 +84,15 @@ impl RoomObject for StandardUnit1 {
 
     fn get_room_object_type(&self) -> RoomObjectType {
         RoomObjectType::Unit
+    }
+
+    fn handle_query_unit_info(&self, ctx: &RoQueryUnitInfoContext) -> RoQueryUnitInfoResponse {
+        let xform = ctx.get_rofiz().get_movable_object_xform(self.data.su_common.get_ro_ref());
+        RoQueryUnitInfoResponse { 
+            team: self.data.team, 
+            x: xform.dx, 
+            y: xform.dy,
+        }
     }
 }
 

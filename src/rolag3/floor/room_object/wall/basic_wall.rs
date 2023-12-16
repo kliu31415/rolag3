@@ -38,10 +38,6 @@ impl RoomObject for BasicWall {
         HandleCollisionResponse::new()
     }
 
-    fn is_wall_like(&self) -> bool {
-        true
-    }
-
     fn is_wall_at(&self, x: u32, y: u32) -> bool {
         self.x==x && self.y==y
     }

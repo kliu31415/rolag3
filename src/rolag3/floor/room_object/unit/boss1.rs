@@ -86,7 +86,7 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
                             (color, Box::new(vertexes))
                         };
 
-                        let self_as_weak = ctx.act1_ctx.self_as_weak();
+                        let self_as_weak = ctx.act1_ctx.get_self_as_weak();
                         let mut nfo_ctx = NewRoomObjectContext::from_act1_ctx(ctx.act1_ctx);
                         let proj = NewProjectile3Args {
                             team: Team::Enemy,

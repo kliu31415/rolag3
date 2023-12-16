@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::{Rc, Weak}};
 
-use crate::{rolag3::floor::{run::{PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, draw::{DrawContext, Color}, room_object::{room_object_def::{RoomObject, Act1Context, FloorCoordinate, NewRoomObjectContext, RoomObjectMetadata, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse, RoomObjectType}, projectile::projectile2::NewProjectile2Args, tiles::room_connection::{Direction, RoomConnection}, damage::DamageColor}, rofiz::{rofiz_object::{Hitbox, Transformation}, rofiz_state::RofizState}, room::RoomConnectionInfo}, geometry::shape::{Shape, Point}};
+use crate::{rolag3::floor::{run::{PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, draw::{DrawContext, Color}, room_object::{room_object_def::{RoomObject, Act1Context, FloorCoordinate, NewRoomObjectContext, RoomObjectMetadata, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse, RoomObjectType, RoQueryUnitInfoContext, RoQueryUnitInfoResponse}, projectile::projectile2::NewProjectile2Args, tiles::room_connection::{Direction, RoomConnection}, damage::DamageColor}, rofiz::{rofiz_object::{Hitbox, Transformation}, rofiz_state::RofizState}, room::RoomConnectionInfo}, geometry::shape::{Shape, Point}};
 
 use super::{Unit, standard_unit_common::{StandardUnitCommon, Budeb, BudebMaxSpeed, TranslateMove}};
 
@@ -52,7 +52,7 @@ impl RoomObject for Player {
             if weapon.since_last_attack >= weapon.attack_interval {
                 weapon.since_last_attack -= weapon.attack_interval;
                 let xform = ctx.get_rofiz().get_movable_object_xform(self.su_common.as_ref().unwrap().get_ro_ref());
-                let self_as_weak = ctx.self_as_weak();
+                let self_as_weak = ctx.get_self_as_weak();
                 let nro_ctx = &mut NewRoomObjectContext::from_act1_ctx(ctx);
                 let args = MakeWeaponProjectileFnContext {
                     nro_ctx,
@@ -143,6 +143,15 @@ impl RoomObject for Player {
 
     fn get_room_object_type(&self) -> RoomObjectType {
         RoomObjectType::Unit
+    }
+
+    fn handle_query_unit_info(&self, ctx: &RoQueryUnitInfoContext) -> RoQueryUnitInfoResponse {
+        let xform = ctx.get_rofiz().get_movable_object_xform(self.su_common.as_ref().unwrap().get_ro_ref());
+        RoQueryUnitInfoResponse { 
+            team: Team::Player, 
+            x: xform.dx, 
+            y: xform.dy,
+        }
     }
 }
 
