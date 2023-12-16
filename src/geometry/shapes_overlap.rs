@@ -1,4 +1,4 @@
-use super::shape::{Vector, Shape, Circle, Polygon, BoundingBox, Point};
+use super::shape::{Vector, Shape, Circle, Polygon, Point};
 
 pub fn shapes_overlap(shape1: &Shape, shape2: &Shape) -> bool {
     match shape1 {
@@ -45,10 +45,6 @@ fn polygon_overlaps_circle(p1: &Polygon, c2: &Circle) -> bool {
 }
 
 fn polygon_overlaps_overlap(p1: &Polygon, p2: &Polygon) -> bool {
-    if !BoundingBox::overlap(&p1.bounding_box, &p2.bounding_box) {
-        return false;
-    }
-    
     // remember to iterate over the edge connecting vertexes with index n-1 and 0
     for i in 0..p1.vertexes.len() {
         let a1 = if i == 0 {p1.vertexes[p1.vertexes.len()-1]} else {p1.vertexes[i-1]};

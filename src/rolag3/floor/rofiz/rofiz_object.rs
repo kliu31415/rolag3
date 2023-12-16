@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::{rolag3::floor::room_object::room_object_def::RoomObjectId, geometry::shape::{Shape, Polygon, Point}};
+use crate::{rolag3::floor::room_object::room_object_def::RoomObjectId, geometry::{shape::{Shape, Polygon, Point, BoundingBox}, shapes_overlap::shapes_overlap}};
 
 pub type RofizObjId = usize;
 
@@ -15,8 +15,10 @@ pub struct RofizObjBasicWall {
     pub x: u32,
     pub y: u32,
 
-    pub floor_object_id: RoomObjectId,
+    pub room_object_id: RoomObjectId,
 
+    // only used in move_objects_and_find_collisions()
+    pub bounding_box: BoundingBox,
     pub shape: Shape,
 }
 
@@ -30,10 +32,34 @@ pub struct RofizObjMovable {
     pub room_object_id: RoomObjectId,
 
     // only used in move_objects_and_find_collisions()
+    pub bounding_box: BoundingBox,
     pub initial_hitbox: Shape,
     pub temp_hitbox: Shape,
     pub move_successful: bool,
     pub fallback_idx: usize,
+}
+
+impl RofizObjMovable {
+    pub fn overlaps_ro_wall(&self, other: &RofizObjBasicWall) -> bool {
+        if !BoundingBox::overlap(&self.bounding_box, &other.bounding_box) {
+            return false;
+        }
+        shapes_overlap(&self.temp_hitbox, &other.shape)
+    }
+
+    pub fn initial_overlaps_ro_movable(&self, other: &RofizObjMovable) -> bool {
+        if !BoundingBox::overlap(&self.bounding_box, &other.bounding_box) {
+            return false;
+        }
+        shapes_overlap(&self.initial_hitbox, &other.temp_hitbox)
+    }
+    
+    pub fn overlaps_ro_movable(&self, other: &RofizObjMovable) -> bool {
+        if !BoundingBox::overlap(&self.bounding_box, &other.bounding_box) {
+            return false;
+        }
+        shapes_overlap(&self.temp_hitbox, &other.temp_hitbox)
+    }
 }
 
 pub enum RofizObjectMovement {

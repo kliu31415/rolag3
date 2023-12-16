@@ -7,24 +7,11 @@ pub enum Shape {
 #[derive(Debug, Clone)]
 pub struct Polygon {
     pub vertexes: Box<[Point]>,
-    pub bounding_box: BoundingBox,
 }
 
 impl Polygon {
     pub fn new(vertexes: Box<[Point]>) -> Polygon {
-        let mut bounding_box = BoundingBox {
-            x1: f32::MAX,
-            x2: f32::MIN,
-            y1: f32::MAX,
-            y2: f32::MIN,
-        };
-        for v in vertexes.iter() {
-            bounding_box.x1 = f32::min(bounding_box.x1, v.x);
-            bounding_box.x2 = f32::max(bounding_box.x2, v.x);
-            bounding_box.y1 = f32::min(bounding_box.y1, v.y);
-            bounding_box.y2 = f32::max(bounding_box.y2, v.y);
-        }
-        Self {vertexes, bounding_box}
+        Self {vertexes}
     }
 
     pub fn rotated_and_translated(&self, dx: f32, dy: f32, dtheta: f32) -> Self {
@@ -137,13 +124,60 @@ impl Rect {
 
 #[derive(Debug, Copy, Clone)]
 pub struct BoundingBox {
-    x1: f32,
-    x2: f32,
-    y1: f32,
-    y2: f32,
+    pub x1: f32,
+    pub x2: f32,
+    pub y1: f32,
+    pub y2: f32,
 }
 
 impl BoundingBox {
+    pub fn zero_state() -> Self {
+        Self {
+            x1: f32::MAX,
+            x2: f32::MIN,
+            y1: f32::MAX,
+            y2: f32::MIN,
+        }
+    }
+    pub fn of_polygon(p: &Polygon) -> Self {
+        let mut bounding_box = Self {
+            x1: f32::MAX,
+            x2: f32::MIN,
+            y1: f32::MAX,
+            y2: f32::MIN,
+        };
+        for v in p.vertexes.iter() {
+            bounding_box.x1 = f32::min(bounding_box.x1, v.x);
+            bounding_box.x2 = f32::max(bounding_box.x2, v.x);
+            bounding_box.y1 = f32::min(bounding_box.y1, v.y);
+            bounding_box.y2 = f32::max(bounding_box.y2, v.y);
+        }
+        bounding_box
+    }
+
+    pub fn of_circle(c: &Circle) -> Self {
+        Self {
+            x1: c.center.x - c.r,
+            x2: c.center.x + c.r,
+            y1: c.center.y - c.r,
+            y2: c.center.y + c.r,
+        }
+    }
+
+    pub fn of_shape(s: &Shape) -> Self {
+        match s {
+            Shape::Polygon(p) => Self::of_polygon(p),
+            Shape::Circle(c) => Self::of_circle(c),
+        }
+    }
+
+    pub fn combine(&mut self, other: &BoundingBox) {
+        self.x1 = f32::min(self.x1, other.x1); 
+        self.x2 = f32::max(self.x2, other.x2);
+        self.y1 = f32::min(self.y1, other.y1); 
+        self.y2 = f32::max(self.y2, other.y2);
+    }
+
     pub fn overlap(b1: &BoundingBox, b2: &BoundingBox) -> bool {
         ((b2.x1 >= b1.x1 && b2.x1 <= b1.x2) || (b1.x1 >= b2.x1 && b1.x1 <= b2.x2)) &&
         ((b2.y1 >= b1.y1 && b2.y1 <= b1.y2) || (b1.y1 >= b2.y1 && b1.y1 <= b2.y2))
