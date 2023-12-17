@@ -93,7 +93,7 @@ impl RoomObject for StandardProjectile1 {
                 if color == self.data.damage_color {
                     return HcBlackHoleResponse { room_objects_to_delete: vec![self.data.md.get_id()] }
                 }
-                return HcBlackHoleResponse { room_objects_to_delete: Vec::new() }
+                HcBlackHoleResponse { room_objects_to_delete: Vec::new() }
             }
             None => HcBlackHoleResponse { room_objects_to_delete: vec![self.data.md.get_id()] }
         }

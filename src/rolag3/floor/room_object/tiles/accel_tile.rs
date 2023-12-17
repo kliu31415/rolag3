@@ -68,7 +68,7 @@ impl RoomObject for AccelTile {
     }
 
     fn get_room_object_type(&self) -> RoomObjectType {
-        return RoomObjectType::Other
+        RoomObjectType::Other
     }
 
     fn is_spectral(&self) -> bool {

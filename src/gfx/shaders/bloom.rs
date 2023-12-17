@@ -59,16 +59,16 @@ impl BloomPipeline {
         let tmd_blur2 = TextureAndMetadata::new(device, "bloom_blur2", format, wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::RENDER_ATTACHMENT, width, height);
         
         let shader = include_str!("bloom_extract_bright_pixels.wgsl");
-        let bg: [&wgpu::BindGroupLayout; 1] = [&TextureAndMetadata::get_standard_bind_group_layout(&device)];
-        let extract_bright_pixels_pipeline = new_wgpu_shader_pipeline("bloom_extract_bright_pixels", shader, &device, format, &[], &bg);
+        let bg: [&wgpu::BindGroupLayout; 1] = [&TextureAndMetadata::get_standard_bind_group_layout(device)];
+        let extract_bright_pixels_pipeline = new_wgpu_shader_pipeline("bloom_extract_bright_pixels", shader, device, format, &[], &bg);
 
         let shader = include_str!("bloom_blur.wgsl");
-        let bg = [&TextureAndMetadata::get_standard_bind_group_layout(&device), &Self::get_blur_bind_group_layout(&device)];
-        let blur_pipeline = new_wgpu_shader_pipeline("bloom_blur", shader, &device, format, &[], &bg);
+        let bg = [&TextureAndMetadata::get_standard_bind_group_layout(device), &Self::get_blur_bind_group_layout(device)];
+        let blur_pipeline = new_wgpu_shader_pipeline("bloom_blur", shader, device, format, &[], &bg);
 
         let shader = include_str!("bloom_addition.wgsl");
-        let bg = [&TextureAndMetadata::get_standard_bind_group_layout(&device), &TextureAndMetadata::get_standard_bind_group_layout(&device)];
-        let addition_pipeline = new_wgpu_shader_pipeline("bloom_addition", shader, &device, format, &[], &bg);
+        let bg = [&TextureAndMetadata::get_standard_bind_group_layout(device), &TextureAndMetadata::get_standard_bind_group_layout(device)];
+        let addition_pipeline = new_wgpu_shader_pipeline("bloom_addition", shader, device, format, &[], &bg);
 
         let blur_uniform_horizontal_cpu = BloomBlurUniform::new(true, 20, 5.0);
         let blur_uniform_horizontal_gpu = device.create_buffer_init(
@@ -80,7 +80,7 @@ impl BloomPipeline {
         );
         let horizontal_blur_bindgroup = device.create_bind_group(
             &wgpu::BindGroupDescriptor {
-                layout: &Self::get_blur_bind_group_layout(&device),
+                layout: &Self::get_blur_bind_group_layout(device),
                 entries: &[
                     wgpu::BindGroupEntry {
                         binding: 0,
@@ -101,7 +101,7 @@ impl BloomPipeline {
         );
         let vertical_blur_bindgroup = device.create_bind_group(
             &wgpu::BindGroupDescriptor {
-                layout: &Self::get_blur_bind_group_layout(&device),
+                layout: &Self::get_blur_bind_group_layout(device),
                 entries: &[
                     wgpu::BindGroupEntry {
                         binding: 0,

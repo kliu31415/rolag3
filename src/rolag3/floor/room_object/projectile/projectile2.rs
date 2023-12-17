@@ -60,15 +60,15 @@ fn act1(ctx: &mut SpAct1Context) -> Act1Response {
     let tick_len = ctx.act1_ctx.get_tick_length(); 
     let dx = ps_data.velocity_x * tick_len;
     let dy = ps_data.velocity_y * tick_len;
-    ctx.act1_ctx.get_rofiz().move_object(&ctx.sp_ctx.ro_ref, RofizObjectMovement::Move(Transformation::new(dx, dy, 0.0)));
+    ctx.act1_ctx.get_rofiz().move_object(ctx.sp_ctx.ro_ref, RofizObjectMovement::Move(Transformation::new(dx, dy, 0.0)));
     Act1Response::new()
 }
 
 fn draw(ctx: &mut SpDrawContext) {
     let ps_data = ctx.sp_ctx.ps_data.downcast_mut::<Projectile2Data>().unwrap();
-    let xform = ctx.draw_ctx.get_rofiz().get_movable_object_xform(&ctx.sp_ctx.ro_ref);
+    let xform = ctx.draw_ctx.get_rofiz().get_movable_object_xform(ctx.sp_ctx.ro_ref);
 
-    match ctx.draw_ctx.get_rofiz().get_movable_object_xformed_shape(&ctx.sp_ctx.ro_ref) {
+    match ctx.draw_ctx.get_rofiz().get_movable_object_xformed_shape(ctx.sp_ctx.ro_ref) {
         Shape::Polygon(p) => {
             if let Proj2Shape::TriFan{center, ..} = ps_data.shape {
                 let xformed_center = Point::new(center.x + xform.dx as f32, center.y + xform.dy as f32);
@@ -108,7 +108,7 @@ fn handle_collision(ctx: &mut SpHandleCollisionContext) -> HandleCollisionRespon
 
 fn apply_operation(ctx: &mut SpApplyOperationContext) {
     let ps_data = ctx.sp_ctx.ps_data.downcast_mut::<Projectile2Data>().unwrap();
-    let xform = ctx.ao_ctx.get_rofiz().get_movable_object_xform(&ctx.sp_ctx.ro_ref);
+    let xform = ctx.ao_ctx.get_rofiz().get_movable_object_xform(ctx.sp_ctx.ro_ref);
     match ctx.ao_ctx.get_operation() {
         RoomObjOperation::BlackHoleForce { x, y, colors, accel_fn } => {
             if !colors.contains(&ctx.sp_ctx.damage_color) {

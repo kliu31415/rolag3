@@ -88,7 +88,7 @@ pub struct RoQueryUnitInfoContext<'a> {
 
 impl<'a> RoQueryUnitInfoContext<'a> {
     pub fn get_rofiz(&self) -> &RofizState {
-        &self.rofiz
+        self.rofiz
     }
 
     pub fn get_self_as_weak(&self) -> Weak<RefCell<dyn RoomObject>> {
@@ -215,19 +215,19 @@ impl RoomObjectCollection {
 
         let operations = responses.iter_mut().flat_map(|x| x.steal_operations());
         for op in operations {
-            let mut op_ctx = RoomObjApplyOperationContext {
+            let op_ctx = RoomObjApplyOperationContext {
                 operation: &op,
-                rofiz: &ctx.rofiz,
+                rofiz: ctx.rofiz,
                 tick_length: ctx.tick_length,
             };
             match op {
                 RoomObjOperation::BlackHoleForce { .. } => {
-                    self.ro_projectile.iter().for_each(|x| x.borrow_mut().apply_operation(&mut op_ctx))
+                    self.ro_projectile.iter().for_each(|x| x.borrow_mut().apply_operation(&op_ctx))
                 },
             }
         }
 
-        let queries = responses.iter_mut().map(|x| x.steal_queries()).flatten();
+        let queries = responses.iter_mut().flat_map(|x| x.steal_queries());
         for (qargs, qresult) in queries {
             match qargs {
                 Act1QueryArgs::ClosestUnit { x, y, team_filter } => {
@@ -235,7 +235,7 @@ impl RoomObjectCollection {
                         .map(|x| {
                             let rqui_ctx = RoQueryUnitInfoContext {
                                 self_as_weak: Rc::downgrade(x),
-                                rofiz: &ctx.rofiz,
+                                rofiz: ctx.rofiz,
                             };
                             x.borrow().handle_query_unit_info(&rqui_ctx)
                         })

@@ -520,7 +520,7 @@ impl Renderer for WgpuRenderer {
 
         let output = self.surface.get_current_texture()?;
         let view = output.texture.create_view(&wgpu::TextureViewDescriptor::default());
-        self.bloom_pipeline.process(&mut encoder, &self.hdr_pipeline.get_input_view());
+        self.bloom_pipeline.process(&mut encoder, self.hdr_pipeline.get_input_view());
         self.hdr_pipeline.process(&mut encoder, &view);
 
         self.queue.submit(std::iter::once(encoder.finish()));

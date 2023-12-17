@@ -102,7 +102,7 @@ impl Unit for StandardUnit1 {
 }
 
 impl Su1Data {
-    fn get_su_ctx<'a>(&'a mut self) -> SuContext<'a> {
+    fn get_su_ctx(&mut self) -> SuContext {
         SuContext {
             us_data: self.us_data.as_mut(),
             md: &self.md,

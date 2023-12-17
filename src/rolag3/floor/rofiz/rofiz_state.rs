@@ -89,7 +89,7 @@ impl RofizState {
         self.wall_x_end = (max_x + 1) as usize;
         self.wall_y_end = (max_y + 1) as usize;
         let mut has_wall_at_coordinate = vec![vec![None; self.wall_y_end]; self.wall_x_end];
-        for bw in self.basic_walls.iter().map(|x| x) {
+        for bw in self.basic_walls.iter() {
             has_wall_at_coordinate[bw.borrow().x as usize][bw.borrow().y as usize] = Some(bw.clone());
         }
 

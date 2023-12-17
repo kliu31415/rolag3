@@ -47,14 +47,14 @@ impl NewProjectile3Args {
 fn act1(ctx: &mut SpAct1Context) -> Act1Response {
     let ps_data = ctx.sp_ctx.ps_data.downcast_mut::<Projectile3Data>().unwrap();
     let (xform, shape) = (ps_data.hitbox_fn)(ctx.act1_ctx.get_room_time());
-    ctx.act1_ctx.get_rofiz().move_object(&ctx.sp_ctx.ro_ref, RofizObjectMovement::NewHitbox(Hitbox::new(xform, shape)));
+    ctx.act1_ctx.get_rofiz().move_object(ctx.sp_ctx.ro_ref, RofizObjectMovement::NewHitbox(Hitbox::new(xform, shape)));
     Act1Response::new()
 }
 
 fn draw(ctx: &mut SpDrawContext) {
     let ps_data = ctx.sp_ctx.ps_data.downcast_mut::<Projectile3Data>().unwrap();
     let (color, vertexes) = (ps_data.draw_shape_fn)(ctx.draw_ctx.get_room_time());
-    let dop = ctx.draw_ctx.do_tri_fan(color, vertexes.into_iter().map(|p| Point::new(p.x, p.y)).collect());
+    let dop = ctx.draw_ctx.do_tri_fan(color, vertexes.iter().map(|p| Point::new(p.x, p.y)).collect());
     ctx.draw_ctx.add_draw_op(DrawContext::Z_PROJECTILE, dop);
 }
 

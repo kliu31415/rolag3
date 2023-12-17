@@ -256,7 +256,7 @@ fn make_weapon1() -> Weapon {
     }
 }
 
-fn weapon1_fire_projectile(mut args: MakeWeaponProjectileFnContext) -> Vec<Rc<RefCell<dyn RoomObject>>> {
+fn weapon1_fire_projectile(args: MakeWeaponProjectileFnContext) -> Vec<Rc<RefCell<dyn RoomObject>>> {
     let proj_velocity = 100.0;
     let velocity_x = args.owner_velocity_x + proj_velocity * f64::cos(args.fire_polar_angle);
     let velocity_y = args.owner_velocity_y + proj_velocity * f64::sin(args.fire_polar_angle);
@@ -275,7 +275,7 @@ fn weapon1_fire_projectile(mut args: MakeWeaponProjectileFnContext) -> Vec<Rc<Re
         xform: args.owner_xform,
         shape,
         color: Color::new(0.0, 1.6, 0.0, 1.0),
-    }.new(&mut args.nro_ctx);
+    }.new(args.nro_ctx);
     vec![Rc::new(RefCell::new(proj))]
 }
 
@@ -287,7 +287,7 @@ fn make_weapon2() -> Weapon {
     }
 }
 
-fn weapon2_fire_projectile(mut args: MakeWeaponProjectileFnContext) -> Vec<Rc<RefCell<dyn RoomObject>>> {
+fn weapon2_fire_projectile(args: MakeWeaponProjectileFnContext) -> Vec<Rc<RefCell<dyn RoomObject>>> {
     let proj_velocity = 100.0;
 
     let mut ret: Vec<Rc<RefCell<dyn RoomObject>>> = Vec::new();
@@ -310,7 +310,7 @@ fn weapon2_fire_projectile(mut args: MakeWeaponProjectileFnContext) -> Vec<Rc<Re
             xform: args.owner_xform,
             shape,
             color: Color::new(0.0, 0.0, 16.0, 1.0),
-        }.new(&mut args.nro_ctx);
+        }.new(args.nro_ctx);
         ret.push(Rc::new(RefCell::new(proj)));
     }
     ret
@@ -324,7 +324,7 @@ fn make_weapon3() -> Weapon {
     }
 }
 
-fn weapon3_fire_projectile(mut args: MakeWeaponProjectileFnContext) -> Vec<Rc<RefCell<dyn RoomObject>>> {
+fn weapon3_fire_projectile(args: MakeWeaponProjectileFnContext) -> Vec<Rc<RefCell<dyn RoomObject>>> {
     let proj_velocity = 60.0;
 
     let mut ret: Vec<Rc<RefCell<dyn RoomObject>>> = Vec::new();
@@ -344,7 +344,7 @@ fn weapon3_fire_projectile(mut args: MakeWeaponProjectileFnContext) -> Vec<Rc<Re
             xform: args.owner_xform,
             shape,
             color: Color::new(6.0, 0.0, 0.0, 1.0),
-        }.new(&mut args.nro_ctx);
+        }.new(args.nro_ctx);
         ret.push(Rc::new(RefCell::new(proj)));
     }
     ret

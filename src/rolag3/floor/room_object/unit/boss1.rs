@@ -51,10 +51,10 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
                     *proj_thrown = true;
                     let border_quads = get_border_quads(Transformation::new(0.0, 0.0, 0.0), &us_data.outer, &us_data.inner);
                     for q in border_quads.into_iter() {
-                        let dx1 = q[1].x as f32;
-                        let dy1 = q[1].y as f32;
-                        let dx2 = q[2].x as f32;
-                        let dy2 = q[2].y as f32;
+                        let dx1 = q[1].x;
+                        let dy1 = q[1].y;
+                        let dx2 = q[2].x;
+                        let dy2 = q[2].y;
 
                         let oi1_dx = q[0].x - q[1].x;
                         let oi1_dy = q[0].y - q[1].y;

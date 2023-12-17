@@ -14,8 +14,8 @@ impl HdrPipeline {
         let tmd = TextureAndMetadata::new(device, "HDR", intermediate_format, wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::RENDER_ATTACHMENT, width, height);
 
         let shader = include_str!("hdr.wgsl");
-        let bg = [&TextureAndMetadata::get_standard_bind_group_layout(&device)];
-        let pipeline = new_wgpu_shader_pipeline("hdr", shader, &device, output_format, &[], &bg);
+        let bg = [&TextureAndMetadata::get_standard_bind_group_layout(device)];
+        let pipeline = new_wgpu_shader_pipeline("hdr", shader, device, output_format, &[], &bg);
 
         Self {
             pipeline,
@@ -36,7 +36,7 @@ impl HdrPipeline {
         let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("hdr process"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                view: &output,
+                view: output,
                 resolve_target: None,
                 ops: Operations {
                     load: wgpu::LoadOp::Clear(Default::default()),
