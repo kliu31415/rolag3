@@ -3,11 +3,15 @@ use crate::{rolag3::floor::{room_object::room_object_def::{RoomObject, RoomObjec
 pub struct AccelTile {
     md: RoomObjectMetadata,
     ro_ref: RofizObjectRef,
+    unit_last_affected_time: Option<f64>,
 }
 
 const OUTER_SHAPE: [Point; 4] = [Point::new(0.0, 0.0), Point::new(2.0, 0.0), Point::new(2.0, 2.0), Point::new(0.0, 2.0)];
 const INNER_SHAPE: [Point; 4] = [Point::new(0.2, 0.2), Point::new(1.8, 0.2), Point::new(1.8, 1.8), Point::new(0.2, 1.8)];
 const BORDER_COLOR: Color = Color::new(1.0, 1.0, 1.0, 0.7);
+const CARET_SHAPE: [Point; 6] = [Point::new(0.0, 0.0), Point::new(-0.3, -0.6), Point::new(0.0, -0.6), Point::new(0.3, 0.0), Point::new(0.0, 0.6), Point::new(-0.3, 0.6)];
+const CARET_COLOR_NO_FX: Color = Color::new(0.0, 2.3, 0.05, 0.9);
+const CARET_COLOR_FX: Color = Color::new(0.0, 5.0, 0.1, 0.9);
 
 impl RoomObject for AccelTile {
     fn get_metadata(&self) -> &RoomObjectMetadata {
@@ -38,15 +42,28 @@ impl RoomObject for AccelTile {
             ];
             all_draw_ops.push(ctx.do_tri_fan(BORDER_COLOR, Box::new(quad)))
         }
+
+        let caret_color = match self.unit_last_affected_time {
+            Some(t) => Color::lerp(CARET_COLOR_FX, CARET_COLOR_NO_FX, f32::min(1.0, 5.0 * (ctx.get_room_time() - t) as f32)),
+            None => CARET_COLOR_NO_FX, 
+        };
+
+        let caret_translate = translate + Vector::new(1.0, 1.0);
+        let caret_shape = CARET_SHAPE.iter().map(|p| p + caret_translate).collect();
+        all_draw_ops.push(ctx.do_tri_fan(caret_color, caret_shape));
+
         ctx.add_draw_op(DrawContext::Z_TILE, ctx.dop_group(all_draw_ops.into_boxed_slice()));
     }
 
     fn handle_collision(&mut self, ctx: &mut HandleCollisionContext) -> HandleCollisionResponse {
         // nop so far
         let hct_ctx = HcTileContext {
-            tile_effect: HcTileEffect::Accelerate { force: 5000.0, theta: 0.0 },
+            tile_effect: HcTileEffect::Accelerate { force: 2000.0, theta: 0.0 },
         };
-        ctx.get_other().borrow_mut().handle_collision_tile(&hct_ctx);
+        let hct_resp = ctx.get_other().borrow_mut().handle_collision_tile(&hct_ctx);
+        if hct_resp.unit_affected {
+            self.unit_last_affected_time = Some(ctx.get_room_time());
+        }
         HandleCollisionResponse::new()
     }
 
@@ -67,5 +84,5 @@ pub fn new_accel_tile(ctx: &mut NewRoomObjectContext, x: u32, y: u32) -> AccelTi
     let xform = Transformation::new(x as f64, y as f64, 0.0);
     let hitbox = Hitbox::new(xform, shape);
     let ro_ref = ctx.add_basic_projectile(md.get_id(), hitbox);
-    AccelTile { md, ro_ref}
+    AccelTile { md, ro_ref, unit_last_affected_time: None}
 }

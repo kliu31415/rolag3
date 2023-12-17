@@ -248,11 +248,12 @@ impl RofizState {
         while i < self.nonspectral_units.len() {
             // verify that nsu[i] doesn't overlap with any walls
             let mut nsu_i = self.nonspectral_units[i].as_ref().borrow_mut();
-            // [start, end). Note that half-open interval
-            let xstart = usize::clamp(nsu_i.bounding_box.x1 as usize, 0, self.wall_x_end);
-            let xend = usize::clamp(nsu_i.bounding_box.x2 as usize + 1, 0, self.wall_x_end);
-            let ystart = usize::clamp(nsu_i.bounding_box.y1 as usize, 0, self.wall_y_end);
-            let yend = usize::clamp(nsu_i.bounding_box.y2 as usize + 1, 0, self.wall_y_end);
+            // [start, end). Note that half-open interval. Use f32s to prevent underflows (bounding boxes may have
+            // negative bounds)
+            let xstart = f32::clamp(nsu_i.bounding_box.x1, 0.0, self.wall_x_end as f32) as usize;
+            let xend = f32::clamp(nsu_i.bounding_box.x2 + 1.0, 0.0, self.wall_x_end as f32) as usize;
+            let ystart = f32::clamp(nsu_i.bounding_box.y1, 0.0, self.wall_y_end as f32) as usize;
+            let yend = f32::clamp(nsu_i.bounding_box.y2 + 1.0, 0.0, self.wall_y_end as f32) as usize;
             for x in xstart..xend {
                 for y in ystart..yend {
                     if let Some(ref bw) = self.has_wall_at_coordinate[x][y] {
@@ -333,10 +334,12 @@ impl RofizState {
         self.spatial_grid.iter_mut().for_each(|column| column.iter_mut().for_each(|cell| cell.clear()));
         for i in 0..self.nonspectral_units.len() {
             let nsu_i = self.nonspectral_units[i].borrow();
-            let xstart = usize::clamp(nsu_i.bounding_box.x1 as usize, 0, self.wall_x_end);
-            let xend = usize::clamp(nsu_i.bounding_box.x2 as usize + 1, 0, self.wall_x_end);
-            let ystart = usize::clamp(nsu_i.bounding_box.y1 as usize, 0, self.wall_y_end);
-            let yend = usize::clamp(nsu_i.bounding_box.y2 as usize + 1, 0, self.wall_y_end);
+            // [start, end). Note that half-open interval. Use f32s to prevent underflows (bounding boxes may have
+            // negative bounds)
+            let xstart = f32::clamp(nsu_i.bounding_box.x1, 0.0, self.wall_x_end as f32) as usize;
+            let xend = f32::clamp(nsu_i.bounding_box.x2 + 1.0, 0.0, self.wall_x_end as f32) as usize;
+            let ystart = f32::clamp(nsu_i.bounding_box.y1, 0.0, self.wall_y_end as f32) as usize;
+            let yend = f32::clamp(nsu_i.bounding_box.y2 + 1.0, 0.0, self.wall_y_end as f32) as usize;
 
             for x in xstart..xend {
                 for y in ystart..yend {
@@ -353,11 +356,12 @@ impl RofizState {
             let mo = mo_rc.as_ref().borrow_mut();
 
             let mut spatial_grid_ids = Vec::<usize>::new();
-            // [start, end). Note that half-open interval
-            let xstart = usize::clamp(mo.bounding_box.x1 as usize, 0, self.wall_x_end);
-            let xend = usize::clamp(mo.bounding_box.x2 as usize + 1, 0, self.wall_x_end);
-            let ystart = usize::clamp(mo.bounding_box.y1 as usize, 0, self.wall_y_end);
-            let yend = usize::clamp(mo.bounding_box.y2 as usize + 1, 0, self.wall_y_end);
+            // [start, end). Note that half-open interval. Use f32s to prevent underflows (bounding boxes may have
+            // negative bounds)
+            let xstart = f32::clamp(mo.bounding_box.x1, 0.0, self.wall_x_end as f32) as usize;
+            let xend = f32::clamp(mo.bounding_box.x2 + 1.0, 0.0, self.wall_x_end as f32) as usize;
+            let ystart = f32::clamp(mo.bounding_box.y1, 0.0, self.wall_y_end as f32) as usize;
+            let yend = f32::clamp(mo.bounding_box.y2 + 1.0, 0.0, self.wall_y_end as f32) as usize;
             for x in xstart..xend {
                 for y in ystart..yend {
                     if let Some(ref bw) = self.has_wall_at_coordinate[x][y] {

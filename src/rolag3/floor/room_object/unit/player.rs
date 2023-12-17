@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::{Rc, Weak}};
 
-use crate::{rolag3::floor::{run::{PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, draw::{DrawContext, Color}, room_object::{room_object_def::{RoomObject, Act1Context, FloorCoordinate, NewRoomObjectContext, RoomObjectMetadata, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse, RoomObjectType, RoQueryUnitInfoContext, RoQueryUnitInfoResponse, HcTileContext, HcTileEffect}, projectile::projectile2::{NewProjectile2Args, Proj2Shape}, tiles::room_connection::{Direction, RoomConnection}, damage::DamageColor}, rofiz::{rofiz_object::{Hitbox, Transformation}, rofiz_state::RofizState}, room::RoomConnectionInfo}, geometry::shape::{Shape, Point}};
+use crate::{rolag3::floor::{run::{PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, draw::{DrawContext, Color}, room_object::{room_object_def::{RoomObject, Act1Context, FloorCoordinate, NewRoomObjectContext, RoomObjectMetadata, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse, RoomObjectType, RoQueryUnitInfoContext, RoQueryUnitInfoResponse, HcTileContext, HcTileEffect, HcTileResponse}, projectile::projectile2::{NewProjectile2Args, Proj2Shape}, tiles::room_connection::{Direction, RoomConnection}, damage::DamageColor}, rofiz::{rofiz_object::{Hitbox, Transformation}, rofiz_state::RofizState}, room::RoomConnectionInfo}, geometry::shape::{Shape, Point}};
 
 use super::{Unit, standard_unit_common::{StandardUnitCommon, Budeb, BudebMaxSpeed, TranslateMove, PolarForce}};
 
@@ -96,7 +96,7 @@ impl RoomObject for Player {
             move_action = TranslateMove::Accelerate { ax: accel_x.unwrap_or(0.0), ay: accel_y.unwrap_or(0.0)};
         }
         else {
-            move_action = TranslateMove::Decelerate;
+            move_action = TranslateMove::Nop;
         }
         self.su_common.as_mut().unwrap().start_act1(tick_len);
         self.su_common.as_mut().unwrap().add_external_forces(additional_force);
@@ -147,8 +147,9 @@ impl RoomObject for Player {
         self.change_rooms = Some(*rci);
     }
 
-    fn handle_collision_tile(&mut self, ctx: &HcTileContext) {
+    fn handle_collision_tile(&mut self, ctx: &HcTileContext) -> HcTileResponse {
         self.hc_tile_effects.push(ctx.tile_effect);
+        HcTileResponse { unit_affected: true }
     }
 
     fn is_spectral(&self) -> bool {
@@ -208,7 +209,7 @@ impl Player {
 
         // Rofiz will automatically clean up the old su_common.rofiz_object, because it'll detect that no RoomObjects
         // hold a reference to it anymore.
-        self.su_common = Some(StandardUnitCommon::new(ro_ref, 1e9, 30.0, 500.0, 0.0, 0.0));
+        self.su_common = Some(StandardUnitCommon::new(ro_ref, 1e9, 30.0, 500.0, 0.0, 0.0, 150.0, 10.0));
     }
 
     pub fn get_center_point(&self, rofiz: &RofizState) -> FloorCoordinate {

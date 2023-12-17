@@ -21,6 +21,8 @@ pub struct StandardUnitCommon {
     tire_friction: f64, // intuitively, proportional to how quickly the unit reaches its max speed
     angular_power: f64,
     angular_traction: f64,
+    velocity_cap: f64, // prevents accel tiles from making the player too fast
+    min_effective_velocity: f64, // determines how much force is applied at rest and low velocities
 
     velocity_x: f64,
     velocity_y: f64,
@@ -67,7 +69,7 @@ impl StandardUnitCommon {
     const GRAVITY: f64 = 1.0;
     const EPSILON: f64 = 1e-20;
 
-    pub fn new(ro_ref: RofizObjectRef, hp: f64, engine_power: f64, tire_friction: f64, angular_power: f64, angular_traction: f64) -> Self {
+    pub fn new(ro_ref: RofizObjectRef, hp: f64, engine_power: f64, tire_friction: f64, angular_power: f64, angular_traction: f64, velocity_cap: f64, min_effective_velocity: f64) -> Self {
         Self {
             ro_ref,
             engine_power,
@@ -77,6 +79,8 @@ impl StandardUnitCommon {
             velocity_x: 0.0,
             velocity_y: 0.0,
             velocity_theta: 0.0,
+            velocity_cap,
+            min_effective_velocity,
 
             act1_started: false,
             room_tick_length: 0.0,
@@ -170,7 +174,7 @@ impl StandardUnitCommon {
         assert!(self.act1_started, "cannot call standard_unit_common::end_act1() before act1 has started");
 
         let tick_length = self.room_tick_length;
-        let min_velocity = 0.5;
+        let min_velocity = self.min_effective_velocity;
 
         match self.translate {
             TranslateMove::Nop => {},
@@ -257,6 +261,16 @@ impl StandardUnitCommon {
         // Friction is computed with the post-acceleration velocity. This should only make a small difference in
         // practice, but I'm just making a note in case there are bugs.
         self.decelerate_xy(tick_length, self.tire_friction * Self::MASS * Self::GRAVITY);
+
+        // we have to cap the underlying velocity. We can't just compute a separate scaled velocity while leaving the
+        // underlying the same. The reason is because if the player's velocity is 10000, and we compute a separate
+        // scaled velocity capped to 150, the player will retain a velocity of 150 for a very long time.
+        let vnorm = f64::hypot(self.velocity_x, self.velocity_y);
+        if vnorm > self.velocity_cap {
+            let scale = self.velocity_cap / vnorm;
+            self.velocity_x *= scale;
+            self.velocity_y *= scale;
+        }
 
         let mut max_speed_mult = 1.0;
         let mut min_speed_mult = 1.0;

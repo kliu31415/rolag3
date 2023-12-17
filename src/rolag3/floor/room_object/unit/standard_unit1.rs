@@ -208,7 +208,7 @@ impl StandardUnit1Builder {
         let md = RoomObjectMetadata::new(ctx);
         let hitbox = Hitbox::new(xform, shape);
         let ro_ref = ctx.add_nonspectral_unit(md.get_id(), hitbox);
-        let su_common = StandardUnitCommon::new(ro_ref, self.req.hp, self.req.engine_power, self.req.tire_traction, self.angular_power, self.angular_traction);
+        let su_common = StandardUnitCommon::new(ro_ref, self.req.hp, self.req.engine_power, self.req.tire_traction, self.angular_power, self.angular_traction, 100.0, 2.0);
         
         let handle_collision_fn = match self.handle_collision_logic {
             HandleCollisionLogic::Nop => Box::new(handle_collision_nop),

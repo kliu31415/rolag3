@@ -116,6 +116,14 @@ impl Vector {
     }
 }
 
+impl std::ops::Add<Vector> for Vector {
+    type Output = Vector;
+
+    fn add(self, rhs: Vector) -> Vector {
+        Vector::new(self.x + rhs.x, self.y + rhs.y)
+    }
+}
+
 #[derive(Debug, Copy, Clone)]
 pub struct Rect {
     pub x: f32,

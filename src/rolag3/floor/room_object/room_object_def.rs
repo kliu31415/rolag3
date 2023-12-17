@@ -30,8 +30,8 @@ pub trait RoomObject {
         HcBlackHoleResponse {  room_objects_to_delete: Vec::new() }
     } 
 
-    fn handle_collision_tile(&mut self, _ctx: &HcTileContext) {
-        // nop by default
+    fn handle_collision_tile(&mut self, _ctx: &HcTileContext) -> HcTileResponse {
+        HcTileResponse { unit_affected: false }
     }
 
     fn handle_room_connection_collision(&mut self, _rci: &RoomConnectionInfo) {
@@ -683,4 +683,8 @@ pub struct HcTileContext {
 #[derive(Debug, Clone, Copy)]
 pub enum HcTileEffect {
     Accelerate {force: f64, theta: f64}
+}
+
+pub struct HcTileResponse {
+    pub unit_affected: bool,
 }
