@@ -1,8 +1,8 @@
 use std::{cell::RefCell, rc::Weak};
 
-use crate::{rolag3::floor::{room_object::{room_object_def::{RoomObject, NewRoomObjectContext, Act1Response, HandleCollisionResponse, HcProjectileContext, Team, RoomObjectType}, damage::DamageColor}, draw::{DrawContext, Color}, rofiz::rofiz_object::{Transformation, RofizObjectMovement}}, geometry::shape::{Shape, Point}};
+use crate::{rolag3::floor::{room_object::{room_object_def::{RoomObject, NewRoomObjectContext, Act1Response, HandleCollisionResponse, HcProjectileContext, Team, RoomObjectType, RoomObjOperation}, damage::DamageColor}, draw::{DrawContext, Color}, rofiz::rofiz_object::{Transformation, RofizObjectMovement}}, geometry::shape::{Shape, Point}};
 
-use super::standard_projectile1::{Sp1Builder, Sp1BuilderReq, StandardProjectile1, SpAct1Context, SpDrawContext, SpHandleCollisionContext};
+use super::standard_projectile1::{Sp1Builder, Sp1BuilderReq, StandardProjectile1, SpAct1Context, SpDrawContext, SpHandleCollisionContext, SpApplyOperationContext};
 
 // Projectile2 is a normal projectile shaped like a triangle fan or circle. It moves at a constant velocity
 
@@ -49,6 +49,7 @@ impl NewProjectile2Args {
             .act1_fn(Box::new(act1))
             .draw_fn(Box::new(draw))
             .handle_collision_fn(Box::new(handle_collision))
+            .apply_operation_fn(Box::new(apply_operation))
             .owner(self.owner)
             .build(ctx)
     }
@@ -103,6 +104,26 @@ fn handle_collision(ctx: &mut SpHandleCollisionContext) -> HandleCollisionRespon
         to_remove.push(ctx.sp_ctx.md.get_id());
     }
     HandleCollisionResponse::new().remove_room_objs(to_remove.as_slice())
+}
+
+fn apply_operation(ctx: &mut SpApplyOperationContext) {
+    let ps_data = ctx.sp_ctx.ps_data.downcast_mut::<Projectile2Data>().unwrap();
+    let xform = ctx.ao_ctx.get_rofiz().get_movable_object_xform(&ctx.sp_ctx.ro_ref);
+    match ctx.ao_ctx.get_operation() {
+        RoomObjOperation::BlackHoleForce { x, y, colors, accel_fn } => {
+            if !colors.contains(&ctx.sp_ctx.damage_color) {
+                return;
+            }
+            let dir_x = x - xform.dx;
+            let dir_y = y - xform.dy;
+            let norm = f64::hypot(dir_x, dir_y);
+            let normed_x = dir_x / norm;
+            let normed_y = dir_y / norm;
+            let accel = ctx.ao_ctx.get_tick_length() * (accel_fn)(norm);
+            ps_data.velocity_x += accel * normed_x;
+            ps_data.velocity_y += accel * normed_y;
+        }
+    }
 }
 
 #[derive(Debug, Clone)]

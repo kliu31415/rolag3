@@ -1,12 +1,13 @@
 use std::{cell::RefCell, rc::Weak, any::Any};
 
-use crate::{rolag3::floor::{room_object::{room_object_def::{RoomObject, RoomObjectMetadata, Act1Context, NewRoomObjectContext, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, RoomObjectType, HcBlackHoleContext, HcBlackHoleResponse}, dummy::Dummy, damage::DamageColor}, draw::DrawContext, rofiz::{rofiz_object::{Hitbox, Transformation}, rofiz_state::RofizObjectRef}}, geometry::shape::Shape};
+use crate::{rolag3::floor::{room_object::{room_object_def::{RoomObject, RoomObjectMetadata, Act1Context, NewRoomObjectContext, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, RoomObjectType, HcBlackHoleContext, HcBlackHoleResponse, RoomObjApplyOperationContext}, dummy::Dummy, damage::DamageColor}, draw::DrawContext, rofiz::{rofiz_object::{Hitbox, Transformation}, rofiz_state::RofizObjectRef}}, geometry::shape::Shape};
 
 use super::Projectile;
 
 type Act1FnT = dyn Fn(&mut SpAct1Context) -> Act1Response;
 type DrawFnT = dyn Fn(&mut SpDrawContext);
 type HandleCollisionFnT = dyn Fn(&mut SpHandleCollisionContext) -> HandleCollisionResponse;
+type ApplyOperationFnT = dyn Fn(&mut SpApplyOperationContext);
 
 pub struct StandardProjectile1 {
     data: Sp1Data,
@@ -28,6 +29,7 @@ struct Sp1UnitSpecificLogic {
     act1_fn: Box<Act1FnT>,
     draw_fn: Box<DrawFnT>,
     handle_collision_fn: Box<HandleCollisionFnT>,
+    apply_operation_fn: Box<ApplyOperationFnT>,
 }
 
 impl Sp1Data {
@@ -97,6 +99,15 @@ impl RoomObject for StandardProjectile1 {
         }
     }
 
+    fn apply_operation(&mut self, ctx: &RoomObjApplyOperationContext) {
+        let mut sp_ctx = self.data.get_sp_ctx();
+        let mut sp_ao_ctx = SpApplyOperationContext {
+            sp_ctx: &mut sp_ctx,
+            ao_ctx: ctx,
+        };
+        (self.logic.apply_operation_fn)(&mut sp_ao_ctx)
+    }
+
     fn is_spectral(&self) -> bool {
         true
     }
@@ -128,6 +139,7 @@ pub struct Sp1Builder {
     act1_fn: Box<Act1FnT>,
     draw_fn: Box<DrawFnT>,
     handle_collision_fn: Box<HandleCollisionFnT>,
+    apply_operation_fn: Box<ApplyOperationFnT>,
 }
 
 impl Sp1Builder {
@@ -139,6 +151,7 @@ impl Sp1Builder {
             act1_fn: Box::new(act1_nop),
             draw_fn: Box::new(draw_nop),
             handle_collision_fn: Box::new(handle_collision_nop),
+            apply_operation_fn: Box::new(apply_operation_nop),
         }
     }
 
@@ -167,6 +180,11 @@ impl Sp1Builder {
         self
     }
 
+    pub fn apply_operation_fn(mut self, apply_operation_fn: Box<ApplyOperationFnT>) -> Self {
+        self.apply_operation_fn = apply_operation_fn;
+        self
+    }
+
     pub fn build(self, ctx: &mut NewRoomObjectContext) -> StandardProjectile1 {
         let md = RoomObjectMetadata::new(ctx);
         let hitbox = Hitbox::new(self.req.xform, self.req.shape);
@@ -186,6 +204,7 @@ impl Sp1Builder {
                 act1_fn: self.act1_fn,
                 draw_fn: self.draw_fn,
                 handle_collision_fn: self.handle_collision_fn,
+                apply_operation_fn: self.apply_operation_fn,
             },
         }
     }
@@ -226,4 +245,13 @@ pub struct SpHandleCollisionContext<'a, 'b> {
 
 fn handle_collision_nop(_ctx: &mut SpHandleCollisionContext) -> HandleCollisionResponse {
     HandleCollisionResponse::new()
+}
+
+pub struct SpApplyOperationContext<'a, 'b> {
+    pub sp_ctx: &'a mut SpContext<'a>,
+    pub ao_ctx: &'a RoomObjApplyOperationContext<'b>,
+}
+
+fn apply_operation_nop(_ctx: &mut SpApplyOperationContext) {
+    // nop
 }

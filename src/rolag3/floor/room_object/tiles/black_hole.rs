@@ -1,4 +1,4 @@
-use crate::{rolag3::floor::{room_object::{room_object_def::{RoomObject, RoomObjectType, HandleCollisionContext, HandleCollisionResponse, Act1Context, Act1Response, RoomObjectMetadata, NewRoomObjectContext, HcBlackHoleContext}, damage::DamageColor}, draw::{DrawContext, Color}, rofiz::{rofiz_state::RofizObjectRef, rofiz_object::{Transformation, Hitbox}}}, geometry::shape::{Point, Shape}};
+use crate::{rolag3::floor::{room_object::{room_object_def::{RoomObject, RoomObjectType, HandleCollisionContext, HandleCollisionResponse, Act1Context, Act1Response, RoomObjectMetadata, NewRoomObjectContext, HcBlackHoleContext, RoomObjOperation}, damage::DamageColor}, draw::{DrawContext, Color}, rofiz::{rofiz_state::RofizObjectRef, rofiz_object::{Transformation, Hitbox}}}, geometry::shape::{Point, Shape}};
 
 pub struct BlackHole {
     affects_projectiles_color_filter: Option<DamageColor>,
@@ -19,8 +19,23 @@ impl RoomObject for BlackHole {
         &self.md
     }
 
-    fn act1(&mut self, _ctx: &mut Act1Context) -> Act1Response {
-        Act1Response::new()
+    fn act1(&mut self, ctx: &mut Act1Context) -> Act1Response {
+        let xform = ctx.get_rofiz().get_movable_object_xform(&self.ro_ref);
+        let mut response = Act1Response::new();
+        response.apply_operation(RoomObjOperation::BlackHoleForce { 
+            x: xform.dx, 
+            y: xform.dy, 
+            colors: vec![DamageColor::Green], 
+            accel_fn: |mut distance| {
+                let threshold = 5.0;
+                if distance > threshold {
+                    return 0.0;
+                }
+                distance = f64::max(distance, 0.1);
+                10000.0 * (f64::exp(-distance) - f64::exp(-threshold))
+            },
+        });
+        response
     }
 
     fn draw(&mut self, ctx: &mut DrawContext) {

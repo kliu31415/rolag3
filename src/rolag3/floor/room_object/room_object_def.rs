@@ -34,6 +34,10 @@ pub trait RoomObject {
         // nop by default
     }
 
+    fn apply_operation(&mut self, _ctx: &RoomObjApplyOperationContext) {
+        // nop by default
+    }
+
     fn get_room_object_type(&self) -> RoomObjectType;
 
     fn is_spectral(&self) -> bool;
@@ -47,6 +51,30 @@ pub trait RoomObject {
     fn handle_query_unit_info(&self, _ctx: &RoQueryUnitInfoContext) -> RoQueryUnitInfoResponse {
         unimplemented!("handle_query_unit_info() can only be called for units. Called for {:?}", self.get_room_object_type());
     }
+}
+
+pub struct RoomObjApplyOperationContext<'a> {
+    operation: &'a RoomObjOperation,
+    rofiz: &'a RofizState,
+    tick_length: f64,
+}
+
+impl<'a> RoomObjApplyOperationContext<'a> {
+    pub fn get_operation(&self) -> &RoomObjOperation {
+        self.operation
+    }
+
+    pub fn get_rofiz(&self) -> &RofizState {
+        self.rofiz
+    }
+
+    pub fn get_tick_length(&self) -> f64 {
+        self.tick_length
+    }
+}
+
+pub enum RoomObjOperation {
+    BlackHoleForce { x: f64, y: f64, colors: Vec<DamageColor>, accel_fn: fn(f64) -> f64},
 }
 
 pub struct RoQueryUnitInfoContext<'a> {
@@ -180,6 +208,20 @@ impl RoomObjectCollection {
         self.remove_all_using_bool_array(should_remove.as_slice());
 
         responses.iter_mut().flat_map(|x| x.steal_room_objs_to_add()).for_each(|x| self.add(x));
+
+        let operations = responses.iter_mut().flat_map(|x| x.steal_operations());
+        for op in operations {
+            let mut op_ctx = RoomObjApplyOperationContext {
+                operation: &op,
+                rofiz: &ctx.rofiz,
+                tick_length: ctx.tick_length,
+            };
+            match op {
+                RoomObjOperation::BlackHoleForce { .. } => {
+                    self.ro_projectile.iter().for_each(|x| x.borrow_mut().apply_operation(&mut op_ctx))
+                }
+            }
+        }
 
         let queries = responses.iter_mut().map(|x| x.steal_queries()).flatten();
         for (qargs, qresult) in queries {
@@ -453,6 +495,7 @@ pub struct Act1Response {
     should_remove_me: bool,
     objects_to_add: Vec<Rc<RefCell<dyn RoomObject>>>,
     act1_queries: Vec<(Act1QueryArgs, Rc<RefCell<Act1QueryResult>>)>,
+    operations: Vec<RoomObjOperation>,
 }
 
 impl Act1Response {
@@ -461,6 +504,7 @@ impl Act1Response {
             should_remove_me: false,
             objects_to_add: Vec::new(),
             act1_queries: Vec::new(),
+            operations: Vec::new(),
         }
     }
 
@@ -492,6 +536,16 @@ impl Act1Response {
     pub fn steal_queries(&mut self) -> Vec<(Act1QueryArgs, Rc<RefCell<Act1QueryResult>>)> {
         let mut q = Vec::new();
         std::mem::swap(&mut q, &mut self.act1_queries);
+        q
+    }
+
+    pub fn apply_operation(&mut self, op: RoomObjOperation) {
+        self.operations.push(op);
+    }
+
+    pub fn steal_operations(&mut self) -> Vec<RoomObjOperation> {
+        let mut q = Vec::new();
+        std::mem::swap(&mut q, &mut self.operations);
         q
     }
 }
