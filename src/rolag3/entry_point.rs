@@ -181,17 +181,26 @@ impl Rolag3EventHandler {
                 outer_color: ColorRGBA32f::new(0.0, 1.0, 0.0, 1.0),
                 angle_range: Some((3.4, 4.7)),
         })});
-        let fps_text = format!("fps={}", window.get_renderer().get_fps());
-        window.get_renderer().draw(DrawOpWithMetadata {
-            z: 100.0, 
-            op: DrawOp::Text(DrawOpText { 
-                text: fps_text, 
-                color: ColorRGBA32f::new(0.8, 0.2, 0.2, 0.7),
-                x: 0.0,
-                y: 0.0,
-                font_size: 100.0, 
-                position: DrawTextPosition::TopLeft,
-        })});
+        let rofiz_stats = self.floor.get_current_room().rofiz.get_stats();
+        let text = [
+            format!("fps={}", window.get_renderer().get_fps()),
+            format!("num_projectiles={}", rofiz_stats.num_projectiles),
+            format!("num_walls={}", rofiz_stats.num_walls),
+            format!("num_nonspectral_units={}", rofiz_stats.num_nonspectral_units),
+            format!("num_spectral_units={}", rofiz_stats.num_spectral_units),
+        ];
+        for (i, text) in text.iter().enumerate() {
+            window.get_renderer().draw(DrawOpWithMetadata {
+                z: 100.0, 
+                op: DrawOp::Text(DrawOpText { 
+                    text: text.clone(), 
+                    color: ColorRGBA32f::new(0.0, 0.2, 0.2, 1.0),
+                    x: 0.0,
+                    y: (i * 45) as f32,
+                    font_size: 40.0, 
+                    position: DrawTextPosition::TopLeft,
+            })});
+        }
         let res = window.get_renderer().present(ColorRGBA32f{r: 0.8f32, g: 0.8f32, b: 0.9f32, a: 1.0f32});
         if let Err(e) = res { log::error!("error when calling renderer.present(): {}", e) }
     }

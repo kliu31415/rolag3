@@ -462,6 +462,26 @@ impl RofizState {
             room_object_id: floor_object_id,
         }
     }
+
+    pub fn get_stats(&self) -> RofizStats {
+        RofizStats { 
+            num_walls: self.basic_walls.len(), 
+            num_projectiles: self.basic_projectiles.len(), 
+            num_spectral_units: self.spectral_units.len(), 
+            num_nonspectral_units: self.nonspectral_units.len(), 
+            max_x: self.wall_x_end, 
+            max_y: self.wall_y_end,
+        }
+    }
+}
+
+pub struct RofizStats {
+    pub num_walls: usize,
+    pub num_projectiles: usize,
+    pub num_spectral_units: usize,
+    pub num_nonspectral_units: usize,
+    pub max_x: usize,
+    pub max_y: usize,
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]

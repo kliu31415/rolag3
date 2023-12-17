@@ -21,4 +21,9 @@ Test 2
 -100 pt font, cosmic text default font
 -2 to 3 fps in debug mode
 -27 fps in release mode
--
+
+Test 3
+-30x30 room
+-Spawn ~1000 projectiles that are clearly off-screen and don't overlap with any units
+-Runs at 3000 ticks/s in release mode (~57-60 fps at 50 ticks/frame)
+-Runs at 440 ticks/s in debug mode (~22 fps at 20 ticks/frame)
