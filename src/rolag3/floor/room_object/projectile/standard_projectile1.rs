@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Weak, any::Any};
 
-use crate::{rolag3::floor::{room_object::{room_object_def::{RoomObject, RoomObjectMetadata, Act1Context, NewRoomObjectContext, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, RoomObjectType}, dummy::Dummy, damage::DamageColor}, draw::DrawContext, rofiz::{rofiz_object::{Hitbox, Transformation}, rofiz_state::RofizObjectRef}}, geometry::shape::Shape};
+use crate::{rolag3::floor::{room_object::{room_object_def::{RoomObject, RoomObjectMetadata, Act1Context, NewRoomObjectContext, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, RoomObjectType, HcBlackHoleContext, HcBlackHoleResponse}, dummy::Dummy, damage::DamageColor}, draw::DrawContext, rofiz::{rofiz_object::{Hitbox, Transformation}, rofiz_state::RofizObjectRef}}, geometry::shape::Shape};
 
 use super::Projectile;
 
@@ -83,6 +83,18 @@ impl RoomObject for StandardProjectile1 {
             hc_ctx: ctx,
         };
         (self.logic.handle_collision_fn)(&mut sp_hc_ctx)
+    }
+
+    fn handle_collision_black_hole(&mut self, ctx: &HcBlackHoleContext) -> HcBlackHoleResponse {
+        match ctx.affects_projectiles_color_filter {
+            Some(color) => {
+                if color == self.data.damage_color {
+                    return HcBlackHoleResponse { room_objects_to_delete: vec![self.data.md.get_id()] }
+                }
+                return HcBlackHoleResponse { room_objects_to_delete: Vec::new() }
+            }
+            None => HcBlackHoleResponse { room_objects_to_delete: vec![self.data.md.get_id()] }
+        }
     }
 
     fn is_spectral(&self) -> bool {

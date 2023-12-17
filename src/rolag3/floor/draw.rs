@@ -64,6 +64,7 @@ impl DrawContext<'_> {
     pub const Z_UNIT_PLAYER: f64 = 29.0;
     pub const Z_UNIT: f64 = 30.0;
     pub const Z_PROJECTILE: f64 = 40.0;
+    pub const Z_BLACK_HOLE: f64 = 50.0;
 
     pub fn add_draw_op(&mut self, z: f64, op: DrawOp) {
         self.draw_ops.push(DrawOpWithMetadata::new(z, op));
@@ -98,6 +99,26 @@ impl DrawContext<'_> {
                 viewport: None,
                 inner_color: color, 
                 outer_color: color, 
+                angle_range: None,
+        })
+    }
+
+    pub fn do_concentric_circle(&self, inner_color: Color, outer_color: Color, center: Point, inner_radius: f32, outer_radius: f32) -> DrawOp {
+        let inner_color = Self::color_to_rdr(&inner_color);
+        let outer_color = Self::color_to_rdr(&outer_color);
+        let x = self.x_to_vsc(center.x);
+        let y = self.y_to_vsc(center.y);
+        let inner_radius = inner_radius * self.pixels_per_tile;
+        let outer_radius = outer_radius * self.pixels_per_tile;
+        DrawOp::ConcentricCircleSector(
+            DrawOpCCS {
+                x,
+                y,
+                inner_radius,
+                outer_radius, 
+                viewport: None,
+                inner_color, 
+                outer_color, 
                 angle_range: None,
         })
     }

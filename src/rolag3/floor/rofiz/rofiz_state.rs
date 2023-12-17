@@ -9,7 +9,7 @@ use super::rofiz_object::{RofizObjBasicWall, RofizObjMovable, Hitbox, Transforma
 enum RofizObjectRefVal {
     BasicWall(Weak<RefCell<RofizObjBasicWall>>),
     BasicProjectile(Weak<RefCell<RofizObjMovable>>),
-    _SpectralUnit(Weak<RefCell<RofizObjMovable>>),
+    SpectralUnit(Weak<RefCell<RofizObjMovable>>),
     NonspectralUnit(Weak<RefCell<RofizObjMovable>>),
 }
 
@@ -24,7 +24,7 @@ impl RofizObjectRef {
         let ref_count = match val {
             RofizObjectRefVal::BasicWall(ref x) => x.upgrade().unwrap().borrow().external_ref_count.clone(),
             RofizObjectRefVal::BasicProjectile(ref x) => x.upgrade().unwrap().borrow().external_ref_count.clone(),
-            RofizObjectRefVal::_SpectralUnit(ref x) => x.upgrade().unwrap().borrow().external_ref_count.clone(),
+            RofizObjectRefVal::SpectralUnit(ref x) => x.upgrade().unwrap().borrow().external_ref_count.clone(),
             RofizObjectRefVal::NonspectralUnit(ref x) => x.upgrade().unwrap().borrow().external_ref_count.clone(),
         };
         Self {
@@ -140,6 +140,13 @@ impl RofizState {
         RofizObjectRef::new(RofizObjectRefVal::NonspectralUnit(Rc::downgrade(&rc)))
     }
 
+    pub fn add_spectral_unit(&mut self, floor_object_id: RoomObjectId, hitbox: Hitbox) -> RofizObjectRef {
+        let obj = self.new_rofiz_obj_movable(hitbox, floor_object_id);
+        let rc = Rc::new(RefCell::new(obj));
+        self.spectral_units.push(rc.clone());
+        RofizObjectRef::new(RofizObjectRefVal::SpectralUnit(Rc::downgrade(&rc)))
+    }
+
     pub fn add_basic_projectile(&mut self, floor_object_id: RoomObjectId, hitbox: Hitbox) -> RofizObjectRef {
         let obj = self.new_rofiz_obj_movable(hitbox, floor_object_id);
         let rc = Rc::new(RefCell::new(obj));
@@ -151,7 +158,7 @@ impl RofizState {
         match obj_ref.val {
             RofizObjectRefVal::BasicWall(_) => panic!("accessing BasicWall in move_object() is not supported"),
             RofizObjectRefVal::BasicProjectile(ref p) => p.upgrade().unwrap().as_ref().borrow_mut().movement = movement,
-            RofizObjectRefVal::_SpectralUnit(ref p) => p.upgrade().unwrap().as_ref().borrow_mut().movement = movement,
+            RofizObjectRefVal::SpectralUnit(ref p) => p.upgrade().unwrap().as_ref().borrow_mut().movement = movement,
             RofizObjectRefVal::NonspectralUnit(ref p) => p.upgrade().unwrap().as_ref().borrow_mut().movement = movement,
         };
     }
@@ -160,7 +167,7 @@ impl RofizState {
         match obj_ref.val {
             RofizObjectRefVal::BasicWall(_) => panic!("accessing BasicWall in get_movable_object_xform() is not supported"),
             RofizObjectRefVal::BasicProjectile(ref p) => p.upgrade().unwrap().borrow().current.transformation,
-            RofizObjectRefVal::_SpectralUnit(ref p) => p.upgrade().unwrap().borrow().current.transformation,
+            RofizObjectRefVal::SpectralUnit(ref p) => p.upgrade().unwrap().borrow().current.transformation,
             RofizObjectRefVal::NonspectralUnit(ref p) => p.upgrade().unwrap().borrow().current.transformation,
         }
     }
@@ -169,7 +176,7 @@ impl RofizState {
         let wp = match &obj_ref.val {
             RofizObjectRefVal::BasicWall(_) => panic!("accessing BasicWall in get_movable_object_xform() is not supported"),
             RofizObjectRefVal::BasicProjectile(p) => p.clone(),
-            RofizObjectRefVal::_SpectralUnit(p) => p.clone(),
+            RofizObjectRefVal::SpectralUnit(p) => p.clone(),
             RofizObjectRefVal::NonspectralUnit(p) => p.clone(),
         };
         let rc = wp.upgrade().unwrap();
@@ -322,6 +329,7 @@ impl RofizState {
             }
         }
 
+        let mut spatial_grid_id_to_obj = Vec::new();
         self.spatial_grid.iter_mut().for_each(|column| column.iter_mut().for_each(|cell| cell.clear()));
         for i in 0..self.nonspectral_units.len() {
             let nsu_i = self.nonspectral_units[i].borrow();
@@ -332,29 +340,30 @@ impl RofizState {
 
             for x in xstart..xend {
                 for y in ystart..yend {
-                    self.spatial_grid[x][y].push(i);
+                    self.spatial_grid[x][y].push(spatial_grid_id_to_obj.len());
                 }
             }
+            spatial_grid_id_to_obj.push(self.nonspectral_units[i].clone());
         }
 
-        // Phase 2: Spectral units (TODO)
+        // Phase 2: Semispectral units?
 
-        // Phase 3: Projectiles
-        for bp_rc in self.basic_projectiles.iter() {
-            let bp: std::cell::RefMut<'_, RofizObjMovable> = bp_rc.as_ref().borrow_mut();
+        // Phase 3: Spectral Units + Projectiles
+        for (i, mo_rc) in self.spectral_units.iter().chain(self.basic_projectiles.iter()).enumerate() {
+            let mo = mo_rc.as_ref().borrow_mut();
 
             let mut spatial_grid_ids = Vec::<usize>::new();
             // [start, end). Note that half-open interval
-            let xstart = usize::clamp(bp.bounding_box.x1 as usize, 0, self.wall_x_end);
-            let xend = usize::clamp(bp.bounding_box.x2 as usize + 1, 0, self.wall_x_end);
-            let ystart = usize::clamp(bp.bounding_box.y1 as usize, 0, self.wall_y_end);
-            let yend = usize::clamp(bp.bounding_box.y2 as usize + 1, 0, self.wall_y_end);
+            let xstart = usize::clamp(mo.bounding_box.x1 as usize, 0, self.wall_x_end);
+            let xend = usize::clamp(mo.bounding_box.x2 as usize + 1, 0, self.wall_x_end);
+            let ystart = usize::clamp(mo.bounding_box.y1 as usize, 0, self.wall_y_end);
+            let yend = usize::clamp(mo.bounding_box.y2 as usize + 1, 0, self.wall_y_end);
             for x in xstart..xend {
                 for y in ystart..yend {
                     if let Some(ref bw) = self.has_wall_at_coordinate[x][y] {
                         let bw = bw.as_ref().borrow();
-                        if bp.overlaps_ro_wall(&bw) {
-                            collisions.push(RofizCollision::new(bp.room_object_id, bw.room_object_id));
+                        if mo.overlaps_ro_wall(&bw) {
+                            collisions.push(RofizCollision::new(mo.room_object_id, bw.room_object_id));
                         }
                     }
 
@@ -366,10 +375,20 @@ impl RofizState {
             spatial_grid_ids.dedup();
 
             for sg_id in spatial_grid_ids {
-                let nsu = self.nonspectral_units[sg_id].as_ref().borrow_mut();
-                if bp.overlaps_ro_movable(&nsu) {
-                    collisions.push(RofizCollision::new(bp.room_object_id, nsu.room_object_id));
+                let sgo = spatial_grid_id_to_obj[sg_id].borrow();
+                if mo.overlaps_ro_movable(&sgo) {
+                    collisions.push(RofizCollision::new(mo.room_object_id, sgo.room_object_id));
                 }
+            }
+
+            // add all spectral units to the spatial grid
+            if i < self.spectral_units.len() {
+                for x in xstart..xend {
+                    for y in ystart..yend {
+                        self.spatial_grid[x][y].push(spatial_grid_id_to_obj.len());
+                    }
+                }
+                spatial_grid_id_to_obj.push(mo_rc.clone());
             }
         }
 

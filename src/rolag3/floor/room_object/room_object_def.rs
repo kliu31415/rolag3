@@ -26,6 +26,9 @@ pub trait RoomObject {
             room_objects_to_delete: Vec::new(),
         }
     }
+    fn handle_collision_black_hole(&mut self, _: &HcBlackHoleContext) -> HcBlackHoleResponse {
+        HcBlackHoleResponse {  room_objects_to_delete: Vec::new() }
+    } 
 
     fn handle_room_connection_collision(&mut self, _rci: &RoomConnectionInfo) {
         // nop by default
@@ -343,6 +346,10 @@ impl<'a> NewRoomObjectContext<'a> {
         self.rofiz.add_nonspectral_unit(floor_object_id, hitbox)
     }
 
+    pub fn add_spectral_unit(&mut self, floor_object_id: RoomObjectId, hitbox: Hitbox) -> RofizObjectRef {
+        self.rofiz.add_spectral_unit(floor_object_id, hitbox)
+    }
+
     pub fn add_basic_projectile(&mut self, floor_object_id: RoomObjectId, hitbox: Hitbox) -> RofizObjectRef {
         self.rofiz.add_basic_projectile(floor_object_id, hitbox)
     }
@@ -591,12 +598,10 @@ impl HcProjectileResponse {
     }
 }
 
-/*
-struct BasicGround {
-
+pub struct HcBlackHoleContext {
+    pub affects_projectiles_color_filter: Option<DamageColor>,
 }
 
-struct BasicProjectile {
-
+pub struct HcBlackHoleResponse {
+    pub room_objects_to_delete: Vec<RoomObjectId>,
 }
-*/
