@@ -75,7 +75,7 @@ pub struct Point {
 }
 
 impl Point {
-    pub fn new(x: f32, y: f32) -> Self {
+    pub const fn new(x: f32, y: f32) -> Self {
         Self {x, y}
     }
 }
@@ -85,6 +85,14 @@ impl std::ops::Sub<Point> for Point {
 
     fn sub(self, rhs: Point) -> Vector {
         Vector::new(self.x - rhs.x, self.y - rhs.y)
+    }
+}
+
+impl std::ops::Add<Vector> for &Point {
+    type Output = Point;
+
+    fn add(self, rhs: Vector) -> Point {
+        Point::new(self.x + rhs.x, self.y + rhs.y)
     }
 }
 

@@ -1,8 +1,8 @@
 use std::{cell::RefCell, rc::{Rc, Weak}};
 
-use crate::{rolag3::floor::{run::{PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, draw::{DrawContext, Color}, room_object::{room_object_def::{RoomObject, Act1Context, FloorCoordinate, NewRoomObjectContext, RoomObjectMetadata, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse, RoomObjectType, RoQueryUnitInfoContext, RoQueryUnitInfoResponse}, projectile::projectile2::{NewProjectile2Args, Proj2Shape}, tiles::room_connection::{Direction, RoomConnection}, damage::DamageColor}, rofiz::{rofiz_object::{Hitbox, Transformation}, rofiz_state::RofizState}, room::RoomConnectionInfo}, geometry::shape::{Shape, Point}};
+use crate::{rolag3::floor::{run::{PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, draw::{DrawContext, Color}, room_object::{room_object_def::{RoomObject, Act1Context, FloorCoordinate, NewRoomObjectContext, RoomObjectMetadata, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse, RoomObjectType, RoQueryUnitInfoContext, RoQueryUnitInfoResponse, HcTileContext, HcTileEffect}, projectile::projectile2::{NewProjectile2Args, Proj2Shape}, tiles::room_connection::{Direction, RoomConnection}, damage::DamageColor}, rofiz::{rofiz_object::{Hitbox, Transformation}, rofiz_state::RofizState}, room::RoomConnectionInfo}, geometry::shape::{Shape, Point}};
 
-use super::{Unit, standard_unit_common::{StandardUnitCommon, Budeb, BudebMaxSpeed, TranslateMove}};
+use super::{Unit, standard_unit_common::{StandardUnitCommon, Budeb, BudebMaxSpeed, TranslateMove, PolarForce}};
 
 pub struct Player {
     md: RoomObjectMetadata,
@@ -11,6 +11,7 @@ pub struct Player {
     change_rooms: Option<RoomConnectionInfo>,
     weapons: Vec<Weapon>,
     weapon_idx: usize,
+    hc_tile_effects: Vec<HcTileEffect>,
 }
 
 impl RoomObject for Player {
@@ -27,6 +28,14 @@ impl RoomObject for Player {
 
         let tick_len = ctx.get_tick_length();
         let mouse_theta = ctx.get_player_input().mouse_theta_relative_to_player;
+
+        // process tile effects
+        let mut additional_force = Vec::new();
+        self.hc_tile_effects.drain(..).for_each(|x| {
+            match x {
+                HcTileEffect::Accelerate { force, theta } => additional_force.push(PolarForce{r: force, theta}),
+            }
+        });
 
         // process test input
         if ctx.get_player_input().test_input1 {
@@ -45,7 +54,7 @@ impl RoomObject for Player {
             }
         }
 
-        // process throwing projectiles
+        // process firing weapon to throw projectiles
         if ctx.get_player_input().is_lmb_down && self.since_last_projectile > 0.01 {
             let weapon = &mut self.weapons[self.weapon_idx];
             weapon.since_last_attack += tick_len;
@@ -90,6 +99,7 @@ impl RoomObject for Player {
             move_action = TranslateMove::Decelerate;
         }
         self.su_common.as_mut().unwrap().start_act1(tick_len);
+        self.su_common.as_mut().unwrap().add_external_forces(additional_force);
         self.su_common.as_mut().unwrap().set_translate_move(move_action);
         self.su_common.as_mut().unwrap().end_act1(ctx.get_rofiz());
 
@@ -137,6 +147,10 @@ impl RoomObject for Player {
         self.change_rooms = Some(*rci);
     }
 
+    fn handle_collision_tile(&mut self, ctx: &HcTileContext) {
+        self.hc_tile_effects.push(ctx.tile_effect);
+    }
+
     fn is_spectral(&self) -> bool {
         false
     }
@@ -172,6 +186,7 @@ impl Player {
             change_rooms: None,
             weapons: vec![make_weapon1(), make_weapon2(), make_weapon3()],
             weapon_idx: 0,
+            hc_tile_effects: Vec::new(),
         }
     }
 
@@ -193,7 +208,7 @@ impl Player {
 
         // Rofiz will automatically clean up the old su_common.rofiz_object, because it'll detect that no RoomObjects
         // hold a reference to it anymore.
-        self.su_common = Some(StandardUnitCommon::new(ro_ref, 200.0, 30.0, 500.0, 0.0, 0.0));
+        self.su_common = Some(StandardUnitCommon::new(ro_ref, 1e9, 30.0, 500.0, 0.0, 0.0));
     }
 
     pub fn get_center_point(&self, rofiz: &RofizState) -> FloorCoordinate {
@@ -303,8 +318,8 @@ fn weapon2_fire_projectile(mut args: MakeWeaponProjectileFnContext) -> Vec<Rc<Re
 fn make_weapon3() -> Weapon {
     Weapon {
         make_projectile: Box::new(weapon3_fire_projectile),
-        attack_interval: 0.2,
-        since_last_attack: 0.2,
+        attack_interval: 0.05,
+        since_last_attack: 0.05,
     }
 }
 

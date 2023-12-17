@@ -27,12 +27,12 @@ impl RoomObject for BlackHole {
             y: xform.dy, 
             colors: vec![DamageColor::Green], 
             accel_fn: |mut distance| {
-                let threshold = 5.0;
+                let threshold = 6.0;
                 if distance > threshold {
                     return 0.0;
                 }
                 distance = f64::max(distance, 0.1);
-                10000.0 * (f64::exp(-distance) - f64::exp(-threshold))
+                3e4 * (1.0 / f64::powi(distance, 2) - 1.0 / f64::powi(threshold, 2))
             },
         });
         response

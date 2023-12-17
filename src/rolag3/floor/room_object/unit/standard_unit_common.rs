@@ -30,6 +30,7 @@ pub struct StandardUnitCommon {
     room_tick_length: f64,
     translate: TranslateMove,
     rotate: RotateMove,
+    external_forces: Vec<PolarForce>,
 
     prev_position: Option<Transformation>,
     prev_desired_movement: Option<Transformation>,
@@ -38,6 +39,11 @@ pub struct StandardUnitCommon {
     last_damaged_time: f64,
 
     budebs: Vec<Budeb>,
+}
+
+pub struct PolarForce {
+    pub r: f64,
+    pub theta: f64,
 }
 
 #[derive(Debug)]
@@ -76,6 +82,7 @@ impl StandardUnitCommon {
             room_tick_length: 0.0,
             translate: TranslateMove::Nop,
             rotate: RotateMove::Nop,
+            external_forces: Vec::new(),
 
             prev_position: None,
             prev_desired_movement: None,
@@ -155,6 +162,10 @@ impl StandardUnitCommon {
         self.rotate = rotate;
     }
 
+    pub fn add_external_forces(&mut self, mut f: Vec<PolarForce>) {
+        self.external_forces.append(&mut f);
+    }
+
     pub fn end_act1(&mut self, rofiz: &mut RofizState) {
         assert!(self.act1_started, "cannot call standard_unit_common::end_act1() before act1 has started");
 
@@ -213,6 +224,15 @@ impl StandardUnitCommon {
             RotateMove::ResetVelocity => {
                 self.velocity_theta = 0.0;
             }
+        }
+
+        if !self.external_forces.is_empty() {
+            let fx: f64 = self.external_forces.iter().map(|x| x.r * f64::cos(x.theta)).sum();
+            let fy: f64 = self.external_forces.iter().map(|x| x.r * f64::sin(x.theta)).sum();
+            let ax = fx * tick_length / Self::MASS;
+            let ay = fy * tick_length / Self::MASS;
+            self.velocity_x += ax;
+            self.velocity_y += ay;
         }
 
         let position = rofiz.get_movable_object_xform(&self.ro_ref);
@@ -282,6 +302,7 @@ impl StandardUnitCommon {
         self.act1_started = false;
         self.translate = TranslateMove::Nop;
         self.rotate = RotateMove::Nop;
+        self.external_forces.clear();
 
         rofiz.move_object(&self.ro_ref, movement);
     }

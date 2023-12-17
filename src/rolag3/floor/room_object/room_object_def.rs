@@ -30,6 +30,10 @@ pub trait RoomObject {
         HcBlackHoleResponse {  room_objects_to_delete: Vec::new() }
     } 
 
+    fn handle_collision_tile(&mut self, _ctx: &HcTileContext) {
+        // nop by default
+    }
+
     fn handle_room_connection_collision(&mut self, _rci: &RoomConnectionInfo) {
         // nop by default
     }
@@ -74,7 +78,7 @@ impl<'a> RoomObjApplyOperationContext<'a> {
 }
 
 pub enum RoomObjOperation {
-    BlackHoleForce { x: f64, y: f64, colors: Vec<DamageColor>, accel_fn: fn(f64) -> f64},
+    BlackHoleForce { x: f64, y: f64, colors: Vec<DamageColor>, accel_fn: fn(f64) -> f64 /* dist -> accel */},
 }
 
 pub struct RoQueryUnitInfoContext<'a> {
@@ -219,7 +223,7 @@ impl RoomObjectCollection {
             match op {
                 RoomObjOperation::BlackHoleForce { .. } => {
                     self.ro_projectile.iter().for_each(|x| x.borrow_mut().apply_operation(&mut op_ctx))
-                }
+                },
             }
         }
 
@@ -564,14 +568,18 @@ pub struct HandleCollisionContext<'a> {
     other: Rc<RefCell<dyn RoomObject>>,
     rng: &'a mut ThreadRng,
     room_time: f64,
+    _tick_length: f64,
+    _rofiz: &'a RofizState,
 }
 
 impl<'a> HandleCollisionContext<'a> {
-    pub fn new(other: Rc<RefCell<dyn RoomObject>>, rng: &'a mut ThreadRng, room_time: f64) -> Self {
+    pub fn new(other: Rc<RefCell<dyn RoomObject>>, rng: &'a mut ThreadRng, room_time: f64, tick_length: f64, rofiz: &'a RofizState) -> Self {
         Self { 
             other,
             rng,
             room_time,
+            _tick_length: tick_length,
+            _rofiz: rofiz,
         }
     }
     
@@ -594,6 +602,14 @@ impl<'a> HandleCollisionContext<'a> {
 
     pub fn get_room_time(&self) -> f64 {
         self.room_time
+    }
+
+    pub fn _get_tick_length(&self) -> f64 {
+        self._tick_length
+    }
+
+    pub fn _get_rofiz(&self) -> &RofizState {
+        self._rofiz
     }
 }
 
@@ -658,4 +674,13 @@ pub struct HcBlackHoleContext {
 
 pub struct HcBlackHoleResponse {
     pub room_objects_to_delete: Vec<RoomObjectId>,
+}
+
+pub struct HcTileContext {
+    pub tile_effect: HcTileEffect,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum HcTileEffect {
+    Accelerate {force: f64, theta: f64}
 }

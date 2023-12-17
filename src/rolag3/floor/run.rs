@@ -92,10 +92,10 @@ fn run_floor_tick(ctx: RunFloorTickContext) {
                 continue;
             }
 
-            let mut hc_ctx = HandleCollisionContext::new(obj2.unwrap().clone(), ctx.rng, room.room_time);
+            let mut hc_ctx = HandleCollisionContext::new(obj2.unwrap().clone(), ctx.rng, room.room_time, ctx.tick_length, &room.rofiz);
             let hc1r = obj1.unwrap().borrow_mut().handle_collision(&mut hc_ctx);
 
-            let mut hc_ctx = HandleCollisionContext::new(obj1.unwrap().clone(), ctx.rng, room.room_time);
+            let mut hc_ctx = HandleCollisionContext::new(obj1.unwrap().clone(), ctx.rng, room.room_time, ctx.tick_length, &room.rofiz);
             let hc2r = obj2.unwrap().borrow_mut().handle_collision(&mut hc_ctx);
 
             // remove these objects immediately so that during future collisions, they're considered invalid.

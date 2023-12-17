@@ -59,6 +59,7 @@ impl Color {
 }
 
 impl DrawContext<'_> {
+    pub const Z_TILE: f64 = 10.0;
     pub const Z_ROOM_CONNECTION_TILE: f64 = 11.0;
     pub const Z_WALL: f64 = 20.0;
     pub const Z_UNIT_PLAYER: f64 = 29.0;

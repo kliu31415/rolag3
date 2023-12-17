@@ -122,7 +122,7 @@ fn apply_operation(ctx: &mut SpApplyOperationContext) {
             let accel = ctx.ao_ctx.get_tick_length() * (accel_fn)(norm);
             ps_data.velocity_x += accel * normed_x;
             ps_data.velocity_y += accel * normed_y;
-        }
+        },
     }
 }
 

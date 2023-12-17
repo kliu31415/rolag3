@@ -2,7 +2,7 @@ use std::{rc::Rc, cell::RefCell};
 
 use rand::rngs::ThreadRng;
 
-use super::{room_object::{unit::{enemy2::new_enemy2, enemy3::new_enemy3, enemy1::new_enemy1, boss1::new_boss1, enemy4::new_enemy4, enemy5::new_enemy5}, room_object_def::{NewRoomObjectContext, RoomObjectCollection, RoomObjectId}, wall::basic_wall::BasicWall, tiles::{room_connection::{RoomConnection, Direction}, black_hole::new_black_hole}, damage::DamageColor}, draw::Color, rofiz::rofiz_state::RofizState, floor_def::RoomId};
+use super::{room_object::{unit::{enemy2::new_enemy2, enemy3::new_enemy3, enemy1::new_enemy1, boss1::new_boss1, enemy4::new_enemy4, enemy5::new_enemy5}, room_object_def::{NewRoomObjectContext, RoomObjectCollection, RoomObjectId}, wall::basic_wall::BasicWall, tiles::{room_connection::{RoomConnection, Direction}, black_hole::new_black_hole, accel_tile::new_accel_tile}, damage::DamageColor}, draw::Color, rofiz::rofiz_state::RofizState, floor_def::RoomId};
 
 pub struct Room {
     pub room_objects: RoomObjectCollection,
@@ -92,6 +92,9 @@ impl Room {
 
         let bhole = new_black_hole(&mut new_floor_object_ctx, Some(DamageColor::Green), 15.0, 15.0);
         room_objects.add(Rc::new(RefCell::new(bhole)));
+
+        let accel_tile = new_accel_tile(&mut new_floor_object_ctx, 10, 10);
+        room_objects.add(Rc::new(RefCell::new(accel_tile)));
 
         Self {
             room_objects,
