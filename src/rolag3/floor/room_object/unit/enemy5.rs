@@ -8,7 +8,7 @@ use std::{cell::RefCell, rc::Rc};
    wave of 4 projectiles in the cardinal directions. It changes directions upon colliding with a nonspectral object.
 */
 
-const BORDER_COLOR: Color = Color::new(0.0, 0.0, 0.0, 1.0);
+const BORDER_COLOR: Color = Color::new(0.2, 0.2, 0.2, 1.0);
 const OUTER_COLOR: Color = Color::new(2.0, 0.0, 0.0, 1.0);
 const INNER_COLOR: Color = Color::new(3.0, 0.0, 0.0, 1.0);
 const PROJ_COLOR: Color = Color::new(7.0, 0.3, 0.3, 1.0);

@@ -1,4 +1,4 @@
-use crate::{gfx::renderer::{ColorRGBA32f, ViewSpaceCoordinate, DrawOpWithMetadata, DrawOpTriFan, DrawOp, ColoredTriVertex, DrawOpCCS, DrawOpGroup, Rect}, geometry::shape::Point};
+use crate::{gfx::renderer::{ColorRGBA32f, ViewSpaceCoordinate, DrawOpWithMetadata, DrawOpTriFan, DrawOp, ColoredTriVertex, DrawOpCCS, DrawOpGroup, Rect, DrawOpText, DrawTextPosition}, geometry::shape::Point};
 
 use super::{rofiz::rofiz_state::RofizState, floor_def::Floor};
 
@@ -11,7 +11,7 @@ pub struct DrawFloorContext<'a> {
 
 pub fn get_draw_floor_ops(ctx: DrawFloorContext) -> Vec<DrawOpWithMetadata> {
     let player_position = ctx.floor.get_player_center();
-    let room = ctx.floor.get_current_room();
+    let (player, room) = ctx.floor.get_player_and_current_room();
     let mut draw_context = DrawContext {
         draw_ops: Vec::new(),
         camera_x: (player_position.x - ctx.window_width / 2.0 / ctx.pixels_per_tile) as f32,
@@ -22,7 +22,101 @@ pub fn get_draw_floor_ops(ctx: DrawFloorContext) -> Vec<DrawOpWithMetadata> {
         room_cleared_at_time: room.room_cleared_at_time,
     };
     room.room_objects.draw(&mut draw_context);
+
+    let draw_hud_context = DrawHudContext {
+        window_width: ctx.window_width as f32,
+        window_height: ctx.window_height as f32,
+        player_cur_hp: player.borrow().get_cur_hp(),
+        player_max_hp: player.borrow().get_max_hp(),
+    };
+    draw_context.draw_ops.push(get_draw_hud_ops(draw_hud_context));
+
     draw_context.draw_ops
+}
+
+struct DrawHudContext {
+    window_width: f32,
+    window_height: f32,
+    player_cur_hp: f64,
+    player_max_hp: f64,
+}
+
+fn get_draw_hud_ops(ctx: DrawHudContext) -> DrawOpWithMetadata {
+    let mut ops = Vec::new();
+
+    ops.push(get_draw_fillable_bar_ops(DrawFillableBarArgs { 
+        x: 0.87 * ctx.window_width, 
+        y: 0.02 * ctx.window_height, 
+        w: 0.11 * ctx.window_width, 
+        h: 0.03 * ctx.window_height, 
+        border_px: 0.002 * f32::sqrt(ctx.window_width * ctx.window_height), 
+        bar_cur_amount: ctx.player_cur_hp,
+        bar_max_amount: ctx.player_max_hp, 
+        border_color: ColorRGBA32f::new(0.1, 0.1, 0.1, 0.9),
+        filled_part_color: ColorRGBA32f::new(1.0, 0.0, 0.0, 0.9), 
+        unfilled_part_color: ColorRGBA32f::new(0.0, 0.0, 0.0, 0.9),
+        text_color: Some(ColorRGBA32f::new(0.0, 1.0, 1.0, 0.9)),
+    }));
+
+    DrawOpWithMetadata::new(DrawContext::Z_HUD, DrawOp::Group(DrawOpGroup { ops: ops.into_boxed_slice() }))
+}
+
+#[derive(Debug)]
+struct DrawFillableBarArgs {
+    x: f32,
+    y: f32,
+    w: f32,
+    h: f32,
+    border_px: f32,
+    bar_cur_amount: f64,
+    bar_max_amount: f64,
+    border_color: ColorRGBA32f,
+    filled_part_color: ColorRGBA32f,
+    unfilled_part_color: ColorRGBA32f,
+    text_color: Option<ColorRGBA32f>,
+}
+
+fn get_draw_fillable_bar_ops(args: DrawFillableBarArgs) -> DrawOp {
+    assert!(args.border_px * 2.0 <= args.w, "bar border consumes more than entire bar, args={:?}", args);
+    assert!(args.border_px * 2.0 <= args.h, "bar border consumes more than entire bar, args={:?}", args);
+    let mut ops = Vec::new();
+
+    let outline = rect_to_tri_fan(args.border_color, args.x, args.y, args.w, args.h);
+    ops.push(outline);
+
+    let inner_x = args.x + args.border_px;
+    let inner_y = args.y + args.border_px;
+    let inner_w = args.w - 2.0 * args.border_px;
+    let inner_h = args.h - 2.0 * args.border_px;
+
+    let fill_len = inner_w * (args.bar_cur_amount / args.bar_max_amount) as f32;
+
+    let filled_part = rect_to_tri_fan(args.filled_part_color, inner_x, inner_y, fill_len, inner_h);
+    ops.push(filled_part);
+    let unfilled_part = rect_to_tri_fan(args.unfilled_part_color, inner_x + fill_len, inner_y, inner_w - fill_len, inner_h);
+    ops.push(unfilled_part);
+
+    if let Some(text_color) = args.text_color {
+        ops.push(DrawOp::Text(DrawOpText { 
+            text: format!("{} / {}", args.bar_cur_amount.ceil(), args.bar_max_amount.ceil()), 
+            color: text_color, 
+            x: inner_x, 
+            y: inner_y, 
+            font_size: inner_h, 
+            position: DrawTextPosition::TopLeft,
+        }));
+    }
+
+    DrawOp::Group(DrawOpGroup { ops: ops.into_boxed_slice() })
+}
+
+fn rect_to_tri_fan(color: ColorRGBA32f, x: f32, y: f32, w: f32, h: f32) -> DrawOp {
+    DrawOp::TriFan(DrawOpTriFan { vertexes: Box::new([
+        ColoredTriVertex{ color, vertex: ViewSpaceCoordinate::new(x, y) },
+        ColoredTriVertex{ color, vertex: ViewSpaceCoordinate::new(x + w, y) },
+        ColoredTriVertex{ color, vertex: ViewSpaceCoordinate::new(x + w, y + h) },
+        ColoredTriVertex{ color, vertex: ViewSpaceCoordinate::new(x, y + h) },
+    ])})
 }
 
 pub struct DrawContext<'a> {
@@ -59,6 +153,7 @@ impl Color {
 }
 
 impl DrawContext<'_> {
+    pub const Z_GROUND: f64 = 0.0;
     pub const Z_TILE: f64 = 10.0;
     pub const Z_ROOM_CONNECTION_TILE: f64 = 11.0;
     pub const Z_WALL: f64 = 20.0;
@@ -66,6 +161,7 @@ impl DrawContext<'_> {
     pub const Z_UNIT: f64 = 30.0;
     pub const Z_PROJECTILE: f64 = 40.0;
     pub const Z_BLACK_HOLE: f64 = 50.0;
+    pub const Z_HUD: f64 = 200.0;
 
     pub fn add_draw_op(&mut self, z: f64, op: DrawOp) {
         self.draw_ops.push(DrawOpWithMetadata::new(z, op));

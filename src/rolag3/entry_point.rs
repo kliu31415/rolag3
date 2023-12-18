@@ -168,7 +168,8 @@ impl Rolag3EventHandler {
             window_height,
             pixels_per_tile
         };
-        get_draw_floor_ops(draw_floor_ctx).drain(..).for_each(|x| window.get_renderer().draw(x));
+        get_draw_floor_ops(draw_floor_ctx).into_iter().for_each(|x| window.get_renderer().draw(x));
+
         window.get_renderer().draw(DrawOpWithMetadata {
             z: 100.0,
             op: DrawOp::ConcentricCircleSector(DrawOpCCS{
@@ -201,7 +202,7 @@ impl Rolag3EventHandler {
                     position: DrawTextPosition::TopLeft,
             })});
         }
-        let res = window.get_renderer().present(ColorRGBA32f{r: 0.8f32, g: 0.8f32, b: 0.9f32, a: 1.0f32});
+        let res = window.get_renderer().present(ColorRGBA32f{r: 0.0f32, g: 0.0f32, b: 0.0f32, a: 1.0f32});
         if let Err(e) = res { log::error!("error when calling renderer.present(): {}", e) }
     }
 }

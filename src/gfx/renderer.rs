@@ -193,6 +193,7 @@ struct WgpuRenderer {
     font_rasterizer: Box<dyn FontRasterizer>,
 }
 
+#[derive(Debug)]
 pub struct TextureAndMetadata {
     pub name: String,
     pub texture: wgpu::Texture,
@@ -201,6 +202,7 @@ pub struct TextureAndMetadata {
     pub sampler: wgpu::Sampler,
 }
 
+#[derive(Debug)]
 struct CachedTextTextureV {
     tmd: TextureAndMetadata,
     last_used: f64,
@@ -361,36 +363,7 @@ impl Renderer for WgpuRenderer {
     }
 
     fn draw(&mut self, op: DrawOpWithMetadata) {
-        match op.op {
-            DrawOp::Text(ref t) => {
-                let font_size = t.font_size as u32; // we round down to the nearest int for now
-                let k = CachedTextTextureK { text: t.text.clone(), font_size };
-        
-                if !self.cached_text_textures.contains_key(&k) {
-                    let bytes_2d = self.font_rasterizer.rasterize_text_line(&t.text, font_size as f32);
-                    if bytes_2d.is_empty() {
-                        panic!("rasterized 0 bytes while drawing text. Function call draw(args={:?})", op);
-                    }
-                    let width = bytes_2d[0].len() as u32;
-                    let height = bytes_2d.len() as u32;
-                    let bytes_1d: Vec<u8> = bytes_2d.into_iter().flatten().collect();
-                    let name = format!("text={}", t.text);
-                    let mut texture_and_md = TextureAndMetadata::new(&self.device, &name, wgpu::TextureFormat::R8Unorm, wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST, width, height);
-                    texture_and_md.write_bytes(&self.queue, 1, &bytes_1d);
-        
-                    let v = CachedTextTextureV {
-                        tmd: texture_and_md,
-                        last_used: now_unix(),
-                    };
-                    self.cached_text_textures.insert(k, v);
-                } else {
-                    let cached_v = self.cached_text_textures.get_mut(&k).expect("unable to get cached text pipeline (1)");
-                    cached_v.last_used = now_unix();
-                }
-            },
-            _ => {},
-        }
-
+        self.process_for_draw_op(&op.op);
         self.draw_ops.push(op);
     }
 
@@ -620,6 +593,41 @@ impl WgpuRenderer {
 
     fn h_to_ndc(&self, h: f32) -> f32 {
         2.0 * h / (self.config.height as f32)
+    }
+
+    fn process_for_draw_op(&mut self, op: &DrawOp) {
+        match op {
+            DrawOp::Text(ref t) => {
+                let font_size = t.font_size as u32; // we round down to the nearest int for now
+                let k = t.get_key();
+        
+                if !self.cached_text_textures.contains_key(&k) {
+                    let bytes_2d = self.font_rasterizer.rasterize_text_line(&t.text, font_size as f32);
+                    if bytes_2d.is_empty() {
+                        panic!("rasterized 0 bytes while drawing text. Function call draw(args={:?})", op);
+                    }
+                    let width = bytes_2d[0].len() as u32;
+                    let height = bytes_2d.len() as u32;
+                    let bytes_1d: Vec<u8> = bytes_2d.into_iter().flatten().collect();
+                    let name = format!("text={}", t.text);
+                    let mut texture_and_md = TextureAndMetadata::new(&self.device, &name, wgpu::TextureFormat::R8Unorm, wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST, width, height);
+                    texture_and_md.write_bytes(&self.queue, 1, &bytes_1d);
+        
+                    let v = CachedTextTextureV {
+                        tmd: texture_and_md,
+                        last_used: now_unix(),
+                    };
+                    self.cached_text_textures.insert(k, v);
+                } else {
+                    let cached_v = self.cached_text_textures.get_mut(&k).expect("unable to get cached text pipeline (1)");
+                    cached_v.last_used = now_unix();
+                }
+            },
+            DrawOp::Group(ref g) => {
+                g.ops.iter().for_each(|x| self.process_for_draw_op(x));
+            }
+            _ => {},
+        }
     }
 
     fn draw_tri_fan(&self, op: &DrawOpTriFan) -> Box<[[TriangleVertexShaderInput; 3]]> {

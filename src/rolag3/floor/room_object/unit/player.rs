@@ -209,7 +209,7 @@ impl Player {
 
         // Rofiz will automatically clean up the old su_common.rofiz_object, because it'll detect that no RoomObjects
         // hold a reference to it anymore.
-        self.su_common = Some(StandardUnitCommon::new(ro_ref, 1e9, 30.0, 500.0, 0.0, 0.0, 150.0, 10.0));
+        self.su_common = Some(StandardUnitCommon::new(ro_ref, 1e2, 30.0, 500.0, 0.0, 0.0, 150.0, 10.0));
     }
 
     pub fn get_center_point(&self, rofiz: &RofizState) -> FloorCoordinate {
@@ -221,6 +221,14 @@ impl Player {
         let ret = self.change_rooms;
         self.change_rooms = None;
         ret
+    }
+
+    pub fn get_cur_hp(&self) -> f64 {
+        self.su_common.as_ref().unwrap().get_cur_hp()
+    }
+
+    pub fn get_max_hp(&self) -> f64 {
+        self.su_common.as_ref().unwrap().get_max_hp()
     }
 }
 
@@ -309,7 +317,7 @@ fn weapon2_fire_projectile(args: MakeWeaponProjectileFnContext) -> Vec<Rc<RefCel
             velocity_y,
             xform: args.owner_xform,
             shape,
-            color: Color::new(0.0, 0.0, 16.0, 1.0),
+            color: Color::new(0.2, 0.2, 15.0, 1.0),
         }.new(args.nro_ctx);
         ret.push(Rc::new(RefCell::new(proj)));
     }
@@ -343,7 +351,7 @@ fn weapon3_fire_projectile(args: MakeWeaponProjectileFnContext) -> Vec<Rc<RefCel
             velocity_y,
             xform: args.owner_xform,
             shape,
-            color: Color::new(6.0, 0.0, 0.0, 1.0),
+            color: Color::new(6.0, 0.1, 0.1, 1.0),
         }.new(args.nro_ctx);
         ret.push(Rc::new(RefCell::new(proj)));
     }

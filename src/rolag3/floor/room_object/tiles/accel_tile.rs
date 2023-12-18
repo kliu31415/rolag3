@@ -10,8 +10,8 @@ const OUTER_SHAPE: [Point; 4] = [Point::new(0.0, 0.0), Point::new(2.0, 0.0), Poi
 const INNER_SHAPE: [Point; 4] = [Point::new(0.2, 0.2), Point::new(1.8, 0.2), Point::new(1.8, 1.8), Point::new(0.2, 1.8)];
 const BORDER_COLOR: Color = Color::new(1.0, 1.0, 1.0, 0.7);
 const CARET_SHAPE: [Point; 6] = [Point::new(0.0, 0.0), Point::new(-0.3, -0.6), Point::new(0.0, -0.6), Point::new(0.3, 0.0), Point::new(0.0, 0.6), Point::new(-0.3, 0.6)];
-const CARET_COLOR_NO_FX: Color = Color::new(0.0, 2.3, 0.05, 0.9);
-const CARET_COLOR_FX: Color = Color::new(0.0, 5.0, 0.1, 0.9);
+const CARET_COLOR_NO_FX: Color = Color::new(0.0, 1.5, 0.05, 0.9);
+const CARET_COLOR_FX: Color = Color::new(0.0, 3.0, 0.1, 0.9);
 
 impl RoomObject for AccelTile {
     fn get_metadata(&self) -> &RoomObjectMetadata {

@@ -37,6 +37,7 @@ pub struct StandardUnitCommon {
     prev_position: Option<Transformation>,
     prev_desired_movement: Option<Transformation>,
 
+    max_hp: f64,
     hp: f64,
     last_damaged_time: f64,
 
@@ -91,6 +92,7 @@ impl StandardUnitCommon {
             prev_position: None,
             prev_desired_movement: None,
 
+            max_hp: hp,
             hp,
             last_damaged_time: -100.0,
 
@@ -356,6 +358,14 @@ impl StandardUnitCommon {
         lerp_no_alpha(((1.0 - 4.0 * f64::min(0.25, room_time - self.last_damaged_time)) / 1.5) as f32, 
             original_color,
             Color::new(1.0, 1.0, 1.0, 0.0))
+    }
+
+    pub fn get_cur_hp(&self) -> f64 {
+        self.hp
+    }
+
+    pub fn get_max_hp(&self) -> f64 {
+        self.max_hp
     }
 }
 
