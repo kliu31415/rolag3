@@ -65,7 +65,7 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
     let us_data = ctx.su_ctx.us_data.downcast_mut::<Enemy4>().unwrap();
 
     let mut response = Act1Response::new();
-    let tick_len = ctx.act1_ctx.get_tick_length();
+    let tick_len = ctx.su_ctx.su_common.get_unit_tick_len();
 
     if us_data.spit_projectile_start.is_none() && ctx.act1_ctx.get_randf64() < tick_len {
         us_data.spit_projectile_start = Some(SpitProjectileInfo { start: ctx.act1_ctx.get_room_time(), proj_spit: false});

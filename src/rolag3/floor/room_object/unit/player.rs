@@ -1,6 +1,6 @@
-use crate::{rolag3::floor::{run::{PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, draw::{DrawContext, Color}, room_object::{room_object_def::{RoomObject, Act1Context, FloorCoordinate, NewRoomObjectContext, RoomObjectMetadata, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse, RoomObjectType, RoQueryUnitInfoContext, RoQueryUnitInfoResponse, HcTileContext, HcTileEffect, HcTileResponse}, tiles::room_connection::{Direction, RoomConnection}}, rofiz::{rofiz_object::{Hitbox, Transformation}, rofiz_state::RofizState}, room::RoomConnectionInfo}, geometry::shape::{Shape, Point}, gfx::renderer::{DrawOp, DrawOpGroup}};
+use crate::{rolag3::floor::{run::{PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, draw::{DrawContext, Color}, room_object::{room_object_def::{RoomObject, Act1Context, FloorCoordinate, NewRoomObjectContext, RoomObjectMetadata, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse, RoomObjectType, RoQueryUnitInfoContext, RoQueryUnitInfoResponse, HcTileContext, HcTileEffect, HcTileResponse, RoomObjApplyOperationContext, RoomObjOperation}, tiles::room_connection::{Direction, RoomConnection}}, rofiz::{rofiz_object::{Hitbox, Transformation}, rofiz_state::RofizState}, room::RoomConnectionInfo}, geometry::shape::{Shape, Point}, gfx::renderer::{DrawOp, DrawOpGroup}};
 
-use super::{Unit, standard_unit_common::{StandardUnitCommon, Budeb, BudebMaxSpeed, TranslateMove, PolarForce}, weapon::{weapon_def::{Weapon, WeaponHandleTickContext, DrawWeaponHudContext}, weapon1::new_weapon1, weapon2::new_weapon2, weapon3::new_weapon3}, active_item::{active_item_def::{ActiveItem, ActiveItemHandleTickContext}, clear_projectiles::new_active_item_clear_projectiles}};
+use super::{Unit, standard_unit_common::{StandardUnitCommon, Budeb, BudebMaxSpeed, TranslateMove, PolarForce}, weapon::{weapon_def::{Weapon, WeaponHandleTickContext, DrawWeaponHudContext}, weapon1::new_weapon1, weapon2::new_weapon2, weapon3::new_weapon3}, active_item::{active_item_def::{ActiveItem, ActiveItemHandleTickContext}, clear_enemy_projectiles::new_active_item_clear_projectiles, slow_enemy_time::new_active_item_slow_enemy_time}};
 
 pub struct Player {
     md: RoomObjectMetadata,
@@ -27,7 +27,8 @@ impl RoomObject for Player {
     fn act1(&mut self, ctx: &mut Act1Context) -> Act1Response {
         let mut response = Act1Response::new();
 
-        let tick_len = ctx.get_tick_length();
+        self.su_common.as_mut().unwrap().start_act1(ctx.get_tick_length());
+        let tick_len = self.su_common.as_ref().unwrap().get_unit_tick_len();
 
         // process tile effects
         let mut additional_force = Vec::new();
@@ -39,7 +40,7 @@ impl RoomObject for Player {
 
         // process test input
         if ctx.get_player_input().test_input1 {
-            self.su_common.as_mut().unwrap().apply_budeb(Budeb::MaxSpeed(BudebMaxSpeed::new(1.0, 2.5)));
+            self.su_common.as_mut().unwrap().apply_budeb(&Budeb::SpeedMult(BudebMaxSpeed::new(1.0, 2.5)));
         }
 
         // process changing weapons. Note that the wheel deltas are only provided the first tick of a frame. The first
@@ -122,7 +123,7 @@ impl RoomObject for Player {
         else {
             move_action = TranslateMove::Nop;
         }
-        self.su_common.as_mut().unwrap().start_act1(tick_len);
+
         self.su_common.as_mut().unwrap().add_external_forces(additional_force);
         self.su_common.as_mut().unwrap().set_translate_move(move_action);
         self.su_common.as_mut().unwrap().end_act1(ctx.get_rofiz());
@@ -176,6 +177,17 @@ impl RoomObject for Player {
         HcTileResponse { unit_affected: true }
     }
 
+    fn apply_operation(&mut self, ctx: &RoomObjApplyOperationContext) {
+        match ctx.get_operation() {
+            RoomObjOperation::UnitBudeb { exclude_teams_filter, budeb } => {
+                if !exclude_teams_filter.contains(&Team::Player) {
+                    self.su_common.as_mut().unwrap().apply_budeb(budeb);
+                }
+            },
+            _ => {},
+        }
+    }
+
     fn is_spectral(&self) -> bool {
         false
     }
@@ -210,7 +222,7 @@ impl Player {
             change_rooms: None,
             weapons: vec![new_weapon1(), new_weapon2(), new_weapon3()],
             weapon_idx: 0,
-            active_items: vec![new_active_item_clear_projectiles()],
+            active_items: vec![new_active_item_slow_enemy_time(), new_active_item_clear_projectiles()],
             hc_tile_effects: Vec::new(),
             mana: 20.0,
             max_mana: 20.0,
@@ -236,7 +248,7 @@ impl Player {
 
         // Rofiz will automatically clean up the old su_common.rofiz_object, because it'll detect that no RoomObjects
         // hold a reference to it anymore.
-        self.su_common = Some(StandardUnitCommon::new(ro_ref, 1e2, 30.0, 500.0, 0.0, 0.0, 150.0, 10.0));
+        self.su_common = Some(StandardUnitCommon::new(ro_ref, 1e3, 30.0, 500.0, 0.0, 0.0, 150.0, 10.0));
     }
 
     pub fn get_center_point(&self, rofiz: &RofizState) -> FloorCoordinate {

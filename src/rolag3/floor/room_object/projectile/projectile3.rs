@@ -92,5 +92,6 @@ fn apply_operation(ctx: &mut SpApplyOperationContext) {
                 ps_data.remove_me_next_tick = true;
             }
         },
+        _ => {},
     }
 }

@@ -1,12 +1,21 @@
 use crate::rolag3::floor::{rofiz::{rofiz_object::{RofizObjectMovement, Transformation}, rofiz_state::{RofizState, RofizObjectRef}}, draw::Color};
 
+#[derive(Debug, Clone, Copy)]
 pub enum Budeb {
-    MaxSpeed(BudebMaxSpeed),
+    SpeedMult(BudebMaxSpeed),
+    TimeSpeedMult(BudebTimeSpeedMult)
 }
 
+#[derive(Debug, Clone, Copy)]
 pub struct BudebMaxSpeed {
-    time_til_expiry: f64,
-    multiplier: f64,
+    pub time_til_expiry: f64,
+    pub multiplier: f64,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct BudebTimeSpeedMult {
+    pub time_til_expiry: f64,
+    pub multiplier: f64,
 }
 
 impl BudebMaxSpeed {
@@ -29,7 +38,7 @@ pub struct StandardUnitCommon {
     velocity_theta: f64,
 
     act1_started: bool,
-    room_tick_length: f64,
+    unit_tick_length: f64,
     translate: TranslateMove,
     rotate: RotateMove,
     external_forces: Vec<PolarForce>,
@@ -84,7 +93,7 @@ impl StandardUnitCommon {
             min_effective_velocity,
 
             act1_started: false,
-            room_tick_length: 0.0,
+            unit_tick_length: 0.0,
             translate: TranslateMove::Nop,
             rotate: RotateMove::Nop,
             external_forces: Vec::new(),
@@ -155,7 +164,34 @@ impl StandardUnitCommon {
     pub fn start_act1(&mut self, room_tick_length: f64) {
         assert!(!self.act1_started, "cannot call standard_unit_common::start_act1() twice for standard_unit_common");
         self.act1_started = true;
-        self.room_tick_length = room_tick_length;
+
+        let mut max_time_speed_mult = 1.0;
+        let mut min_time_speed_mult = 1.0;
+
+        let mut expired_budeb_idx = Vec::new();
+        for (i, budeb) in self.budebs.iter_mut().enumerate() {
+            match budeb {
+                Budeb::TimeSpeedMult(v) => {
+                    v.time_til_expiry -= room_tick_length; // note we use room tick length here, not unit tick length
+                    if v.time_til_expiry < 0.0 {
+                        expired_budeb_idx.push(i);
+                    } else {
+                        max_time_speed_mult = f64::max(max_time_speed_mult, v.multiplier);
+                        min_time_speed_mult = f64::min(min_time_speed_mult, v.multiplier);
+                    }
+                },
+                _ => {},
+            }
+        }
+        for i in expired_budeb_idx.iter().rev() {
+            self.budebs.remove(*i);
+        }
+
+        let time_speed_mult = max_time_speed_mult * min_time_speed_mult;
+        if !(0.5..2.0).contains(&time_speed_mult) {
+            log::warn!("time_speed_mult({}) is outside of range [0.5, 2.0]", time_speed_mult);
+        }
+        self.unit_tick_length = room_tick_length * time_speed_mult;
     }
 
     pub fn set_translate_move(&mut self, translate: TranslateMove) {
@@ -169,13 +205,19 @@ impl StandardUnitCommon {
     }
 
     pub fn add_external_forces(&mut self, mut f: Vec<PolarForce>) {
+        assert!(self.act1_started, "cannot call standard_unit_common::add_external_forces() before act1 starts");
         self.external_forces.append(&mut f);
+    }
+
+    pub fn get_unit_tick_len(&self) -> f64 {
+        assert!(self.act1_started, "cannot call standard_unit_common::get_unit_tick_len() before act1 starts");
+        self.unit_tick_length
     }
 
     pub fn end_act1(&mut self, rofiz: &mut RofizState) {
         assert!(self.act1_started, "cannot call standard_unit_common::end_act1() before act1 has started");
 
-        let tick_length = self.room_tick_length;
+        let tick_length = self.unit_tick_length;
         let min_velocity = self.min_effective_velocity;
 
         match self.translate {
@@ -280,14 +322,16 @@ impl StandardUnitCommon {
         let mut expired_budeb_idx = Vec::new();
         for (i, budeb) in self.budebs.iter_mut().enumerate() {
             match budeb {
-                Budeb::MaxSpeed(v) => {
+                Budeb::SpeedMult(v) => {
                     v.time_til_expiry -= tick_length;
                     if v.time_til_expiry < 0.0 {
                         expired_budeb_idx.push(i);
+                    } else {
+                        max_speed_mult = f64::max(max_speed_mult, v.multiplier);
+                        min_speed_mult = f64::min(min_speed_mult, v.multiplier);
                     }
-                    max_speed_mult = f64::max(max_speed_mult, v.multiplier);
-                    min_speed_mult = f64::min(min_speed_mult, v.multiplier);
                 },
+                Budeb::TimeSpeedMult(_) => {}, // handled in start_act1()
             }
         }
         for i in expired_budeb_idx.iter().rev() {
@@ -323,8 +367,8 @@ impl StandardUnitCommon {
         rofiz.move_object(&self.ro_ref, movement);
     }
 
-    pub fn apply_budeb(&mut self, budeb: Budeb) {
-        self.budebs.push(budeb);
+    pub fn apply_budeb(&mut self, budeb: &Budeb) {
+        self.budebs.push(*budeb);
     }
 
     pub fn take_damage(&mut self, room_time: f64, damage: f64) -> TakeDamageResponse {

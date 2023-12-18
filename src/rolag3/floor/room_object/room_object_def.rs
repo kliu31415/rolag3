@@ -4,7 +4,7 @@ use rand::{rngs::ThreadRng, Rng};
 
 use crate::rolag3::floor::{draw::DrawContext, run::PlayerInput, rofiz::{rofiz_state::{RofizState, RofizObjectRef}, rofiz_object::Hitbox}, room::{Room, RoomConnectionInfo}};
 
-use super::damage::DamageColor;
+use super::{damage::DamageColor, unit::standard_unit_common::Budeb};
 
 pub trait RoomObject {
     fn is_player(&self) -> bool {
@@ -79,7 +79,8 @@ impl<'a> RoomObjApplyOperationContext<'a> {
 
 pub enum RoomObjOperation {
     BlackHoleForce { x: f64, y: f64, colors: Vec<DamageColor>, accel_fn: fn(f64) -> f64 /* dist -> accel */},
-    ClearProjectiles {exclude_teams_filter: Vec<Team> }
+    ClearProjectiles {exclude_teams_filter: Vec<Team> },
+    UnitBudeb {exclude_teams_filter: Vec<Team>, budeb: Budeb},
 }
 
 pub struct RoQueryUnitInfoContext<'a> {
@@ -228,6 +229,9 @@ impl RoomObjectCollection {
                 RoomObjOperation::ClearProjectiles { .. } => {
                     self.ro_projectile.iter().for_each(|x| x.borrow_mut().apply_operation(&op_ctx))
                 },
+                RoomObjOperation::UnitBudeb { .. } => {
+                    self.ro_unit.iter().for_each(|x| x.borrow_mut().apply_operation(&op_ctx));
+                }
             }
         }
 

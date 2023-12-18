@@ -1,6 +1,6 @@
 use std::any::Any;
 
-use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, RoomObject, RoomObjectMetadata, Act1Context, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse, RoomObjectType, RoQueryUnitInfoContext, RoQueryUnitInfoResponse}, damage::DamageColor}, draw::DrawContext, rofiz::rofiz_object::{Transformation, Hitbox}}, geometry::shape::Shape};
+use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, RoomObject, RoomObjectMetadata, Act1Context, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse, RoomObjectType, RoQueryUnitInfoContext, RoQueryUnitInfoResponse, RoomObjApplyOperationContext, RoomObjOperation}, damage::DamageColor}, draw::DrawContext, rofiz::rofiz_object::{Transformation, Hitbox}}, geometry::shape::Shape};
 
 use super::{Unit, standard_unit_common::StandardUnitCommon};
 
@@ -35,8 +35,8 @@ impl RoomObject for StandardUnit1 {
     }
 
     fn act1<'a>(&'a mut self, ctx: &'a mut Act1Context) -> Act1Response {
-        let tick_len = ctx.get_tick_length();
-        self.data.su_common.start_act1(tick_len);
+        let room_tick_len = ctx.get_tick_length();
+        self.data.su_common.start_act1(room_tick_len);
         let mut su_ctx= self.data.get_su_ctx();
         let mut su_act1_ctx = SuAct1Context {
             su_ctx: &mut su_ctx,
@@ -80,6 +80,17 @@ impl RoomObject for StandardUnit1 {
 
     fn blocks_room_clear(&self) -> bool {
         true
+    }
+
+    fn apply_operation(&mut self, ctx: &RoomObjApplyOperationContext) {
+        match ctx.get_operation() {
+            RoomObjOperation::UnitBudeb { exclude_teams_filter, budeb } => {
+                if !exclude_teams_filter.contains(&self.data.team) {
+                    self.data.su_common.apply_budeb(budeb);
+                }
+            },
+            _ => {},
+        }
     }
 
     fn get_room_object_type(&self) -> RoomObjectType {

@@ -88,7 +88,6 @@ fn draw(ctx: &mut SpDrawContext) {
             }
         }
         Shape::Circle(c) => {
-            log::warn!("clearing projectile");
             let dop = ctx.draw_ctx.do_circle(ps_data.color, c.center.x as f32, c.center.y as f32, c.r);
             ctx.draw_ctx.add_draw_op(DrawContext::Z_PROJECTILE, dop);
         }
@@ -134,6 +133,7 @@ fn apply_operation(ctx: &mut SpApplyOperationContext) {
                 ps_data.remove_me_next_tick = true;
             }
         },
+        _ => {},
     }
 }
 
