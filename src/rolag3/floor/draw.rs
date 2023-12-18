@@ -28,7 +28,10 @@ pub fn get_draw_floor_ops(ctx: DrawFloorContext) -> Vec<DrawOpWithMetadata> {
         window_height: ctx.window_height as f32,
         player_cur_hp: player.borrow().get_cur_hp(),
         player_max_hp: player.borrow().get_max_hp(),
+        player_cur_mana: player.borrow().get_cur_mana(),
+        player_max_mana: player.borrow().get_max_mana(),
     };
+    
     draw_context.draw_ops.push(get_draw_hud_ops(draw_hud_context));
 
     draw_context.draw_ops
@@ -39,6 +42,8 @@ struct DrawHudContext {
     window_height: f32,
     player_cur_hp: f64,
     player_max_hp: f64,
+    player_cur_mana: f64,
+    player_max_mana: f64,
 }
 
 fn get_draw_hud_ops(ctx: DrawHudContext) -> DrawOpWithMetadata {
@@ -56,6 +61,20 @@ fn get_draw_hud_ops(ctx: DrawHudContext) -> DrawOpWithMetadata {
         filled_part_color: ColorRGBA32f::new(1.0, 0.0, 0.0, 0.9), 
         unfilled_part_color: ColorRGBA32f::new(0.0, 0.0, 0.0, 0.9),
         text_color: Some(ColorRGBA32f::new(0.0, 1.0, 1.0, 0.9)),
+    }));
+
+    ops.push(get_draw_fillable_bar_ops(DrawFillableBarArgs { 
+        x: 0.87 * ctx.window_width, 
+        y: 0.065 * ctx.window_height, 
+        w: 0.11 * ctx.window_width, 
+        h: 0.03 * ctx.window_height, 
+        border_px: 0.002 * f32::sqrt(ctx.window_width * ctx.window_height), 
+        bar_cur_amount: ctx.player_cur_mana,
+        bar_max_amount: ctx.player_max_mana, 
+        border_color: ColorRGBA32f::new(0.1, 0.1, 0.1, 0.9),
+        filled_part_color: ColorRGBA32f::new(0.1, 0.1, 3.0, 0.9), 
+        unfilled_part_color: ColorRGBA32f::new(0.0, 0.0, 0.0, 0.9),
+        text_color: Some(ColorRGBA32f::new(1.0, 1.0, 0.0, 0.9)),
     }));
 
     DrawOpWithMetadata::new(DrawContext::Z_HUD, DrawOp::Group(DrawOpGroup { ops: ops.into_boxed_slice() }))

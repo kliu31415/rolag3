@@ -1,17 +1,17 @@
-use std::{cell::RefCell, rc::{Rc, Weak}};
+use crate::{rolag3::floor::{run::{PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, draw::{DrawContext, Color}, room_object::{room_object_def::{RoomObject, Act1Context, FloorCoordinate, NewRoomObjectContext, RoomObjectMetadata, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse, RoomObjectType, RoQueryUnitInfoContext, RoQueryUnitInfoResponse, HcTileContext, HcTileEffect, HcTileResponse}, tiles::room_connection::{Direction, RoomConnection}}, rofiz::{rofiz_object::{Hitbox, Transformation}, rofiz_state::RofizState}, room::RoomConnectionInfo}, geometry::shape::{Shape, Point}};
 
-use crate::{rolag3::floor::{run::{PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, draw::{DrawContext, Color}, room_object::{room_object_def::{RoomObject, Act1Context, FloorCoordinate, NewRoomObjectContext, RoomObjectMetadata, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse, RoomObjectType, RoQueryUnitInfoContext, RoQueryUnitInfoResponse, HcTileContext, HcTileEffect, HcTileResponse}, projectile::projectile2::{NewProjectile2Args, Proj2Shape}, tiles::room_connection::{Direction, RoomConnection}, damage::DamageColor}, rofiz::{rofiz_object::{Hitbox, Transformation}, rofiz_state::RofizState}, room::RoomConnectionInfo}, geometry::shape::{Shape, Point}};
-
-use super::{Unit, standard_unit_common::{StandardUnitCommon, Budeb, BudebMaxSpeed, TranslateMove, PolarForce}};
+use super::{Unit, standard_unit_common::{StandardUnitCommon, Budeb, BudebMaxSpeed, TranslateMove, PolarForce}, weapon::{weapon_def::{Weapon, WeaponHandleTickContext}, weapon1::new_weapon1, weapon2::new_weapon2, weapon3::new_weapon3}};
 
 pub struct Player {
     md: RoomObjectMetadata,
     su_common: Option<StandardUnitCommon>,
-    since_last_projectile: f64,
     change_rooms: Option<RoomConnectionInfo>,
     weapons: Vec<Weapon>,
     weapon_idx: usize,
     hc_tile_effects: Vec<HcTileEffect>,
+    mana: f64,
+    max_mana: f64,
+    mana_regen: f64,
 }
 
 impl RoomObject for Player {
@@ -27,7 +27,6 @@ impl RoomObject for Player {
         let mut response = Act1Response::new();
 
         let tick_len = ctx.get_tick_length();
-        let mouse_theta = ctx.get_player_input().mouse_theta_relative_to_player;
 
         // process tile effects
         let mut additional_force = Vec::new();
@@ -54,29 +53,36 @@ impl RoomObject for Player {
             }
         }
 
-        // process firing weapon to throw projectiles
-        if ctx.get_player_input().is_lmb_down && self.since_last_projectile > 0.01 {
-            let weapon = &mut self.weapons[self.weapon_idx];
-            weapon.since_last_attack += tick_len;
-            if weapon.since_last_attack >= weapon.attack_interval {
-                weapon.since_last_attack -= weapon.attack_interval;
-                let xform = ctx.get_rofiz().get_movable_object_xform(self.su_common.as_ref().unwrap().get_ro_ref());
-                let self_as_weak = ctx.get_self_as_weak();
-                let nro_ctx = &mut NewRoomObjectContext::from_act1_ctx(ctx);
-                let args = MakeWeaponProjectileFnContext {
-                    nro_ctx,
-                    owner: self_as_weak,
-                    owner_velocity_x: self.su_common.as_ref().unwrap().get_velocity_x(),
-                    owner_velocity_y: self.su_common.as_ref().unwrap().get_velocity_y(),
-                    owner_team: Team::Player,
-                    owner_xform: xform,
-                    fire_polar_angle: mouse_theta,
-                };
-                (weapon.make_projectile)(args).into_iter().for_each(|x| response.add_room_obj(x));
-            }
-        } else {
-            self.since_last_projectile += tick_len;
-        }
+        // regen mana
+        self.mana = f64::min(self.mana + self.mana_regen * tick_len, self.max_mana);
+
+        // process weapons
+        let xform = ctx.get_rofiz().get_movable_object_xform(self.su_common.as_ref().unwrap().get_ro_ref());
+        let weapon = &mut self.weapons[self.weapon_idx];
+        let self_as_weak = ctx.get_self_as_weak();
+        let mouse_x = ctx.get_player_input().mouse_x;
+        let mouse_y = ctx.get_player_input().mouse_y;
+        let primary_attack = ctx.get_player_input().is_lmb_down;
+        let special_attack = ctx.get_player_input().is_rmb_down;
+        let nro_ctx = &mut NewRoomObjectContext::from_act1_ctx(ctx);
+        let mut wht_ctx = WeaponHandleTickContext{
+            ws_data: weapon.ws_data.as_mut(),
+            tick_len,
+            nro_ctx,
+            owner: self_as_weak,
+            owner_team: Team::Player,
+            owner_velocity_x: self.su_common.as_ref().unwrap().get_velocity_x(),
+            owner_velocity_y: self.su_common.as_ref().unwrap().get_velocity_y(),
+            owner_xform: xform,
+            mouse_x,
+            mouse_y,
+            primary_attack,
+            special_attack,
+            owner_mana: self.mana,
+        };
+        let mut wht_response = (weapon.handle_tick_fn)(&mut wht_ctx);
+        wht_response.new_room_objs.drain(..).for_each(|x| response.add_room_obj(x));
+        self.mana += wht_response.mana_delta;
 
         // process main input
         let accel_x = match ctx.get_player_input().horizontal_move {
@@ -183,11 +189,13 @@ impl Player {
         Player {
             md,
             su_common: None,
-            since_last_projectile: 0.0,
             change_rooms: None,
-            weapons: vec![make_weapon1(), make_weapon2(), make_weapon3()],
+            weapons: vec![new_weapon1(), new_weapon2(), new_weapon3()],
             weapon_idx: 0,
             hc_tile_effects: Vec::new(),
+            mana: 20.0,
+            max_mana: 20.0,
+            mana_regen: 0.5,
         }
     }
 
@@ -230,130 +238,17 @@ impl Player {
     pub fn get_max_hp(&self) -> f64 {
         self.su_common.as_ref().unwrap().get_max_hp()
     }
+
+    pub fn get_cur_mana(&self) -> f64 {
+        self.mana
+    }
+
+    pub fn get_max_mana(&self) -> f64 {
+        self.max_mana
+    }
 }
 
 pub enum MoveRooms {
     Connection(RoomConnectionInfo),
     Teleport{x: f64, y: f64},
-}
-
-
-type MakeWeaponProjectileFn = dyn Fn(MakeWeaponProjectileFnContext) -> Vec<Rc<RefCell<dyn RoomObject>>>;
-
-struct MakeWeaponProjectileFnContext<'a> {
-    nro_ctx: &'a mut NewRoomObjectContext<'a>,
-    owner: Weak<RefCell<dyn RoomObject>>,
-    owner_team: Team,
-    owner_velocity_x: f64,
-    owner_velocity_y: f64,
-    owner_xform: Transformation,
-    fire_polar_angle: f64,
-}
-
-pub struct Weapon {
-    make_projectile: Box<MakeWeaponProjectileFn>,
-    attack_interval: f64,
-    since_last_attack: f64,
-}
-
-fn make_weapon1() -> Weapon {
-    Weapon {
-        make_projectile: Box::new(weapon1_fire_projectile),
-        attack_interval: 0.002,
-        since_last_attack: 0.002,
-    }
-}
-
-fn weapon1_fire_projectile(args: MakeWeaponProjectileFnContext) -> Vec<Rc<RefCell<dyn RoomObject>>> {
-    let proj_velocity = 100.0;
-    let velocity_x = args.owner_velocity_x + proj_velocity * f64::cos(args.fire_polar_angle);
-    let velocity_y = args.owner_velocity_y + proj_velocity * f64::sin(args.fire_polar_angle);
-    let shape = Proj2Shape::TriFan {
-        center: Point::new(0.0, 0.0), 
-        vertexes: vec![Point::new(-0.2, -0.2), Point::new(0.2, -0.2), Point::new(0.2, 0.2), Point::new(-0.2, 0.2)].into_boxed_slice() 
-    };
-    let proj = NewProjectile2Args{
-        team: args.owner_team,
-        damage_color: DamageColor::Green,
-        damage: 2.0,
-        owner: args.owner,
-        lifespan: 2.0,
-        velocity_x,
-        velocity_y,
-        xform: args.owner_xform,
-        shape,
-        color: Color::new(0.0, 1.6, 0.0, 1.0),
-    }.new(args.nro_ctx);
-    vec![Rc::new(RefCell::new(proj))]
-}
-
-fn make_weapon2() -> Weapon {
-    Weapon {
-        make_projectile: Box::new(weapon2_fire_projectile),
-        attack_interval: 0.3,
-        since_last_attack: 0.3,
-    }
-}
-
-fn weapon2_fire_projectile(args: MakeWeaponProjectileFnContext) -> Vec<Rc<RefCell<dyn RoomObject>>> {
-    let proj_velocity = 100.0;
-
-    let mut ret: Vec<Rc<RefCell<dyn RoomObject>>> = Vec::new();
-    for i in -1..2 {
-        let angle = args.fire_polar_angle + (i as f64) * std::f64::consts::FRAC_PI_6;
-        let velocity_x = args.owner_velocity_x + proj_velocity * f64::cos(angle);
-        let velocity_y = args.owner_velocity_y + proj_velocity * f64::sin(angle);
-        let shape = Proj2Shape::TriFan {
-            center: Point::new(0.0, 0.0), 
-            vertexes: vec![Point::new(-0.2, -0.2), Point::new(0.2, -0.2), Point::new(0.2, 0.2), Point::new(-0.2, 0.2)].into_boxed_slice() 
-        };
-        let proj = NewProjectile2Args{
-            team: args.owner_team,
-            damage_color: DamageColor::Blue,
-            damage: 7.0,
-            owner: args.owner.clone(),
-            lifespan: 2.0,
-            velocity_x,
-            velocity_y,
-            xform: args.owner_xform,
-            shape,
-            color: Color::new(0.2, 0.2, 15.0, 1.0),
-        }.new(args.nro_ctx);
-        ret.push(Rc::new(RefCell::new(proj)));
-    }
-    ret
-}
-
-fn make_weapon3() -> Weapon {
-    Weapon {
-        make_projectile: Box::new(weapon3_fire_projectile),
-        attack_interval: 0.05,
-        since_last_attack: 0.05,
-    }
-}
-
-fn weapon3_fire_projectile(args: MakeWeaponProjectileFnContext) -> Vec<Rc<RefCell<dyn RoomObject>>> {
-    let proj_velocity = 60.0;
-
-    let mut ret: Vec<Rc<RefCell<dyn RoomObject>>> = Vec::new();
-    for i in -1..2 {
-        let angle = args.fire_polar_angle + (i as f64) * std::f64::consts::FRAC_PI_6;
-        let velocity_x = args.owner_velocity_x + proj_velocity * f64::cos(angle);
-        let velocity_y = args.owner_velocity_y + proj_velocity * f64::sin(angle);
-        let shape = Proj2Shape::Circle {x: 0.0, y: 0.0, r: 0.4};
-        let proj = NewProjectile2Args{
-            team: args.owner_team,
-            damage_color: DamageColor::Red,
-            damage: 3.0,
-            owner: args.owner.clone(),
-            lifespan: 2.0,
-            velocity_x,
-            velocity_y,
-            xform: args.owner_xform,
-            shape,
-            color: Color::new(6.0, 0.1, 0.1, 1.0),
-        }.new(args.nro_ctx);
-        ret.push(Rc::new(RefCell::new(proj)));
-    }
-    ret
 }
