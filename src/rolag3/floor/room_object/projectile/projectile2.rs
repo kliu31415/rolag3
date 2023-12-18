@@ -7,6 +7,7 @@ use super::standard_projectile1::{Sp1Builder, Sp1BuilderReq, StandardProjectile1
 // Projectile2 is a normal projectile shaped like a triangle fan or circle. It moves at a constant velocity
 
 pub struct Projectile2Data {
+    remove_me_next_tick: bool,
     shape: Proj2Shape,
     color: Color,
     velocity_x: f64,
@@ -29,6 +30,7 @@ pub struct NewProjectile2Args {
 impl NewProjectile2Args {
     pub fn new(self, ctx: &mut NewRoomObjectContext) -> StandardProjectile1 {
         let ps_data = Projectile2Data {
+            remove_me_next_tick: false,
             shape: self.shape.clone(),
             color: self.color,
             velocity_x: self.velocity_x,
@@ -57,6 +59,9 @@ impl NewProjectile2Args {
 
 fn act1(ctx: &mut SpAct1Context) -> Act1Response {
     let ps_data = ctx.sp_ctx.ps_data.downcast_mut::<Projectile2Data>().unwrap();
+    if ps_data.remove_me_next_tick {
+        return Act1Response::new().remove_me();
+    }
     let tick_len = ctx.act1_ctx.get_tick_length(); 
     let dx = ps_data.velocity_x * tick_len;
     let dy = ps_data.velocity_y * tick_len;
@@ -83,6 +88,7 @@ fn draw(ctx: &mut SpDrawContext) {
             }
         }
         Shape::Circle(c) => {
+            log::warn!("clearing projectile");
             let dop = ctx.draw_ctx.do_circle(ps_data.color, c.center.x as f32, c.center.y as f32, c.r);
             ctx.draw_ctx.add_draw_op(DrawContext::Z_PROJECTILE, dop);
         }
@@ -122,6 +128,11 @@ fn apply_operation(ctx: &mut SpApplyOperationContext) {
             let accel = ctx.ao_ctx.get_tick_length() * (accel_fn)(norm);
             ps_data.velocity_x += accel * normed_x;
             ps_data.velocity_y += accel * normed_y;
+        },
+        RoomObjOperation::ClearProjectiles { exclude_teams_filter } => {
+            if !exclude_teams_filter.contains(&ctx.sp_ctx.team) {
+                ps_data.remove_me_next_tick = true;
+            }
         },
     }
 }

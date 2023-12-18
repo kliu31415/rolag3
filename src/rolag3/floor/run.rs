@@ -61,6 +61,7 @@ pub struct PlayerInput {
     pub is_rmb_down: bool, // rmb = right mouse button
     pub mouse_wheel_line_deltas: Box<[(f32, f32)]>, // winit also provides pixel delta, but I'm ignoring that for now
     pub test_input1: bool, // used for testing purposes
+    pub use_active_item_1: bool,
 }
 
 struct RunFloorTickContext<'a> {

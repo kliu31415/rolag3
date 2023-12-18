@@ -1,0 +1,18 @@
+use crate::rolag3::floor::room_object::room_object_def::RoomObjOperation;
+
+use super::{active_item_def::{ActiveItem, ActiveItemHandleTickResponse, ActiveItemHandleTickContext}, standard_active_item1::StandardActiveItem1};
+
+pub fn new_active_item_clear_projectiles() -> ActiveItem {
+    StandardActiveItem1 {
+        mana_cost: 2.0,
+        cooldown: 1.5,
+        since_last_used: 2.0,
+        use_fn: Box::new(use_fn),
+    }.make()
+}
+
+fn use_fn(ctx: &ActiveItemHandleTickContext) -> ActiveItemHandleTickResponse {
+    let mut response = ActiveItemHandleTickResponse::new();
+    response.ops.push(RoomObjOperation::ClearProjectiles { exclude_teams_filter: vec![ctx.owner_team] } );
+    response
+}

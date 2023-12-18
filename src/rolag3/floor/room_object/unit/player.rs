@@ -1,6 +1,6 @@
 use crate::{rolag3::floor::{run::{PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, draw::{DrawContext, Color}, room_object::{room_object_def::{RoomObject, Act1Context, FloorCoordinate, NewRoomObjectContext, RoomObjectMetadata, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse, RoomObjectType, RoQueryUnitInfoContext, RoQueryUnitInfoResponse, HcTileContext, HcTileEffect, HcTileResponse}, tiles::room_connection::{Direction, RoomConnection}}, rofiz::{rofiz_object::{Hitbox, Transformation}, rofiz_state::RofizState}, room::RoomConnectionInfo}, geometry::shape::{Shape, Point}, gfx::renderer::{DrawOp, DrawOpGroup}};
 
-use super::{Unit, standard_unit_common::{StandardUnitCommon, Budeb, BudebMaxSpeed, TranslateMove, PolarForce}, weapon::{weapon_def::{Weapon, WeaponHandleTickContext, DrawWeaponHudContext}, weapon1::new_weapon1, weapon2::new_weapon2, weapon3::new_weapon3}};
+use super::{Unit, standard_unit_common::{StandardUnitCommon, Budeb, BudebMaxSpeed, TranslateMove, PolarForce}, weapon::{weapon_def::{Weapon, WeaponHandleTickContext, DrawWeaponHudContext}, weapon1::new_weapon1, weapon2::new_weapon2, weapon3::new_weapon3}, active_item::{active_item_def::{ActiveItem, ActiveItemHandleTickContext}, clear_projectiles::new_active_item_clear_projectiles}};
 
 pub struct Player {
     md: RoomObjectMetadata,
@@ -8,6 +8,7 @@ pub struct Player {
     change_rooms: Option<RoomConnectionInfo>,
     weapons: Vec<Weapon>,
     weapon_idx: usize,
+    active_items: Vec<ActiveItem>,
     hc_tile_effects: Vec<HcTileEffect>,
     mana: f64,
     max_mana: f64,
@@ -56,8 +57,25 @@ impl RoomObject for Player {
         // regen mana
         self.mana = f64::min(self.mana + self.mana_regen * tick_len, self.max_mana);
 
-        // process weapons
+        // process active items
         let xform = ctx.get_rofiz().get_movable_object_xform(self.su_common.as_ref().unwrap().get_ro_ref());
+        if self.active_items.len() >= 1 {
+            let active_item = &mut self.active_items[0];
+            let mut aihc_ctx = ActiveItemHandleTickContext {
+                ais_data: active_item.ais_data.as_mut(),
+                owner_team: Team::Player,
+                owner_x: xform.dx,
+                owner_y: xform.dy,
+                owner_mana: self.mana,
+                tick_len,
+                use_this_item: ctx.get_player_input().use_active_item_1,
+            };
+            let aihc_response = (active_item.handle_tick_fn)(&mut aihc_ctx);
+            aihc_response.ops.into_iter().for_each(|x| response.apply_operation(x));
+            self.mana += aihc_response.mana_delta;
+        }
+
+        // process weapons
         let weapon = &mut self.weapons[self.weapon_idx];
         let self_as_weak = ctx.get_self_as_weak();
         let mouse_x = ctx.get_player_input().mouse_x;
@@ -192,6 +210,7 @@ impl Player {
             change_rooms: None,
             weapons: vec![new_weapon1(), new_weapon2(), new_weapon3()],
             weapon_idx: 0,
+            active_items: vec![new_active_item_clear_projectiles()],
             hc_tile_effects: Vec::new(),
             mana: 20.0,
             max_mana: 20.0,

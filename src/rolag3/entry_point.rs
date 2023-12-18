@@ -72,7 +72,8 @@ const PLAYER_MOVE_UP: PhysicalKey = PhysicalKey::Code(KeyCode::ArrowUp);
 const PLAYER_MOVE_DOWN: PhysicalKey = PhysicalKey::Code(KeyCode::ArrowDown);
 const PLAYER_MOVE_LEFT: PhysicalKey = PhysicalKey::Code(KeyCode::ArrowLeft);
 const PLAYER_MOVE_RIGHT: PhysicalKey = PhysicalKey::Code(KeyCode::ArrowRight);
-const PLAYER_TEST_INPUT1: PhysicalKey = PhysicalKey::Code(KeyCode::Space);
+const PLAYER_TEST_INPUT1: PhysicalKey = PhysicalKey::Code(KeyCode::Enter);
+const PLAYER_ACTIVE_ITEM1: PhysicalKey = PhysicalKey::Code(KeyCode::Space);
 
 impl Rolag3EventHandler {
     fn new_test1() -> Rolag3EventHandler {
@@ -154,6 +155,7 @@ impl Rolag3EventHandler {
                 is_rmb_down: input_state.is_mouse_button_down(&MouseButton::Right),
                 mouse_wheel_line_deltas: mouse_wheel_line_deltas.into_boxed_slice(),
                 test_input1: input_state.is_key_down(&PLAYER_TEST_INPUT1),
+                use_active_item_1: input_state.is_key_down(&PLAYER_ACTIVE_ITEM1),
             },
             prev_mouse_x,
             prev_mouse_y,

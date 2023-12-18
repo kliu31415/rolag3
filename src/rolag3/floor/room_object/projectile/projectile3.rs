@@ -1,14 +1,15 @@
 use std::{cell::RefCell, rc::Weak};
 
-use crate::{rolag3::floor::{room_object::{room_object_def::{RoomObject, NewRoomObjectContext, Act1Response, HandleCollisionResponse, HcProjectileContext, Team, RoomObjectType}, damage::DamageColor}, draw::{DrawContext, Color}, rofiz::rofiz_object::{Transformation, RofizObjectMovement, Hitbox}}, geometry::shape::{Shape, Point}};
+use crate::{rolag3::floor::{room_object::{room_object_def::{RoomObject, NewRoomObjectContext, Act1Response, HandleCollisionResponse, HcProjectileContext, Team, RoomObjectType, RoomObjOperation}, damage::DamageColor}, draw::{DrawContext, Color}, rofiz::rofiz_object::{Transformation, RofizObjectMovement, Hitbox}}, geometry::shape::{Shape, Point}};
 
-use super::standard_projectile1::{Sp1Builder, Sp1BuilderReq, StandardProjectile1, SpAct1Context, SpDrawContext, SpHandleCollisionContext};
+use super::standard_projectile1::{Sp1Builder, Sp1BuilderReq, StandardProjectile1, SpAct1Context, SpDrawContext, SpHandleCollisionContext, SpApplyOperationContext};
 
 // Projectile3 is versatile, but one use-case is projectiles that expand radially, as if dilating around a center.
 
 pub struct Projectile3Data {
     hitbox_fn: Box<dyn Fn(f64) -> (Transformation, Shape)>,
     draw_shape_fn: Box<dyn Fn(f64) -> (Color, Box<[Point]>)>,
+    remove_me_next_tick: bool,
 }
 
 pub struct NewProjectile3Args {
@@ -27,6 +28,7 @@ impl NewProjectile3Args {
         let ps_data = Projectile3Data {
             hitbox_fn: self.hitbox_fn,
             draw_shape_fn: self.draw_fn,
+            remove_me_next_tick: false,
         };
         Sp1Builder::new(Sp1BuilderReq {
             team: self.team,
@@ -39,6 +41,7 @@ impl NewProjectile3Args {
             .act1_fn(Box::new(act1))
             .draw_fn(Box::new(draw))
             .handle_collision_fn(Box::new(handle_collision))
+            .apply_operation_fn(Box::new(apply_operation))
             .owner(self.owner)
             .build(ctx)
     }
@@ -46,6 +49,9 @@ impl NewProjectile3Args {
 
 fn act1(ctx: &mut SpAct1Context) -> Act1Response {
     let ps_data = ctx.sp_ctx.ps_data.downcast_mut::<Projectile3Data>().unwrap();
+    if ps_data.remove_me_next_tick {
+        return Act1Response::new().remove_me();
+    }
     let (xform, shape) = (ps_data.hitbox_fn)(ctx.act1_ctx.get_room_time());
     ctx.act1_ctx.get_rofiz().move_object(ctx.sp_ctx.ro_ref, RofizObjectMovement::NewHitbox(Hitbox::new(xform, shape)));
     Act1Response::new()
@@ -73,4 +79,18 @@ fn handle_collision(ctx: &mut SpHandleCollisionContext) -> HandleCollisionRespon
         to_remove.push(ctx.sp_ctx.md.get_id());
     }
     HandleCollisionResponse::new().remove_room_objs(to_remove.as_slice())
+}
+
+fn apply_operation(ctx: &mut SpApplyOperationContext) {
+    let ps_data = ctx.sp_ctx.ps_data.downcast_mut::<Projectile3Data>().unwrap();
+    match ctx.ao_ctx.get_operation() {
+        RoomObjOperation::BlackHoleForce { .. } => {
+            // nop right now
+        },
+        RoomObjOperation::ClearProjectiles { exclude_teams_filter } => {
+            if !exclude_teams_filter.contains(&ctx.sp_ctx.team) {
+                ps_data.remove_me_next_tick = true;
+            }
+        },
+    }
 }
