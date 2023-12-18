@@ -202,7 +202,7 @@ impl Rolag3EventHandler {
                     position: DrawTextPosition::TopLeft,
             })});
         }
-        let res = window.get_renderer().present(ColorRGBA32f{r: 0.0f32, g: 0.0f32, b: 0.0f32, a: 1.0f32});
+        let res = window.get_renderer().present(ColorRGBA32f{r: 0.0, g: 0.0, b: 0.0, a: 1.0});
         if let Err(e) = res { log::error!("error when calling renderer.present(): {}", e) }
     }
 }

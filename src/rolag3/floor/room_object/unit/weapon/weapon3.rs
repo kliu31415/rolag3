@@ -1,13 +1,15 @@
 use std::{cell::RefCell, rc::Rc};
 
-use crate::rolag3::floor::{room_object::{projectile::projectile2::{NewProjectile2Args, Proj2Shape}, damage::DamageColor}, draw::Color};
+use crate::{rolag3::floor::{room_object::{projectile::projectile2::{NewProjectile2Args, Proj2Shape}, damage::DamageColor}, draw::Color}, gfx::{draw_op_util::{draw_op_circle, draw_op_rect}, renderer::{ColorRGBA32f, DrawOpGroup, DrawOp}}};
 
-use super::weapon_def::{Weapon, WeaponHandleTickContext, WeaponHandleTickResponse};
+use super::weapon_def::{Weapon, WeaponHandleTickContext, WeaponHandleTickResponse, DrawWeaponHudContext, DrawWeaponHudResponse};
 
 /* Weapon3 shoots a wave of 3 red circles at intervals of 0.1s. It has no special attack.
 */
 
 const PRIMARY_ATTACK_INTERVAL: f64 = 0.1;
+const PROJ_COLOR: Color = Color::new(6.0, 0.1, 0.1, 1.0);
+
 struct Weapon3Data {
     since_last_primary_attack: f64,
 }
@@ -17,7 +19,7 @@ pub fn new_weapon3() -> Weapon {
     let ws_data = Box::new(Weapon3Data {
         since_last_primary_attack: PRIMARY_ATTACK_INTERVAL,
     });
-    Weapon::new(ws_data, Box::new(handle_tick_fn))
+    Weapon::new(ws_data, Box::new(handle_tick_fn), Box::new(draw_hud))
 }
 
 fn handle_tick_fn(ctx: &mut WeaponHandleTickContext) -> WeaponHandleTickResponse {
@@ -50,10 +52,25 @@ fn handle_tick_fn(ctx: &mut WeaponHandleTickContext) -> WeaponHandleTickResponse
             velocity_y,
             xform: ctx.owner_xform,
             shape,
-            color: Color::new(6.0, 0.1, 0.1, 1.0),
+            color: PROJ_COLOR,
         }.new(ctx.nro_ctx);
         response.new_room_objs.push(Rc::new(RefCell::new(proj)));
     }
     
     response
+}
+
+
+fn draw_hud(ctx: &DrawWeaponHudContext) -> DrawWeaponHudResponse {
+    let background_color = if ctx.is_selected {
+        ColorRGBA32f::new(1.0, 1.0, 1.0, 0.2)
+    } else {
+        ColorRGBA32f::new(0.8, 0.8, 0.8, 0.1)
+    };
+    let background = draw_op_rect(background_color, ctx.x, ctx.y, ctx.scale_height * 3.0, ctx.scale_height);
+    let inner_scale = 0.8 * ctx.scale_height;
+    let center = (ctx.x + ctx.scale_height / 2.0, ctx.y + ctx.scale_height / 2.0);
+    let radius = inner_scale / 2.0;
+    let draw_op = draw_op_circle((&PROJ_COLOR).into(), center, radius);
+    DrawWeaponHudResponse { draw_op: DrawOp::Group(DrawOpGroup::new(vec![background, draw_op].into_boxed_slice())) }
 }

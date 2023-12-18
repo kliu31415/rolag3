@@ -1,19 +1,22 @@
 use std::{rc::{Rc, Weak}, cell::RefCell, any::Any};
 
-use crate::rolag3::floor::{room_object::room_object_def::{RoomObject, NewRoomObjectContext, Team}, rofiz::rofiz_object::Transformation};
+use crate::{rolag3::floor::{room_object::room_object_def::{RoomObject, NewRoomObjectContext, Team}, rofiz::rofiz_object::Transformation}, gfx::renderer::DrawOp};
 
 type WeaponHandleTickFn = dyn Fn(&mut WeaponHandleTickContext) -> WeaponHandleTickResponse;
+type DrawWeaponHudFn = dyn Fn(&DrawWeaponHudContext) -> DrawWeaponHudResponse;
 
 pub struct Weapon {
     pub ws_data: Box<dyn Any>,
     pub handle_tick_fn: Box<WeaponHandleTickFn>,
+    pub draw_hud_fn: Box<DrawWeaponHudFn>,
 }
 
 impl Weapon {
-    pub fn new(ws_data: Box<dyn Any>, handle_tick_fn: Box<WeaponHandleTickFn>) -> Self {
+    pub fn new(ws_data: Box<dyn Any>, handle_tick_fn: Box<WeaponHandleTickFn>, draw_hud_fn: Box<DrawWeaponHudFn>) -> Self {
         Self {
             ws_data,
             handle_tick_fn,
+            draw_hud_fn,
         }
     }
 }
@@ -43,4 +46,15 @@ impl WeaponHandleTickResponse {
     pub fn new() -> Self {
         WeaponHandleTickResponse { new_room_objs: Vec::new(), mana_delta: 0.0 }
     }
+}
+
+pub struct DrawWeaponHudContext {
+    pub scale_height: f32,
+    pub x: f32,
+    pub y: f32,
+    pub is_selected: bool,
+}
+
+pub struct DrawWeaponHudResponse {
+    pub draw_op: DrawOp,
 }

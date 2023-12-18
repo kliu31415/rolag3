@@ -39,7 +39,7 @@ impl HdrPipeline {
                 view: output,
                 resolve_target: None,
                 ops: Operations {
-                    load: wgpu::LoadOp::Clear(Default::default()),
+                    load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
                     store: wgpu::StoreOp::Store,
                 },
             })],

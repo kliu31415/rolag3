@@ -1,6 +1,6 @@
-use crate::{rolag3::floor::{run::{PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, draw::{DrawContext, Color}, room_object::{room_object_def::{RoomObject, Act1Context, FloorCoordinate, NewRoomObjectContext, RoomObjectMetadata, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse, RoomObjectType, RoQueryUnitInfoContext, RoQueryUnitInfoResponse, HcTileContext, HcTileEffect, HcTileResponse}, tiles::room_connection::{Direction, RoomConnection}}, rofiz::{rofiz_object::{Hitbox, Transformation}, rofiz_state::RofizState}, room::RoomConnectionInfo}, geometry::shape::{Shape, Point}};
+use crate::{rolag3::floor::{run::{PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, draw::{DrawContext, Color}, room_object::{room_object_def::{RoomObject, Act1Context, FloorCoordinate, NewRoomObjectContext, RoomObjectMetadata, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse, RoomObjectType, RoQueryUnitInfoContext, RoQueryUnitInfoResponse, HcTileContext, HcTileEffect, HcTileResponse}, tiles::room_connection::{Direction, RoomConnection}}, rofiz::{rofiz_object::{Hitbox, Transformation}, rofiz_state::RofizState}, room::RoomConnectionInfo}, geometry::shape::{Shape, Point}, gfx::renderer::{DrawOp, DrawOpGroup}};
 
-use super::{Unit, standard_unit_common::{StandardUnitCommon, Budeb, BudebMaxSpeed, TranslateMove, PolarForce}, weapon::{weapon_def::{Weapon, WeaponHandleTickContext}, weapon1::new_weapon1, weapon2::new_weapon2, weapon3::new_weapon3}};
+use super::{Unit, standard_unit_common::{StandardUnitCommon, Budeb, BudebMaxSpeed, TranslateMove, PolarForce}, weapon::{weapon_def::{Weapon, WeaponHandleTickContext, DrawWeaponHudContext}, weapon1::new_weapon1, weapon2::new_weapon2, weapon3::new_weapon3}};
 
 pub struct Player {
     md: RoomObjectMetadata,
@@ -46,9 +46,9 @@ impl RoomObject for Player {
         for (_, y) in ctx.get_player_input().mouse_wheel_line_deltas.iter() {
             if *y != 0.0 {
                 if *y > 0.0 {
-                    self.weapon_idx = (self.weapon_idx + 1) % self.weapons.len();
-                } else {
                     self.weapon_idx = (self.weapon_idx + self.weapons.len() - 1) % self.weapons.len();
+                } else {
+                    self.weapon_idx = (self.weapon_idx + 1) % self.weapons.len();
                 }
             }
         }
@@ -245,6 +245,21 @@ impl Player {
 
     pub fn get_max_mana(&self) -> f64 {
         self.max_mana
+    }
+
+    pub fn get_weapon_hud_draw_op(&self, x: f32, y: f32, scale_height: f32) -> DrawOp {
+        let mut ops = Vec::new();
+        for (i, weapon) in self.weapons.iter().enumerate() {
+            let dwh_ctx = DrawWeaponHudContext { 
+                scale_height,
+                x,
+                y: y + (i as f32) * scale_height,
+                is_selected: self.weapon_idx == i,
+            };
+            let r = (weapon.draw_hud_fn)(&dwh_ctx);
+            ops.push(r.draw_op);
+        }
+        DrawOp::Group(DrawOpGroup { ops: ops.into_boxed_slice() })
     }
 }
 

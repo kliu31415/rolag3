@@ -1,12 +1,13 @@
 use std::{rc::Rc, cell::RefCell};
 
-use crate::{rolag3::floor::{room_object::{projectile::projectile2::{Proj2Shape, NewProjectile2Args}, damage::DamageColor}, draw::Color}, geometry::shape::Point};
+use crate::{rolag3::floor::{room_object::{projectile::projectile2::{Proj2Shape, NewProjectile2Args}, damage::DamageColor}, draw::Color}, geometry::shape::Point, gfx::{draw_op_util::draw_op_rect, renderer::{ColorRGBA32f, DrawOp, DrawOpGroup}}};
 
-use super::weapon_def::{WeaponHandleTickContext, Weapon, WeaponHandleTickResponse};
+use super::weapon_def::{WeaponHandleTickContext, Weapon, WeaponHandleTickResponse, DrawWeaponHudContext, DrawWeaponHudResponse};
 
 /* Weapon1 rapidly shoots green squares, like a laser. It has no special attack. */
 
 const PRIMARY_ATTACK_INTERVAL: f64 = 0.003;
+const PROJ_COLOR: Color = Color::new(0.0, 1.6, 0.0, 1.0);
 
 struct Weapon1Data {
     since_last_primary_attack: f64,
@@ -16,7 +17,7 @@ pub fn new_weapon1() -> Weapon {
     let ws_data = Box::new(Weapon1Data {
         since_last_primary_attack: PRIMARY_ATTACK_INTERVAL,
     });
-    Weapon::new(ws_data, Box::new(handle_tick_fn))
+    Weapon::new(ws_data, Box::new(handle_tick_fn), Box::new(draw_hud))
 }
 
 fn handle_tick_fn(ctx: &mut WeaponHandleTickContext) -> WeaponHandleTickResponse {
@@ -51,9 +52,22 @@ fn handle_tick_fn(ctx: &mut WeaponHandleTickContext) -> WeaponHandleTickResponse
         velocity_y,
         xform: ctx.owner_xform,
         shape,
-        color: Color::new(0.0, 1.6, 0.0, 1.0),
+        color: PROJ_COLOR,
     }.new(ctx.nro_ctx);
     
     response.new_room_objs.push(Rc::new(RefCell::new(proj)));
     response
+}
+
+fn draw_hud(ctx: &DrawWeaponHudContext) -> DrawWeaponHudResponse {
+    let background_color = if ctx.is_selected {
+        ColorRGBA32f::new(1.0, 1.0, 1.0, 0.2)
+    } else {
+        ColorRGBA32f::new(0.8, 0.8, 0.8, 0.1)
+    };
+    let background = draw_op_rect(background_color, ctx.x, ctx.y, ctx.scale_height * 3.0, ctx.scale_height);
+    let buffer_px = 0.1 * ctx.scale_height;
+    let inner_scale = 0.8 * ctx.scale_height;
+    let draw_op = draw_op_rect((&PROJ_COLOR).into(), ctx.x + buffer_px, ctx.y + buffer_px, inner_scale, inner_scale);
+    DrawWeaponHudResponse { draw_op: DrawOp::Group(DrawOpGroup::new(vec![background, draw_op].into_boxed_slice())) }
 }
