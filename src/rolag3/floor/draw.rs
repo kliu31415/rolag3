@@ -74,7 +74,7 @@ fn get_draw_hud_ops(ctx: DrawHudContext) -> DrawOpWithMetadata {
     }));
 
     // Weapons
-    ops.push(ctx.player.get_weapon_hud_draw_op(0.87 * ctx.window_width, 0.11 * ctx.window_height, 0.03 * ctx.window_height));
+    ops.push(ctx.player.get_weapon_hud_draw_op(0.87 * ctx.window_width, 0.11 * ctx.window_height, 0.03 * ctx.window_height, 0.11 * ctx.window_width));
 
     DrawOpWithMetadata::new(DrawContext::Z_HUD, DrawOp::Group(DrawOpGroup { ops: ops.into_boxed_slice() }))
 }

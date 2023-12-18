@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
-use crate::{rolag3::floor::{room_object::{projectile::projectile2::{NewProjectile2Args, Proj2Shape}, damage::DamageColor}, draw::Color}, gfx::{draw_op_util::{draw_op_circle, draw_op_rect}, renderer::{ColorRGBA32f, DrawOpGroup, DrawOp}}};
+use crate::{rolag3::floor::{room_object::{projectile::projectile2::{NewProjectile2Args, Proj2Shape}, damage::DamageColor}, draw::Color}, gfx::draw_op_util::draw_op_circle};
 
 use super::weapon_def::{Weapon, WeaponHandleTickContext, WeaponHandleTickResponse, DrawWeaponHudContext, DrawWeaponHudResponse};
 
@@ -62,15 +62,11 @@ fn handle_tick_fn(ctx: &mut WeaponHandleTickContext) -> WeaponHandleTickResponse
 
 
 fn draw_hud(ctx: &DrawWeaponHudContext) -> DrawWeaponHudResponse {
-    let background_color = if ctx.is_selected {
-        ColorRGBA32f::new(1.0, 1.0, 1.0, 0.2)
-    } else {
-        ColorRGBA32f::new(0.8, 0.8, 0.8, 0.1)
-    };
-    let background = draw_op_rect(background_color, ctx.x, ctx.y, ctx.scale_height * 3.0, ctx.scale_height);
-    let inner_scale = 0.8 * ctx.scale_height;
     let center = (ctx.x + ctx.scale_height / 2.0, ctx.y + ctx.scale_height / 2.0);
-    let radius = inner_scale / 2.0;
-    let draw_op = draw_op_circle((&PROJ_COLOR).into(), center, radius);
-    DrawWeaponHudResponse { draw_op: DrawOp::Group(DrawOpGroup::new(vec![background, draw_op].into_boxed_slice())) }
+    let radius = ctx.scale_height / 2.0;
+    let weapon_draw_op = draw_op_circle((&PROJ_COLOR).into(), center, radius);
+    DrawWeaponHudResponse { 
+        weapon_draw_op,
+        ammo_text: "ammo_text".to_owned(),
+     }
 }

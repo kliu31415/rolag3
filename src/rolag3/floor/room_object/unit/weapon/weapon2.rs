@@ -1,6 +1,6 @@
 use std::{rc::Rc, cell::RefCell};
 
-use crate::{rolag3::floor::{draw::Color, room_object::{room_object_def::RoomObject, projectile::projectile2::{Proj2Shape, NewProjectile2Args}, damage::DamageColor}}, geometry::shape::Point, gfx::{draw_op_util::draw_op_rect, renderer::{ColorRGBA32f, DrawOpGroup, DrawOp}}};
+use crate::{rolag3::floor::{draw::Color, room_object::{room_object_def::RoomObject, projectile::projectile2::{Proj2Shape, NewProjectile2Args}, damage::DamageColor}}, geometry::shape::Point, gfx::draw_op_util::draw_op_rect};
 
 use super::weapon_def::{Weapon, WeaponHandleTickResponse, WeaponHandleTickContext, DrawWeaponHudContext, DrawWeaponHudResponse};
 
@@ -88,14 +88,9 @@ fn spawn_projectile(ctx: &mut WeaponHandleTickContext, angle_adjust: f64) -> Rc<
 }
 
 fn draw_hud(ctx: &DrawWeaponHudContext) -> DrawWeaponHudResponse {
-    let background_color = if ctx.is_selected {
-        ColorRGBA32f::new(1.0, 1.0, 1.0, 0.2)
-    } else {
-        ColorRGBA32f::new(0.8, 0.8, 0.8, 0.1)
-    };
-    let background = draw_op_rect(background_color, ctx.x, ctx.y, ctx.scale_height * 3.0, ctx.scale_height);
-    let buffer_px = 0.1 * ctx.scale_height;
-    let inner_scale = 0.8 * ctx.scale_height;
-    let draw_op = draw_op_rect((&PROJ_COLOR).into(), ctx.x + buffer_px, ctx.y + buffer_px, inner_scale, inner_scale);
-    DrawWeaponHudResponse { draw_op: DrawOp::Group(DrawOpGroup::new(vec![background, draw_op].into_boxed_slice())) }
+    let weapon_draw_op = draw_op_rect((&PROJ_COLOR).into(), ctx.x, ctx.y, ctx.scale_height, ctx.scale_height);
+    DrawWeaponHudResponse { 
+        weapon_draw_op,
+        ammo_text: "∞".to_owned(),
+    }
 }

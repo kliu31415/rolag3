@@ -56,5 +56,6 @@ pub struct DrawWeaponHudContext {
 }
 
 pub struct DrawWeaponHudResponse {
-    pub draw_op: DrawOp,
+    pub weapon_draw_op: DrawOp,
+    pub ammo_text: String,
 }

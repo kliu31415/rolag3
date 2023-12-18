@@ -1,4 +1,4 @@
-use crate::{rolag3::floor::{run::{PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, draw::{DrawContext, Color}, room_object::{room_object_def::{RoomObject, Act1Context, FloorCoordinate, NewRoomObjectContext, RoomObjectMetadata, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse, RoomObjectType, RoQueryUnitInfoContext, RoQueryUnitInfoResponse, HcTileContext, HcTileEffect, HcTileResponse, RoomObjApplyOperationContext, RoomObjOperation}, tiles::room_connection::{Direction, RoomConnection}}, rofiz::{rofiz_object::{Hitbox, Transformation}, rofiz_state::RofizState}, room::RoomConnectionInfo}, geometry::shape::{Shape, Point}, gfx::renderer::{DrawOp, DrawOpGroup}};
+use crate::{rolag3::floor::{run::{PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, draw::{DrawContext, Color}, room_object::{room_object_def::{RoomObject, Act1Context, FloorCoordinate, NewRoomObjectContext, RoomObjectMetadata, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse, RoomObjectType, RoQueryUnitInfoContext, RoQueryUnitInfoResponse, HcTileContext, HcTileEffect, HcTileResponse, RoomObjApplyOperationContext, RoomObjOperation}, tiles::room_connection::{Direction, RoomConnection}}, rofiz::{rofiz_object::{Hitbox, Transformation}, rofiz_state::RofizState}, room::RoomConnectionInfo}, geometry::shape::{Shape, Point}, gfx::{renderer::{DrawOp, DrawOpGroup, ColorRGBA32f, DrawOpText, DrawTextPosition}, draw_op_util::draw_op_rect}};
 
 use super::{Unit, standard_unit_common::{StandardUnitCommon, Budeb, BudebMaxSpeed, TranslateMove, PolarForce}, weapon::{weapon_def::{Weapon, WeaponHandleTickContext, DrawWeaponHudContext}, weapon1::new_weapon1, weapon2::new_weapon2, weapon3::new_weapon3}, active_item::{active_item_def::{ActiveItem, ActiveItemHandleTickContext}, clear_enemy_projectiles::new_active_item_clear_projectiles, slow_enemy_time::new_active_item_slow_enemy_time}};
 
@@ -278,17 +278,50 @@ impl Player {
         self.max_mana
     }
 
-    pub fn get_weapon_hud_draw_op(&self, x: f32, y: f32, scale_height: f32) -> DrawOp {
+    pub fn get_weapon_hud_draw_op(&self, x: f32, y: f32, row_height: f32, row_width: f32) -> DrawOp {
         let mut ops = Vec::new();
         for (i, weapon) in self.weapons.iter().enumerate() {
+            let background_color = if self.weapon_idx == i{
+                ColorRGBA32f::new(1.0, 1.0, 1.0, 0.2)
+            } else {
+                ColorRGBA32f::new(1.0, 1.0, 1.0, 0.05)
+            };
+            let x = x;
+            let separator_fraction = 0.1;
+            let separator_height = separator_fraction * row_height;
+            let y = y + (i as f32) * (1.0 + separator_fraction) * row_height;
+            let separator_y = y - separator_height;
+            let background = draw_op_rect(background_color, x, y, row_width, row_height);
+            let buffer_px = 0.15 * row_height;
+            let inner_scale = row_height - 2.0 * buffer_px;
+
             let dwh_ctx = DrawWeaponHudContext { 
-                scale_height,
-                x,
-                y: y + (i as f32) * scale_height,
+                scale_height: inner_scale,
+                x: x + buffer_px,
+                y: y + buffer_px,
                 is_selected: self.weapon_idx == i,
             };
             let r = (weapon.draw_hud_fn)(&dwh_ctx);
-            ops.push(r.draw_op);
+            let mut this_row_ops = vec![background, r.weapon_draw_op];
+            if i > 0 {
+                let separator = draw_op_rect(ColorRGBA32f::new(1.0, 1.0, 1.0, 0.5), x, separator_y, row_width, separator_height);
+                this_row_ops.push(separator);
+            }
+
+            let ammo_text_color = if self.weapon_idx == i {
+                ColorRGBA32f::new(0.0, 0.0, 0.0, 1.0)
+            } else {
+                ColorRGBA32f::new(1.0, 1.0, 1.0, 1.0)
+            };
+            this_row_ops.push(DrawOp::Text(DrawOpText { 
+                text: r.ammo_text.clone(), 
+                color: ammo_text_color,
+                x: x + row_height, 
+                y, 
+                font_size: row_height,
+                position: DrawTextPosition::TopLeft,
+            }));
+            ops.push(DrawOp::Group(DrawOpGroup { ops: this_row_ops.into_boxed_slice() }));
         }
         DrawOp::Group(DrawOpGroup { ops: ops.into_boxed_slice() })
     }
