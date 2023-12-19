@@ -14,13 +14,12 @@ pub struct Room {
     pub tiles: Vec<Vec<RoomTile>>,
     pub room_objects: RoomObjectCollection,
     pub rofiz: RofizState,
-    pub room_object_id_counter: RoomObjectId,
     pub room_time: f64,
     pub room_cleared_at_time: Option<f64>,
     pub minimap_texture: Option<TmdRef>,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum RoomTile {
     _NotInRoom,
     Ground,
@@ -39,11 +38,7 @@ pub struct RoomConnectionInfo {
 }
 
 impl Room {
-    // ids [0..100] are reserved for now
-    const ROOM_OBJECT_ID_COUNTER_BEGIN: RoomObjectId = 100;
-    pub const PLAYER_ROOM_OBJECT_ID: RoomObjectId = 1;
-
-    pub fn finalize_with_connections(&mut self, renderer: &mut dyn Renderer, connections: Vec<RoomConnectionInfo>, rng: &mut ThreadRng) {
+    pub fn finalize_with_connections(&mut self, renderer: &mut dyn Renderer, connections: Vec<RoomConnectionInfo>, rng: &mut ThreadRng, room_object_id_counter: &mut RoomObjectId) {
         for c in connections.iter() {
             for (x, y) in RoomConnection::get_occupied_coords(c.x, c.y, c.direction) {
                 self.room_objects.remove_wall_at(x, y);
@@ -57,18 +52,18 @@ impl Room {
         }
         self.minimap_texture = Some(Self::make_minimap_texture(renderer, &self.tiles));
 
-        let mut new_floor_object_ctx = NewRoomObjectContext::new(&mut self.rofiz, &mut self.room_object_id_counter, 0.0, rng);
+        let mut new_floor_object_ctx = NewRoomObjectContext::new(&mut self.rofiz, room_object_id_counter, 0.0, rng);
         for c in connections {
             let connection = RoomConnection::new(&mut new_floor_object_ctx, c);
             self.room_objects.add(Rc::new(RefCell::new(connection)));
         }
+        self.room_objects.validate_start_room();
         self.rofiz.finalize_start_floor();
     }
 
-    pub fn new_test_room1(rng: &mut ThreadRng) -> Self {
+    pub fn new_test_room1(rng: &mut ThreadRng, room_object_id_counter: &mut RoomObjectId) -> Self {
         let mut rofiz = RofizState::new();
-        let mut room_object_id_counter = Self::ROOM_OBJECT_ID_COUNTER_BEGIN;
-        let mut new_floor_object_ctx = NewRoomObjectContext::new(&mut rofiz, &mut room_object_id_counter, 0.0, rng);
+        let mut new_floor_object_ctx = NewRoomObjectContext::new(&mut rofiz, room_object_id_counter, 0.0, rng);
         let mut room_objects = RoomObjectCollection::new();
 
         let width = 30;
@@ -85,7 +80,7 @@ impl Room {
             room_objects.add(Rc::new(RefCell::new(wall)));
         }
         
-        for i in 1..30 {
+        for i in 1..29 {
             let wall = BasicWall::new(&mut new_floor_object_ctx, 0, i, Color::new(0.1, 0.2, 0.3, 1.0));
             tiles[0][i as usize] = RoomTile::Wall;
             room_objects.add(Rc::new(RefCell::new(wall)));
@@ -94,7 +89,7 @@ impl Room {
             room_objects.add(Rc::new(RefCell::new(wall)));
         }
 
-        let ground = new_ground1(&mut new_floor_object_ctx, Color::new(0.02, 0.0, 0.0, 1.0), 1, 1, 28, 29);
+        let ground = new_ground1(&mut new_floor_object_ctx, Color::new(0.02, 0.0, 0.0, 1.0), 1, 1, 28, 28);
         room_objects.add(Rc::new(RefCell::new(ground)));
 
         for i in 1..5 {
@@ -134,17 +129,15 @@ impl Room {
             tiles,
             room_objects,
             rofiz,
-            room_object_id_counter,
             room_time: 0.0,
             room_cleared_at_time: None,
             minimap_texture: None,
         }
     }
 
-    pub fn new_test_room2(rng: &mut ThreadRng) -> Self {
+    pub fn new_test_room2(rng: &mut ThreadRng, room_object_id_counter: &mut RoomObjectId) -> Self {
         let mut rofiz = RofizState::new();
-        let mut room_object_id_counter = Self::ROOM_OBJECT_ID_COUNTER_BEGIN;
-        let mut new_floor_object_ctx = NewRoomObjectContext::new(&mut rofiz, &mut room_object_id_counter, 0.0, rng);
+        let mut new_floor_object_ctx = NewRoomObjectContext::new(&mut rofiz, room_object_id_counter, 0.0, rng);
         let mut room_objects = RoomObjectCollection::new();
 
         let width = 30;
@@ -161,7 +154,7 @@ impl Room {
             room_objects.add(Rc::new(RefCell::new(wall)));
         }
         
-        for i in 1..30 {
+        for i in 1..29 {
             let wall = BasicWall::new(&mut new_floor_object_ctx, 0, i, Color::new(0.1, 0.2, 0.3, 1.0));
             tiles[0][i as usize] = RoomTile::Wall;
             room_objects.add(Rc::new(RefCell::new(wall)));
@@ -185,7 +178,6 @@ impl Room {
             tiles,
             room_objects,
             rofiz,
-            room_object_id_counter,
             room_time: 0.0,
             room_cleared_at_time: None,
             minimap_texture: None,

@@ -72,12 +72,23 @@ struct RunFloorTickContext<'a> {
 }
 
 fn run_floor_tick(ctx: RunFloorTickContext) {
-    let (player, room) = ctx.floor.get_player_and_current_room();
+    let (player, room, id_counter) = ctx.floor.get_player_and_current_room_and_id_counter();
 
     {
         room.room_time += ctx.tick_length;
         room.rofiz.start_new_tick();
-        let mut act1_context = Act1Context::new(ctx.player_input, &mut room.rofiz, &mut room.room_object_id_counter,  ctx.tick_length, room.room_time, ctx.rng, room.room_cleared_at_time);
+        let mut act1_context = Act1Context::new(
+            ctx.player_input, 
+            &mut room.rofiz, 
+            id_counter,  
+            ctx.tick_length, 
+            room.room_time, 
+            ctx.rng, 
+            room.room_cleared_at_time,
+            room.width,
+            room.height,
+            &room.tiles,
+        );
         room.room_objects.act1(&mut act1_context);
         let collisions = room.rofiz.move_objects_and_find_collisions();
         let ids_in_collisions = collisions.iter().flat_map(|x| [x.room_obj_id1, x.room_obj_id2]).collect();

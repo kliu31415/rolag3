@@ -1,6 +1,6 @@
 use crate::{gfx::{renderer::{ColorRGBA32f, ViewSpaceCoordinate, DrawOpWithMetadata, DrawOpTriFan, DrawOp, ColoredTriVertex, DrawOpCCS, DrawOpGroup, Rect, DrawOpText, DrawTextPosition, DrawOpTexture2}, draw_op_util::draw_op_rect}, geometry::shape::Point};
 
-use super::{rofiz::rofiz_state::RofizState, floor_def::Floor, room_object::unit::player::Player};
+use super::{rofiz::rofiz_state::RofizState, floor_def::Floor, room_object::unit::player::Player, room::RoomTile};
 
 pub struct DrawFloorContext<'a> {
     pub floor: &'a mut Floor,
@@ -25,6 +25,9 @@ pub fn get_draw_floor_ops(ctx: DrawFloorContext) -> Vec<DrawOpWithMetadata> {
             rofiz: &room.rofiz,
             room_time: room.room_time,
             room_cleared_at_time: room.room_cleared_at_time,
+            room_width: room.width,
+            room_height: room.height,
+            room_tiles: &room.tiles,
         };
         room.room_objects.draw(&mut draw_context);
         draw_ops.append(&mut draw_context.draw_ops);
@@ -65,9 +68,9 @@ fn get_draw_tab_overlay_ops(ctx: DrawTabOverlayContext) -> DrawOp {
     ops.push(draw_op_rect(ColorRGBA32f::new(1.0, 1.0, 1.0, 0.2), x, y, w, h));
     for (id, room) in ctx.floor.rooms.iter() {
         let color_mod = if *id == ctx.floor.player_room_id {
-            ColorRGBA32f::new(1.0, 1.0, 1.0, 1.0)
+            ColorRGBA32f::new(1.0, 1.0, 1.0, 0.7)
         } else {
-            ColorRGBA32f::new(1.0, 1.0, 1.0, 0.5)
+            ColorRGBA32f::new(1.0, 1.0, 1.0, 0.2)
         };
         let center_x = 30.0;
         let center_y = 15.0;
@@ -189,6 +192,9 @@ pub struct DrawContext<'a> {
     rofiz: &'a RofizState,
     room_time: f64,
     room_cleared_at_time: Option<f64>,
+    room_width: u32,
+    room_height: u32,
+    room_tiles: &'a Vec<Vec<RoomTile>>,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -225,6 +231,7 @@ impl DrawContext<'_> {
     pub const Z_TILE: f64 = 10.0;
     pub const Z_ROOM_CONNECTION_TILE: f64 = 11.0;
     pub const Z_WALL: f64 = 20.0;
+    pub const Z_WALL_BORDERS: f64 = 21.0;
     pub const Z_UNIT_PLAYER: f64 = 29.0;
     pub const Z_UNIT: f64 = 30.0;
     pub const Z_PROJECTILE: f64 = 40.0;
@@ -246,6 +253,17 @@ impl DrawContext<'_> {
             .map(|c| ColoredTriVertex {
                 color: Self::color_to_rdr(&color),
                 vertex: ViewSpaceCoordinate{x: self.x_to_vsc(c.x), y: self.y_to_vsc(c.y)}
+            })
+            .collect();
+        DrawOp::TriFan(DrawOpTriFan{vertexes: vs_coords})
+    }
+
+    pub fn do_tri_fan_multicolor(&self, vertexes: Box<[(Point, Color)]>) -> DrawOp {
+        let vs_coords = vertexes
+            .iter()
+            .map(|c| ColoredTriVertex {
+                color: Self::color_to_rdr(&c.1),
+                vertex: ViewSpaceCoordinate{x: self.x_to_vsc(c.0.x), y: self.y_to_vsc(c.0.y)}
             })
             .collect();
         DrawOp::TriFan(DrawOpTriFan{vertexes: vs_coords})
@@ -436,6 +454,18 @@ impl DrawContext<'_> {
 
     pub fn get_room_cleared_at_time(&self) -> Option<f64> {
         self.room_cleared_at_time
+    }
+
+    pub fn get_room_width(&self) -> u32 {
+        self.room_width
+    }
+
+    pub fn get_room_height(&self) -> u32 {
+        self.room_height
+    }
+
+    pub fn get_room_tiles(&self) -> &Vec<Vec<RoomTile>> {
+        self.room_tiles
     }
 
     fn x_to_vsc(&self, x: f32) -> f32{

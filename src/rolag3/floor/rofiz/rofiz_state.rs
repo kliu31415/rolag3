@@ -259,7 +259,7 @@ impl RofizState {
                     if let Some(ref bw) = self.has_wall_at_coordinate[x][y] {
                         let bw = bw.borrow();
                         if nsu_i.overlaps_ro_wall(&bw) {
-                            collisions.push(RofizCollision::new(nsu_i.room_object_id, bw.id));
+                            collisions.push(RofizCollision::new(nsu_i.room_object_id, bw.room_object_id));
                             // keep moving the unit back while both of the following hold:
                             // 1. the unit is moved back to a different position
                             // 2. the different position overlaps with a wall.

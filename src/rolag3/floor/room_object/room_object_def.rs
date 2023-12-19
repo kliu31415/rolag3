@@ -2,7 +2,7 @@ use std::{rc::{Rc, Weak}, cell::RefCell, collections::{HashSet, HashMap}, ops::R
 
 use rand::{rngs::ThreadRng, Rng};
 
-use crate::rolag3::floor::{draw::DrawContext, run::PlayerInput, rofiz::{rofiz_state::{RofizState, RofizObjectRef}, rofiz_object::Hitbox}, room::{Room, RoomConnectionInfo}};
+use crate::rolag3::floor::{draw::DrawContext, run::PlayerInput, rofiz::{rofiz_state::{RofizState, RofizObjectRef}, rofiz_object::Hitbox}, room::{RoomConnectionInfo, RoomTile}, floor_def::Floor};
 
 use super::{damage::DamageColor, unit::standard_unit_common::Budeb};
 
@@ -48,8 +48,8 @@ pub trait RoomObject {
     fn blocks_room_clear(&self) -> bool {
         false
     }
-    fn is_wall_at(&self, _x: u32, _y: u32) -> bool {
-        false
+    fn get_as_wall_location(&self) -> Option<(u32, u32)> {
+        None
     }
 
     fn handle_query_unit_info(&self, _ctx: &RoQueryUnitInfoContext) -> RoQueryUnitInfoResponse {
@@ -129,7 +129,7 @@ impl RoomObjectMetadata {
 
     pub fn new_for_player() ->Self {
         Self {
-            id: Room::PLAYER_ROOM_OBJECT_ID,
+            id: Floor::PLAYER_ROOM_OBJECT_ID,
         }
     }
 
@@ -197,10 +197,24 @@ impl RoomObjectCollection {
 
     pub fn remove_wall_at(&mut self, x: u32, y: u32) {
         let old_len = self.ro_wall.len();
-        self.ro_wall.retain(|ro| !ro.borrow().is_wall_at(x, y));
+        self.ro_wall.retain(|ro| {
+            let wall_loc = ro.borrow().get_as_wall_location();
+            match wall_loc {
+                Some((wx, wy)) => !(x==wx && y==wy),
+                None => true,
+            }
+        });
         let new_len = self.ro_wall.len();
         assert!(old_len == new_len + 1, "Tried to remove wall at (x, y) = ({}, {}) from RoomObjectCollection. \
             Expected to remove one object. old_len={}, new_len={}", x, y, old_len, new_len);
+    }
+
+    pub fn validate_start_room(&self) {
+        let mut unique_locations = HashSet::new();
+        self.ro_wall.iter().filter_map(|w| w.borrow().get_as_wall_location()).for_each( |loc| {
+            assert!(!unique_locations.contains(&loc), "multiple walls detected at location ({}, {})", loc.0, loc.1);
+            unique_locations.insert(loc);
+        });
     }
 
     pub fn act1(&mut self, ctx: &mut Act1Context) {
@@ -331,7 +345,11 @@ impl RoomObjectCollection {
     }
 
     pub fn validate(&self) {
+        let mut unique_ids = HashSet::new();
         for ro in self.iter() {
+            let id = ro.borrow().get_metadata().get_id();
+            assert!(!unique_ids.contains(&id), "room contains more than one object with id={}", id);
+            unique_ids.insert(id);
             let ref_count = Rc::strong_count(ro);
             if ro.borrow().is_player() {
                 if ref_count != 3 {
@@ -430,6 +448,9 @@ pub struct Act1Context<'a> {
     room_time: f64,
     rng: &'a mut ThreadRng,
     room_cleared_at_time: Option<f64>,
+    _room_width: u32,
+    _room_height: u32,
+    _room_tiles: &'a Vec<Vec<RoomTile>>,
 }
 
 impl<'a> Act1Context<'a> {
@@ -441,6 +462,9 @@ impl<'a> Act1Context<'a> {
         room_time: f64,
         rng: &'a mut ThreadRng,
         room_cleared_at_time: Option<f64>,
+        room_width: u32,
+        room_height: u32,
+        room_tiles: &'a Vec<Vec<RoomTile>>,
     ) -> Self {
         Self {
             player_input,
@@ -451,6 +475,9 @@ impl<'a> Act1Context<'a> {
             room_time,
             rng,
             room_cleared_at_time,
+            _room_width: room_width,
+            _room_height: room_height,
+            _room_tiles: room_tiles,
         }
     }
 
@@ -481,6 +508,18 @@ impl<'a> Act1Context<'a> {
 
     pub fn get_room_cleared_at_time(&self) -> Option<f64> {
         self.room_cleared_at_time
+    }
+
+    pub fn _get_room_width(&self) -> u32 {
+        self._room_width
+    }
+
+    pub fn _get_room_height(&self) -> u32 {
+        self._room_height
+    }
+
+    pub fn _get_room_tiles(&self) -> &Vec<Vec<RoomTile>> {
+        self._room_tiles
     }
 }
 

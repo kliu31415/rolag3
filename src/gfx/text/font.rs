@@ -11,6 +11,10 @@ struct CosmicFontRasterizer {
 
 impl FontRasterizer for CosmicFontRasterizer {
     fn rasterize_text_line(&mut self, text: &str, font_size: f32) -> Vec<Vec<u8>> {
+        if font_size <= 0.0 {
+            // cosmic text panics if the font size is 0, so we might as well check beforehand
+            panic!("rasterize_text_line(text={}) called with nonpositive font_size({})", text, font_size);
+        }
         let metrics = Metrics::new(font_size, font_size);
         let mut buffer = Buffer::new(&mut self.font_system, metrics);
         let mut buffer = buffer.borrow_with(&mut self.font_system);
