@@ -3,7 +3,7 @@ use std::collections::VecDeque;
 use rand::{rngs::ThreadRng, thread_rng};
 use winit::{event::{Event, WindowEvent, KeyEvent, ElementState, MouseButton}, event_loop::EventLoopWindowTarget, keyboard::{PhysicalKey, KeyCode}};
 
-use crate::gfx::{self, window::{Window, EventHandler}, renderer::{ColorRGBA32f, DrawTextPosition, DrawOpCCS, DrawOpText, DrawOpWithMetadata, DrawOp}, input::PollableInput};
+use crate::gfx::{self, window::{Window, EventHandler}, renderer::{ColorRGBA32f, DrawTextPosition, DrawOpCCS, DrawOpText, DrawOpWithMetadata, DrawOp, Renderer}, input::PollableInput};
 
 use super::floor::{draw::{DrawFloorContext, get_draw_floor_ops}, run::{RunFloorContext, run_floor_frame, PlayerInput, PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, floor_def::Floor};
 
@@ -12,7 +12,7 @@ pub fn run() {
     std::env::set_var("RUST_LOG", "warn");
     env_logger::init();
     let mut window = gfx::window::make_window_and_renderer("Rolag3", 640, 360, 2560, 1440);
-    let mut event_handler = Rolag3EventHandler::new_test1();
+    let mut event_handler = Rolag3EventHandler::new_test1(window.get_renderer());
     window.run_event_loop(&mut event_handler);
     log::info!("exiting");
 }
@@ -77,9 +77,9 @@ const PLAYER_ACTIVE_ITEM1: PhysicalKey = PhysicalKey::Code(KeyCode::Space);
 const PLAYER_TAB_OVERLAY: PhysicalKey = PhysicalKey::Code(KeyCode::Tab);
 
 impl Rolag3EventHandler {
-    fn new_test1() -> Rolag3EventHandler {
+    fn new_test1(renderer: &mut dyn Renderer) -> Rolag3EventHandler {
         let mut rng = thread_rng();
-        let floor = Floor::new_test1(&mut rng);
+        let floor = Floor::new_test1(renderer, &mut rng);
         Rolag3EventHandler { 
             frame_timestamps: VecDeque::new(),
             floor,

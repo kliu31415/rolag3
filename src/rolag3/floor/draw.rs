@@ -1,4 +1,4 @@
-use crate::{gfx::{renderer::{ColorRGBA32f, ViewSpaceCoordinate, DrawOpWithMetadata, DrawOpTriFan, DrawOp, ColoredTriVertex, DrawOpCCS, DrawOpGroup, Rect, DrawOpText, DrawTextPosition}, draw_op_util::draw_op_rect}, geometry::shape::Point};
+use crate::{gfx::{renderer::{ColorRGBA32f, ViewSpaceCoordinate, DrawOpWithMetadata, DrawOpTriFan, DrawOp, ColoredTriVertex, DrawOpCCS, DrawOpGroup, Rect, DrawOpText, DrawTextPosition, DrawOpTexture2}, draw_op_util::draw_op_rect}, geometry::shape::Point};
 
 use super::{rofiz::rofiz_state::RofizState, floor_def::Floor, room_object::unit::player::Player};
 
@@ -12,37 +12,45 @@ pub struct DrawFloorContext<'a> {
 
 pub fn get_draw_floor_ops(ctx: DrawFloorContext) -> Vec<DrawOpWithMetadata> {
     let player_position = ctx.floor.get_player_center();
-    let (player, room) = ctx.floor.get_player_and_current_room();
-    let mut draw_context = DrawContext {
-        draw_ops: Vec::new(),
-        camera_x: (player_position.x - ctx.window_width / 2.0 / ctx.pixels_per_tile) as f32,
-        camera_y: (player_position.y - ctx.window_height / 2.0 / ctx.pixels_per_tile) as f32,
-        pixels_per_tile: ctx.pixels_per_tile as f32,
-        rofiz: &room.rofiz,
-        room_time: room.room_time,
-        room_cleared_at_time: room.room_cleared_at_time,
-    };
-    room.room_objects.draw(&mut draw_context);
+    
+    let mut draw_ops = Vec::new();
 
-    let draw_hud_context = DrawHudContext {
-        window_width: ctx.window_width as f32,
-        window_height: ctx.window_height as f32,
-        player: &player.borrow(),
-    };
-    draw_context.draw_ops.push(DrawOpWithMetadata::new(DrawContext::Z_HUD, get_draw_hud_ops(draw_hud_context)));
+    {
+        let (player, room) = ctx.floor.get_player_and_current_room();
+        let mut draw_context = DrawContext {
+            draw_ops: Vec::new(),
+            camera_x: (player_position.x - ctx.window_width / 2.0 / ctx.pixels_per_tile) as f32,
+            camera_y: (player_position.y - ctx.window_height / 2.0 / ctx.pixels_per_tile) as f32,
+            pixels_per_tile: ctx.pixels_per_tile as f32,
+            rofiz: &room.rofiz,
+            room_time: room.room_time,
+            room_cleared_at_time: room.room_cleared_at_time,
+        };
+        room.room_objects.draw(&mut draw_context);
+        draw_ops.append(&mut draw_context.draw_ops);
+
+        let draw_hud_context = DrawHudContext {
+            window_width: ctx.window_width as f32,
+            window_height: ctx.window_height as f32,
+            player: &player.borrow(),
+        };
+        draw_ops.push(DrawOpWithMetadata::new(DrawContext::Z_HUD, get_draw_hud_ops(draw_hud_context)));
+    }
 
     if ctx.show_tab_overlay {
         let draw_tab_overlay_context = DrawTabOverlayContext {
+            floor: &ctx.floor,
             window_width: ctx.window_width as f32,
             window_height: ctx.window_height as f32,
         };
-        draw_context.draw_ops.push(DrawOpWithMetadata::new(DrawContext::Z_TAB_OVERLAY,get_draw_tab_overlay_ops(draw_tab_overlay_context)));
+        draw_ops.push(DrawOpWithMetadata::new(DrawContext::Z_TAB_OVERLAY,get_draw_tab_overlay_ops(draw_tab_overlay_context)));
     }
 
-    draw_context.draw_ops
+    draw_ops
 }
 
-struct DrawTabOverlayContext {
+struct DrawTabOverlayContext<'a> {
+    floor: &'a Floor,
     window_width: f32,
     window_height: f32,
 }
@@ -55,6 +63,27 @@ fn get_draw_tab_overlay_ops(ctx: DrawTabOverlayContext) -> DrawOp {
     let h = ctx.window_height * 0.8;
     ops.push(draw_op_rect(ColorRGBA32f::new(0.0, 0.0, 0.0, 0.2), x, y, w, h));
     ops.push(draw_op_rect(ColorRGBA32f::new(1.0, 1.0, 1.0, 0.2), x, y, w, h));
+    for (id, room) in ctx.floor.rooms.iter() {
+        let color_mod = if *id == ctx.floor.player_room_id {
+            ColorRGBA32f::new(1.0, 1.0, 1.0, 1.0)
+        } else {
+            ColorRGBA32f::new(1.0, 1.0, 1.0, 0.5)
+        };
+        let center_x = 30.0;
+        let center_y = 15.0;
+        let pixels_per_tile = 5.0;
+        ops.push(DrawOp::Texture2(DrawOpTexture2 { 
+            texture: room.minimap_texture.clone().unwrap(), 
+            color_mod, 
+            src_rect: None, 
+            dst_rect: Rect::new(
+                (room.upper_left_x as f32 - center_x) * pixels_per_tile + ctx.window_width / 2.0, 
+                (room.upper_left_y as f32 - center_y) * pixels_per_tile + ctx.window_height / 2.0, 
+                (room.width as f32) * pixels_per_tile, 
+                (room.height as f32) * pixels_per_tile,
+            ),
+        }));
+    }
     DrawOp::Group(DrawOpGroup { ops: ops.into_boxed_slice() })
 }
 

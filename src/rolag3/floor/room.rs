@@ -2,6 +2,8 @@ use std::{rc::Rc, cell::RefCell};
 
 use rand::rngs::ThreadRng;
 
+use crate::gfx::renderer::{TmdRef, Renderer};
+
 use super::{room_object::{unit::{enemy2::new_enemy2, enemy3::new_enemy3, enemy1::new_enemy1, boss1::new_boss1, enemy4::new_enemy4, enemy5::new_enemy5}, room_object_def::{NewRoomObjectContext, RoomObjectCollection, RoomObjectId}, wall::basic_wall::BasicWall, tiles::{room_connection::{RoomConnection, Direction}, black_hole::new_black_hole, accel_tile::new_accel_tile}, damage::DamageColor, cosmetic::ground1::new_ground1}, draw::Color, rofiz::rofiz_state::RofizState, floor_def::RoomId};
 
 pub struct Room {
@@ -15,6 +17,7 @@ pub struct Room {
     pub room_object_id_counter: RoomObjectId,
     pub room_time: f64,
     pub room_cleared_at_time: Option<f64>,
+    pub minimap_texture: Option<TmdRef>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -22,6 +25,7 @@ pub enum RoomTile {
     _NotInRoom,
     Ground,
     Wall,
+    Connection,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -39,7 +43,7 @@ impl Room {
     const ROOM_OBJECT_ID_COUNTER_BEGIN: RoomObjectId = 100;
     pub const PLAYER_ROOM_OBJECT_ID: RoomObjectId = 1;
 
-    pub fn finalize_with_connections(&mut self, connections: Vec<RoomConnectionInfo>, rng: &mut ThreadRng) {
+    pub fn finalize_with_connections(&mut self, renderer: &mut dyn Renderer, connections: Vec<RoomConnectionInfo>, rng: &mut ThreadRng) {
         for c in connections.iter() {
             for (x, y) in RoomConnection::get_occupied_coords(c.x, c.y, c.direction) {
                 self.room_objects.remove_wall_at(x, y);
@@ -48,8 +52,10 @@ impl Room {
                 // can never be deleted after the floor starts. If we don't explicitly remove the wall, it'll remain
                 // in Rofiz with Rc=1, which causes a panic.
                 self.rofiz.remove_wall_at(x, y);
+                self.tiles[x as usize][y as usize] = RoomTile::Connection;
             }
         }
+        self.minimap_texture = Some(Self::make_minimap_texture(renderer, &self.tiles));
 
         let mut new_floor_object_ctx = NewRoomObjectContext::new(&mut self.rofiz, &mut self.room_object_id_counter, 0.0, rng);
         for c in connections {
@@ -131,6 +137,7 @@ impl Room {
             room_object_id_counter,
             room_time: 0.0,
             room_cleared_at_time: None,
+            minimap_texture: None,
         }
     }
 
@@ -181,6 +188,32 @@ impl Room {
             room_object_id_counter,
             room_time: 0.0,
             room_cleared_at_time: None,
+            minimap_texture: None,
         }
+    }
+
+    fn make_minimap_texture(renderer: &mut dyn Renderer, tiles: &Vec<Vec<RoomTile>>) -> TmdRef {
+        if tiles.is_empty() {
+            panic!("Room has no tiles. Cannot make texture");
+        }
+        let width = tiles.len();
+        let height = tiles[0].len();
+        let mut bytes = vec![0u8; 4 * width * height];
+        for x in 0..width {
+            for y in 0..height {
+                let color = match tiles[x][y] {
+                    RoomTile::_NotInRoom => (0, 0, 0, 0), //completely transparent
+                    RoomTile::Ground => (255, 255, 255, 255),
+                    RoomTile::Wall => (25, 25, 25, 255),
+                    RoomTile::Connection => (140, 70, 0, 255),
+                };
+                let offset = 4*(y*width + x);
+                bytes[offset] = color.0;
+                bytes[offset + 1] = color.1;
+                bytes[offset + 2] = color.2;
+                bytes[offset + 3] = color.3;
+            }
+        }
+        renderer.bytes_to_texture_rgba8888("room minimap texture", bytes.as_ref(), width as u32, height as u32)
     }
 }
