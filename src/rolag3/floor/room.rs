@@ -5,11 +5,23 @@ use rand::rngs::ThreadRng;
 use super::{room_object::{unit::{enemy2::new_enemy2, enemy3::new_enemy3, enemy1::new_enemy1, boss1::new_boss1, enemy4::new_enemy4, enemy5::new_enemy5}, room_object_def::{NewRoomObjectContext, RoomObjectCollection, RoomObjectId}, wall::basic_wall::BasicWall, tiles::{room_connection::{RoomConnection, Direction}, black_hole::new_black_hole, accel_tile::new_accel_tile}, damage::DamageColor, cosmetic::ground1::new_ground1}, draw::Color, rofiz::rofiz_state::RofizState, floor_def::RoomId};
 
 pub struct Room {
+    pub upper_left_x: u32,
+    pub upper_left_y: u32,
+    pub width: u32,
+    pub height: u32,
+    pub tiles: Vec<Vec<RoomTile>>,
     pub room_objects: RoomObjectCollection,
     pub rofiz: RofizState,
     pub room_object_id_counter: RoomObjectId,
     pub room_time: f64,
     pub room_cleared_at_time: Option<f64>,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum RoomTile {
+    _NotInRoom,
+    Ground,
+    Wall,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -53,17 +65,26 @@ impl Room {
         let mut new_floor_object_ctx = NewRoomObjectContext::new(&mut rofiz, &mut room_object_id_counter, 0.0, rng);
         let mut room_objects = RoomObjectCollection::new();
 
+        let width = 30;
+        let height = 30;
+
+        let mut tiles = vec![vec![RoomTile::Ground; height as usize]; width as usize];
+
         for i in 0..30 {
             let wall = BasicWall::new(&mut new_floor_object_ctx, i, 0, Color::new(0.1, 0.2, 0.3, 1.0));
+            tiles[i as usize][0] = RoomTile::Wall;
             room_objects.add(Rc::new(RefCell::new(wall)));
-            let wall = BasicWall::new(&mut new_floor_object_ctx, i, 30, Color::new(0.1, 0.2, 0.3, 1.0));
+            let wall = BasicWall::new(&mut new_floor_object_ctx, i, 29, Color::new(0.1, 0.2, 0.3, 1.0));
+            tiles[i as usize][29] = RoomTile::Wall;
             room_objects.add(Rc::new(RefCell::new(wall)));
         }
         
         for i in 1..30 {
             let wall = BasicWall::new(&mut new_floor_object_ctx, 0, i, Color::new(0.1, 0.2, 0.3, 1.0));
+            tiles[0][i as usize] = RoomTile::Wall;
             room_objects.add(Rc::new(RefCell::new(wall)));
             let wall = BasicWall::new(&mut new_floor_object_ctx, 29, i, Color::new(0.1, 0.2, 0.3, 1.0));
+            tiles[29][i as usize] = RoomTile::Wall;
             room_objects.add(Rc::new(RefCell::new(wall)));
         }
 
@@ -100,6 +121,11 @@ impl Room {
         room_objects.add(Rc::new(RefCell::new(accel_tile)));
 
         Self {
+            upper_left_x: 0,
+            upper_left_y: 0,
+            width,
+            height,
+            tiles,
             room_objects,
             rofiz,
             room_object_id_counter,
@@ -114,17 +140,26 @@ impl Room {
         let mut new_floor_object_ctx = NewRoomObjectContext::new(&mut rofiz, &mut room_object_id_counter, 0.0, rng);
         let mut room_objects = RoomObjectCollection::new();
 
+        let width = 30;
+        let height = 30;
+
+        let mut tiles = vec![vec![RoomTile::Ground; height as usize]; width as usize];
+
         for i in 0..30 {
             let wall = BasicWall::new(&mut new_floor_object_ctx, i, 0, Color::new(0.1, 0.2, 0.3, 1.0));
+            tiles[i as usize][0] = RoomTile::Wall;
             room_objects.add(Rc::new(RefCell::new(wall)));
-            let wall = BasicWall::new(&mut new_floor_object_ctx, i, 30, Color::new(0.1, 0.2, 0.3, 1.0));
+            let wall = BasicWall::new(&mut new_floor_object_ctx, i, 29, Color::new(0.1, 0.2, 0.3, 1.0));
+            tiles[i as usize][29] = RoomTile::Wall;
             room_objects.add(Rc::new(RefCell::new(wall)));
         }
         
         for i in 1..30 {
             let wall = BasicWall::new(&mut new_floor_object_ctx, 0, i, Color::new(0.1, 0.2, 0.3, 1.0));
+            tiles[0][i as usize] = RoomTile::Wall;
             room_objects.add(Rc::new(RefCell::new(wall)));
             let wall = BasicWall::new(&mut new_floor_object_ctx, 29, i, Color::new(0.1, 0.2, 0.3, 1.0));
+            tiles[29][i as usize] = RoomTile::Wall;
             room_objects.add(Rc::new(RefCell::new(wall)));
         }
 
@@ -136,6 +171,11 @@ impl Room {
         }
 
         Self {
+            upper_left_x: 30,
+            upper_left_y: 0,
+            width,
+            height,
+            tiles,
             room_objects,
             rofiz,
             room_object_id_counter,

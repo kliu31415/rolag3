@@ -74,6 +74,7 @@ const PLAYER_MOVE_LEFT: PhysicalKey = PhysicalKey::Code(KeyCode::ArrowLeft);
 const PLAYER_MOVE_RIGHT: PhysicalKey = PhysicalKey::Code(KeyCode::ArrowRight);
 const PLAYER_TEST_INPUT1: PhysicalKey = PhysicalKey::Code(KeyCode::Enter);
 const PLAYER_ACTIVE_ITEM1: PhysicalKey = PhysicalKey::Code(KeyCode::Space);
+const PLAYER_TAB_OVERLAY: PhysicalKey = PhysicalKey::Code(KeyCode::Tab);
 
 impl Rolag3EventHandler {
     fn new_test1() -> Rolag3EventHandler {
@@ -164,11 +165,13 @@ impl Rolag3EventHandler {
         run_floor_frame(run_floor_ctx);
         self.prev_mouse_xy = Some((mouse_x, mouse_y));
 
+        let show_tab_overlay = input_state.is_key_down(&PLAYER_TAB_OVERLAY);
         let draw_floor_ctx = DrawFloorContext {
             floor: &mut self.floor,
             window_width,
             window_height,
-            pixels_per_tile
+            pixels_per_tile,
+            show_tab_overlay,
         };
         get_draw_floor_ops(draw_floor_ctx).into_iter().for_each(|x| window.get_renderer().draw(x));
 

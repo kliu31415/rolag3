@@ -7,6 +7,7 @@ pub struct DrawFloorContext<'a> {
     pub window_width: f64,
     pub window_height: f64,
     pub pixels_per_tile: f64,
+    pub show_tab_overlay: bool,
 }
 
 pub fn get_draw_floor_ops(ctx: DrawFloorContext) -> Vec<DrawOpWithMetadata> {
@@ -28,10 +29,33 @@ pub fn get_draw_floor_ops(ctx: DrawFloorContext) -> Vec<DrawOpWithMetadata> {
         window_height: ctx.window_height as f32,
         player: &player.borrow(),
     };
-    
-    draw_context.draw_ops.push(get_draw_hud_ops(draw_hud_context));
+    draw_context.draw_ops.push(DrawOpWithMetadata::new(DrawContext::Z_HUD, get_draw_hud_ops(draw_hud_context)));
+
+    if ctx.show_tab_overlay {
+        let draw_tab_overlay_context = DrawTabOverlayContext {
+            window_width: ctx.window_width as f32,
+            window_height: ctx.window_height as f32,
+        };
+        draw_context.draw_ops.push(DrawOpWithMetadata::new(DrawContext::Z_TAB_OVERLAY,get_draw_tab_overlay_ops(draw_tab_overlay_context)));
+    }
 
     draw_context.draw_ops
+}
+
+struct DrawTabOverlayContext {
+    window_width: f32,
+    window_height: f32,
+}
+
+fn get_draw_tab_overlay_ops(ctx: DrawTabOverlayContext) -> DrawOp {
+    let mut ops = Vec::new();
+    let x = ctx.window_width * 0.15;
+    let y = ctx.window_height * 0.1;
+    let w = ctx.window_width * 0.7;
+    let h = ctx.window_height * 0.8;
+    ops.push(draw_op_rect(ColorRGBA32f::new(0.0, 0.0, 0.0, 0.2), x, y, w, h));
+    ops.push(draw_op_rect(ColorRGBA32f::new(1.0, 1.0, 1.0, 0.2), x, y, w, h));
+    DrawOp::Group(DrawOpGroup { ops: ops.into_boxed_slice() })
 }
 
 struct DrawHudContext<'a> {
@@ -40,7 +64,7 @@ struct DrawHudContext<'a> {
     player: &'a Player,
 }
 
-fn get_draw_hud_ops(ctx: DrawHudContext) -> DrawOpWithMetadata {
+fn get_draw_hud_ops(ctx: DrawHudContext) -> DrawOp {
     let mut ops = Vec::new();
 
     // HP bar
@@ -76,7 +100,7 @@ fn get_draw_hud_ops(ctx: DrawHudContext) -> DrawOpWithMetadata {
     // Weapons
     ops.push(ctx.player.get_weapon_hud_draw_op(0.87 * ctx.window_width, 0.11 * ctx.window_height, 0.03 * ctx.window_height, 0.11 * ctx.window_width));
 
-    DrawOpWithMetadata::new(DrawContext::Z_HUD, DrawOp::Group(DrawOpGroup { ops: ops.into_boxed_slice() }))
+    DrawOp::Group(DrawOpGroup { ops: ops.into_boxed_slice() })
 }
 
 #[derive(Debug)]
@@ -177,6 +201,7 @@ impl DrawContext<'_> {
     pub const Z_PROJECTILE: f64 = 40.0;
     pub const Z_BLACK_HOLE: f64 = 50.0;
     pub const Z_HUD: f64 = 200.0;
+    pub const Z_TAB_OVERLAY: f64 = 210.0;
 
     pub fn add_draw_op(&mut self, z: f64, op: DrawOp) {
         self.draw_ops.push(DrawOpWithMetadata::new(z, op));
