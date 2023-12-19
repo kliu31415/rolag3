@@ -1,6 +1,6 @@
 use std::{rc::{Rc, Weak}, cell::RefCell, collections::{HashSet, HashMap}, ops::Range};
 
-use rand::{rngs::ThreadRng, Rng};
+use rand::{rngs::StdRng, Rng};
 
 use crate::rolag3::floor::{draw::DrawContext, run::PlayerInput, rofiz::{rofiz_state::{RofizState, RofizObjectRef}, rofiz_object::Hitbox}, room::{RoomConnectionInfo, RoomTile}, floor_def::Floor};
 
@@ -366,11 +366,11 @@ pub struct NewRoomObjectContext<'a> {
     rofiz: &'a mut RofizState,
     room_object_id_counter: &'a mut RoomObjectId,
     room_time: f64,
-    rng: &'a mut ThreadRng,
+    rng: &'a mut StdRng,
 }
 
 impl<'a> NewRoomObjectContext<'a> {
-    pub fn new(rofiz: &'a mut RofizState, room_object_id_counter: &'a mut RoomObjectId, room_time: f64, rng: &'a mut ThreadRng,) -> Self {
+    pub fn new(rofiz: &'a mut RofizState, room_object_id_counter: &'a mut RoomObjectId, room_time: f64, rng: &'a mut StdRng) -> Self {
         Self {
             rofiz,
             room_object_id_counter,
@@ -446,7 +446,7 @@ pub struct Act1Context<'a> {
     self_as_rc: Option<Rc<RefCell<dyn RoomObject>>>,
     tick_length: f64,
     room_time: f64,
-    rng: &'a mut ThreadRng,
+    rng: &'a mut StdRng,
     room_cleared_at_time: Option<f64>,
     _room_width: u32,
     _room_height: u32,
@@ -460,7 +460,7 @@ impl<'a> Act1Context<'a> {
         room_object_id_counter: &'a mut RoomObjectId, 
         tick_length: f64, 
         room_time: f64,
-        rng: &'a mut ThreadRng,
+        rng: &'a mut StdRng,
         room_cleared_at_time: Option<f64>,
         room_width: u32,
         room_height: u32,
@@ -613,14 +613,14 @@ impl<'a> HandleRoomJustClearedContext<'a> {
 
 pub struct HandleCollisionContext<'a> {
     other: Rc<RefCell<dyn RoomObject>>,
-    rng: &'a mut ThreadRng,
+    rng: &'a mut StdRng,
     room_time: f64,
     _tick_length: f64,
     _rofiz: &'a RofizState,
 }
 
 impl<'a> HandleCollisionContext<'a> {
-    pub fn new(other: Rc<RefCell<dyn RoomObject>>, rng: &'a mut ThreadRng, room_time: f64, tick_length: f64, rofiz: &'a RofizState) -> Self {
+    pub fn new(other: Rc<RefCell<dyn RoomObject>>, rng: &'a mut StdRng, room_time: f64, tick_length: f64, rofiz: &'a RofizState) -> Self {
         Self { 
             other,
             rng,

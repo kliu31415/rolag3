@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use rand::rngs::ThreadRng;
+use rand::rngs::StdRng;
 
 use crate::rolag3::floor::room_object::unit::player::MoveRooms;
 
@@ -13,7 +13,7 @@ pub struct RunFloorContext<'a> {
     pub player_input: PlayerInput,
     pub prev_mouse_x: f64,
     pub prev_mouse_y: f64,
-    pub rng: &'a mut ThreadRng,
+    pub rng: &'a mut StdRng,
 }
 
 pub fn run_floor_frame(mut ctx: RunFloorContext) {
@@ -68,7 +68,7 @@ struct RunFloorTickContext<'a> {
     pub floor: &'a mut Floor,
     pub player_input: &'a PlayerInput,
     pub tick_length: f64,
-    pub rng: &'a mut ThreadRng,
+    pub rng: &'a mut StdRng,
 }
 
 fn run_floor_tick(ctx: RunFloorTickContext) {

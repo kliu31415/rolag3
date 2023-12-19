@@ -1,6 +1,6 @@
 use std::{collections::HashMap, cell::RefCell, rc::Rc};
 
-use rand::rngs::ThreadRng;
+use rand::rngs::StdRng;
 
 use crate::gfx::renderer::Renderer;
 
@@ -25,7 +25,7 @@ impl Floor {
     pub const ROOM_OBJECT_ID_COUNTER_BEGIN: RoomObjectId = 100;
     pub const PLAYER_ROOM_OBJECT_ID: RoomObjectId = 1;
 
-    pub fn new_test1(renderer: &mut dyn Renderer, rng: &mut ThreadRng) -> Self {
+    pub fn new_test1(renderer: &mut dyn Renderer, rng: &mut StdRng) -> Self {
         let mut room_object_id_counter = Self::ROOM_OBJECT_ID_COUNTER_BEGIN;
         let player = Rc::new(RefCell::new(Player::new_test1()));
         let mut room1 = Room::new_test_room1(rng, &mut room_object_id_counter);

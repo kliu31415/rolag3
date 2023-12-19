@@ -1,6 +1,7 @@
 use std::{rc::Rc, cell::RefCell};
 
-use rand::rngs::ThreadRng;
+
+use rand::rngs::StdRng;
 
 use crate::gfx::renderer::{TmdRef, Renderer};
 
@@ -38,7 +39,7 @@ pub struct RoomConnectionInfo {
 }
 
 impl Room {
-    pub fn finalize_with_connections(&mut self, renderer: &mut dyn Renderer, connections: Vec<RoomConnectionInfo>, rng: &mut ThreadRng, room_object_id_counter: &mut RoomObjectId) {
+    pub fn finalize_with_connections(&mut self, renderer: &mut dyn Renderer, connections: Vec<RoomConnectionInfo>, rng: &mut StdRng, room_object_id_counter: &mut RoomObjectId) {
         for c in connections.iter() {
             for (x, y) in RoomConnection::get_occupied_coords(c.x, c.y, c.direction) {
                 self.room_objects.remove_wall_at(x, y);
@@ -61,7 +62,7 @@ impl Room {
         self.rofiz.finalize_start_floor();
     }
 
-    pub fn new_test_room1(rng: &mut ThreadRng, room_object_id_counter: &mut RoomObjectId) -> Self {
+    pub fn new_test_room1(rng: &mut StdRng, room_object_id_counter: &mut RoomObjectId) -> Self {
         let mut rofiz = RofizState::new();
         let mut new_floor_object_ctx = NewRoomObjectContext::new(&mut rofiz, room_object_id_counter, 0.0, rng);
         let mut room_objects = RoomObjectCollection::new();
@@ -135,7 +136,7 @@ impl Room {
         }
     }
 
-    pub fn new_test_room2(rng: &mut ThreadRng, room_object_id_counter: &mut RoomObjectId) -> Self {
+    pub fn new_test_room2(rng: &mut StdRng, room_object_id_counter: &mut RoomObjectId) -> Self {
         let mut rofiz = RofizState::new();
         let mut new_floor_object_ctx = NewRoomObjectContext::new(&mut rofiz, room_object_id_counter, 0.0, rng);
         let mut room_objects = RoomObjectCollection::new();

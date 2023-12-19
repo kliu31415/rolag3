@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-use rand::{rngs::ThreadRng, thread_rng};
+use rand::{rngs:: StdRng, SeedableRng};
 use winit::{event::{Event, WindowEvent, KeyEvent, ElementState, MouseButton}, event_loop::EventLoopWindowTarget, keyboard::{PhysicalKey, KeyCode}};
 
 use crate::gfx::{self, window::{Window, EventHandler}, renderer::{ColorRGBA32f, DrawTextPosition, DrawOpCCS, DrawOpText, DrawOpWithMetadata, DrawOp, Renderer}, input::PollableInput};
@@ -21,7 +21,7 @@ struct Rolag3EventHandler {
     #[allow(dead_code)] // rust falsely thinks frame_timestamps is never read even though its length is printed
     frame_timestamps: VecDeque<f64>,
     floor: Floor,
-    rng: ThreadRng,
+    rng: StdRng,
     prev_mouse_xy: Option<(f64, f64)>,
 }
 
@@ -78,7 +78,7 @@ const PLAYER_TAB_OVERLAY: PhysicalKey = PhysicalKey::Code(KeyCode::Tab);
 
 impl Rolag3EventHandler {
     fn new_test1(renderer: &mut dyn Renderer) -> Rolag3EventHandler {
-        let mut rng = thread_rng();
+        let mut rng = StdRng::seed_from_u64(123);
         let floor = Floor::new_test1(renderer, &mut rng);
         Rolag3EventHandler { 
             frame_timestamps: VecDeque::new(),
