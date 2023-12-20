@@ -60,7 +60,7 @@ impl ConcrenticCircleSectorShaderPipeline {
         render_pass: &mut wgpu::RenderPass<'a>, 
         queue: &wgpu::Queue,
         vertex_buffer: &'a wgpu::Buffer,
-        vertex_inputs: Vec<[ConcrenticCircleSectorVertexShaderInput; 3]>,
+        vertex_inputs: &'a [[ConcrenticCircleSectorVertexShaderInput; 3]],
     ) {
         draw_triangle_inputs_batched(
             vertex_inputs,

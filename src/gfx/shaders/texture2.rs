@@ -49,7 +49,7 @@ impl Texture2ShaderPipeline {
         render_pass: &mut wgpu::RenderPass<'a>, 
         queue: &wgpu::Queue,
         vertex_buffer: &'a wgpu::Buffer,
-        vertex_inputs: Vec<[Texture2VertexShaderInput; 3]>,
+        vertex_inputs: &'a [[Texture2VertexShaderInput; 3]],
         bg: &'a [wgpu::BindGroup],
     ) {
         draw_triangle_inputs_batched_bg1(

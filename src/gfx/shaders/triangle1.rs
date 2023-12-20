@@ -43,7 +43,7 @@ impl TriangleShaderPipeline {
         render_pass: &mut wgpu::RenderPass<'a>, 
         queue: &wgpu::Queue, 
         vertex_buffer: &'a wgpu::Buffer,
-        vertex_inputs: Vec<[TriangleVertexShaderInput; 3]>,
+        vertex_inputs: &'a [[TriangleVertexShaderInput; 3]],
     ) {
         draw_triangle_inputs_batched(
             vertex_inputs,

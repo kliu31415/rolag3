@@ -58,7 +58,7 @@ pub fn new_wgpu_shader_pipeline(
 }
 
 pub fn draw_triangle_inputs_batched<'a, T: Pod>(
-    vertex_inputs: Vec<T>, 
+    vertex_inputs: &'a [T], 
     vertexes_per_input: usize,
     vertex_buffer: &'a wgpu::Buffer, 
     pipeline: &'a wgpu::RenderPipeline,
@@ -66,7 +66,7 @@ pub fn draw_triangle_inputs_batched<'a, T: Pod>(
     queue: &wgpu::Queue,
 ) {
     render_pass.set_pipeline(pipeline);
-    let bytes: &[u8] = bytemuck::cast_slice(&vertex_inputs);
+    let bytes: &[u8] = bytemuck::cast_slice(vertex_inputs);
     if bytes.len() % (wgpu::COPY_BUFFER_ALIGNMENT as usize) != 0 {
         todo!("wgpu copy buffer alignment isn't respected. Buffer size={}, desired alignment={}", 
             bytes.len(), 
@@ -78,7 +78,7 @@ pub fn draw_triangle_inputs_batched<'a, T: Pod>(
 }
 
 pub fn draw_triangle_inputs_batched_bg1<'a, T: Pod>(
-    vertex_inputs: Vec<T>, 
+    vertex_inputs: &'a [T], 
     vertexes_per_input: usize,
     vertex_buffer: &'a wgpu::Buffer, 
     pipeline: &'a wgpu::RenderPipeline,
@@ -87,7 +87,7 @@ pub fn draw_triangle_inputs_batched_bg1<'a, T: Pod>(
     bind_groups: &'a [wgpu::BindGroup],
 ) {
     render_pass.set_pipeline(pipeline);
-    let bytes: &[u8] = bytemuck::cast_slice(&vertex_inputs);
+    let bytes: &[u8] = bytemuck::cast_slice(vertex_inputs);
     if bytes.len() % (wgpu::COPY_BUFFER_ALIGNMENT as usize) != 0 {
         todo!("wgpu copy buffer alignment isn't respected. Buffer size={}, desired alignment={}", 
             bytes.len(), 

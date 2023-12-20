@@ -49,7 +49,7 @@ impl TextTextureShaderPipeline {
         render_pass: &mut wgpu::RenderPass<'a>, 
         queue: &wgpu::Queue,
         vertex_buffer: &'a wgpu::Buffer,
-        vertex_inputs: Vec<[TextTextureVertexShaderInput; 3]>,
+        vertex_inputs: &'a [[TextTextureVertexShaderInput; 3]],
         bg: &'a [wgpu::BindGroup],
     ) {
         draw_triangle_inputs_batched_bg1(

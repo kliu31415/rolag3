@@ -1,4 +1,4 @@
-use std::{collections::{VecDeque, HashMap, BTreeMap}, rc::Rc, sync::atomic::{AtomicU64, Ordering}};
+use std::{collections::{VecDeque, HashMap, BTreeMap}, rc::Rc, sync::atomic::{AtomicU64, Ordering}, ops::Range};
 
 use wgpu::BufferDescriptor;
 
@@ -36,10 +36,10 @@ enum ShaderId {
 }
 
 enum ShaderInput {
-    Triangle1(Vec<[TriangleVertexShaderInput; 3]>),
-    ConcentricCircleSector(Vec<[ConcrenticCircleSectorVertexShaderInput; 3]>),
-    Text1((Vec<[TextTextureVertexShaderInput; 3]>, usize /* bind_group_idx */)),
-    Texture2((Vec<[Texture2VertexShaderInput; 3]>, usize /* bind_group_idx */)),
+    Triangle1(Range<usize>),
+    ConcentricCircleSector(Range<usize>),
+    Text1((Range<usize>, usize /* bind_group_idx */)),
+    Texture2((Range<usize>, usize /* bind_group_idx */)),
 }
 
 #[derive(Debug)]
@@ -206,6 +206,40 @@ struct WgpuRenderer {
     cached_text_textures: HashMap<CachedTextTextureK, CachedTextTextureV>,
     textures: HashMap<TmdId, TextureAndMetadata>, // TODO: remove entries of this map with 0 external references
     font_rasterizer: Box<dyn FontRasterizer>,
+
+    per_frame_allocator: bumpalo::Bump,
+    cached_vecs: WgpuRendererCachedVecs,
+}
+
+struct WgpuRendererCachedVecs {
+    shader_input_batches: Vec<ShaderInput>,
+    triangle1_shader_inputs_batch: Vec<[TriangleVertexShaderInput; 3]>,
+    ccs_inputs_batch: Vec<[ConcrenticCircleSectorVertexShaderInput; 3]>,
+    text_inputs_batch: Vec<[TextTextureVertexShaderInput; 3]>,
+    texture2_inputs_batch: Vec<[Texture2VertexShaderInput; 3]>,
+    desired_buffer_sizes: Vec<usize>,
+}
+
+impl WgpuRendererCachedVecs {
+    fn new() -> Self {
+        Self {
+            shader_input_batches: Vec::new(),
+            triangle1_shader_inputs_batch: Vec::new(),
+            ccs_inputs_batch: Vec::new(),
+            text_inputs_batch: Vec::new(),
+            texture2_inputs_batch: Vec::new(),
+            desired_buffer_sizes: Vec::new(),
+        }
+    }
+
+    fn reset(&mut self) {
+        self.shader_input_batches.clear();
+        self.triangle1_shader_inputs_batch.clear();
+        self.ccs_inputs_batch.clear();
+        self.text_inputs_batch.clear();
+        self.texture2_inputs_batch.clear();
+        self.desired_buffer_sizes.clear();
+    }
 }
 
 #[derive(Debug)]
@@ -404,10 +438,14 @@ impl Renderer for WgpuRenderer {
     }
 
     fn present(&mut self, clear_color: ColorRGBA32f) -> Result<(), wgpu::SurfaceError> {
+        self.per_frame_allocator.reset();
         let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("Render Encoder"),
         });
 
+        let mut cached_mem = WgpuRendererCachedVecs::new();
+        std::mem::swap(&mut cached_mem, &mut self.cached_vecs);
+        cached_mem.reset();
         let mut bind_groups = Vec::new();
         let buffers: Vec<_>;
         {
@@ -458,89 +496,95 @@ impl Renderer for WgpuRenderer {
 
             // convert DrawOps into GPU shader inputs
             let mut ordered_ops = ops_per_z.drain(..).flatten().flat_map(|x| x.flatten()).peekable();
-            let mut shader_input_batches = Vec::new();
-            let mut triangle1_shader_inputs_batch = Vec::new();
-            let mut ccs_inputs_batch = Vec::new();
+            let mut prev_triangle1_shader_inputs_len = 0;
+            let mut prev_ccs_shader_inputs_len = 0;
+            let mut prev_text_shader_inputs_len = 0;
+            let mut prev_texture2_shader_inputs_len = 0;
+
             let mut text_inputs_batch_bg = None;
-            let mut text_inputs_batch = Vec::new();
             let mut texture2_inputs_batch_bg = None;
-            let mut texture2_inputs_batch = Vec::new();
-            let mut desired_buffer_sizes = Vec::new();
             while let Some(op) = ordered_ops.next() {
                 match op {
                     DrawOp::Group(_) => panic!("all DrawOpGroups should have been flattened by this point (1)"),
                     DrawOp::TriFan(ref x) => {
-                        self.draw_tri_fan(x).iter().for_each(|x| triangle1_shader_inputs_batch.push(*x));
+                        self.draw_tri_fan(&mut cached_mem.triangle1_shader_inputs_batch, x);
                     }
                     DrawOp::_TriStrip(ref x) => {
-                        self.draw_tri_strip(x).iter().for_each(|x| triangle1_shader_inputs_batch.push(*x));
+                        self.draw_tri_strip(&mut cached_mem.triangle1_shader_inputs_batch, x);
                     }
                     DrawOp::ConcentricCircleSector(ref x) => {
-                        self.draw_concentric_circle_sector(x).iter().for_each(|x| ccs_inputs_batch.push(*x));
+                        self.draw_concentric_circle_sector(&mut cached_mem.ccs_inputs_batch, x);
                     }
                     DrawOp::Text(ref x) => {
-                        let dt = self.draw_text(x);
-                        dt.0.iter().for_each(|x| text_inputs_batch.push(*x));
-                        text_inputs_batch_bg = Some(dt.1);
+                        let dt = self.draw_text(&mut cached_mem.text_inputs_batch, x);
+                        text_inputs_batch_bg = Some(dt);
                     }
                     DrawOp::Texture2(ref x) => {
-                        let dt = self.draw_texture2(x);
-                        dt.0.iter().for_each(|x| texture2_inputs_batch.push(*x));
-                        texture2_inputs_batch_bg = Some(dt.1);
+                        let dt = self.draw_texture2(&mut cached_mem.texture2_inputs_batch, x);
+                        texture2_inputs_batch_bg = Some(dt);
                     }
                 }
                 if ordered_ops.peek().is_none() || op.get_shader_id() != ordered_ops.peek().unwrap().get_shader_id() {
                     match op.get_shader_id() {
                         ShaderId::Triangle1 => {
-                            desired_buffer_sizes.push(std::mem::size_of::<[TriangleVertexShaderInput; 3]>() * triangle1_shader_inputs_batch.len());
-                            shader_input_batches.push(ShaderInput::Triangle1(triangle1_shader_inputs_batch));
-                            triangle1_shader_inputs_batch = Vec::new();
+                            let cur_len = cached_mem.triangle1_shader_inputs_batch.len();
+                            let prev_len = prev_triangle1_shader_inputs_len;
+                            cached_mem.desired_buffer_sizes.push(std::mem::size_of::<[TriangleVertexShaderInput; 3]>() * (cur_len - prev_len));
+                            cached_mem.shader_input_batches.push(ShaderInput::Triangle1(prev_len..cur_len));
+                            prev_triangle1_shader_inputs_len = cur_len;
                         }
                         ShaderId::ConcentricCircleSector => {
-                            desired_buffer_sizes.push(std::mem::size_of::<[ConcrenticCircleSectorVertexShaderInput; 3]>() * ccs_inputs_batch.len());
-                            shader_input_batches.push(ShaderInput::ConcentricCircleSector(ccs_inputs_batch));
-                            ccs_inputs_batch = Vec::new();
+                            let cur_len = cached_mem.ccs_inputs_batch.len();
+                            let prev_len = prev_ccs_shader_inputs_len;
+                            cached_mem.desired_buffer_sizes.push(std::mem::size_of::<[ConcrenticCircleSectorVertexShaderInput; 3]>() * (cur_len - prev_len));
+                            cached_mem.shader_input_batches.push(ShaderInput::ConcentricCircleSector(prev_len..cur_len));
+                            prev_ccs_shader_inputs_len = cur_len;
                         }
                         ShaderId::Text1(_) => {
-                            desired_buffer_sizes.push(std::mem::size_of::<[TextTextureVertexShaderInput; 3]>() * text_inputs_batch.len());
+                            let cur_len = cached_mem.text_inputs_batch.len();
+                            let prev_len = prev_text_shader_inputs_len;
+                            cached_mem.desired_buffer_sizes.push(std::mem::size_of::<[TextTextureVertexShaderInput; 3]>() * (cur_len - prev_len));
                             let bgi = bind_groups.len();
                             bind_groups.push(vec![text_inputs_batch_bg.unwrap()]);
-                            shader_input_batches.push(ShaderInput::Text1((text_inputs_batch, bgi)));
+                            cached_mem.shader_input_batches.push(ShaderInput::Text1((prev_len..cur_len, bgi)));
                             text_inputs_batch_bg = None;
-                            text_inputs_batch = Vec::new()
+                            prev_text_shader_inputs_len = cur_len;
                         }
                         ShaderId::Texture2(_) => {
-                            desired_buffer_sizes.push(std::mem::size_of::<[Texture2VertexShaderInput; 3]>() * texture2_inputs_batch.len());
+                            let cur_len = cached_mem.texture2_inputs_batch.len();
+                            let prev_len = prev_texture2_shader_inputs_len;
+                            cached_mem.desired_buffer_sizes.push(std::mem::size_of::<[Texture2VertexShaderInput; 3]>() * (cur_len - prev_len));
                             let bgi = bind_groups.len();
                             bind_groups.push(vec![texture2_inputs_batch_bg.unwrap()]);
-                            shader_input_batches.push(ShaderInput::Texture2((texture2_inputs_batch, bgi)));
+                            cached_mem.shader_input_batches.push(ShaderInput::Texture2((prev_len..cur_len, bgi)));
                             texture2_inputs_batch_bg = None;
-                            texture2_inputs_batch = Vec::new()
+                            prev_texture2_shader_inputs_len = cur_len;
                         }
                     }
                 }
             }
             
             // send GPU shader inputs to the GPU and execute shaders
-            let desired_buffer_sizes: Vec<_> = desired_buffer_sizes.drain(..).map(|x| x as u64).collect();
+            let desired_buffer_sizes: Vec<_> = cached_mem.desired_buffer_sizes.drain(..).map(|x| x as u64).collect();
             buffers = self.vertex_buffer_pool.allocate(&self.device, &desired_buffer_sizes);
-            for (i, batch) in shader_input_batches.drain(..).enumerate() {
+            for (i, batch) in cached_mem.shader_input_batches.drain(..).enumerate() {
                 match batch {
                     ShaderInput::Triangle1(x) => {
-                        self.triangle_shader_pipeline.draw(&mut render_pass,  &self.queue, buffers[i].as_ref(), x);
+                        self.triangle_shader_pipeline.draw(&mut render_pass, &self.queue, buffers[i].as_ref(), &cached_mem.triangle1_shader_inputs_batch[x]);
                     }
                     ShaderInput::ConcentricCircleSector(x) => {
-                        self.concentric_circle_sector_shader_pipeline.draw(&mut render_pass, &self.queue, buffers[i].as_ref(), x);
+                        self.concentric_circle_sector_shader_pipeline.draw(&mut render_pass, &self.queue, buffers[i].as_ref(), &cached_mem.ccs_inputs_batch[x]);
                     }
-                    ShaderInput::Text1((vi, bgi)) => {
-                        self.text_shader_pipeline.draw(&mut render_pass, &self.queue, buffers[i].as_ref(), vi, &bind_groups[bgi]);
+                    ShaderInput::Text1((x, bgi)) => {
+                        self.text_shader_pipeline.draw(&mut render_pass, &self.queue, buffers[i].as_ref(), &cached_mem.text_inputs_batch[x], &bind_groups[bgi]);
                     }
-                    ShaderInput::Texture2((vi, bgi)) => {
-                        self.texture2_shader_pipeline.draw(&mut render_pass, &self.queue, buffers[i].as_ref(), vi, &bind_groups[bgi]);
+                    ShaderInput::Texture2((x, bgi)) => {
+                        self.texture2_shader_pipeline.draw(&mut render_pass, &self.queue, buffers[i].as_ref(), &cached_mem.texture2_inputs_batch[x], &bind_groups[bgi]);
                     }
                 }
             }
         }
+        std::mem::swap(&mut cached_mem, &mut self.cached_vecs);
 
         let output = self.surface.get_current_texture()?;
         let view = output.texture.create_view(&wgpu::TextureViewDescriptor::default());
@@ -695,34 +739,30 @@ impl WgpuRenderer {
         }
     }
 
-    fn draw_tri_fan(&self, op: &DrawOpTriFan) -> Box<[[TriangleVertexShaderInput; 3]]> {
+    fn draw_tri_fan(&self, dst: &mut Vec<[TriangleVertexShaderInput; 3]>, op: &DrawOpTriFan) {
         if op.vertexes.len() < 3 {
             panic!("draw_tri_fan() expected at least 3 vertexes, got {}. vertexes={:?}", 
                 op.vertexes.len(),
                 op.vertexes);
         }
-        let mut ret = Vec::new();
         for i in 2..op.vertexes.len() {
-            ret.push([self.tri_to_gpu(&op.vertexes[0]), 
+            dst.push([self.tri_to_gpu(&op.vertexes[0]), 
                 self.tri_to_gpu(&op.vertexes[i-1]), 
                 self.tri_to_gpu(&op.vertexes[i])]);
         }
-        ret.into_boxed_slice()
     }
 
-    fn draw_tri_strip(&self, op: &DrawOpTriStrip) -> Box<[[TriangleVertexShaderInput; 3]]> {
+    fn draw_tri_strip(&self, dst: &mut Vec<[TriangleVertexShaderInput; 3]>, op: &DrawOpTriStrip) {
         if op.vertexes.len() < 3 {
             panic!("draw_tri_strip() expected at least 3 vertexes, got {}. vertexes={:?}", 
                 op.vertexes.len(), 
                 op.vertexes);
         }
-        let mut ret = Vec::new();
         for i in 2..op.vertexes.len() {
-            ret.push([self.tri_to_gpu(&op.vertexes[i-2]),
+            dst.push([self.tri_to_gpu(&op.vertexes[i-2]),
                 self.tri_to_gpu(&op.vertexes[i-1]),
                 self.tri_to_gpu(&op.vertexes[i])]);
         }
-        ret.into_boxed_slice()
     }
 
     fn tri_to_gpu(&self, v: &ColoredTriVertex) -> TriangleVertexShaderInput {
@@ -732,7 +772,7 @@ impl WgpuRenderer {
         } 
     }
 
-    fn draw_concentric_circle_sector(&self, args: &DrawOpCCS) -> [[ConcrenticCircleSectorVertexShaderInput; 3]; 2] {
+    fn draw_concentric_circle_sector(&self, dst: &mut Vec<[ConcrenticCircleSectorVertexShaderInput; 3]>, args: &DrawOpCCS) {
         if args.inner_radius < 0.0 || args.outer_radius < 0.0 || args.inner_radius > args.outer_radius {
             panic!("concentric circle sector inner_radius({}) and outer_radius({}) have bad values", args.inner_radius, args.outer_radius);
         }
@@ -792,10 +832,11 @@ impl WgpuRenderer {
             });
         }
 
-        [[vertexes[0], vertexes[1], vertexes[2]], [vertexes[2], vertexes[3], vertexes[0]]]
+        dst.push([vertexes[0], vertexes[1], vertexes[2]]);
+        dst.push([vertexes[2], vertexes[3], vertexes[0]]);
     }
 
-    fn draw_text(&self, args: &DrawOpText) -> ([[TextTextureVertexShaderInput; 3]; 2], wgpu::BindGroup) {
+    fn draw_text(&self, dst: &mut Vec<[TextTextureVertexShaderInput; 3]>, args: &DrawOpText) -> wgpu::BindGroup {
         let k = args.get_key();
         let v = self.cached_text_textures.get(&k).expect("unable to get cached text texture");
         
@@ -813,8 +854,9 @@ impl WgpuRenderer {
             self.text_tri_to_gpu(&args.color, &ViewSpaceCoordinate::new(x, y + height), [0.0, 1.0]),
         ];
 
-        ([[vertexes[0], vertexes[1], vertexes[2]], [vertexes[2], vertexes[3], vertexes[0]]], 
-            v.tmd.get_bind_group(&self.device))
+        dst.push([vertexes[0], vertexes[1], vertexes[2]]);
+        dst.push([vertexes[2], vertexes[3], vertexes[0]]);
+        v.tmd.get_bind_group(&self.device)
     }
 
     fn text_tri_to_gpu(&self, color: &ColorRGBA32f, v: &ViewSpaceCoordinate, tex_coords: [f32; 2]) -> TextTextureVertexShaderInput {
@@ -825,7 +867,7 @@ impl WgpuRenderer {
         } 
     }
 
-    fn draw_texture2(&self, args: &DrawOpTexture2) -> ([[Texture2VertexShaderInput; 3]; 2], wgpu::BindGroup) {
+    fn draw_texture2(&self, dst: &mut Vec<[Texture2VertexShaderInput; 3]>, args: &DrawOpTexture2) -> wgpu::BindGroup {
         let k = args.texture.id;
         let v = self.textures.get(&k).expect("unable to get cached texture");
 
@@ -836,8 +878,9 @@ impl WgpuRenderer {
             self.texture2_tri_to_gpu(&args.color_mod, &ViewSpaceCoordinate::new(args.dst_rect.x, args.dst_rect.y + args.dst_rect.h), [0.0, 1.0]),
         ];
 
-        ([[vertexes[0], vertexes[1], vertexes[2]], [vertexes[2], vertexes[3], vertexes[0]]], 
-            v.get_bind_group(&self.device))
+        dst.push([vertexes[0], vertexes[1], vertexes[2]]);
+        dst.push([vertexes[2], vertexes[3], vertexes[0]]);
+        v.get_bind_group(&self.device)
     }
 
     fn texture2_tri_to_gpu(&self, color_mod: &ColorRGBA32f, v: &ViewSpaceCoordinate, tex_coords: [f32; 2]) -> Texture2VertexShaderInput {
@@ -920,6 +963,8 @@ pub fn make_renderer(window: &winit::window::Window) -> Box<dyn Renderer> {
         cached_text_textures: HashMap::new(),
         textures: HashMap::new(),
         font_rasterizer: make_font_rasterizer(),
+        per_frame_allocator: bumpalo::Bump::with_capacity(1<<27 /* 128 MB */),
+        cached_vecs: WgpuRendererCachedVecs::new(),
     };
 
     Box::new(renderer)
