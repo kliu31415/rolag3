@@ -35,6 +35,7 @@ impl RoomObject for Player {
         self.hc_tile_effects.drain(..).for_each(|x| {
             match x {
                 HcTileEffect::Accelerate { force, theta } => additional_force.push(PolarForce{r: force, theta}),
+                HcTileEffect::DealDamage { damage } => {self.su_common.as_mut().unwrap().take_damage(damage);},
             }
         });
 
@@ -156,7 +157,7 @@ impl RoomObject for Player {
         if matches!(ctx.team, Team::Player) {
             return HcProjectileResponse::nop();
         }
-        let td_response = self.su_common.as_mut().unwrap().take_damage(ctx.room_time, ctx.damage);
+        let td_response = self.su_common.as_mut().unwrap().take_damage(ctx.damage);
         let mut room_objects_to_delete = Vec::new();
         if td_response.dead {
             room_objects_to_delete.push(self.md.get_id());

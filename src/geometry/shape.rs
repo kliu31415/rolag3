@@ -80,6 +80,12 @@ impl Point {
     }
 }
 
+impl Default for Point {
+    fn default() -> Self {
+        Self { x: Default::default(), y: Default::default() }
+    }
+}
+
 impl std::ops::Sub<Point> for Point {
     type Output = Vector;
 

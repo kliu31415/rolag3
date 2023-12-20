@@ -296,7 +296,7 @@ fn hc_projectile_default(ctx: &mut SuHcProjectileContext) -> HcProjectileRespons
         return HcProjectileResponse::nop();
     }
     let damage_mult = DamageColor::get_damage_mult(ctx.hcp_ctx.damage_color, ctx.su_ctx.damage_color);
-    let td_response = ctx.su_ctx.su_common.take_damage(ctx.hcp_ctx.room_time, ctx.hcp_ctx.damage * damage_mult);
+    let td_response = ctx.su_ctx.su_common.take_damage(ctx.hcp_ctx.damage * damage_mult);
     let mut room_objects_to_delete = Vec::new();
     if td_response.dead {
         room_objects_to_delete.push(ctx.su_ctx.md.get_id());

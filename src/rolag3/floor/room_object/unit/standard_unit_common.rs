@@ -39,6 +39,7 @@ pub struct StandardUnitCommon {
 
     act1_started: bool,
     unit_tick_length: f64,
+    unit_age: f64,
     translate: TranslateMove,
     rotate: RotateMove,
     external_forces: Vec<PolarForce>,
@@ -94,6 +95,7 @@ impl StandardUnitCommon {
 
             act1_started: false,
             unit_tick_length: 0.0,
+            unit_age: 0.0,
             translate: TranslateMove::Nop,
             rotate: RotateMove::Nop,
             external_forces: Vec::new(),
@@ -192,6 +194,7 @@ impl StandardUnitCommon {
             log::warn!("time_speed_mult({}) is outside of range [0.5, 2.0]", time_speed_mult);
         }
         self.unit_tick_length = room_tick_length * time_speed_mult;
+        self.unit_age += self.unit_tick_length;
     }
 
     pub fn set_translate_move(&mut self, translate: TranslateMove) {
@@ -371,7 +374,7 @@ impl StandardUnitCommon {
         self.budebs.push(*budeb);
     }
 
-    pub fn take_damage(&mut self, room_time: f64, damage: f64) -> TakeDamageResponse {
+    pub fn take_damage(&mut self, damage: f64) -> TakeDamageResponse {
         if damage < 0.0 {
             panic!("damage < 0. Expected positive damage.");
         }
@@ -391,7 +394,7 @@ impl StandardUnitCommon {
             damage_taken = damage;
             self.hp -= damage;
         }
-        self.last_damaged_time = room_time;
+        self.last_damaged_time = self.unit_age;
         TakeDamageResponse { 
             dead: self.hp <= 0.0,
             damage_taken,

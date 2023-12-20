@@ -2,7 +2,7 @@ use std::{cell::RefCell, rc::Rc, collections::VecDeque};
 
 use rand::{rngs::StdRng, Rng};
 
-use crate::rolag3::floor::{room_object::{room_object_def::{RoomObjectId, NewRoomObjectContext, RoomObjectCollection}, wall::basic_wall::BasicWall, cosmetic::ground1::new_ground1}, rofiz::rofiz_state::RofizState, room::{RoomTile, Room}, draw::Color};
+use crate::rolag3::floor::{room_object::{room_object_def::{RoomObjectId, NewRoomObjectContext, RoomObjectCollection}, wall::basic_wall::BasicWall, cosmetic::ground1::new_ground1, tiles::damage_tile::new_damage_tile}, rofiz::rofiz_state::RofizState, room::{RoomTile, Room}, draw::Color};
 
 pub fn make_room_maze1(rng: &mut StdRng, room_object_id_counter: &mut RoomObjectId, x: u32, y: u32) -> Room {
     let maze_w = 24;
@@ -35,15 +35,15 @@ pub fn make_room_maze1(rng: &mut StdRng, room_object_id_counter: &mut RoomObject
         room_objects.add(Rc::new(RefCell::new(wall)));
     }
 
-    //let ground = new_ground1(&mut new_floor_object_ctx, Color::new(0.02, 0.0, 0.0, 1.0), 1, 1, room_w as u32 - 2, room_h as u32 - 2);
-    //room_objects.add(Rc::new(RefCell::new(ground)));
+    let ground = new_ground1(&mut new_floor_object_ctx, Color::new(0.02, 0.0, 0.0, 1.0), 1, 1, room_w as u32 - 2, room_h as u32 - 2);
+    room_objects.add(Rc::new(RefCell::new(ground)));
 
     let maze_wall_array = maze.get_maze_wall_array(4);
     for x in 0..(maze_wall_array.len()) {
         for y in 0..(maze_wall_array[0].len()) {
             if maze_wall_array[x][y] {
-                let ground = new_ground1(&mut new_floor_object_ctx, Color::new(0.0, 0.1, 0.0, 1.0), (x + 1) as u32, (y + 1) as u32, 1, 1);
-                room_objects.add(Rc::new(RefCell::new(ground)));
+                let tile = new_damage_tile(&mut new_floor_object_ctx,(x + 1) as u32, (y + 1) as u32);
+                room_objects.add(Rc::new(RefCell::new(tile)));
             }
         }
     }
@@ -94,7 +94,7 @@ fn make_rectangular_maze(rng: &mut StdRng, w: usize, h: usize, additional_edges:
         let mut num_tries = 0;
         while candidates.len() < num_candidates_to_gen {
             num_tries += 1;
-            if num_tries == num_candidates_to_gen * 100 {
+            if num_tries > 0 && num_tries % (num_candidates_to_gen * 100) == 0{
                 log::warn!("number of tries({}) to add a new rect graph edge is very large. Maze size ({}, {}), additional edges={}.", num_tries, w, h, additional_edges);
             }
             let x1 = rng.gen_range(0..w) as i32;

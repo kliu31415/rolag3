@@ -145,6 +145,9 @@ pub struct RoomObjectCollection {
     ro_unit: Vec<Rc<RefCell<dyn RoomObject>>>,
     ro_other: Vec<Rc<RefCell<dyn RoomObject>>>,
     room_already_cleared: bool,
+
+    // cached objects
+    act1_responses: Vec<Act1Response>,
 }
 
 impl RoomObjectCollection {
@@ -156,6 +159,8 @@ impl RoomObjectCollection {
             ro_unit: Vec::new(),
             ro_other: Vec::new(),
             room_already_cleared: false,
+
+            act1_responses: Vec::new(),
         }
     }
 
@@ -218,18 +223,30 @@ impl RoomObjectCollection {
     }
 
     pub fn act1(&mut self, ctx: &mut Act1Context) {
-        let mut responses: Vec<Act1Response> = Vec::new();
-        self.iter().for_each(|x| {
-            ctx.self_as_rc = Some(x.clone());
-            responses.push(x.borrow_mut().act1(ctx))}
-        );
+        let obj_count = self.object_count();
+        let mut responses = Vec::new();
+        std::mem::swap(&mut responses, &mut self.act1_responses);
+        if responses.capacity() < obj_count {
+            responses.reserve_exact(obj_count - responses.capacity());
+        }
+        for room_obj in self.iter() {
+            ctx.self_as_rc = Some(room_obj.clone());
+            responses.push(room_obj.borrow_mut().act1(ctx));
+        }
 
         let should_remove: Vec<bool> = responses.iter().map(|x| x.get_remove_me()).collect();
         self.remove_all_using_bool_array(should_remove.as_slice());
 
-        responses.iter_mut().flat_map(|x| x.steal_room_objs_to_add()).for_each(|x| self.add(x));
+        let mut room_objs_to_add = Vec::new();
+        let mut operations = Vec::new();
+        let mut queries = Vec::new();
+        for r in responses.iter_mut() {
+            r.steal_room_objs_to_add(&mut room_objs_to_add);
+            r.steal_operations(&mut operations);
+            r.steal_queries(&mut queries);
+        }
+        room_objs_to_add.into_iter().for_each(|x| self.add(x));
 
-        let operations = responses.iter_mut().flat_map(|x| x.steal_operations());
         for op in operations {
             let op_ctx = RoomObjApplyOperationContext {
                 operation: &op,
@@ -249,7 +266,6 @@ impl RoomObjectCollection {
             }
         }
 
-        let queries = responses.iter_mut().flat_map(|x| x.steal_queries());
         for (qargs, qresult) in queries {
             match qargs {
                 Act1QueryArgs::ClosestUnit { x, y, team_filter } => {
@@ -282,6 +298,9 @@ impl RoomObjectCollection {
                 }
             }
         }
+
+        responses.clear();
+        std::mem::swap(&mut responses, &mut self.act1_responses);
     }
 
     pub fn remove_by_id(&mut self, to_remove: HashSet<RoomObjectId>) {
@@ -572,10 +591,8 @@ impl Act1Response {
         self.objects_to_add.push(obj);
     }
 
-    pub fn steal_room_objs_to_add(&mut self) -> Vec<Rc<RefCell<dyn RoomObject>>> {
-        let mut empty_vec = Vec::new();
-        std::mem::swap(&mut empty_vec, &mut self.objects_to_add);
-        empty_vec
+    pub fn steal_room_objs_to_add(&mut self, v: &mut Vec<Rc<RefCell<dyn RoomObject>>>) {
+        v.append(&mut self.objects_to_add);
     }
 
     pub fn add_query(&mut self, args: Act1QueryArgs) -> Rc<RefCell<Act1QueryResult>> {
@@ -584,20 +601,16 @@ impl Act1Response {
         rc_result
     }
 
-    pub fn steal_queries(&mut self) -> Vec<(Act1QueryArgs, Rc<RefCell<Act1QueryResult>>)> {
-        let mut q = Vec::new();
-        std::mem::swap(&mut q, &mut self.act1_queries);
-        q
+    pub fn steal_queries(&mut self, v: &mut Vec<(Act1QueryArgs, Rc<RefCell<Act1QueryResult>>)>) {
+        v.append(&mut self.act1_queries);
     }
 
     pub fn apply_operation(&mut self, op: RoomObjOperation) {
         self.operations.push(op);
     }
 
-    pub fn steal_operations(&mut self) -> Vec<RoomObjOperation> {
-        let mut q = Vec::new();
-        std::mem::swap(&mut q, &mut self.operations);
-        q
+    pub fn steal_operations(&mut self, v: &mut Vec<RoomObjOperation>) {
+        v.append(&mut self.operations);
     }
 }
 
@@ -729,7 +742,8 @@ pub struct HcTileContext {
 
 #[derive(Debug, Clone, Copy)]
 pub enum HcTileEffect {
-    Accelerate {force: f64, theta: f64}
+    Accelerate {force: f64, theta: f64},
+    DealDamage {damage: f64},
 }
 
 pub struct HcTileResponse {
