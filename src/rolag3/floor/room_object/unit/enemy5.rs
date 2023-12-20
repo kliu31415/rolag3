@@ -46,7 +46,7 @@ pub fn new_enemy5(ctx: &mut NewRoomObjectContext, x: f64, y: f64) -> StandardUni
         team: Team::Enemy,
         damage_color: DamageColor::Red,
         hp: 30.0,
-        engine_power: 20.0,
+        engine_power: 12.0,
         tire_traction: 50.0,
     }).act1_fn(Box::new(act1))
         .draw_fn(Box::new(draw))
@@ -74,7 +74,7 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
             let mut nfo_ctx = NewRoomObjectContext::from_act1_ctx(ctx.act1_ctx);
             for i in 0..4 {
                 let angle = (i as f64) * 1.0/2.0 * std::f64::consts::PI;
-                let proj_speed = 25.0;
+                let proj_speed = 12.0;
                 let shape = Proj2Shape::TriFan {
                     center: Point::new(0.0, 0.0), 
                     vertexes: us_data.inner.vertexes.clone(),

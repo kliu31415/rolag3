@@ -35,7 +35,7 @@ fn handle_tick_fn(ctx: &mut WeaponHandleTickContext) -> WeaponHandleTickResponse
     }
     ws_data.since_last_primary_attack = 0.0;
 
-    let proj_velocity = 60.0;
+    let proj_velocity = 40.0;
     for i in -1..2 {
         let proj_angle = f64::atan2(ctx.mouse_y - ctx.owner_xform.dy, ctx.mouse_x - ctx.owner_xform.dx);
         let angle = proj_angle + (i as f64) * std::f64::consts::FRAC_PI_6;

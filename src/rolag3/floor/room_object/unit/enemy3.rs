@@ -26,7 +26,7 @@ pub fn new_enemy3(ctx: &mut NewRoomObjectContext, x: f64, y: f64) -> StandardUni
         team: Team::Enemy,
         damage_color: DamageColor::Red,
         hp: 30.0,
-        engine_power: 50.0,
+        engine_power: 20.0,
         tire_traction: 50.0,
     }).act1_fn(Box::new(act1))
         .draw_fn(Box::new(draw))

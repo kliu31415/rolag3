@@ -3,7 +3,7 @@ use std::collections::VecDeque;
 use rand::{rngs:: StdRng, SeedableRng};
 use winit::{event::{Event, WindowEvent, KeyEvent, ElementState, MouseButton}, event_loop::EventLoopWindowTarget, keyboard::{PhysicalKey, KeyCode}};
 
-use crate::gfx::{self, window::{Window, EventHandler}, renderer::{ColorRGBA32f, DrawTextPosition, DrawOpCCS, DrawOpText, DrawOpWithMetadata, DrawOp, Renderer}, input::PollableInput};
+use crate::{gfx::{self, window::{Window, EventHandler}, renderer::{ColorRGBA32f, DrawTextPosition, DrawOpCCS, DrawOpText, DrawOpWithMetadata, DrawOp, Renderer}, input::PollableInput}, util::time::now_unix};
 
 use super::floor::{draw::{DrawFloorContext, get_draw_floor_ops}, run::{RunFloorContext, run_floor_frame, PlayerInput, PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, floor_def::Floor};
 
@@ -18,7 +18,6 @@ pub fn run() {
 }
 
 struct Rolag3EventHandler {
-    #[allow(dead_code)] // rust falsely thinks frame_timestamps is never read even though its length is printed
     frame_timestamps: VecDeque<f64>,
     floor: Floor,
     rng: StdRng,
@@ -119,6 +118,7 @@ impl Rolag3EventHandler {
             vertical_move = PlayerVerticalMoveInput::Down;
         }
 
+        self.frame_timestamps.push_back(now_unix());
         let mut frame_length = 0.01;
         if self.frame_timestamps.len() >= 2 {
             frame_length = self.frame_timestamps.back().unwrap() - self.frame_timestamps[self.frame_timestamps.len()-2];

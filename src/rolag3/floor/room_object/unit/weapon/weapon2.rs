@@ -63,7 +63,7 @@ fn handle_tick_fn(ctx: &mut WeaponHandleTickContext) -> WeaponHandleTickResponse
 }
 
 fn spawn_projectile(ctx: &mut WeaponHandleTickContext, angle_adjust: f64) -> Rc<RefCell<dyn RoomObject>> {
-    let proj_velocity = 100.0;
+    let proj_velocity = 60.0;
     let proj_angle = f64::atan2(ctx.mouse_y - ctx.owner_xform.dy, ctx.mouse_x - ctx.owner_xform.dx);
     let proj_angle = proj_angle + angle_adjust;
     let velocity_x = ctx.owner_velocity_x + proj_velocity * f64::cos(proj_angle);

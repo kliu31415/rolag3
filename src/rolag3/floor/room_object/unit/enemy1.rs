@@ -37,7 +37,7 @@ pub fn new_enemy1(ctx: &mut NewRoomObjectContext, x: f64, y: f64) -> StandardUni
         team: Team::Enemy,
         damage_color: DamageColor::Blue,
         hp: 30.0,
-        engine_power: 40.0,
+        engine_power: 15.0,
         tire_traction: 50.0,
     }).act1_fn(Box::new(act1))
         .draw_fn(Box::new(draw))
@@ -58,7 +58,7 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
         match &*qr.borrow() {
             Act1QueryResult::ClosestUnit(v) => {
                 if let Some(closest) = v {
-                    let proj_velocity = 25.0;
+                    let proj_velocity = 12.0;
                     let theta = f64::atan2(closest.y - xform.dy, closest.x - xform.dx);
                     let proj_dx = proj_velocity * f64::cos(theta);
                     let proj_dy = proj_velocity * f64::sin(theta);

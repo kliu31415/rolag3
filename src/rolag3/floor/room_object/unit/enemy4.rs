@@ -49,7 +49,7 @@ pub fn new_enemy4(ctx: &mut NewRoomObjectContext, x: f64, y: f64) -> StandardUni
         team: Team::Enemy,
         damage_color: DamageColor::Red,
         hp: 30.0,
-        engine_power: 20.0,
+        engine_power: 12.0,
         tire_traction: 50.0,
     }).angular_power(1.0)
         .angular_traction(30.0)
@@ -79,7 +79,7 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
             let mut nfo_ctx = NewRoomObjectContext::from_act1_ctx(ctx.act1_ctx);
             for i in 0..3 {
                 let angle = xform.dtheta + (i as f64) * 2.0/3.0 * std::f64::consts::PI;
-                let proj_speed = 25.0;
+                let proj_speed = 12.0;
                 let shape = Proj2Shape::TriFan {
                     center: Point::new(0.0, 0.0), 
                     vertexes: us_data.inner.vertexes.clone(),
