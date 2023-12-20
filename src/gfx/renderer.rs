@@ -790,7 +790,7 @@ impl WgpuRenderer {
             self.tri_to_gpu(&op.vertexes[3]),
         ];
         dst.push([v[0], v[1], v[2]]);
-        dst.push([v[1], v[2], v[3]]);
+        dst.push([v[0], v[2], v[3]]);
     }
 
     fn add_tri_fan_shader_inputs(&self, dst: &mut Vec<[TriangleVertexShaderInput; 3]>, op: &DrawOpTriFan) {

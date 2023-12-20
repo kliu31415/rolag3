@@ -139,31 +139,21 @@ impl RoomObjectMetadata {
 }
 
 pub struct RoomObjectCollection {
+    room_already_cleared: bool,
+    room_objects_by_type: RoomObjectsByType,
+
+    cached_mem: RoomObjectCollectionCachedMem,
+}
+
+struct RoomObjectsByType {
     player: Vec<Rc<RefCell<dyn RoomObject>>>, // size 0 (player not present in room) or 1 (player present)
     ro_wall: Vec<Rc<RefCell<dyn RoomObject>>>,
     ro_projectile: Vec<Rc<RefCell<dyn RoomObject>>>,
     ro_unit: Vec<Rc<RefCell<dyn RoomObject>>>,
     ro_other: Vec<Rc<RefCell<dyn RoomObject>>>,
-    room_already_cleared: bool,
-
-    // cached objects
-    act1_responses: Vec<Act1Response>,
 }
 
-impl RoomObjectCollection {
-    pub fn new() -> Self {
-        Self {
-            player: Vec::new(),
-            ro_wall: Vec::new(),
-            ro_projectile: Vec::new(),
-            ro_unit: Vec::new(),
-            ro_other: Vec::new(),
-            room_already_cleared: false,
-
-            act1_responses: Vec::new(),
-        }
-    }
-
+impl RoomObjectsByType {
     fn vec_mut_all_objects(&mut self) -> Vec<&mut Vec<Rc<RefCell<dyn RoomObject>>>> {
         vec![&mut self.player, &mut self.ro_wall, &mut self.ro_projectile, &mut self.ro_unit, &mut self.ro_other]
     }
@@ -180,12 +170,12 @@ impl RoomObjectCollection {
         self.vec_all_objects().into_iter().map(|v| v.len()).sum()
     }
 
-    pub fn remove_player(&mut self) {
+    fn remove_player(&mut self) {
         assert!(self.player.len() == 1, "remove_player() called when player is not present");
         self.player.clear();
     }
 
-    pub fn add(&mut self, obj: Rc<RefCell<dyn RoomObject>>) {
+    fn add(&mut self, obj: Rc<RefCell<dyn RoomObject>>) {
         if obj.borrow().is_player() {
             assert!(self.player.is_empty(), "cannot add player to room when player is already in room");
             self.player.push(obj);
@@ -200,7 +190,7 @@ impl RoomObjectCollection {
         }
     }
 
-    pub fn remove_wall_at(&mut self, x: u32, y: u32) {
+    fn remove_wall_at(&mut self, x: u32, y: u32) {
         let old_len = self.ro_wall.len();
         self.ro_wall.retain(|ro| {
             let wall_loc = ro.borrow().get_as_wall_location();
@@ -213,41 +203,87 @@ impl RoomObjectCollection {
         assert!(old_len == new_len + 1, "Tried to remove wall at (x, y) = ({}, {}) from RoomObjectCollection. \
             Expected to remove one object. old_len={}, new_len={}", x, y, old_len, new_len);
     }
+}
+
+struct RoomObjectCollectionCachedMem {
+    act1_responses: Vec<Act1Response>,
+    room_objs_to_add: Vec<Rc<RefCell<dyn RoomObject>>>,
+    operations: Vec<RoomObjOperation>,
+    queries: Vec<(Act1QueryArgs, Rc<RefCell<Act1QueryResult>>)>,
+}
+
+impl RoomObjectCollectionCachedMem {
+    fn new() -> Self {
+        Self {
+            act1_responses: Vec::new(),
+            room_objs_to_add: Vec::new(),
+            operations: Vec::new(),
+            queries: Vec::new(),
+        }
+    }
+
+    fn reset(&mut self) {
+        self.act1_responses.clear();
+        self.room_objs_to_add.clear();
+        self.operations.clear();
+        self.queries.clear();
+    }
+}
+
+impl RoomObjectCollection {
+    pub fn new() -> Self {
+        Self {
+            room_objects_by_type: RoomObjectsByType {
+                player: Vec::new(),
+                ro_wall: Vec::new(),
+                ro_projectile: Vec::new(),
+                ro_unit: Vec::new(),
+                ro_other: Vec::new(),
+            },
+            room_already_cleared: false,
+            cached_mem: RoomObjectCollectionCachedMem::new(),
+        }
+    }
+
+    pub fn remove_player(&mut self) {
+        self.room_objects_by_type.remove_player();
+    }
+
+    pub fn add(&mut self, obj: Rc<RefCell<dyn RoomObject>>) {
+        self.room_objects_by_type.add(obj);
+    }
+
+    pub fn remove_wall_at(&mut self, x: u32, y: u32) {
+        self.room_objects_by_type.remove_wall_at(x, y);
+    }
 
     pub fn validate_start_room(&self) {
         let mut unique_locations = HashSet::new();
-        self.ro_wall.iter().filter_map(|w| w.borrow().get_as_wall_location()).for_each( |loc| {
+        self.room_objects_by_type.ro_wall.iter().filter_map(|w| w.borrow().get_as_wall_location()).for_each( |loc| {
             assert!(!unique_locations.contains(&loc), "multiple walls detected at location ({}, {})", loc.0, loc.1);
             unique_locations.insert(loc);
         });
     }
 
     pub fn act1(&mut self, ctx: &mut Act1Context) {
-        let obj_count = self.object_count();
-        let mut responses = Vec::new();
-        std::mem::swap(&mut responses, &mut self.act1_responses);
-        if responses.capacity() < obj_count {
-            responses.reserve_exact(obj_count - responses.capacity());
-        }
-        for room_obj in self.iter() {
+        self.cached_mem.reset();
+
+        for room_obj in self.room_objects_by_type.iter() {
             ctx.self_as_rc = Some(room_obj.clone());
-            responses.push(room_obj.borrow_mut().act1(ctx));
+            self.cached_mem.act1_responses.push(room_obj.borrow_mut().act1(ctx));
         }
 
-        let should_remove: Vec<bool> = responses.iter().map(|x| x.get_remove_me()).collect();
+        let should_remove: Vec<bool> = self.cached_mem.act1_responses.iter().map(|x| x.get_remove_me()).collect();
         self.remove_all_using_bool_array(should_remove.as_slice());
 
-        let mut room_objs_to_add = Vec::new();
-        let mut operations = Vec::new();
-        let mut queries = Vec::new();
-        for r in responses.iter_mut() {
-            r.steal_room_objs_to_add(&mut room_objs_to_add);
-            r.steal_operations(&mut operations);
-            r.steal_queries(&mut queries);
+        for r in self.cached_mem.act1_responses.iter_mut() {
+            r.steal_room_objs_to_add(&mut self.cached_mem.room_objs_to_add);
+            r.steal_operations(&mut self.cached_mem.operations);
+            r.steal_queries(&mut self.cached_mem.queries);
         }
-        room_objs_to_add.into_iter().for_each(|x| self.add(x));
+        self.cached_mem.room_objs_to_add.drain(..).for_each(|x| self.room_objects_by_type.add(x));
 
-        for op in operations {
+        for op in self.cached_mem.operations.drain(..) {
             let op_ctx = RoomObjApplyOperationContext {
                 operation: &op,
                 rofiz: ctx.rofiz,
@@ -255,21 +291,21 @@ impl RoomObjectCollection {
             };
             match op {
                 RoomObjOperation::BlackHoleForce { .. } => {
-                    self.ro_projectile.iter().for_each(|x| x.borrow_mut().apply_operation(&op_ctx))
+                    self.room_objects_by_type.ro_projectile.iter().for_each(|x| x.borrow_mut().apply_operation(&op_ctx))
                 },
                 RoomObjOperation::ClearProjectiles { .. } => {
-                    self.ro_projectile.iter().for_each(|x| x.borrow_mut().apply_operation(&op_ctx))
+                    self.room_objects_by_type.ro_projectile.iter().for_each(|x| x.borrow_mut().apply_operation(&op_ctx))
                 },
                 RoomObjOperation::UnitBudeb { .. } => {
-                    self.ro_unit.iter().for_each(|x| x.borrow_mut().apply_operation(&op_ctx));
+                    self.room_objects_by_type.ro_unit.iter().for_each(|x| x.borrow_mut().apply_operation(&op_ctx));
                 }
             }
         }
 
-        for (qargs, qresult) in queries {
+        for (qargs, qresult) in self.cached_mem.queries.drain(..) {
             match qargs {
                 Act1QueryArgs::ClosestUnit { x, y, team_filter } => {
-                    let closest = self.ro_unit.iter().chain(self.player.iter())
+                    let closest = self.room_objects_by_type.ro_unit.iter().chain(self.room_objects_by_type.player.iter())
                         .map(|x| {
                             let rqui_ctx = RoQueryUnitInfoContext {
                                 self_as_weak: Rc::downgrade(x),
@@ -298,22 +334,19 @@ impl RoomObjectCollection {
                 }
             }
         }
-
-        responses.clear();
-        std::mem::swap(&mut responses, &mut self.act1_responses);
     }
 
     pub fn remove_by_id(&mut self, to_remove: HashSet<RoomObjectId>) {
         if to_remove.is_empty() {
             return;
         }
-        self.vec_mut_all_objects().iter_mut().for_each(
+        self.room_objects_by_type.vec_mut_all_objects().iter_mut().for_each(
             |ro_v| ro_v.retain(
                 |x| !to_remove.contains(&x.borrow().get_metadata().get_id())));
     }
 
     pub fn draw(&mut self, ctx: &mut DrawContext) {
-        for fo in self.iter() {
+        for fo in self.room_objects_by_type.iter() {
             fo.borrow_mut().draw(ctx);
         }
     }
@@ -323,7 +356,7 @@ impl RoomObjectCollection {
             return;
         }
 
-        for fo in self.iter() {
+        for fo in self.room_objects_by_type.iter() {
             if fo.borrow().blocks_room_clear() {
                 return;
             }
@@ -334,7 +367,7 @@ impl RoomObjectCollection {
         let mut ctx = HandleRoomJustClearedContext {
             _rofiz: rofiz,
         };
-        for fo in self.iter() {
+        for fo in self.room_objects_by_type.iter() {
             fo.borrow_mut().handle_room_just_cleared(&mut ctx);
         }
     }
@@ -344,17 +377,17 @@ impl RoomObjectCollection {
     }
 
     pub fn remove_all_using_bool_array(&mut self, should_remove: &[bool]) {
-        let obj_count = self.object_count();
+        let obj_count = self.room_objects_by_type.object_count();
         if should_remove.len() != obj_count {
             panic!("should_remove.len() != obj_count. Values: {} != {}", should_remove.len(), obj_count)
         }
         let mut idx = 0;
-        self.vec_mut_all_objects().iter_mut().for_each(|v| v.retain(|_| {idx += 1; !should_remove[idx - 1]}));
+        self.room_objects_by_type.vec_mut_all_objects().iter_mut().for_each(|v| v.retain(|_| {idx += 1; !should_remove[idx - 1]}));
     }
 
     pub fn get_multi(&self, ids: HashSet<RoomObjectId>) -> HashMap<RoomObjectId, Rc<RefCell<dyn RoomObject>>> {
         let mut res = HashMap::new();
-        for fo in self.iter() {
+        for fo in self.room_objects_by_type.iter() {
             let id = fo.borrow().get_metadata().get_id();
             if ids.contains(&id) {
                 res.insert(id, fo.clone());
@@ -365,7 +398,7 @@ impl RoomObjectCollection {
 
     pub fn validate(&self) {
         let mut unique_ids = HashSet::new();
-        for ro in self.iter() {
+        for ro in self.room_objects_by_type.iter() {
             let id = ro.borrow().get_metadata().get_id();
             assert!(!unique_ids.contains(&id), "room contains more than one object with id={}", id);
             unique_ids.insert(id);
