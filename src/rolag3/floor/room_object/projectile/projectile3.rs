@@ -60,7 +60,7 @@ fn act1(ctx: &mut SpAct1Context) -> Act1Response {
 fn draw(ctx: &mut SpDrawContext) {
     let ps_data = ctx.sp_ctx.ps_data.downcast_mut::<Projectile3Data>().unwrap();
     let (color, vertexes) = (ps_data.draw_shape_fn)(ctx.draw_ctx.get_room_time());
-    let dop = ctx.draw_ctx.do_tri_fan(color, vertexes.iter().map(|p| Point::new(p.x, p.y)).collect());
+    let dop = ctx.draw_ctx.do_tri_fan(color, &vertexes.iter().map(|p| Point::new(p.x, p.y)).collect::<Vec<_>>());
     ctx.draw_ctx.add_draw_op(DrawContext::Z_PROJECTILE, dop);
 }
 

@@ -133,7 +133,7 @@ fn draw(ctx: &mut SuDrawContext) {
             border[(i+1)%4],
             outer[(i+1)%4],
         ];
-        let dop = ctx.draw_ctx.do_tri_fan(BORDER_COLOR, Box::new(quad));
+        let dop = ctx.draw_ctx.do_tri_fan(BORDER_COLOR, &quad);
         ctx.draw_ctx.add_draw_op(DrawContext::Z_UNIT, dop);
     }
 
@@ -144,7 +144,7 @@ fn draw(ctx: &mut SuDrawContext) {
             outer[(i+1)%4],
             inner[(i+1)%4],
         ];
-        let dop = ctx.draw_ctx.do_tri_fan(OUTER_COLOR, Box::new(quad));
+        let dop = ctx.draw_ctx.do_tri_fan(OUTER_COLOR, &quad);
         ctx.draw_ctx.add_draw_op(DrawContext::Z_UNIT, dop);
     }
 
@@ -152,7 +152,7 @@ fn draw(ctx: &mut SuDrawContext) {
         Some(ref x) => Color::lerp(PROJ_COLOR, INNER_COLOR, 2.0 * f64::abs(0.5 - (ctx.draw_ctx.get_room_time() - x.start)) as f32),
         None => INNER_COLOR,
     };
-    let dop = ctx.draw_ctx.do_tri_fan(inner_color, inner);
+    let dop = ctx.draw_ctx.do_tri_fan(inner_color, &inner);
     ctx.draw_ctx.add_draw_op(DrawContext::Z_UNIT, dop);
 }
 

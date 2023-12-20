@@ -72,7 +72,7 @@ impl RoomObject for RoomConnection {
                         Point::new(self.rci.x as f32, (self.rci.y + 1) as f32),
                     ],
                 };
-                let dop = ctx.do_quad(color, vertexes);
+                let dop = ctx.do_quad_fan(color, vertexes);
                 ctx.add_draw_op(DrawContext::Z_WALL, dop);
             }
             Some(_) => {
@@ -104,7 +104,7 @@ impl RoomObject for RoomConnection {
                         (Point::new(self.rci.x as f32, (self.rci.y + 1) as f32), color_opaque),
                     ],
                 };
-                let dop = ctx.do_quad_multicolor(vertexes);
+                let dop = ctx.do_quad_fan_multicolor(vertexes);
                 ctx.add_draw_op(DrawContext::Z_ROOM_CONNECTION_TILE, dop);
             }
         }

@@ -42,9 +42,14 @@ enum ShaderInput {
     Texture2((Range<usize>, usize /* bind_group_idx */)),
 }
 
+/* Tri and QuadFan are subsets of TriFan, but they exist to eliminate heap allocation costs. Tri/QuadFan are backed by
+   a stack-allocated fixed-size array, while TriFan is backed by a heap-allocated boxed slice.
+ */
 #[derive(Debug)]
 pub enum DrawOp {
     Group(DrawOpGroup),
+    _Tri(DrawOpTri),
+    QuadFan(DrawOpQuadFan),
     TriFan(DrawOpTriFan),
     _TriStrip(DrawOpTriStrip),
     ConcentricCircleSector(DrawOpCCS),
@@ -56,6 +61,8 @@ impl DrawOp {
     fn get_shader_id(&self) -> ShaderId {
         match self {
             DrawOp::Group(ref g) => g.ops[0].get_shader_id(),
+            DrawOp::_Tri(_) => ShaderId::Triangle1,
+            DrawOp::QuadFan(_) => ShaderId::Triangle1,
             DrawOp::TriFan(_) => ShaderId::Triangle1,
             DrawOp::_TriStrip(_) => ShaderId::Triangle1,
             DrawOp::ConcentricCircleSector(_) => ShaderId::ConcentricCircleSector,
@@ -85,10 +92,20 @@ impl DrawOpGroup {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default, Clone, Copy)]
 pub struct ColoredTriVertex {
     pub color: ColorRGBA32f,
     pub vertex: ViewSpaceCoordinate,
+}
+
+#[derive(Debug)]
+pub struct DrawOpTri {
+    pub vertexes: [ColoredTriVertex; 3],
+}
+
+#[derive(Debug)]
+pub struct DrawOpQuadFan {
+    pub vertexes: [ColoredTriVertex; 4],
 }
 
 #[derive(Debug)]
@@ -142,7 +159,7 @@ pub struct DrawOpTexture2 {
     pub dst_rect: Rect,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Default)]
 pub struct ColorRGBA32f {
     pub r: f32,
     pub g: f32,
@@ -173,7 +190,7 @@ impl Rect {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Default)]
 pub struct ViewSpaceCoordinate {
     pub x: f32,
     pub y: f32,
@@ -506,21 +523,27 @@ impl Renderer for WgpuRenderer {
             while let Some(op) = ordered_ops.next() {
                 match op {
                     DrawOp::Group(_) => panic!("all DrawOpGroups should have been flattened by this point (1)"),
+                    DrawOp::_Tri(ref x) => {
+                        self.add_tri_shader_inputs(&mut cached_mem.triangle1_shader_inputs_batch, x);
+                    }
+                    DrawOp::QuadFan(ref x) => {
+                        self.add_quad_fan_shader_inputs(&mut cached_mem.triangle1_shader_inputs_batch, x);
+                    }
                     DrawOp::TriFan(ref x) => {
-                        self.draw_tri_fan(&mut cached_mem.triangle1_shader_inputs_batch, x);
+                        self.add_tri_fan_shader_inputs(&mut cached_mem.triangle1_shader_inputs_batch, x);
                     }
                     DrawOp::_TriStrip(ref x) => {
-                        self.draw_tri_strip(&mut cached_mem.triangle1_shader_inputs_batch, x);
+                        self.add_tri_strip_shader_inputs(&mut cached_mem.triangle1_shader_inputs_batch, x);
                     }
                     DrawOp::ConcentricCircleSector(ref x) => {
-                        self.draw_concentric_circle_sector(&mut cached_mem.ccs_inputs_batch, x);
+                        self.add_ccs_shader_inputs(&mut cached_mem.ccs_inputs_batch, x);
                     }
                     DrawOp::Text(ref x) => {
-                        let dt = self.draw_text(&mut cached_mem.text_inputs_batch, x);
+                        let dt = self.add_text_shader_inputs(&mut cached_mem.text_inputs_batch, x);
                         text_inputs_batch_bg = Some(dt);
                     }
                     DrawOp::Texture2(ref x) => {
-                        let dt = self.draw_texture2(&mut cached_mem.texture2_inputs_batch, x);
+                        let dt = self.add_texture2_shader_inputs(&mut cached_mem.texture2_inputs_batch, x);
                         texture2_inputs_batch_bg = Some(dt);
                     }
                 }
@@ -739,7 +762,16 @@ impl WgpuRenderer {
         }
     }
 
-    fn draw_tri_fan(&self, dst: &mut Vec<[TriangleVertexShaderInput; 3]>, op: &DrawOpTriFan) {
+    fn add_tri_shader_inputs(&self, dst: &mut Vec<[TriangleVertexShaderInput; 3]>, op: &DrawOpTri) {
+        dst.push([self.tri_to_gpu(&op.vertexes[0]), self.tri_to_gpu(&op.vertexes[1]), self.tri_to_gpu(&op.vertexes[2])]);
+    }
+
+    fn add_quad_fan_shader_inputs(&self, dst: &mut Vec<[TriangleVertexShaderInput; 3]>, op: &DrawOpQuadFan) {
+        dst.push([self.tri_to_gpu(&op.vertexes[0]), self.tri_to_gpu(&op.vertexes[1]), self.tri_to_gpu(&op.vertexes[2])]);
+        dst.push([self.tri_to_gpu(&op.vertexes[0]), self.tri_to_gpu(&op.vertexes[2]), self.tri_to_gpu(&op.vertexes[3])]);
+    }
+
+    fn add_tri_fan_shader_inputs(&self, dst: &mut Vec<[TriangleVertexShaderInput; 3]>, op: &DrawOpTriFan) {
         if op.vertexes.len() < 3 {
             panic!("draw_tri_fan() expected at least 3 vertexes, got {}. vertexes={:?}", 
                 op.vertexes.len(),
@@ -752,7 +784,7 @@ impl WgpuRenderer {
         }
     }
 
-    fn draw_tri_strip(&self, dst: &mut Vec<[TriangleVertexShaderInput; 3]>, op: &DrawOpTriStrip) {
+    fn add_tri_strip_shader_inputs(&self, dst: &mut Vec<[TriangleVertexShaderInput; 3]>, op: &DrawOpTriStrip) {
         if op.vertexes.len() < 3 {
             panic!("draw_tri_strip() expected at least 3 vertexes, got {}. vertexes={:?}", 
                 op.vertexes.len(), 
@@ -772,7 +804,7 @@ impl WgpuRenderer {
         } 
     }
 
-    fn draw_concentric_circle_sector(&self, dst: &mut Vec<[ConcrenticCircleSectorVertexShaderInput; 3]>, args: &DrawOpCCS) {
+    fn add_ccs_shader_inputs(&self, dst: &mut Vec<[ConcrenticCircleSectorVertexShaderInput; 3]>, args: &DrawOpCCS) {
         if args.inner_radius < 0.0 || args.outer_radius < 0.0 || args.inner_radius > args.outer_radius {
             panic!("concentric circle sector inner_radius({}) and outer_radius({}) have bad values", args.inner_radius, args.outer_radius);
         }
@@ -836,7 +868,7 @@ impl WgpuRenderer {
         dst.push([vertexes[2], vertexes[3], vertexes[0]]);
     }
 
-    fn draw_text(&self, dst: &mut Vec<[TextTextureVertexShaderInput; 3]>, args: &DrawOpText) -> wgpu::BindGroup {
+    fn add_text_shader_inputs(&self, dst: &mut Vec<[TextTextureVertexShaderInput; 3]>, args: &DrawOpText) -> wgpu::BindGroup {
         let k = args.get_key();
         let v = self.cached_text_textures.get(&k).expect("unable to get cached text texture");
         
@@ -867,7 +899,7 @@ impl WgpuRenderer {
         } 
     }
 
-    fn draw_texture2(&self, dst: &mut Vec<[Texture2VertexShaderInput; 3]>, args: &DrawOpTexture2) -> wgpu::BindGroup {
+    fn add_texture2_shader_inputs(&self, dst: &mut Vec<[Texture2VertexShaderInput; 3]>, args: &DrawOpTexture2) -> wgpu::BindGroup {
         let k = args.texture.id;
         let v = self.textures.get(&k).expect("unable to get cached texture");
 

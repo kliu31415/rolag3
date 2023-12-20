@@ -67,6 +67,6 @@ fn draw(ctx: &mut SuDrawContext) {
         Point::new(x + w, y + h),
         Point::new(x, y + h),
     ];
-    let dop = ctx.draw_ctx.do_quad( color, vertexes);
+    let dop = ctx.draw_ctx.do_quad_fan( color, vertexes);
     ctx.draw_ctx.add_draw_op(DrawContext::Z_UNIT, dop);
 }

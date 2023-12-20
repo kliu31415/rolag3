@@ -145,7 +145,7 @@ impl RoomObject for Player {
             Point::new(player_x + player_w, player_y + player_h),
             Point::new(player_x, player_y + player_h),
         ];
-        let dop = ctx.do_quad(color, vertexes);
+        let dop = ctx.do_quad_fan(color, vertexes);
         ctx.add_draw_op(DrawContext::Z_UNIT_PLAYER, dop);
     }
 

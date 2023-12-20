@@ -127,12 +127,12 @@ fn draw(ctx: &mut SuDrawContext) {
     for v in inner_xformed.vertexes.iter().chain(std::iter::once(&inner_xformed.vertexes[0])) {
         vertexes.push(Point::new(v.x, v.y));
     }
-    draw_ops.push(ctx.draw_ctx.do_tri_fan(color, vertexes.into_boxed_slice()));
+    draw_ops.push(ctx.draw_ctx.do_tri_fan(color, &vertexes));
 
     let color = ctx.su_ctx.su_common.get_draw_color(ctx.draw_ctx.get_room_time(), Color::new(0.0, 2.0, 0.0, 1.0));
     for quad in get_border_quads(xform, &us_data.outer, &us_data.inner).into_iter() {
-        let vertexes = quad.into_iter().map(|p| Point::new(p.x, p.y)).collect();
-        draw_ops.push(ctx.draw_ctx.do_tri_fan(color, vertexes));
+        let vertexes = quad.into_iter().map(|p| Point::new(p.x, p.y)).collect::<Vec<_>>();
+        draw_ops.push(ctx.draw_ctx.do_tri_fan(color, &vertexes));
     }
 
     ctx.draw_ctx.add_draw_op(DrawContext::Z_UNIT, ctx.draw_ctx.dop_group(draw_ops.into_boxed_slice()));

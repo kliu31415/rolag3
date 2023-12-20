@@ -137,7 +137,7 @@ fn draw(ctx: &mut SuDrawContext) {
         Point::new(x + w, y + h),
         Point::new(x, y + h),
     ];
-    let dop1 = ctx.draw_ctx.do_quad(color, vertexes);
+    let dop1 = ctx.draw_ctx.do_quad_fan(color, vertexes);
     let eye_border_color = ctx.su_ctx.su_common.get_draw_color(ctx.draw_ctx.get_room_time(), Color::new(0.0, 0.0, 0.0, 1.0));
     let eye_sclera_color = ctx.su_ctx.su_common.get_draw_color(ctx.draw_ctx.get_room_time(), Color::new(1.0, 1.0, 1.0, 1.0));
     let eye_iris_color = ctx.su_ctx.su_common.get_draw_color(ctx.draw_ctx.get_room_time(), Color::new(0.0, 0.0, 0.0, 1.0));

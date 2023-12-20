@@ -69,7 +69,7 @@ impl RoomObject for BasicWall {
             }
         }
 
-        ctx.add_draw_op(DrawContext::Z_WALL, ctx.do_tri_fan_multicolor(vec![
+        ctx.add_draw_op(DrawContext::Z_WALL, ctx.do_tri_fan_multicolor(&vec![
             main_wall_vertexes[1][1],
             main_wall_vertexes[0][0],
             main_wall_vertexes[1][0],
@@ -80,7 +80,7 @@ impl RoomObject for BasicWall {
             main_wall_vertexes[0][2],
             main_wall_vertexes[0][1],
             main_wall_vertexes[0][0],
-        ].into()));
+        ]));
 
         let border_size = 0.1;
         let offsets = [0.0, border_size, 1.0 - border_size, 1.0];

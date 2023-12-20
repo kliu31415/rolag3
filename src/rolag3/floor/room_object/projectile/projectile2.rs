@@ -80,8 +80,8 @@ fn draw(ctx: &mut SpDrawContext) {
                 let vertexes = std::iter::once(xformed_center)
                     .chain(p.vertexes.iter().map(|v| Point::new(v.x, v.y)))
                     .chain(std::iter::once(Point::new(p.vertexes[0].x, p.vertexes[0].y)))
-                    .collect();
-                let dop = ctx.draw_ctx.do_tri_fan(ps_data.color, vertexes);
+                    .collect::<Vec<_>>();
+                let dop = ctx.draw_ctx.do_tri_fan(ps_data.color, &vertexes);
                 ctx.draw_ctx.add_draw_op(DrawContext::Z_PROJECTILE, dop);
             } else {
                 panic!("could not convert ps_data.shape to TriFan. shape={:?}", ps_data.shape);

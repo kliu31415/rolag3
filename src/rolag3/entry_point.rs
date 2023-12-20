@@ -23,6 +23,7 @@ struct Rolag3EventHandler {
     floor: Floor,
     rng: StdRng,
     prev_mouse_xy: Option<(f64, f64)>,
+    cached_mem_draw_ops: Vec<DrawOpWithMetadata>,
 }
 
 impl EventHandler for Rolag3EventHandler {
@@ -85,6 +86,7 @@ impl Rolag3EventHandler {
             floor,
             rng,
             prev_mouse_xy: None,
+            cached_mem_draw_ops: Vec::new(),
         }
     }
 
@@ -172,8 +174,10 @@ impl Rolag3EventHandler {
             window_height,
             pixels_per_tile,
             show_tab_overlay,
+            cached_mem_draw_ops: &mut self.cached_mem_draw_ops,
         };
-        get_draw_floor_ops(draw_floor_ctx).into_iter().for_each(|x| window.get_renderer().draw(x));
+        get_draw_floor_ops(draw_floor_ctx);
+        self.cached_mem_draw_ops.drain(..).for_each(|x| window.get_renderer().draw(x));
 
         window.get_renderer().draw(DrawOpWithMetadata {
             z: 100.0,

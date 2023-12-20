@@ -40,7 +40,7 @@ impl RoomObject for AccelTile {
                 v3 + translate,
                 v4 + translate,
             ];
-            all_draw_ops.push(ctx.do_tri_fan(BORDER_COLOR, Box::new(quad)))
+            all_draw_ops.push(ctx.do_quad_fan(BORDER_COLOR, quad));
         }
 
         let caret_color = match self.unit_last_affected_time {
@@ -49,8 +49,8 @@ impl RoomObject for AccelTile {
         };
 
         let caret_translate = translate + Vector::new(1.0, 1.0);
-        let caret_shape = CARET_SHAPE.iter().map(|p| p + caret_translate).collect();
-        all_draw_ops.push(ctx.do_tri_fan(caret_color, caret_shape));
+        let caret_shape = CARET_SHAPE.iter().map(|p| p + caret_translate).collect::<Vec<_>>();
+        all_draw_ops.push(ctx.do_tri_fan(caret_color, &caret_shape));
 
         ctx.add_draw_op(DrawContext::Z_TILE, ctx.dop_group(all_draw_ops.into_boxed_slice()));
     }

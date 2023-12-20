@@ -1,4 +1,4 @@
-use crate::{gfx::{renderer::{ColorRGBA32f, ViewSpaceCoordinate, DrawOpWithMetadata, DrawOpTriFan, DrawOp, ColoredTriVertex, DrawOpCCS, DrawOpGroup, Rect, DrawOpText, DrawTextPosition, DrawOpTexture2}, draw_op_util::draw_op_rect}, geometry::shape::Point};
+use crate::{gfx::{renderer::{ColorRGBA32f, ViewSpaceCoordinate, DrawOpWithMetadata, DrawOpTriFan, DrawOp, ColoredTriVertex, DrawOpCCS, DrawOpGroup, Rect, DrawOpText, DrawTextPosition, DrawOpTexture2, DrawOpQuadFan}, draw_op_util::draw_op_rect}, geometry::shape::Point};
 
 use super::{rofiz::rofiz_state::RofizState, floor_def::Floor, room_object::unit::player::Player, room::RoomTile};
 
@@ -8,17 +8,17 @@ pub struct DrawFloorContext<'a> {
     pub window_height: f64,
     pub pixels_per_tile: f64,
     pub show_tab_overlay: bool,
+    pub cached_mem_draw_ops: &'a mut Vec<DrawOpWithMetadata>,
 }
 
-pub fn get_draw_floor_ops(ctx: DrawFloorContext) -> Vec<DrawOpWithMetadata> {
+pub fn get_draw_floor_ops(ctx: DrawFloorContext) {
     let player_position = ctx.floor.get_player_center();
-    
-    let mut draw_ops = Vec::new();
 
+    let mut extra_draw_ops = Vec::new();
     {
         let (player, room) = ctx.floor.get_player_and_current_room();
         let mut draw_context = DrawContext {
-            draw_ops: Vec::new(),
+            draw_ops: ctx.cached_mem_draw_ops,
             camera_x: (player_position.x - ctx.window_width / 2.0 / ctx.pixels_per_tile) as f32,
             camera_y: (player_position.y - ctx.window_height / 2.0 / ctx.pixels_per_tile) as f32,
             pixels_per_tile: ctx.pixels_per_tile as f32,
@@ -30,15 +30,16 @@ pub fn get_draw_floor_ops(ctx: DrawFloorContext) -> Vec<DrawOpWithMetadata> {
             room_tiles: &room.tiles,
         };
         room.room_objects.draw(&mut draw_context);
-        draw_ops.append(&mut draw_context.draw_ops);
+        extra_draw_ops.append(&mut draw_context.draw_ops);
 
         let draw_hud_context = DrawHudContext {
             window_width: ctx.window_width as f32,
             window_height: ctx.window_height as f32,
             player: &player.borrow(),
         };
-        draw_ops.push(DrawOpWithMetadata::new(DrawContext::Z_HUD, get_draw_hud_ops(draw_hud_context)));
+        extra_draw_ops.push(DrawOpWithMetadata::new(DrawContext::Z_HUD, get_draw_hud_ops(draw_hud_context)));
     }
+    ctx.cached_mem_draw_ops.append(&mut extra_draw_ops);
 
     if ctx.show_tab_overlay {
         let draw_tab_overlay_context = DrawTabOverlayContext {
@@ -46,10 +47,8 @@ pub fn get_draw_floor_ops(ctx: DrawFloorContext) -> Vec<DrawOpWithMetadata> {
             window_width: ctx.window_width as f32,
             window_height: ctx.window_height as f32,
         };
-        draw_ops.push(DrawOpWithMetadata::new(DrawContext::Z_TAB_OVERLAY,get_draw_tab_overlay_ops(draw_tab_overlay_context)));
+        ctx.cached_mem_draw_ops.push(DrawOpWithMetadata::new(DrawContext::Z_TAB_OVERLAY,get_draw_tab_overlay_ops(draw_tab_overlay_context)));
     }
-
-    draw_ops
 }
 
 struct DrawTabOverlayContext<'a> {
@@ -185,7 +184,7 @@ fn get_draw_fillable_bar_ops(args: DrawFillableBarArgs) -> DrawOp {
 }
 
 pub struct DrawContext<'a> {
-    draw_ops: Vec<DrawOpWithMetadata>,
+    draw_ops: &'a mut Vec<DrawOpWithMetadata>,
     camera_x: f32,
     camera_y: f32,
     pixels_per_tile: f32,
@@ -247,7 +246,7 @@ impl DrawContext<'_> {
         DrawOp::Group(DrawOpGroup::new(ops))
     }
 
-    pub fn do_tri_fan(&self, color: Color, vertexes: Box<[Point]>) -> DrawOp {
+    pub fn do_tri_fan(&self, color: Color, vertexes: &[Point]) -> DrawOp {
         let vs_coords = vertexes
             .iter()
             .map(|c| ColoredTriVertex {
@@ -258,7 +257,7 @@ impl DrawContext<'_> {
         DrawOp::TriFan(DrawOpTriFan{vertexes: vs_coords})
     }
 
-    pub fn do_tri_fan_multicolor(&self, vertexes: Box<[(Point, Color)]>) -> DrawOp {
+    pub fn do_tri_fan_multicolor(&self, vertexes: &[(Point, Color)]) -> DrawOp {
         let vs_coords = vertexes
             .iter()
             .map(|c| ColoredTriVertex {
@@ -325,19 +324,18 @@ impl DrawContext<'_> {
         DrawOp::TriFan(DrawOpTriFan{vertexes: vs_coords})
     }
 
-    // only works for convex quads
-    pub fn do_quad(&self, color: Color, vertexes: [Point; 4]) -> DrawOp {
-        let vs_coords = vertexes
-            .iter()
-            .map(|c| ColoredTriVertex {
+    pub fn do_quad_fan(&self, color: Color, vertexes: [Point; 4]) -> DrawOp {
+        let mut vs_coords = [ColoredTriVertex::default(); 4];
+        for (i, v) in vertexes.iter().enumerate() {
+            vs_coords[i] = ColoredTriVertex {
                 color: Self::color_to_rdr(&color),
-                vertex: ViewSpaceCoordinate{x: self.x_to_vsc(c.x), y: self.y_to_vsc(c.y)}
-            })
-            .collect();
-        DrawOp::TriFan(DrawOpTriFan{vertexes: vs_coords})
+                vertex: ViewSpaceCoordinate{x: self.x_to_vsc(v.x), y: self.y_to_vsc(v.y)}
+            };
+        }
+        DrawOp::QuadFan(DrawOpQuadFan{vertexes: vs_coords})
     }
 
-    pub fn do_quad_multicolor(&self, vertexes: [(Point, Color); 4]) -> DrawOp {
+    pub fn do_quad_fan_multicolor(&self, vertexes: [(Point, Color); 4]) -> DrawOp {
         let vs_coords = vertexes
             .iter()
             .map(|c| ColoredTriVertex {
