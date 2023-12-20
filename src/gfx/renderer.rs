@@ -70,13 +70,6 @@ impl DrawOp {
             DrawOp::Texture2(ref t) => ShaderId::Texture2(t.texture.id),
         }
     }
-
-    fn flatten(&self) -> Box<dyn Iterator<Item = &DrawOp> + '_> {
-        match self {
-            DrawOp::Group(ref g) => Box::new(g.ops.iter().flat_map(|x| x.flatten())),
-            _ => Box::new(std::iter::once(self)),
-        }
-    }
 }
 
 #[derive(Debug)]
@@ -489,7 +482,7 @@ impl Renderer for WgpuRenderer {
             });
 
             // sort DrawOps by z. Order them in a way that minimizes the amount of times the shader pipeline is changed
-            self.draw_ops.sort_by(|a, b| a.z.partial_cmp(&b.z).unwrap());
+            self.draw_ops.sort_unstable_by(|a, b| a.z.partial_cmp(&b.z).unwrap());
             let mut ops_per_z = vec![Vec::new()];
             let mut ops_this_z = Vec::new();
             let mut prev_z = f64::NEG_INFINITY;
@@ -505,14 +498,37 @@ impl Renderer for WgpuRenderer {
                 ops_per_z.push(ops_this_z);
             }
             for (i, ops) in ops_per_z.iter_mut().enumerate() {
-                ops.sort_by_key(|x| x.get_shader_id());
+                ops.sort_unstable_by_key(|x| x.get_shader_id());
                 if i % 2 == 0 {
                     ops.reverse();
                 }
             }
 
             // convert DrawOps into GPU shader inputs
-            let mut ordered_ops = ops_per_z.drain(..).flatten().flat_map(|x| x.flatten()).peekable();
+            let mut ordered_ops = bumpalo::collections::Vec::new_in(&self.per_frame_allocator);
+            for opz1 in ops_per_z.into_iter() {
+                let mut groups = bumpalo::collections::Vec::new_in(&self.per_frame_allocator);
+                for opz2 in opz1.into_iter() {
+                    match opz2 {
+                        DrawOp::Group(ref g) => groups.push(g),
+                        _ => ordered_ops.push(opz2),
+                    }
+                }
+
+                while !groups.is_empty() {
+                    let mut next_groups = bumpalo::collections::Vec::new_in(&self.per_frame_allocator);
+                    for g in groups.drain(..) {
+                        for op in g.ops.iter() {
+                            match op {
+                                DrawOp::Group(ref g) => next_groups.push(g),
+                                _ => ordered_ops.push(op),
+                            }
+                        }
+                    }
+                    std::mem::swap(&mut groups, &mut next_groups);
+                }
+            }
+            let mut ordered_ops_iter = ordered_ops.drain(..).peekable();
             let mut prev_triangle1_shader_inputs_len = 0;
             let mut prev_ccs_shader_inputs_len = 0;
             let mut prev_text_shader_inputs_len = 0;
@@ -520,7 +536,7 @@ impl Renderer for WgpuRenderer {
 
             let mut text_inputs_batch_bg = None;
             let mut texture2_inputs_batch_bg = None;
-            while let Some(op) = ordered_ops.next() {
+            while let Some(op) = ordered_ops_iter.next() {
                 match op {
                     DrawOp::Group(_) => panic!("all DrawOpGroups should have been flattened by this point (1)"),
                     DrawOp::_Tri(ref x) => {
@@ -547,7 +563,7 @@ impl Renderer for WgpuRenderer {
                         texture2_inputs_batch_bg = Some(dt);
                     }
                 }
-                if ordered_ops.peek().is_none() || op.get_shader_id() != ordered_ops.peek().unwrap().get_shader_id() {
+                if ordered_ops_iter.peek().is_none() || op.get_shader_id() != ordered_ops_iter.peek().unwrap().get_shader_id() {
                     match op.get_shader_id() {
                         ShaderId::Triangle1 => {
                             let cur_len = cached_mem.triangle1_shader_inputs_batch.len();
@@ -767,8 +783,14 @@ impl WgpuRenderer {
     }
 
     fn add_quad_fan_shader_inputs(&self, dst: &mut Vec<[TriangleVertexShaderInput; 3]>, op: &DrawOpQuadFan) {
-        dst.push([self.tri_to_gpu(&op.vertexes[0]), self.tri_to_gpu(&op.vertexes[1]), self.tri_to_gpu(&op.vertexes[2])]);
-        dst.push([self.tri_to_gpu(&op.vertexes[0]), self.tri_to_gpu(&op.vertexes[2]), self.tri_to_gpu(&op.vertexes[3])]);
+        let v = [
+            self.tri_to_gpu(&op.vertexes[0]),
+            self.tri_to_gpu(&op.vertexes[1]),
+            self.tri_to_gpu(&op.vertexes[2]),
+            self.tri_to_gpu(&op.vertexes[3]),
+        ];
+        dst.push([v[0], v[1], v[2]]);
+        dst.push([v[1], v[2], v[3]]);
     }
 
     fn add_tri_fan_shader_inputs(&self, dst: &mut Vec<[TriangleVertexShaderInput; 3]>, op: &DrawOpTriFan) {
