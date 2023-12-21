@@ -37,9 +37,48 @@ pub struct RofizObjMovable {
     pub temp_hitbox: Shape,
     pub move_successful: bool,
     pub fallback_idx: usize,
+    pub shape_scratchpad: Shape,
 }
 
 impl RofizObjMovable {
+    pub fn start_moafc(&mut self) {
+        let current = &mut self.current;
+        current.transformation.replace_shape_with_transformed(&mut self.initial_hitbox, &current.shape);
+        match self.movement {
+            RofizObjectMovement::NoMove() => self.current.transformation.replace_shape_with_transformed(&mut self.temp_hitbox, &self.current.shape),
+            RofizObjectMovement::Move(ref t) => (self.current.transformation.add(t)).replace_shape_with_transformed(&mut self.temp_hitbox, &self.current.shape),
+            RofizObjectMovement::MoveWithFallbacks(ref v) => (self.current.transformation.add(&v[0])).replace_shape_with_transformed(&mut self.temp_hitbox, &self.current.shape),
+            RofizObjectMovement::NewHitbox(ref h) => h.transformation.replace_shape_with_transformed(&mut self.temp_hitbox, &h.shape), 
+            RofizObjectMovement::_Delete() => panic!("there should be no rofiz objects with Delete movement. Loc 1a."),
+        };
+
+        self.bounding_box = match self.movement {
+            RofizObjectMovement::NoMove() => BoundingBox::of_shape(&self.temp_hitbox),
+            RofizObjectMovement::Move(_) => {
+                let mut b = BoundingBox::of_shape(&self.initial_hitbox);
+                b.combine(&BoundingBox::of_shape(&self.temp_hitbox));
+                b
+            }
+            RofizObjectMovement::MoveWithFallbacks(ref v) => {
+                let mut all_bb = BoundingBox::of_shape(&self.initial_hitbox);
+                for t in v {
+                    self.current.transformation.add(t).replace_shape_with_transformed(&mut self.shape_scratchpad, &self.current.shape);
+                    let bb = BoundingBox::of_shape(&self.shape_scratchpad);
+                    all_bb.combine(&bb);
+                }
+                all_bb
+            }
+            RofizObjectMovement::NewHitbox(_) => {
+                let mut b = BoundingBox::of_shape(&self.initial_hitbox);
+                b.combine(&BoundingBox::of_shape(&self.temp_hitbox));
+                b
+            }
+            RofizObjectMovement::_Delete() => panic!("there should be no rofiz objects with Delete movement. Loc 1b."),
+        };
+        self.fallback_idx = 0;
+        self.move_successful = true;
+    }
+
     pub fn overlaps_ro_wall(&self, other: &RofizObjBasicWall) -> bool {
         if !BoundingBox::overlap(&self.bounding_box, &other.bounding_box) {
             return false;
@@ -82,10 +121,28 @@ impl Transformation {
         Self {dx, dy, dtheta}
     }
 
-    pub fn get_transformed_shape(&self, shape: &Shape) -> Shape {
-        match shape {
-            Shape::Circle(c) => Shape::of_circle(Point::new(c.center.x + self.dx as f32, c.center.y + self.dy as f32), c.r),
-            Shape::Polygon(ref p) => Shape::Polygon(self.get_transformed_polygon(p)),
+    pub fn replace_shape_with_transformed(&self, dst: &mut Shape, src: &Shape) {
+        match src {
+            Shape::Circle(src_c) => match dst {
+                Shape::Circle(dst_c) => {
+                    dst_c.r = src_c.r;
+                    dst_c.center.x = src_c.center.x + self.dx as f32;
+                    dst_c.center.y = src_c.center.y + self.dy as f32;
+                }
+                _ => {
+                    *dst = Shape::of_circle(Point::new(src_c.center.x + self.dx as f32, src_c.center.y + self.dy as f32), src_c.r);
+                }
+            },
+            Shape::Polygon(src_p) => match dst {
+                Shape::Polygon(dst_p) => {
+                    dst_p.replace_with_rotated_and_translated(src_p, self.dx as f32, self.dy as f32, self.dtheta as f32);
+                },
+                _ => {
+                    let mut dst_p = Polygon::new(vec![Point::default(); src_p.vertexes.len()].into());
+                    dst_p.replace_with_rotated_and_translated(src_p, self.dx as f32, self.dy as f32, self.dtheta as f32);
+                    *dst = Shape::Polygon(dst_p);
+                }
+            }
         }
     }
 

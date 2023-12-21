@@ -28,6 +28,29 @@ impl Polygon {
 
         Self::new(new_v)
     }
+
+    pub fn replace_with_rotated_and_translated(&mut self, src: &Polygon, dx: f32, dy: f32, dtheta: f32) {
+        if src.vertexes.len() != self.vertexes.len() {
+            self.vertexes = vec![Point::default(); src.vertexes.len()].into();
+        }
+        self.vertexes.copy_from_slice(&src.vertexes);
+        // most of the time, dtheta is 0, so I decided to handle this as a special case as an optimization
+        if dtheta == 0.0 {
+            for p in self.vertexes.iter_mut() {
+                p.x += dx;
+                p.y += dy;
+            }
+        } else {
+            let cos_theta = f32::cos(dtheta);
+            let sin_theta = f32::sin(dtheta);
+            for p in self.vertexes.iter_mut() {
+                let rot_x = cos_theta * p.x - sin_theta * p.y;
+                let rot_y = sin_theta * p.x + cos_theta * p.y;
+                p.x = dx + rot_x;
+                p.y = dy + rot_y;
+            }
+        }
+    }
 }
 
 impl Shape {

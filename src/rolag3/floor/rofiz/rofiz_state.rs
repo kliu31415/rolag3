@@ -181,7 +181,9 @@ impl RofizState {
         };
         let rc = wp.upgrade().unwrap();
         let hitbox = &rc.borrow().current;
-        hitbox.transformation.get_transformed_shape(&hitbox.shape)
+        let mut ret = Shape::dummy();
+        hitbox.transformation.replace_shape_with_transformed(&mut ret,&hitbox.shape);
+        ret
     }
     
     pub fn move_objects_and_find_collisions(&mut self) -> Vec<RofizCollision> {
@@ -192,38 +194,7 @@ impl RofizState {
         self.spectral_units.retain(|x| !matches!(x.borrow().movement, RofizObjectMovement::_Delete()));
         for obj_rc in self.movable_objs_iter() {
             let mut obj = obj_rc.as_ref().borrow_mut();
-            obj.initial_hitbox = obj.current.transformation.get_transformed_shape(&obj.current.shape);
-            obj.temp_hitbox = match obj.movement {
-                RofizObjectMovement::NoMove() => obj.current.transformation.get_transformed_shape(&obj.current.shape),
-                RofizObjectMovement::Move(ref t) => (obj.current.transformation.add(t)).get_transformed_shape(&obj.current.shape),
-                RofizObjectMovement::MoveWithFallbacks(ref v) => (obj.current.transformation.add(&v[0])).get_transformed_shape(&obj.current.shape),
-                RofizObjectMovement::NewHitbox(ref h) => h.transformation.get_transformed_shape(&h.shape), 
-                RofizObjectMovement::_Delete() => panic!("there should be no rofiz objects with Delete movement. Loc 1a."),
-            };
-            obj.bounding_box = match obj.movement {
-                RofizObjectMovement::NoMove() => BoundingBox::of_shape(&obj.temp_hitbox),
-                RofizObjectMovement::Move(_) => {
-                    let mut b = BoundingBox::of_shape(&obj.initial_hitbox);
-                    b.combine(&BoundingBox::of_shape(&obj.temp_hitbox));
-                    b
-                }
-                RofizObjectMovement::MoveWithFallbacks(ref v) => {
-                    let mut all_bb = BoundingBox::of_shape(&obj.initial_hitbox);
-                    for t in v {
-                        let bb = BoundingBox::of_shape(&obj.current.transformation.add(t).get_transformed_shape(&obj.current.shape));
-                        all_bb.combine(&bb);
-                    }
-                    all_bb
-                }
-                RofizObjectMovement::NewHitbox(_) => {
-                    let mut b = BoundingBox::of_shape(&obj.initial_hitbox);
-                    b.combine(&BoundingBox::of_shape(&obj.temp_hitbox));
-                    b
-                }
-                RofizObjectMovement::_Delete() => panic!("there should be no rofiz objects with Delete movement. Loc 1b."),
-            };
-            obj.fallback_idx = 0;
-            obj.move_successful = true;
+            obj.start_moafc();
         }
 
         let mut nsu_bb_overlap = Vec::new();
@@ -427,9 +398,9 @@ impl RofizState {
                 rom.fallback_idx += 1;
                 if rom.fallback_idx < v.len() {
                     let new_xform = rom.current.transformation.add(&v[rom.fallback_idx]); 
-                    rom.temp_hitbox = new_xform.get_transformed_shape(&rom.current.shape);
+                    new_xform.replace_shape_with_transformed(&mut rom.temp_hitbox, &rom.current.shape);
                 } else {
-                    rom.temp_hitbox = rom.current.transformation.get_transformed_shape(&rom.current.shape);
+                    rom.current.transformation.replace_shape_with_transformed(&mut rom.temp_hitbox, &rom.current.shape);
                 }
                 true
             } else {
@@ -439,7 +410,7 @@ impl RofizState {
         _ => {
             if rom.move_successful {
                 rom.move_successful = false;
-                rom.temp_hitbox = rom.current.transformation.get_transformed_shape(&rom.current.shape);
+                rom.current.transformation.replace_shape_with_transformed(&mut rom.temp_hitbox, &rom.current.shape);
                 true
             } else {
                 false
@@ -483,6 +454,7 @@ impl RofizState {
             move_successful: false, // dummy
             fallback_idx: 0, // dummy
             room_object_id: floor_object_id,
+            shape_scratchpad: Shape::dummy(),
         }
     }
 
