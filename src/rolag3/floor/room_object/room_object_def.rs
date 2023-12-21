@@ -265,6 +265,7 @@ impl RoomObjectCollection {
         });
     }
 
+    #[inline(never)]
     pub fn act1(&mut self, ctx: &mut Act1Context) {
         self.cached_mem.reset();
 
@@ -351,6 +352,7 @@ impl RoomObjectCollection {
         }
     }
 
+    #[inline(never)]
     pub fn handle_if_room_just_cleared(&mut self, rofiz: &mut RofizState) {
         if self.room_already_cleared {
             return;
@@ -396,6 +398,7 @@ impl RoomObjectCollection {
         res
     }
 
+    #[inline(never)]
     pub fn validate(&self) {
         let mut unique_ids = HashSet::new();
         for ro in self.room_objects_by_type.iter() {

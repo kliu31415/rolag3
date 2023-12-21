@@ -70,6 +70,7 @@ impl RofizState {
         }
     }
 
+    #[inline(never)]
     pub fn finalize_start_floor(&mut self) {
         assert!(!self.floor_started, "cannot finalize floor twice");
 
@@ -97,6 +98,7 @@ impl RofizState {
         self.spatial_grid = vec![vec![Vec::new(); self.wall_y_end]; self.wall_x_end]
     }
 
+    #[inline(never)]
     pub fn start_new_tick(&mut self) {
         assert!(self.floor_started, "floor must be started before Rofiz starts new tick");
         for obj in self.basic_projectiles.iter_mut()
@@ -186,6 +188,7 @@ impl RofizState {
         ret
     }
     
+    #[inline(never)]
     pub fn move_objects_and_find_collisions(&mut self) -> Vec<RofizCollision> {
         assert!(self.floor_started, "floor must be started before Rofiz moves objects and finds collisions");
 
