@@ -52,6 +52,14 @@ pub fn regular_polygon(num_sides: usize, radius: f32) -> Box<[Point]> {
     vertexes.into_boxed_slice()
 }
 
+pub fn scale_polygon(scale: f32, vertexes: &mut [Point]) {
+    vertexes.iter_mut().for_each(|p| {p.x *= scale; p.y *= scale;});
+}
+
+pub fn translate_polygon(translate_by: Vector, vertexes: &mut [Point]) {
+    vertexes.iter_mut().for_each(|p| {p.x += translate_by.x; p.y += translate_by.y;});
+}
+
 #[cfg(test)]
 mod tests {
     use crate::geometry::shape::Point;

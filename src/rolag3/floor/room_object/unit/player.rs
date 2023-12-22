@@ -1,6 +1,6 @@
-use crate::{rolag3::floor::{run::{PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, draw::{DrawContext, Color}, room_object::{room_object_def::{RoomObject, Act1Context, FloorCoordinate, NewRoomObjectContext, RoomObjectMetadata, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse, RoomObjectType, RoQueryUnitInfoContext, RoQueryUnitInfoResponse, HcTileContext, HcTileEffect, HcTileResponse, RoomObjApplyOperationContext, RoomObjOperation}, tiles::room_connection::{Direction, RoomConnection}}, rofiz::{rofiz_object::{Hitbox, Transformation}, rofiz_state::RofizState}, room::RoomConnectionInfo}, geometry::shape::{Shape, Point}, gfx::{renderer::{DrawOp, DrawOpGroup, ColorRGBA32f, DrawOpText, DrawTextPosition}, draw_op_util::draw_op_rect}};
+use crate::{rolag3::floor::{run::{PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, draw::DrawContext, room_object::{room_object_def::{RoomObject, Act1Context, FloorCoordinate, NewRoomObjectContext, RoomObjectMetadata, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse, RoomObjectType, RoQueryUnitInfoContext, RoQueryUnitInfoResponse, HcTileContext, HcTileEffect, HcTileResponse, RoomObjApplyOperationContext, RoomObjOperation}, tiles::room_connection::{Direction, RoomConnection}, damage::DamageColor}, rofiz::{rofiz_object::{Hitbox, Transformation}, rofiz_state::RofizState}, room::RoomConnectionInfo}, geometry::shape::{Shape, Point}, gfx::{renderer::{DrawOp, DrawOpGroup, ColorRGBA32f, DrawOpText, DrawTextPosition}, draw_op_util::draw_op_rect}};
 
-use super::{Unit, standard_unit_common::{StandardUnitCommon, Budeb, BudebMaxSpeed, TranslateMove, PolarForce}, weapon::{weapon_def::{Weapon, WeaponHandleTickContext, DrawWeaponHudContext}, weapon1::new_weapon1, weapon2::new_weapon2, weapon3::new_weapon3}, active_item::{active_item_def::{ActiveItem, ActiveItemHandleTickContext}, clear_enemy_projectiles::new_active_item_clear_projectiles, slow_enemy_time::new_active_item_slow_enemy_time}};
+use super::{Unit, standard_unit_common::{StandardUnitCommon, Budeb, BudebMaxSpeed, TranslateMove, PolarForce}, weapon::{weapon_def::{Weapon, WeaponHandleTickContext, DrawWeaponHudContext, DrawWeaponOnOwnerContext}, weapon1::new_weapon1, weapon2::new_weapon2, weapon3::new_weapon3}, active_item::{active_item_def::{ActiveItem, ActiveItemHandleTickContext}, clear_enemy_projectiles::new_active_item_clear_projectiles, slow_enemy_time::new_active_item_slow_enemy_time}};
 
 pub struct Player {
     md: RoomObjectMetadata,
@@ -13,6 +13,7 @@ pub struct Player {
     mana: f64,
     max_mana: f64,
     mana_regen: f64,
+    damage_color: DamageColor,
 }
 
 impl RoomObject for Player {
@@ -101,6 +102,8 @@ impl RoomObject for Player {
             owner_mana: self.mana,
         };
         let mut wht_response = (weapon.handle_tick_fn)(&mut wht_ctx);
+        assert!(wht_response.damage_color != DamageColor::NotSet, "Weapon handle tick returned a damage color of NotSet");
+        self.damage_color = wht_response.damage_color;
         wht_response.new_room_objs.drain(..).for_each(|x| response.add_room_obj(x));
         self.mana += wht_response.mana_delta;
 
@@ -133,19 +136,28 @@ impl RoomObject for Player {
     }
 
     fn draw(&mut self, ctx: &mut DrawContext) {
-        let color = self.su_common.as_ref().unwrap().get_draw_color(ctx.get_room_time(), Color::new(0.6, 0.4, 0.2, 1.0));
         let xform = ctx.get_rofiz().get_movable_object_xform(self.su_common.as_ref().unwrap().get_ro_ref());
         let player_x = xform.dx as f32 - Self::PLAYER_S / 2.0;
         let player_y = xform.dy as f32 - Self::PLAYER_S / 2.0;
         let player_w = Self::PLAYER_S;
         let player_h = Self::PLAYER_S;
+
+        let dwoo_ctx = DrawWeaponOnOwnerContext {
+            draw_ctx: ctx,
+            x: xform.dx as f32,
+            y: xform.dy as f32,
+        };
+        let dwoo_response = (self.weapons[self.weapon_idx].draw_on_owner_fn)(&dwoo_ctx);
+        ctx.add_draw_op(DrawContext::Z_UNIT_PLAYER_WEAPON, dwoo_response.draw_op);
+        let player_color = self.su_common.as_ref().unwrap().get_draw_color(ctx.get_room_time(), dwoo_response.owner_color);
+
         let vertexes = [
             Point::new(player_x, player_y),
             Point::new(player_x + player_w, player_y),
             Point::new(player_x + player_w, player_y + player_h),
             Point::new(player_x, player_y + player_h),
         ];
-        let dop = ctx.do_quad_fan(color, vertexes);
+        let dop = ctx.do_quad_fan(player_color, vertexes);
         ctx.add_draw_op(DrawContext::Z_UNIT_PLAYER, dop);
     }
 
@@ -157,7 +169,8 @@ impl RoomObject for Player {
         if matches!(ctx.team, Team::Player) {
             return HcProjectileResponse::nop();
         }
-        let td_response = self.su_common.as_mut().unwrap().take_damage(ctx.damage);
+        let damage_mult = DamageColor::get_damage_mult(ctx.damage_color, self.damage_color);
+        let td_response = self.su_common.as_mut().unwrap().take_damage(ctx.damage * damage_mult);
         let mut room_objects_to_delete = Vec::new();
         if td_response.dead {
             room_objects_to_delete.push(self.md.get_id());
@@ -228,6 +241,7 @@ impl Player {
             mana: 20.0,
             max_mana: 20.0,
             mana_regen: 0.5,
+            damage_color: DamageColor::NotSet,
         }
     }
 

@@ -231,7 +231,8 @@ impl DrawContext<'_> {
     pub const Z_ROOM_CONNECTION_TILE: f64 = 11.0;
     pub const Z_WALL: f64 = 20.0;
     pub const Z_WALL_BORDERS: f64 = 21.0;
-    pub const Z_UNIT_PLAYER: f64 = 29.0;
+    pub const Z_UNIT_PLAYER: f64 = 28.0;
+    pub const Z_UNIT_PLAYER_WEAPON: f64 = 29.0;
     pub const Z_UNIT: f64 = 30.0;
     pub const Z_PROJECTILE: f64 = 40.0;
     pub const Z_BLACK_HOLE: f64 = 50.0;
@@ -268,10 +269,10 @@ impl DrawContext<'_> {
         DrawOp::TriFan(DrawOpTriFan{vertexes: vs_coords})
     }
 
-    pub fn do_circle(&self, color: Color, x: f32, y: f32, r: f32) -> DrawOp {
+    pub fn do_circle(&self, color: Color, center: Point, r: f32) -> DrawOp {
         let color = Self::color_to_rdr(&color);
-        let x = self.x_to_vsc(x);
-        let y = self.y_to_vsc(y);
+        let x = self.x_to_vsc(center.x);
+        let y = self.y_to_vsc(center.y);
         let r = r * self.pixels_per_tile;
         DrawOp::ConcentricCircleSector(
             DrawOpCCS {
