@@ -1,4 +1,4 @@
-use super::shape::Point;
+use super::shape::{Point, Vector};
 
 /*  Takes in a polygon A with vertices in CCW order. 
     Returns an inner polygon B whose edges are exactly border_thickness away from A's edges.
@@ -24,20 +24,21 @@ pub fn get_inner_polygon(border_thickness: f32, vertexes: &[Point]) -> Box<[Poin
 
         let cur = vertexes[i];
 
-        let a = (prev.x - cur.x, prev.y - cur.y);
-        let b = (next.x - cur.x, next.y - cur.y);
-        let a_norm = f32::hypot(a.0, a.1);
-        let b_norm = f32::hypot(b.0, b.1);
-        let angle = f32::acos((a.0*b.0 + a.1*b.1) / (a_norm * b_norm));
+        let a = prev - cur;
+        let b = next - cur;
+        let a_norm = a.norm();
+        let b_norm = b.norm();
+        let angle = f32::acos(Vector::dot(a, b) / (a_norm * b_norm));
         let inner_vertex_dist = border_thickness / f32::sin(angle / 2.0);
         // TODO: handle the case when angle == PI, in which case mid_vec = 0
-        let mid_vec = (a.0 + b.0, a.1 + b.1);
-        let mid_vec_norm = f32::hypot(mid_vec.0, mid_vec.1);
+        let mid_vec = a + b;
+        let mid_vec_norm = mid_vec.norm();
         let mut multiplier = inner_vertex_dist / mid_vec_norm;
-        if angle > std::f32::consts::PI {
+        // flip the multiplier if the cross product is negative
+        if Vector::cross_product(-a, b) < 0.0 {
             multiplier *= -1.0;
         }
-        inner[i] = Point::new(cur.x + mid_vec.0 * multiplier, cur.y + mid_vec.1 * multiplier);
+        inner[i] = Point::new(cur.x + mid_vec.x * multiplier, cur.y + mid_vec.y * multiplier);
     }
     inner.into_boxed_slice()
 }
@@ -49,4 +50,31 @@ pub fn regular_polygon(num_sides: usize, radius: f32) -> Box<[Point]> {
         vertexes[i] = Point::new(radius * f32::cos(angle), radius * f32::sin(angle));
     }
     vertexes.into_boxed_slice()
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::geometry::shape::Point;
+
+    use super::get_inner_polygon;
+
+    #[test]
+    fn get_inner_polygon_square() {
+        let vertexes = [
+            Point::new(0.0, 0.0),
+            Point::new(1.0, 0.0),
+            Point::new(1.0, 1.0),
+            Point::new(0.0, 1.0),
+        ];
+        let actual_inner = get_inner_polygon(0.1, &vertexes);
+        let expected_inner = [
+            Point::new(0.1, 0.1),
+            Point::new(0.9, 0.1),
+            Point::new(0.9, 0.9),
+            Point::new(0.1, 0.9),
+        ];
+        for i in 0..4 {
+            assert!((actual_inner[i] - expected_inner[i]).norm() < 1e-4, "actual({:?}) and expected({:?}) differ by too much", actual_inner[i], expected_inner[i]);
+        }
+    }
 }

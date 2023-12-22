@@ -68,10 +68,10 @@ impl EventHandler for Rolag3EventHandler {
     }
 }
 
-const PLAYER_MOVE_UP: PhysicalKey = PhysicalKey::Code(KeyCode::ArrowUp);
-const PLAYER_MOVE_DOWN: PhysicalKey = PhysicalKey::Code(KeyCode::ArrowDown);
-const PLAYER_MOVE_LEFT: PhysicalKey = PhysicalKey::Code(KeyCode::ArrowLeft);
-const PLAYER_MOVE_RIGHT: PhysicalKey = PhysicalKey::Code(KeyCode::ArrowRight);
+const PLAYER_MOVE_UP: PhysicalKey = PhysicalKey::Code(KeyCode::KeyW);
+const PLAYER_MOVE_DOWN: PhysicalKey = PhysicalKey::Code(KeyCode::KeyS);
+const PLAYER_MOVE_LEFT: PhysicalKey = PhysicalKey::Code(KeyCode::KeyA);
+const PLAYER_MOVE_RIGHT: PhysicalKey = PhysicalKey::Code(KeyCode::KeyD);
 const PLAYER_TEST_INPUT1: PhysicalKey = PhysicalKey::Code(KeyCode::Enter);
 const PLAYER_ACTIVE_ITEM1: PhysicalKey = PhysicalKey::Code(KeyCode::Space);
 const PLAYER_TAB_OVERLAY: PhysicalKey = PhysicalKey::Code(KeyCode::Tab);
@@ -122,6 +122,7 @@ impl Rolag3EventHandler {
         let mut frame_length = 0.01;
         if self.frame_timestamps.len() >= 2 {
             frame_length = self.frame_timestamps.back().unwrap() - self.frame_timestamps[self.frame_timestamps.len()-2];
+            frame_length = f64::min(frame_length, 0.035);
         }
 
         let player_position = self.floor.get_player_center();

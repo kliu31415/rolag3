@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use rand::rngs::StdRng;
 
-use crate::rolag3::floor::room_object::unit::player::MoveRooms;
+use crate::{rolag3::floor::room_object::unit::player::MoveRooms, util::lerp::lerp_f64};
 
 use super::{room_object::room_object_def::{Act1Context, HandleCollisionContext}, floor_def::Floor, room::Room};
 
@@ -18,11 +18,12 @@ pub struct RunFloorContext<'a> {
 
 pub fn run_floor_frame(mut ctx: RunFloorContext) {
     let tick_length = ctx.frame_length / (ctx.ticks_per_frame as f64);
+    assert!(tick_length < 0.002, "tick_length({}) is too small, which may cause issues with Rofiz", tick_length);
     let next_mouse_x = ctx.player_input.mouse_x;
     let next_mouse_y = ctx.player_input.mouse_y;
     for i in 0 .. ctx.ticks_per_frame {
-        ctx.player_input.mouse_x = lerp(ctx.prev_mouse_x, next_mouse_x, i as f64 / (ctx.ticks_per_frame as f64 - 1.0));
-        ctx.player_input.mouse_y = lerp(ctx.prev_mouse_y, next_mouse_y, i as f64 / (ctx.ticks_per_frame as f64 - 1.0));
+        ctx.player_input.mouse_x = lerp_f64(ctx.prev_mouse_x, next_mouse_x, i as f64 / (ctx.ticks_per_frame as f64 - 1.0));
+        ctx.player_input.mouse_y = lerp_f64(ctx.prev_mouse_y, next_mouse_y, i as f64 / (ctx.ticks_per_frame as f64 - 1.0));
         let tick_ctx = RunFloorTickContext {
             floor: ctx.floor,
             player_input: &ctx.player_input,
@@ -32,10 +33,6 @@ pub fn run_floor_frame(mut ctx: RunFloorContext) {
         run_floor_tick(tick_ctx);
         ctx.player_input.mouse_wheel_line_deltas = Box::new([]);
     }
-}
-
-fn lerp(x: f64, y: f64, a: f64) -> f64 {
-    x * (1.0 - a) + y * a
 }
 
 pub enum PlayerHorizontalMoveInput {

@@ -18,7 +18,7 @@ pub fn new_boss1(ctx: &mut NewRoomObjectContext, x: f64, y: f64) -> StandardUnit
     let xform = Transformation::new(x, y, -std::f64::consts::PI / 10.0);
     let outer_vertexes = get_star_shape(5, 2.0, 3.0, 0.0);
     let shape = Shape::of_polygon(outer_vertexes.clone());
-    let us_data: Boss1 = Boss1 { 
+    let us_data = Boss1 { 
         outer: Polygon::new(outer_vertexes.clone()),
         inner: Polygon::new(get_inner_polygon(0.2, &outer_vertexes)),
         action: None,
@@ -62,42 +62,61 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
                         let oi2_dy = q[3].y - q[2].y;
 
                         let creation_time = ctx.act1_ctx.get_room_time();
-                        let hitbox_fn = move |time_: f64| -> (Transformation, Shape) {
-                            let scale = (2.0 * (time_ - creation_time) + 1.0) as f32;
-                            let vertexes = [
-                                Point::new(dx1 * scale + oi1_dx, dy1 * scale + oi1_dy),
-                                Point::new(dx1 * scale, dy1 * scale),
-                                Point::new(dx2 * scale, dy2 * scale),
-                                Point::new(dx2 * scale + oi2_dx, dy2 * scale + oi2_dy),
-                            ];
-                            let shape = Shape::of_polygon(Box::new(vertexes));
-                            (xform, shape)
-                        };
 
-                        let draw_fn = move |time_: f64| -> (Color, Box<[Point]>) {
-                            let color = Color::new(0.0, 2.0, 0.0, 1.0);
-                            let scale = (2.0 * (time_ - creation_time) + 1.0) as f32;
-                            let vertexes = [
-                                xform.get_transformed_point(Point::new(dx1 * scale + oi1_dx, dy1 * scale + oi1_dy)),
-                                xform.get_transformed_point(Point::new(dx1 * scale, dy1 * scale)),
-                                xform.get_transformed_point(Point::new(dx2 * scale, dy2 * scale)),
-                                xform.get_transformed_point(Point::new(dx2 * scale + oi2_dx, dy2 * scale + oi2_dy)),
-                            ];
-                            (color, Box::new(vertexes))
-                        };
+                        let num_parts = 20;
+                        for i in 0..num_parts {
+                            let frac1 = i as f32 / (num_parts as f32);
+                            let frac2 = (i+1) as f32 / (num_parts as f32);
+                            // each quad array contains points in the order [inner, outer, outer, inner]
+                            let hitbox_fn = move |time_: f64| -> (Transformation, Shape) {
+                                let scale = (2.0 * (time_ - creation_time) + 1.0) as f32;
+                                let full_quad_vertexes = [
+                                    Point::new(dx1 * scale + oi1_dx, dy1 * scale + oi1_dy),
+                                    Point::new(dx1 * scale, dy1 * scale),
+                                    Point::new(dx2 * scale, dy2 * scale),
+                                    Point::new(dx2 * scale + oi2_dx, dy2 * scale + oi2_dy),
+                                ];
+                                let vertexes = [
+                                    Point::lerp(full_quad_vertexes[0], full_quad_vertexes[3], frac1),
+                                    Point::lerp(full_quad_vertexes[1], full_quad_vertexes[2], frac1),
+                                    Point::lerp(full_quad_vertexes[1], full_quad_vertexes[2], frac2),
+                                    Point::lerp(full_quad_vertexes[0], full_quad_vertexes[3], frac2),
+                                ];
+                                let shape = Shape::of_polygon(Box::new(vertexes));
+                                (xform, shape)
+                            };
 
-                        let self_as_weak = ctx.act1_ctx.get_self_as_weak();
-                        let mut nfo_ctx = NewRoomObjectContext::from_act1_ctx(ctx.act1_ctx);
-                        let proj = NewProjectile3Args {
-                            team: Team::Enemy,
-                        damage_color: DamageColor::Green,
-                            owner: self_as_weak,
-                            lifespan: 5.0,
-                            damage: 2.0,
-                            hitbox_fn: Box::new(hitbox_fn),
-                            draw_fn: Box::new(draw_fn),
-                        }.new(&mut nfo_ctx);
-                        response.add_room_obj(Rc::new(RefCell::new(proj)));
+                            let draw_fn = move |time_: f64| -> (Color, Box<[Point]>) {
+                                let color = Color::new(0.0, 2.0, 0.0, 1.0);
+                                let scale = (2.0 * (time_ - creation_time) + 1.0) as f32;
+                                let full_quad_vertexes = [
+                                    Point::new(dx1 * scale + oi1_dx, dy1 * scale + oi1_dy),
+                                    Point::new(dx1 * scale, dy1 * scale),
+                                    Point::new(dx2 * scale, dy2 * scale),
+                                    Point::new(dx2 * scale + oi2_dx, dy2 * scale + oi2_dy),
+                                ];
+                                let vertexes = [
+                                    xform.get_transformed_point(Point::lerp(full_quad_vertexes[0], full_quad_vertexes[3], frac1)),
+                                    xform.get_transformed_point(Point::lerp(full_quad_vertexes[1], full_quad_vertexes[2], frac1)),
+                                    xform.get_transformed_point(Point::lerp(full_quad_vertexes[1], full_quad_vertexes[2], frac2)),
+                                    xform.get_transformed_point(Point::lerp(full_quad_vertexes[0], full_quad_vertexes[3], frac2)),
+                                ];
+                                (color, Box::new(vertexes))
+                            };
+
+                            let self_as_weak = ctx.act1_ctx.get_self_as_weak();
+                            let mut nfo_ctx = NewRoomObjectContext::from_act1_ctx(ctx.act1_ctx);
+                            let proj = NewProjectile3Args {
+                                team: Team::Enemy,
+                                damage_color: DamageColor::Green,
+                                owner: self_as_weak,
+                                lifespan: 5.0,
+                                damage: 2.0,
+                                hitbox_fn: Box::new(hitbox_fn),
+                                draw_fn: Box::new(draw_fn),
+                            }.new(&mut nfo_ctx);
+                            response.add_room_obj(Rc::new(RefCell::new(proj)));
+                        }
                     }
                 }
                 if room_time - *started_at > 0.4 {
@@ -131,8 +150,7 @@ fn draw(ctx: &mut SuDrawContext) {
 
     let color = ctx.su_ctx.su_common.get_draw_color(ctx.draw_ctx.get_room_time(), Color::new(0.0, 2.0, 0.0, 1.0));
     for quad in get_border_quads(xform, &us_data.outer, &us_data.inner).into_iter() {
-        let vertexes = quad.into_iter().map(|p| Point::new(p.x, p.y)).collect::<Vec<_>>();
-        draw_ops.push(ctx.draw_ctx.do_tri_fan(color, &vertexes));
+        draw_ops.push(ctx.draw_ctx.do_quad_fan(color, quad));
     }
 
     ctx.draw_ctx.add_draw_op(DrawContext::Z_UNIT, ctx.draw_ctx.dop_group(draw_ops.into_boxed_slice()));
@@ -147,8 +165,11 @@ fn get_border_quads(xform: Transformation, outer: &Polygon, inner: &Polygon) -> 
     let inner_b = inner.vertexes[1..].iter().chain(inner.vertexes[..1].iter());
     let outer_a = outer.vertexes.iter();
     let outer_b = outer.vertexes[1..].iter().chain(outer.vertexes[..1].iter());
-    let border = inner_a.zip(inner_b).zip(outer_a.zip(outer_b));
+    let border = (inner_a.zip(inner_b)).zip(outer_a.zip(outer_b));
     for ((ia, ib), (oa, ob)) in border {
+        // each quad is in the form [inner, outer, outer, inner]
+        // TODO: empirically, swapping the order of the last two vertices results in the shape being correctly drawn.
+        // Why?
         let vertexes = [
             Point::new(ia.x, ia.y), 
             Point::new(oa.x, oa.y), 

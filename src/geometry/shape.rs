@@ -1,3 +1,5 @@
+use crate::util::lerp::lerp_f32;
+
 #[derive(Debug, Clone)]
 pub enum Shape {
     Polygon(Polygon),
@@ -101,6 +103,12 @@ impl Point {
     pub const fn new(x: f32, y: f32) -> Self {
         Self {x, y}
     }
+    pub fn lerp(u: Point, v: Point, a: f32) -> Point {
+        Self {
+            x: lerp_f32(u.x, v.x, a),
+            y: lerp_f32(u.y, v.y, a),
+        }
+    }
 }
 
 impl Default for Point {
@@ -143,6 +151,10 @@ impl Vector {
     pub fn dot(v1: Vector, v2: Vector) -> f32 {
         v1.x * v2.x + v1.y * v2.y
     }
+
+    pub fn norm(&self) -> f32 {
+        f32::hypot(self.x, self.y)
+    }
 }
 
 impl std::ops::Add<Vector> for Vector {
@@ -150,6 +162,14 @@ impl std::ops::Add<Vector> for Vector {
 
     fn add(self, rhs: Vector) -> Vector {
         Vector::new(self.x + rhs.x, self.y + rhs.y)
+    }
+}
+
+impl std::ops::Neg for Vector {
+    type Output = Vector;
+
+    fn neg(self) -> Self {
+        Vector::new(-self.x, -self.y)
     }
 }
 
