@@ -88,8 +88,8 @@ impl RoomObject for DamageTile {
     }
 
     fn handle_collision(&mut self, ctx: &mut HandleCollisionContext) -> HandleCollisionResponse {
-        let other_id = ctx.get_other().borrow().get_metadata().get_id();
-        let token_bucket = self.unit_damage_token_buckets.entry(other_id).or_insert(TokenBucket::new(2.0, 8.0));
+        let other_id = ctx.get_other().borrow().get_metadata().get_ref();
+        let token_bucket = self.unit_damage_token_buckets.entry(other_id.id).or_insert(TokenBucket::new(2.0, 8.0));
         let hct_ctx = HcTileContext {
             tile_effect: HcTileEffect::DealDamage { damage: token_bucket.take_all(ctx.get_room_time()) },
         };
@@ -99,24 +99,20 @@ impl RoomObject for DamageTile {
         }
         HandleCollisionResponse::new()
     }
-
-    fn get_room_object_type(&self) -> RoomObjectType {
-        RoomObjectType::Other
-    }
-
+    
     fn is_spectral(&self) -> bool {
         true
     }
 }
 
 pub fn new_damage_tile(ctx: &mut NewRoomObjectContext, x: u32, y: u32) -> DamageTile {
-    let md = RoomObjectMetadata::new(ctx);
+    let md = RoomObjectMetadata::new(ctx, RoomObjectType::Other);
     // The damage tile doesn't interact with projectiles, so it behaves like a Rofiz basic projectile. Making it a basic
     // projectile results in faster performance.
     let shape = Shape::of_square(0.0, 0.0, 1.0);
     let xform = Transformation::new(x as f64, y as f64, 0.0);
     let hitbox = Hitbox::new(xform, shape);
-    let ro_ref = ctx.add_basic_projectile(md.get_id(), hitbox);
+    let ro_ref = ctx.add_basic_projectile(md.get_ref(), hitbox);
     let x_shape: Box<[Point]> = get_star_shape(4, 0.1, 0.4, std::f32::consts::FRAC_PI_4);
     DamageTile { md, ro_ref, unit_last_affected_time: None, unit_damage_token_buckets: HashMap::new(), x_shape}
 }

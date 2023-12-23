@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::{rolag3::floor::room_object::room_object_def::RoomObjectId, geometry::{shape::{Shape, Polygon, Point, BoundingBox}, shapes_overlap::shapes_overlap}};
+use crate::{rolag3::floor::room_object::room_object_def::RoomObjectRef, geometry::{shape::{Shape, Polygon, Point, BoundingBox}, shapes_overlap::shapes_overlap}};
 
 pub type RofizObjId = usize;
 
@@ -15,7 +15,7 @@ pub struct RofizObjBasicWall {
     pub x: u32,
     pub y: u32,
 
-    pub room_object_id: RoomObjectId,
+    pub room_object_ref: RoomObjectRef,
 
     // only used in move_objects_and_find_collisions()
     pub bounding_box: BoundingBox,
@@ -29,7 +29,7 @@ pub struct RofizObjMovable {
     pub current: Hitbox,
     pub movement: RofizObjectMovement,
     pub move_with_fallbacks_idx: usize,
-    pub room_object_id: RoomObjectId,
+    pub room_object_ref: RoomObjectRef,
 
     pub cached_mem_hitbox: Hitbox,
 

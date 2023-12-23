@@ -118,15 +118,15 @@ fn run_floor_tick(ctx: RunFloorTickContext) {
 #[inline(never)]
 fn detect_and_handle_collisions(room: &mut Room, rng: &mut StdRng, tick_len: f64) {
     let collisions = room.rofiz.move_objects_and_find_collisions();
-    let ids_in_collisions = collisions.iter().flat_map(|x| [x.room_obj_id1, x.room_obj_id2]).collect();
+    let ids_in_collisions = collisions.iter().flat_map(|x| [x.room_obj_ref1, x.room_obj_ref2]).collect();
     let mut id_to_obj = room.room_objects.get_multi(ids_in_collisions);
     for collision in collisions.iter() {
-        if collision.room_obj_id1 == collision.room_obj_id2 {
-            panic!("found collision between object and itself. id={}", collision.room_obj_id1);
+        if collision.room_obj_ref1 == collision.room_obj_ref2 {
+            panic!("found collision between object and itself. ref={:?}", collision.room_obj_ref1);
         }
 
-        let obj1 = id_to_obj.get(&collision.room_obj_id1);
-        let obj2 = id_to_obj.get(&collision.room_obj_id2);
+        let obj1 = id_to_obj.get(&collision.room_obj_ref1);
+        let obj2 = id_to_obj.get(&collision.room_obj_ref2);
         if obj1.is_none() || obj2.is_none() {
             continue;
         }

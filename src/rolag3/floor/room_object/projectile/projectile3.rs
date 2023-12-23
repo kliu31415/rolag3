@@ -68,8 +68,8 @@ fn draw(ctx: &mut SpDrawContext) {
 }
 
 fn handle_collision(ctx: &mut SpHandleCollisionContext) -> HandleCollisionResponse {
-    if ctx.hc_ctx.get_other().borrow().get_room_object_type() == RoomObjectType::Wall {
-        return HandleCollisionResponse::new().remove_room_obj(ctx.sp_ctx.md.get_id());
+    if ctx.hc_ctx.get_other().borrow().get_metadata().get_ref().typ == RoomObjectType::Wall {
+        return HandleCollisionResponse::new().remove_room_obj(ctx.sp_ctx.md.get_ref());
     }
     let hcp_response = ctx.hc_ctx.get_other().borrow_mut().handle_collision_projectile(&HcProjectileContext{
         team: ctx.sp_ctx.team,
@@ -79,7 +79,7 @@ fn handle_collision(ctx: &mut SpHandleCollisionContext) -> HandleCollisionRespon
     });
     let mut to_remove = hcp_response.room_objects_to_delete;
     if hcp_response.projectile_consumed {
-        to_remove.push(ctx.sp_ctx.md.get_id());
+        to_remove.push(ctx.sp_ctx.md.get_ref());
     }
     HandleCollisionResponse::new().remove_room_objs(to_remove.as_slice())
 }

@@ -110,10 +110,6 @@ impl RoomObject for BasicWall {
     fn is_spectral(&self) -> bool {
         false
     }
-
-    fn get_room_object_type(&self) -> RoomObjectType {
-        RoomObjectType::Wall
-    }
 }
 
 impl Wall for BasicWall {
@@ -122,8 +118,8 @@ impl Wall for BasicWall {
 
 impl BasicWall {
     pub fn new(ctx: &mut NewRoomObjectContext, x: u32, y: u32, color: Color) -> Self {
-        let md = RoomObjectMetadata::new(ctx);
-        let _ro_ref = ctx.add_basic_wall(md.get_id(), x, y);
+        let md = RoomObjectMetadata::new(ctx, RoomObjectType::Wall);
+        let _ro_ref = ctx.add_basic_wall(md.get_ref(), x, y);
         Self {md, _ro_ref, x, y, color}
     }
 }

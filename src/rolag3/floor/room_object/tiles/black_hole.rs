@@ -57,20 +57,16 @@ impl RoomObject for BlackHole {
         HandleCollisionResponse::new().remove_room_objs(hbh_response.room_objects_to_delete.as_slice())
     }
 
-    fn get_room_object_type(&self) -> RoomObjectType {
-        RoomObjectType::Other
-    }
-
     fn is_spectral(&self) -> bool {
         true
     }
 }
 
 pub fn new_black_hole(ctx: &mut NewRoomObjectContext, color: Option<DamageColor>, x: f64, y: f64) -> BlackHole {
-    let md = RoomObjectMetadata::new(ctx);
+    let md = RoomObjectMetadata::new(ctx, RoomObjectType::Other);
     let xform = Transformation::new(x, y, 0.0);
     let shape = Shape::of_circle(Point::new(0.0, 0.0), COLLISION_RADIUS);
-    let ro_ref = ctx.add_spectral_unit(md.get_id(), Hitbox::new(xform, shape));
+    let ro_ref = ctx.add_spectral_unit(md.get_ref(), Hitbox::new(xform, shape));
     BlackHole {
         affects_projectiles_color_filter: color,
         md,

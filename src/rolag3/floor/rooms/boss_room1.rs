@@ -2,7 +2,7 @@ use std::{rc::Rc, cell::RefCell};
 
 use rand::rngs::StdRng;
 
-use crate::rolag3::floor::{room_object::{room_object_def::{RoomObjectId, NewRoomObjectContext, RoomObjectCollection}, wall::basic_wall::BasicWall, cosmetic::ground1::new_ground1, unit::boss1::new_boss1}, rofiz::rofiz_state::RofizState, room::{RoomTile, Room}, draw::Color};
+use crate::rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, RoomObjectCollection, RoomObjectId}, wall::basic_wall::BasicWall, cosmetic::ground1::new_ground1, unit::boss1::new_boss1}, rofiz::rofiz_state::RofizState, room::{RoomTile, Room}, draw::Color};
 
 pub fn make_boss_room1(rng: &mut StdRng, room_object_id_counter: &mut RoomObjectId) -> Room {
     let mut rofiz = RofizState::new();

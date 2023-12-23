@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::{rolag3::floor::{room_object::room_object_def::RoomObjectId, rofiz::rofiz_object::RofizObjectMovement}, geometry::shape::{Shape, BoundingBox}};
+use crate::{rolag3::floor::{room_object::room_object_def::RoomObjectRef, rofiz::rofiz_object::RofizObjectMovement}, geometry::shape::{Shape, BoundingBox}};
 
 use super::{rofiz_object::{RofizObjBasicWall, RofizObjMovable, Hitbox, Transformation}, object_pool::{RofizObjPoolRef, RofizObjPool}};
 
@@ -142,7 +142,7 @@ impl RofizState {
         assert!(new_len+1 == old_len, "expected to remove one Rofiz wall at (x, y) = ({}, {}). old_len={}, new_len={}", x, y, old_len, new_len);
     }
 
-    pub fn add_basic_wall(&mut self, floor_object_id: RoomObjectId, x: u32, y: u32) -> RofizObjectRef {
+    pub fn add_basic_wall(&mut self, floor_object_id: RoomObjectRef, x: u32, y: u32) -> RofizObjectRef {
         assert!(!self.floor_started, "cannot add basic wall after Rofiz floor started");
         let new_wall = Self::new_rofiz_obj_basic_wall(self, floor_object_id, x, y);
         let ref_count = new_wall.external_ref_count.clone();
@@ -151,7 +151,7 @@ impl RofizState {
         RofizObjectRef::new(ref_count, pool_ref)
     }
 
-    pub fn add_nonspectral_unit(&mut self, floor_object_id: RoomObjectId, hitbox: Hitbox) -> RofizObjectRef {
+    pub fn add_nonspectral_unit(&mut self, floor_object_id: RoomObjectRef, hitbox: Hitbox) -> RofizObjectRef {
         // todo: add logic here to verify that the nonspectral unit doesn't intersect with any other nonspectral unit
         // or any wall.
         let obj = self.new_rofiz_obj_movable(hitbox, floor_object_id);
@@ -161,7 +161,7 @@ impl RofizState {
         RofizObjectRef::new(ref_count, pool_ref)
     }
 
-    pub fn add_spectral_unit(&mut self, floor_object_id: RoomObjectId, hitbox: Hitbox) -> RofizObjectRef {
+    pub fn add_spectral_unit(&mut self, floor_object_id: RoomObjectRef, hitbox: Hitbox) -> RofizObjectRef {
         let obj = self.new_rofiz_obj_movable(hitbox, floor_object_id);
         let ref_count = obj.external_ref_count.clone();
         let pool_ref = self.obj_pool.add_mo(obj);
@@ -169,7 +169,7 @@ impl RofizState {
         RofizObjectRef::new(ref_count, pool_ref)
     }
 
-    pub fn add_basic_projectile(&mut self, floor_object_id: RoomObjectId, hitbox: Hitbox) -> RofizObjectRef {
+    pub fn add_basic_projectile(&mut self, floor_object_id: RoomObjectRef, hitbox: Hitbox) -> RofizObjectRef {
         let obj = self.new_rofiz_obj_movable(hitbox, floor_object_id);
         let ref_count = obj.external_ref_count.clone();
         let pool_ref = self.obj_pool.add_mo(obj);
@@ -295,7 +295,7 @@ impl RofizState {
                     if let Some(ref bw) = self.has_wall_at_coordinate[x][y] {
                         let bw = self.obj_pool.basic_walls[bw.idx as usize].as_ref().unwrap();
                         if nsu_i.overlaps_ro_wall(&bw) {
-                            collisions.push(RofizCollision::new(nsu_i.room_object_id, bw.room_object_id));
+                            collisions.push(RofizCollision::new(nsu_i.room_object_ref, bw.room_object_ref));
                             // keep moving the unit back while both of the following hold:
                             // 1. the unit is moved back to a different position
                             // 2. the different position overlaps with a wall.
@@ -318,7 +318,7 @@ impl RofizState {
 
                 let (mut nsu_i, mut nsu_j) = self.obj_pool.get_mo_mo_mut(&self.nonspectral_units[i], &self.nonspectral_units[j]);
                 if nsu_i.overlaps_ro_movable(&nsu_j) {
-                    collisions.push(RofizCollision::new(nsu_i.room_object_id, nsu_j.room_object_id));
+                    collisions.push(RofizCollision::new(nsu_i.room_object_ref, nsu_j.room_object_ref));
 
                     // if this collision can be solved by only one of nsu_i and one of nsu_j moving back, do that.
                     // This is to avoid deadlock, e.g. object A is right above object B. Object A's velocity is
@@ -408,7 +408,7 @@ impl RofizState {
                     if let Some(ref bw) = self.has_wall_at_coordinate[x][y] {
                         let bw = self.obj_pool.basic_walls[bw.idx as usize].as_ref().unwrap();
                         if mo.overlaps_ro_wall(&bw) {
-                            collisions.push(RofizCollision::new(mo.room_object_id, bw.room_object_id));
+                            collisions.push(RofizCollision::new(mo.room_object_ref, bw.room_object_ref));
                         }
                     }
 
@@ -422,7 +422,7 @@ impl RofizState {
             for sg_idx in collision_candidates.iter() {
                 let sgo = self.obj_pool.movable[spatial_grid_id_to_obj[*sg_idx].idx as usize].as_ref().unwrap();
                 if mo.overlaps_ro_movable(&sgo) {
-                    collisions.push(RofizCollision::new(mo.room_object_id, sgo.room_object_id));
+                    collisions.push(RofizCollision::new(mo.room_object_ref, sgo.room_object_ref));
                 }
             }
 
@@ -488,14 +488,14 @@ impl RofizState {
                 .chain(self.nonspectral_units.iter())
     }
 
-    fn new_rofiz_obj_basic_wall(&mut self, floor_object_id: RoomObjectId, x: u32, y: u32) -> RofizObjBasicWall {
+    fn new_rofiz_obj_basic_wall(&mut self, floor_object_id: RoomObjectRef, x: u32, y: u32) -> RofizObjBasicWall {
         self.obj_creation_counter += 1;
         let shape = Shape::of_square(x as f32, y as f32, 1.0);
         let bounding_box = BoundingBox::of_shape(&shape);
         RofizObjBasicWall { 
             id: self.obj_creation_counter, 
             external_ref_count: Arc::new(()),
-            room_object_id: floor_object_id,
+            room_object_ref: floor_object_id,
             x, 
             y, 
             shape,
@@ -503,7 +503,7 @@ impl RofizState {
         }
     }
 
-    fn new_rofiz_obj_movable(&mut self, hitbox: Hitbox, floor_object_id: RoomObjectId) -> RofizObjMovable {
+    fn new_rofiz_obj_movable(&mut self, hitbox: Hitbox, room_object_ref: RoomObjectRef) -> RofizObjMovable {
         self.obj_creation_counter += 1;
         RofizObjMovable { 
             id: self.obj_creation_counter, 
@@ -519,7 +519,7 @@ impl RofizState {
             initial_hitbox: Shape::dummy(),
             move_successful: false, // dummy
             fallback_idx: 0, // dummy
-            room_object_id: floor_object_id,
+            room_object_ref: room_object_ref,
             shape_scratchpad: Shape::dummy(),
         }
     }
@@ -547,15 +547,15 @@ pub struct RofizStats {
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct RofizCollision {
-    pub room_obj_id1: RoomObjectId,
-    pub room_obj_id2: RoomObjectId,
+    pub room_obj_ref1: RoomObjectRef,
+    pub room_obj_ref2: RoomObjectRef,
 }
 
 impl RofizCollision {
-    fn new(room_obj_id1: RoomObjectId, room_obj_id2: RoomObjectId) -> Self {
+    fn new(room_obj_ref1: RoomObjectRef, room_obj_ref2: RoomObjectRef) -> Self {
         Self {
-            room_obj_id1,
-            room_obj_id2,
+            room_obj_ref1,
+            room_obj_ref2,
         }
     }
 }

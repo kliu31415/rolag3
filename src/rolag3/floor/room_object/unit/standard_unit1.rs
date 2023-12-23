@@ -93,10 +93,6 @@ impl RoomObject for StandardUnit1 {
         }
     }
 
-    fn get_room_object_type(&self) -> RoomObjectType {
-        RoomObjectType::Unit
-    }
-
     fn handle_query_unit_info(&self, ctx: &RoQueryUnitInfoContext) -> RoQueryUnitInfoResponse {
         let xform = ctx.get_rofiz().get_movable_object_xform(self.data.su_common.get_ro_ref());
         RoQueryUnitInfoResponse { 
@@ -216,9 +212,9 @@ impl StandardUnit1Builder {
             Some(x) => x,
             None => todo!("all standard units must have hitboxes right now (may be changed in the future)"),
         };
-        let md = RoomObjectMetadata::new(ctx);
+        let md = RoomObjectMetadata::new(ctx, RoomObjectType::Unit);
         let hitbox = Hitbox::new(xform, shape);
-        let ro_ref = ctx.add_nonspectral_unit(md.get_id(), hitbox);
+        let ro_ref = ctx.add_nonspectral_unit(md.get_ref(), hitbox);
         let su_common = StandardUnitCommon::new(ro_ref, self.req.hp, self.req.engine_power, self.req.tire_traction, self.angular_power, self.angular_traction, 100.0, 2.0);
         
         let handle_collision_fn = match self.handle_collision_logic {
@@ -299,7 +295,7 @@ fn hc_projectile_default(ctx: &mut SuHcProjectileContext) -> HcProjectileRespons
     let td_response = ctx.su_ctx.su_common.take_damage(ctx.hcp_ctx.damage * damage_mult);
     let mut room_objects_to_delete = Vec::new();
     if td_response.dead {
-        room_objects_to_delete.push(ctx.su_ctx.md.get_id());
+        room_objects_to_delete.push(ctx.su_ctx.md.get_ref());
     }
     HcProjectileResponse { 
         projectile_consumed: true,

@@ -66,22 +66,18 @@ impl RoomObject for AccelTile {
         HandleCollisionResponse::new()
     }
 
-    fn get_room_object_type(&self) -> RoomObjectType {
-        RoomObjectType::Other
-    }
-
     fn is_spectral(&self) -> bool {
         true
     }
 }
 
 pub fn new_accel_tile(ctx: &mut NewRoomObjectContext, x: u32, y: u32) -> AccelTile {
-    let md = RoomObjectMetadata::new(ctx);
+    let md = RoomObjectMetadata::new(ctx, RoomObjectType::Other);
     // The accel tile doesn't interact with projectiles, so it behaves like a Rofiz basic projectile. Making it a basic
     // projectile results in faster performance.
     let shape = Shape::of_square(0.0, 0.0, 2.0);
     let xform = Transformation::new(x as f64, y as f64, 0.0);
     let hitbox = Hitbox::new(xform, shape);
-    let ro_ref = ctx.add_basic_projectile(md.get_id(), hitbox);
+    let ro_ref = ctx.add_basic_projectile(md.get_ref(), hitbox);
     AccelTile { md, ro_ref, unit_last_affected_time: None}
 }

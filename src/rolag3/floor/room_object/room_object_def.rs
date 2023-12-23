@@ -42,8 +42,6 @@ pub trait RoomObject {
         // nop by default
     }
 
-    fn get_room_object_type(&self) -> RoomObjectType;
-
     fn is_spectral(&self) -> bool;
     fn blocks_room_clear(&self) -> bool {
         false
@@ -53,7 +51,7 @@ pub trait RoomObject {
     }
 
     fn handle_query_unit_info(&self, _ctx: &RoQueryUnitInfoContext) -> RoQueryUnitInfoResponse {
-        unimplemented!("handle_query_unit_info() can only be called for units. Called for {:?}", self.get_room_object_type());
+        unimplemented!("handle_query_unit_info() can only be called for units. Called for {:?}", self.get_metadata().get_ref());
     }
 }
 
@@ -106,7 +104,7 @@ pub struct RoQueryUnitInfoResponse {
     pub y: f64,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum RoomObjectType {
     Wall,
     Projectile,
@@ -115,26 +113,32 @@ pub enum RoomObjectType {
 }
 
 pub struct RoomObjectMetadata {
-    id: RoomObjectId,
+    ref_: RoomObjectRef,
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, PartialOrd, Ord)]
+pub struct RoomObjectRef {
+    pub id: RoomObjectId, // guaranteed to be unique across all RoomObjects of all types
+    pub typ: RoomObjectType, // used solely as an optimization
 }
 
 pub type RoomObjectId = usize;
 
 impl RoomObjectMetadata {
-    pub fn new(ctx: &mut NewRoomObjectContext) -> Self {
+    pub fn new(ctx: &mut NewRoomObjectContext, typ: RoomObjectType) -> Self {
         Self { 
-            id: ctx.get_next_floor_object_id(),
+            ref_: RoomObjectRef {id: ctx.get_next_floor_object_id(), typ },
         }
     }
 
     pub fn new_for_player() ->Self {
         Self {
-            id: Floor::PLAYER_ROOM_OBJECT_ID,
+            ref_: RoomObjectRef {id: Floor::PLAYER_ROOM_OBJECT_ID, typ: RoomObjectType::Unit },
         }
     }
 
-    pub fn get_id(&self) -> RoomObjectId {
-        self.id
+    pub fn get_ref(&self) -> RoomObjectRef {
+        self.ref_
     }
 }
 
@@ -181,7 +185,7 @@ impl RoomObjectsByType {
             self.player.push(obj);
             return;
         }
-        let ro_type = obj.borrow().get_room_object_type();
+        let ro_type = obj.borrow().get_metadata().get_ref().typ;
         match ro_type {
             RoomObjectType::Wall => self.ro_wall.push(obj),
             RoomObjectType::Projectile => self.ro_projectile.push(obj),
@@ -337,13 +341,13 @@ impl RoomObjectCollection {
         }
     }
 
-    pub fn remove_by_id(&mut self, to_remove: HashSet<RoomObjectId>) {
+    pub fn remove_by_id(&mut self, to_remove: HashSet<RoomObjectRef>) {
         if to_remove.is_empty() {
             return;
         }
         self.room_objects_by_type.vec_mut_all_objects().iter_mut().for_each(
             |ro_v| ro_v.retain(
-                |x| !to_remove.contains(&x.borrow().get_metadata().get_id())));
+                |x| !to_remove.contains(&x.borrow().get_metadata().get_ref())));
     }
 
     pub fn draw(&mut self, ctx: &mut DrawContext) {
@@ -387,10 +391,10 @@ impl RoomObjectCollection {
         self.room_objects_by_type.vec_mut_all_objects().iter_mut().for_each(|v| v.retain(|_| {idx += 1; !should_remove[idx - 1]}));
     }
 
-    pub fn get_multi(&self, ids: HashSet<RoomObjectId>) -> HashMap<RoomObjectId, Rc<RefCell<dyn RoomObject>>> {
+    pub fn get_multi(&self, ids: HashSet<RoomObjectRef>) -> HashMap<RoomObjectRef, Rc<RefCell<dyn RoomObject>>> {
         let mut res = HashMap::new();
         for fo in self.room_objects_by_type.iter() {
-            let id = fo.borrow().get_metadata().get_id();
+            let id = fo.borrow().get_metadata().get_ref();
             if ids.contains(&id) {
                 res.insert(id, fo.clone());
             }
@@ -402,16 +406,16 @@ impl RoomObjectCollection {
     pub fn validate_end_tick(&self) {
         let mut unique_ids = HashSet::new();
         for ro in self.room_objects_by_type.iter() {
-            let id = ro.borrow().get_metadata().get_id();
-            assert!(!unique_ids.contains(&id), "room contains more than one object with id={}", id);
+            let id = ro.borrow().get_metadata().get_ref();
+            assert!(!unique_ids.contains(&id), "room contains more than one object with id={:?}", id);
             unique_ids.insert(id);
             let ref_count = Rc::strong_count(ro);
             if ro.borrow().is_player() {
                 if ref_count != 3 {
-                    panic!("RoomObject Player Rc::strong_count()={}. Expected 3. Id={:?}", ref_count, ro.borrow().get_metadata().get_id());
+                    panic!("RoomObject Player Rc::strong_count()={}. Expected 3. Id={:?}", ref_count, ro.borrow().get_metadata().get_ref());
                 }
             } else if ref_count != 1 {
-                panic!("RoomObject Rc::strong_count()={}. Expected 1. Id={:?}", ref_count, ro.borrow().get_metadata().get_id());
+                panic!("RoomObject Rc::strong_count()={}. Expected 1. Id={:?}", ref_count, ro.borrow().get_metadata().get_ref());
             }
         }
     }
@@ -465,19 +469,19 @@ impl<'a> NewRoomObjectContext<'a> {
         self.rng.gen_range(r)
     }
 
-    pub fn add_basic_wall(&mut self, floor_object_id: RoomObjectId, x: u32, y: u32) -> RofizObjectRef {
+    pub fn add_basic_wall(&mut self, floor_object_id: RoomObjectRef, x: u32, y: u32) -> RofizObjectRef {
         self.rofiz.add_basic_wall(floor_object_id, x, y)
     }
 
-    pub fn add_nonspectral_unit(&mut self, floor_object_id: RoomObjectId, hitbox: Hitbox) -> RofizObjectRef {
+    pub fn add_nonspectral_unit(&mut self, floor_object_id: RoomObjectRef, hitbox: Hitbox) -> RofizObjectRef {
         self.rofiz.add_nonspectral_unit(floor_object_id, hitbox)
     }
 
-    pub fn add_spectral_unit(&mut self, floor_object_id: RoomObjectId, hitbox: Hitbox) -> RofizObjectRef {
+    pub fn add_spectral_unit(&mut self, floor_object_id: RoomObjectRef, hitbox: Hitbox) -> RofizObjectRef {
         self.rofiz.add_spectral_unit(floor_object_id, hitbox)
     }
 
-    pub fn add_basic_projectile(&mut self, floor_object_id: RoomObjectId, hitbox: Hitbox) -> RofizObjectRef {
+    pub fn add_basic_projectile(&mut self, floor_object_id: RoomObjectRef, hitbox: Hitbox) -> RofizObjectRef {
         self.rofiz.add_basic_projectile(floor_object_id, hitbox)
     }
 }
@@ -710,7 +714,7 @@ impl<'a> HandleCollisionContext<'a> {
 }
 
 pub struct HandleCollisionResponse {
-    room_objects_to_remove: Vec<RoomObjectId>,
+    room_objects_to_remove: Vec<RoomObjectRef>,
 }
 
 impl HandleCollisionResponse {
@@ -720,17 +724,17 @@ impl HandleCollisionResponse {
         }
     }
 
-    pub fn remove_room_obj(mut self, id: RoomObjectId) -> Self {
+    pub fn remove_room_obj(mut self, id: RoomObjectRef) -> Self {
         self.room_objects_to_remove.push(id);
         self
     }
 
-    pub fn remove_room_objs(mut self, ids: &[RoomObjectId]) -> Self {
+    pub fn remove_room_objs(mut self, ids: &[RoomObjectRef]) -> Self {
         self.room_objects_to_remove.extend(ids);
         self
     }
 
-    pub fn get_room_objects_to_remove(&self) -> &[RoomObjectId] {
+    pub fn get_room_objects_to_remove(&self) -> &[RoomObjectRef] {
         self.room_objects_to_remove.as_slice()
     }
 }
@@ -751,7 +755,7 @@ pub struct HcProjectileContext {
 pub struct HcProjectileResponse {
     pub projectile_consumed: bool,
     pub damage_dealt: f64,
-    pub room_objects_to_delete: Vec<RoomObjectId>,
+    pub room_objects_to_delete: Vec<RoomObjectRef>,
 }
 
 impl HcProjectileResponse {
@@ -769,7 +773,7 @@ pub struct HcBlackHoleContext {
 }
 
 pub struct HcBlackHoleResponse {
-    pub room_objects_to_delete: Vec<RoomObjectId>,
+    pub room_objects_to_delete: Vec<RoomObjectRef>,
 }
 
 pub struct HcTileContext {

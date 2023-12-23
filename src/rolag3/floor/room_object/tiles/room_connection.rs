@@ -35,7 +35,7 @@ impl RoomObject for RoomConnection {
                         Direction::Left => Shape::of_rect(Rect::new(self.rci.x as f32, self.rci.y as f32, 0.01, 3.0)),
                     };
                     let xform = Transformation::new(0.0, 0.0, 0.0);
-                    self.ro_connection = Some(ctx.get_rofiz().add_nonspectral_unit(self.md.get_id(), Hitbox::new(xform, shape)));
+                    self.ro_connection = Some(ctx.get_rofiz().add_nonspectral_unit(self.md.get_ref(), Hitbox::new(xform, shape)));
                 }
             },
         }
@@ -121,23 +121,19 @@ impl RoomObject for RoomConnection {
     fn is_spectral(&self) -> bool {
         false
     }
-
-    fn get_room_object_type(&self) -> RoomObjectType {
-        RoomObjectType::Other
-    }
 }
 
 impl RoomConnection {
     pub const WIDTH: f32 = 3.0;
 
     pub fn new(ctx: &mut NewRoomObjectContext, rci: RoomConnectionInfo) -> Self {
-        let md = RoomObjectMetadata::new(ctx);
+        let md = RoomObjectMetadata::new(ctx, RoomObjectType::Other);
         let shape = match rci.direction {
             Direction::_Up | Direction::_Down => Shape::of_rect(Rect::new(rci.x as f32, rci.y as f32, 3.0, 1.0)),
             Direction::Left | Direction::Right => Shape::of_rect(Rect::new(rci.x as f32, rci.y as f32, 1.0, 3.0)),
         };
         let xform = Transformation::new(0.0, 0.0, 0.0);
-        let ro_wall = ctx.add_nonspectral_unit(md.get_id(), Hitbox::new(xform, shape));
+        let ro_wall = ctx.add_nonspectral_unit(md.get_ref(), Hitbox::new(xform, shape));
         Self {
             md,
             rci,

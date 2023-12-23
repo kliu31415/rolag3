@@ -1,4 +1,4 @@
-use crate::{rolag3::floor::{run::{PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, draw::DrawContext, room_object::{room_object_def::{RoomObject, Act1Context, FloorCoordinate, NewRoomObjectContext, RoomObjectMetadata, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse, RoomObjectType, RoQueryUnitInfoContext, RoQueryUnitInfoResponse, HcTileContext, HcTileEffect, HcTileResponse, RoomObjApplyOperationContext, RoomObjOperation}, tiles::room_connection::{Direction, RoomConnection}, damage::DamageColor}, rofiz::{rofiz_object::{Hitbox, Transformation}, rofiz_state::RofizState}, room::RoomConnectionInfo}, geometry::shape::{Shape, Point}, gfx::{renderer::{DrawOp, DrawOpGroup, ColorRGBA32f, DrawOpText, DrawTextPosition}, draw_op_util::draw_op_rect}};
+use crate::{rolag3::floor::{run::{PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, draw::DrawContext, room_object::{room_object_def::{RoomObject, Act1Context, FloorCoordinate, NewRoomObjectContext, RoomObjectMetadata, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse, RoQueryUnitInfoContext, RoQueryUnitInfoResponse, HcTileContext, HcTileEffect, HcTileResponse, RoomObjApplyOperationContext, RoomObjOperation}, tiles::room_connection::{Direction, RoomConnection}, damage::DamageColor}, rofiz::{rofiz_object::{Hitbox, Transformation}, rofiz_state::RofizState}, room::RoomConnectionInfo}, geometry::shape::{Shape, Point}, gfx::{renderer::{DrawOp, DrawOpGroup, ColorRGBA32f, DrawOpText, DrawTextPosition}, draw_op_util::draw_op_rect}};
 
 use super::{Unit, standard_unit_common::{StandardUnitCommon, Budeb, BudebMaxSpeed, TranslateMove, PolarForce}, weapon::{weapon_def::{Weapon, WeaponHandleTickContext, DrawWeaponHudContext, DrawWeaponOnOwnerContext}, weapon1::new_weapon1, weapon2::new_weapon2, weapon3::new_weapon3}, active_item::{active_item_def::{ActiveItem, ActiveItemHandleTickContext}, clear_enemy_projectiles::new_active_item_clear_projectiles, slow_enemy_time::new_active_item_slow_enemy_time}};
 
@@ -173,7 +173,7 @@ impl RoomObject for Player {
         let td_response = self.su_common.as_mut().unwrap().take_damage(ctx.damage * damage_mult);
         let mut room_objects_to_delete = Vec::new();
         if td_response.dead {
-            room_objects_to_delete.push(self.md.get_id());
+            room_objects_to_delete.push(self.md.get_ref());
         }
         HcProjectileResponse { 
             projectile_consumed: true,
@@ -204,10 +204,6 @@ impl RoomObject for Player {
 
     fn is_spectral(&self) -> bool {
         false
-    }
-
-    fn get_room_object_type(&self) -> RoomObjectType {
-        RoomObjectType::Unit
     }
 
     fn handle_query_unit_info(&self, ctx: &RoQueryUnitInfoContext) -> RoQueryUnitInfoResponse {
@@ -259,7 +255,7 @@ impl Player {
             Transformation::new(x as f64, y as f64, 0.0),
             Shape::of_square(-Self::PLAYER_S / 2.0, - Self::PLAYER_S / 2.0, Self::PLAYER_S),
         );
-        let ro_ref = rofiz.add_nonspectral_unit(self.md.get_id(), hitbox);
+        let ro_ref = rofiz.add_nonspectral_unit(self.md.get_ref(), hitbox);
 
         // Rofiz will automatically clean up the old su_common.rofiz_object, because it'll detect that no RoomObjects
         // hold a reference to it anymore.

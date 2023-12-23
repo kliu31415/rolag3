@@ -91,11 +91,11 @@ impl RoomObject for StandardProjectile1 {
         match ctx.affects_projectiles_color_filter {
             Some(color) => {
                 if color == self.data.damage_color {
-                    return HcBlackHoleResponse { room_objects_to_delete: vec![self.data.md.get_id()] }
+                    return HcBlackHoleResponse { room_objects_to_delete: vec![self.data.md.get_ref()] }
                 }
                 HcBlackHoleResponse { room_objects_to_delete: Vec::new() }
             }
-            None => HcBlackHoleResponse { room_objects_to_delete: vec![self.data.md.get_id()] }
+            None => HcBlackHoleResponse { room_objects_to_delete: vec![self.data.md.get_ref()] }
         }
     }
 
@@ -110,10 +110,6 @@ impl RoomObject for StandardProjectile1 {
 
     fn is_spectral(&self) -> bool {
         true
-    }
-
-    fn get_room_object_type(&self) -> RoomObjectType {
-        RoomObjectType::Projectile
     }
 }
 
@@ -186,9 +182,9 @@ impl Sp1Builder {
     }
 
     pub fn build(self, ctx: &mut NewRoomObjectContext) -> StandardProjectile1 {
-        let md = RoomObjectMetadata::new(ctx);
+        let md = RoomObjectMetadata::new(ctx, RoomObjectType::Projectile);
         let hitbox = Hitbox::new(self.req.xform, self.req.shape);
-        let ro_ref = ctx.add_basic_projectile(md.get_id(), hitbox);
+        let ro_ref = ctx.add_basic_projectile(md.get_ref(), hitbox);
         StandardProjectile1 {
             data: Sp1Data { 
                 ps_data: self.ps_data, 

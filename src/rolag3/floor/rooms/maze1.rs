@@ -2,7 +2,7 @@ use std::{cell::RefCell, rc::Rc, collections::VecDeque};
 
 use rand::{rngs::StdRng, Rng};
 
-use crate::rolag3::floor::{room_object::{room_object_def::{RoomObjectId, NewRoomObjectContext, RoomObjectCollection}, wall::basic_wall::BasicWall, cosmetic::ground1::new_ground1, tiles::damage_tile::new_damage_tile}, rofiz::rofiz_state::RofizState, room::{RoomTile, Room}, draw::Color};
+use crate::rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, RoomObjectCollection, RoomObjectId}, wall::basic_wall::BasicWall, cosmetic::ground1::new_ground1, tiles::damage_tile::new_damage_tile}, rofiz::rofiz_state::RofizState, room::{RoomTile, Room}, draw::Color};
 
 pub fn make_room_maze1(rng: &mut StdRng, room_object_id_counter: &mut RoomObjectId, x: u32, y: u32) -> Room {
     let maze_w = 24;
