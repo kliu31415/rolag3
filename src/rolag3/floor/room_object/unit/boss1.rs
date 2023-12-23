@@ -125,7 +125,7 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
             },
         }
         None => {
-            if ctx.act1_ctx.get_randf64() < tick_len {
+            if ctx.act1_ctx.get_randf64() < 10.0 * tick_len {
                 us_data.action = Some(Action::RadialProjWave {started_at: room_time, proj_thrown: false});
             }
         }

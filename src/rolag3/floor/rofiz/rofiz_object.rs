@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::sync::Arc;
 
 use crate::{rolag3::floor::room_object::room_object_def::RoomObjectId, geometry::{shape::{Shape, Polygon, Point, BoundingBox}, shapes_overlap::shapes_overlap}};
 
@@ -9,7 +9,7 @@ pub type RofizObjId = usize;
 // is deleted.
 pub struct RofizObjBasicWall {
     pub id: RofizObjId,
-    pub external_ref_count: Rc<()>,
+    pub external_ref_count: Arc<()>,
 
     // (x, y) is the top left corner of the wall. The wall is a unit square.
     pub x: u32,
@@ -24,7 +24,7 @@ pub struct RofizObjBasicWall {
 
 pub struct RofizObjMovable {
     pub id: RofizObjId,
-    pub external_ref_count: Rc<()>,
+    pub external_ref_count: Arc<()>,
 
     pub current: Hitbox,
     pub movement: RofizObjectMovement,
