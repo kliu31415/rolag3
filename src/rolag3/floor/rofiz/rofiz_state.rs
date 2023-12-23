@@ -179,14 +179,9 @@ impl RofizState {
             unimplemented!();
         }
         let rom = self.obj_pool.get_mo_mut(&obj_ref.pool_ref);
-        match rom.movement {
-            RofizObjectMovement::NewHitbox(ref mut h) => {
-                let mut dummy = Hitbox::default();
-                std::mem::swap(&mut dummy, h);
-                return dummy;
-            },
-            _ => Hitbox::default(),
-        }
+        let mut stolen = Hitbox::default();
+        std::mem::swap(&mut stolen, &mut rom.cached_mem_hitbox);
+        stolen
     }
 
     pub fn move_object(&mut self, obj_ref: &RofizObjectRef, movement: RofizObjectMovement) {

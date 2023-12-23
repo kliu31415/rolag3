@@ -56,7 +56,6 @@ fn act1(ctx: &mut SpAct1Context) -> Act1Response {
     let room_time = ctx.act1_ctx.get_room_time();
     let mut hitbox = ctx.act1_ctx.get_rofiz().steal_movable_object_hitbox(&ctx.sp_ctx.ro_ref);
     (ps_data.hitbox_fn)(&mut hitbox, room_time);
-    // TODO: ensure that Rofiz preserves the previous new hitbox rather than deallocating it. Right now, no memory allocation is prevented, because the previous hitbox memory is thrown away every rofiz tick.
     ctx.act1_ctx.get_rofiz().move_object(&ctx.sp_ctx.ro_ref, RofizObjectMovement::NewHitbox(hitbox));
     Act1Response::new()
 }
