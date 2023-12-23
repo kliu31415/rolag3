@@ -1,13 +1,13 @@
 use std::{cell::RefCell, rc::Weak};
 
-use crate::{rolag3::floor::{room_object::{room_object_def::{RoomObject, NewRoomObjectContext, Act1Response, HandleCollisionResponse, HcProjectileContext, Team, RoomObjectType, RoomObjOperation}, damage::DamageColor}, draw::{DrawContext, Color}, rofiz::rofiz_object::{Transformation, RofizObjectMovement, Hitbox}}, geometry::shape::{Shape, Point}};
+use crate::{rolag3::floor::{room_object::{room_object_def::{RoomObject, NewRoomObjectContext, Act1Response, HandleCollisionResponse, HcProjectileContext, Team, RoomObjectType, RoomObjOperation}, damage::DamageColor}, draw::{DrawContext, Color}, rofiz::rofiz_object::{Hitbox, RofizObjectMovement}}, geometry::shape::Point};
 
 use super::standard_projectile1::{Sp1Builder, Sp1BuilderReq, StandardProjectile1, SpAct1Context, SpDrawContext, SpHandleCollisionContext, SpApplyOperationContext};
 
 // Projectile3 is versatile, but one use-case is projectiles that expand radially, as if dilating around a center.
 
 pub struct Projectile3Data {
-    hitbox_fn: Box<dyn Fn(f64) -> (Transformation, Shape)>,
+    hitbox_fn: Box<dyn Fn(&mut Hitbox, f64)>,
     draw_shape_fn: Box<dyn Fn(f64) -> (Color, Box<[Point]>)>,
     remove_me_next_tick: bool,
 }
@@ -18,13 +18,14 @@ pub struct NewProjectile3Args {
     pub damage: f64,
     pub owner: Weak<RefCell<dyn RoomObject>>, 
     pub lifespan: f64,
-    pub hitbox_fn: Box<dyn Fn(f64) -> (Transformation, Shape)>,
+    pub hitbox_fn: Box<dyn Fn(&mut Hitbox, f64)>,
     pub draw_fn: Box<dyn Fn(f64) -> (Color, Box<[Point]>)>,
 }
 
 impl NewProjectile3Args {
     pub fn new(self, ctx: &mut NewRoomObjectContext) -> StandardProjectile1 {
-        let (xform, shape) = (self.hitbox_fn)(ctx.get_room_time());
+        let mut hitbox = Hitbox::default();
+        (self.hitbox_fn)(&mut hitbox, ctx.get_room_time());
         let ps_data = Projectile3Data {
             hitbox_fn: self.hitbox_fn,
             draw_shape_fn: self.draw_fn,
@@ -35,8 +36,8 @@ impl NewProjectile3Args {
             damage_color: self.damage_color,
             damage: self.damage,
             lifespan: self.lifespan,
-            xform,
-            shape,
+            xform: hitbox.transformation,
+            shape: hitbox.shape,
         }).ps_data(Box::new(ps_data))
             .act1_fn(Box::new(act1))
             .draw_fn(Box::new(draw))
@@ -52,8 +53,11 @@ fn act1(ctx: &mut SpAct1Context) -> Act1Response {
     if ps_data.remove_me_next_tick {
         return Act1Response::new().remove_me();
     }
-    let (xform, shape) = (ps_data.hitbox_fn)(ctx.act1_ctx.get_room_time());
-    ctx.act1_ctx.get_rofiz().move_object(ctx.sp_ctx.ro_ref, RofizObjectMovement::NewHitbox(Hitbox::new(xform, shape)));
+    let room_time = ctx.act1_ctx.get_room_time();
+    let mut hitbox = ctx.act1_ctx.get_rofiz().steal_movable_object_hitbox(&ctx.sp_ctx.ro_ref);
+    (ps_data.hitbox_fn)(&mut hitbox, room_time);
+    // TODO: ensure that Rofiz preserves the previous new hitbox rather than deallocating it. Right now, no memory allocation is prevented, because the previous hitbox memory is thrown away every rofiz tick.
+    ctx.act1_ctx.get_rofiz().move_object(&ctx.sp_ctx.ro_ref, RofizObjectMovement::NewHitbox(hitbox));
     Act1Response::new()
 }
 

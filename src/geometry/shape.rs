@@ -6,6 +6,12 @@ pub enum Shape {
     Circle(Circle),
 }
 
+impl Default for Shape {
+    fn default() -> Self {
+        Shape::Circle(Circle { center: Point::default(), r: f32::default() })
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Polygon {
     pub vertexes: Box<[Point]>,
@@ -14,6 +20,12 @@ pub struct Polygon {
 impl Polygon {
     pub fn new(vertexes: Box<[Point]>) -> Polygon {
         Self {vertexes}
+    }
+
+    pub fn new_from_slice(vertexes: &[Point]) -> Polygon {
+        let mut v = vec![Point::default(); vertexes.len()].into_boxed_slice();
+        v.copy_from_slice(vertexes);
+        Self { vertexes: v }
     }
 
     pub fn rotated_and_translated(&self, dx: f32, dy: f32, dtheta: f32) -> Self {
@@ -53,6 +65,13 @@ impl Polygon {
             }
         }
     }
+
+    pub fn replace_with_vertexes(&mut self, vertexes: &[Point]) {
+        if self.vertexes.len() != vertexes.len() {
+            self.vertexes = vec![Point::default(); vertexes.len()].into();
+        }
+        self.vertexes.copy_from_slice(vertexes);
+    }
 }
 
 impl Shape {
@@ -86,6 +105,13 @@ impl Shape {
 
     pub fn dummy() -> Shape {
         Shape::Circle(Circle::new(Point::new(0.0, 0.0), 0.0))
+    }
+
+    pub fn replace_with_polygon(&mut self, vertexes: &[Point]) {
+        match self {
+            Shape::Polygon(ref mut p) => p.replace_with_vertexes(vertexes),
+            Shape::Circle(_) => *self = Shape::Polygon(Polygon::new_from_slice(vertexes)),
+        };
     }
 }
 

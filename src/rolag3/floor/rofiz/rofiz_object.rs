@@ -31,6 +31,8 @@ pub struct RofizObjMovable {
     pub move_with_fallbacks_idx: usize,
     pub room_object_id: RoomObjectId,
 
+    pub cached_mem_hitbox: Hitbox,
+
     // only used in move_objects_and_find_collisions()
     pub bounding_box: BoundingBox,
     pub initial_hitbox: Shape,
@@ -99,6 +101,26 @@ impl RofizObjMovable {
         }
         shapes_overlap(&self.temp_hitbox, &other.temp_hitbox)
     }
+
+    pub fn officially_move(&mut self) {
+        if !self.move_successful {
+            return;
+        }
+        match self.movement {
+            RofizObjectMovement::NoMove() => {},
+            RofizObjectMovement::Move(ref t) => self.current.transformation = self.current.transformation.add(t),
+            RofizObjectMovement::MoveWithFallbacks(ref v) => {
+                if self.fallback_idx < v.len() {
+                    self.current.transformation = self.current.transformation.add(&v[self.fallback_idx]);
+                }
+            }
+            RofizObjectMovement::NewHitbox(ref mut new) => {
+                std::mem::swap(new, &mut self.current);
+                std::mem::swap(new, &mut self.cached_mem_hitbox);
+            }
+            RofizObjectMovement::_Delete() => panic!("there should be no rofiz objects with Delete movement. Loc 2."),
+        }
+    }
 }
 
 pub enum RofizObjectMovement {
@@ -109,7 +131,7 @@ pub enum RofizObjectMovement {
     _Delete(),
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Default)]
 pub struct Transformation {
     pub dx: f64,
     pub dy: f64,
@@ -175,7 +197,7 @@ impl Transformation {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Hitbox {
     pub transformation: Transformation,
     pub shape: Shape,

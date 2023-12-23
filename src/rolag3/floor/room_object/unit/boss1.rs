@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
-use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Act1Response, Team}, projectile::projectile3::NewProjectile3Args, damage::DamageColor}, rofiz::rofiz_object::Transformation, draw::{Color, DrawContext}}, geometry::{star::get_star_shape, shape::{Shape, Polygon, Point}, util::get_inner_polygon}};
+use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Act1Response, Team}, projectile::projectile3::NewProjectile3Args, damage::DamageColor}, rofiz::rofiz_object::{Transformation, Hitbox}, draw::{Color, DrawContext}}, geometry::{star::get_star_shape, shape::{Shape, Polygon, Point}, util::get_inner_polygon}};
 
 use super::standard_unit1::{StandardUnit1, StandardUnit1Builder, StandardUnit1BuilderReq, SuAct1Context, SuDrawContext};
 
@@ -63,12 +63,12 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
 
                         let creation_time = ctx.act1_ctx.get_room_time();
 
-                        let num_parts = 20;
+                        let num_parts = 50;
                         for i in 0..num_parts {
                             let frac1 = i as f32 / (num_parts as f32);
                             let frac2 = (i+1) as f32 / (num_parts as f32);
                             // each quad array contains points in the order [inner, outer, outer, inner]
-                            let hitbox_fn = move |time_: f64| -> (Transformation, Shape) {
+                            let hitbox_fn = move |hitbox: &mut Hitbox, time_: f64| {
                                 let scale = (2.0 * (time_ - creation_time) + 1.0) as f32;
                                 let full_quad_vertexes = [
                                     Point::new(dx1 * scale + oi1_dx, dy1 * scale + oi1_dy),
@@ -82,8 +82,8 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
                                     Point::lerp(full_quad_vertexes[1], full_quad_vertexes[2], frac2),
                                     Point::lerp(full_quad_vertexes[0], full_quad_vertexes[3], frac2),
                                 ];
-                                let shape = Shape::of_polygon(Box::new(vertexes));
-                                (xform, shape)
+                                hitbox.transformation = xform;
+                                hitbox.shape.replace_with_polygon(&vertexes)
                             };
 
                             let draw_fn = move |time_: f64| -> (Color, Box<[Point]>) {
@@ -110,7 +110,7 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
                                 team: Team::Enemy,
                                 damage_color: DamageColor::Green,
                                 owner: self_as_weak,
-                                lifespan: 5.0,
+                                lifespan: 10.0,
                                 damage: 2.0,
                                 hitbox_fn: Box::new(hitbox_fn),
                                 draw_fn: Box::new(draw_fn),

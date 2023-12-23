@@ -156,6 +156,26 @@ impl RofizState {
         RofizObjectRef::new(RofizObjectRefVal::BasicProjectile(Rc::downgrade(&rc)))
     }
 
+    pub fn steal_movable_object_hitbox(&mut self, obj_ref: &RofizObjectRef) -> Hitbox {
+        match obj_ref.val {
+            RofizObjectRefVal::BasicWall(_) => panic!("accessing BasicWall in move_object_new_hitbox() is not supported"),
+            RofizObjectRefVal::BasicProjectile(ref p) => {
+                let shared = p.upgrade().unwrap();
+                let mut rom = shared.as_ref().borrow_mut();
+                match rom.movement {
+                    RofizObjectMovement::NewHitbox(ref mut h) => {
+                        let mut dummy = Hitbox::default();
+                        std::mem::swap(&mut dummy, h);
+                        return dummy;
+                    },
+                    _ => Hitbox::default(),
+                }
+            }
+            RofizObjectRefVal::SpectralUnit(_) => todo!(),
+            RofizObjectRefVal::NonspectralUnit(_) => todo!(),
+        }
+    }
+
     pub fn move_object(&mut self, obj_ref: &RofizObjectRef, movement: RofizObjectMovement) {
         match obj_ref.val {
             RofizObjectRefVal::BasicWall(_) => panic!("accessing BasicWall in move_object() is not supported"),
@@ -373,19 +393,7 @@ impl RofizState {
         // wrap up by officially moving objects
         for mo_rc in self.movable_objs_iter() {
             let mut mo = mo_rc.as_ref().borrow_mut();
-            if let RofizObjectMovement::MoveWithFallbacks(ref v) = mo.movement {
-                if mo.fallback_idx < v.len() {
-                    mo.current.transformation = mo.current.transformation.add(&v[mo.fallback_idx]);
-                }
-            } else if mo.move_successful {
-                match mo.movement {
-                    RofizObjectMovement::NoMove() => {},
-                    RofizObjectMovement::Move(ref t) => mo.current.transformation = mo.current.transformation.add(t),
-                    RofizObjectMovement::MoveWithFallbacks(_) => panic!("Rofiz MoveWithFallbacks should not be hit here"),
-                    RofizObjectMovement::NewHitbox(ref h) => mo.current = h.clone(),
-                    RofizObjectMovement::_Delete() => panic!("there should be no rofiz objects with Delete movement. Loc 2."),
-                }
-            }
+            mo.officially_move();
         }
 
         collisions.sort_unstable();
@@ -451,6 +459,9 @@ impl RofizState {
             current: hitbox, 
             movement: RofizObjectMovement::NoMove(), 
             move_with_fallbacks_idx: 0,
+
+            cached_mem_hitbox: Hitbox::default(),
+
             bounding_box: BoundingBox::zero_state(),
             temp_hitbox: Shape::dummy(),
             initial_hitbox: Shape::dummy(),

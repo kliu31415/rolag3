@@ -4,7 +4,7 @@ use rand::rngs::StdRng;
 
 use crate::gfx::renderer::Renderer;
 
-use super::{room::{Room, RoomConnectionInfo}, room_object::{unit::player::{Player, MoveRooms}, room_object_def::{FloorCoordinate, RoomObjectId}, tiles::room_connection::Direction}, rooms::maze1::make_room_maze1};
+use super::{room::{Room, RoomConnectionInfo}, room_object::{unit::player::{Player, MoveRooms}, room_object_def::{FloorCoordinate, RoomObjectId}, tiles::room_connection::Direction}, rooms::{maze1::make_room_maze1, boss_room1::make_boss_room1}};
 
 pub struct Floor {
     pub rooms: HashMap<RoomId, Room>,
@@ -53,17 +53,21 @@ impl Floor {
         let mut room3 = make_room_maze1(rng, &mut room_object_id_counter, 30, 30);
         room3.finalize_with_connections(renderer, vec![], rng, &mut room_object_id_counter);
 
-        player.borrow_mut().move_rooms(&mut room1.rofiz, MoveRooms::Teleport { x: 3.0, y: 3.0 });
-        room1.room_objects.add(player.clone());
+        let mut room4 = make_boss_room1(rng, &mut room_object_id_counter);
+        room4.finalize_with_connections(renderer, vec![], rng, &mut room_object_id_counter);
+
+        player.borrow_mut().move_rooms(&mut room4.rofiz, MoveRooms::Teleport { x: 3.0, y: 3.0 });
+        room4.room_objects.add(player.clone());
         let mut rooms = HashMap::new();
         rooms.insert(1, room1);
         rooms.insert(2, room2);
         rooms.insert(3, room3);
+        rooms.insert(4, room4);
         
         Self {
             rooms,
             player,
-            player_room_id: 1,
+            player_room_id: 4,
             floor_time: 0.0,
             room_object_id_counter,
         }
