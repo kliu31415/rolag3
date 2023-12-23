@@ -211,15 +211,46 @@ impl RofizState {
     #[inline(never)]
     pub fn move_objects_and_find_collisions(&mut self) -> Vec<RofizCollision> {
         assert!(self.floor_started, "floor must be started before Rofiz moves objects and finds collisions");
+        self.moafc1();
+        self.moafc2();
+        let nsu_bb_overlap = self.moafc3();
 
+        let mut collisions = Vec::new();
+
+        // Phase 1: Check for collisions between nonspectral units and basic walls
+        // At any point, the invariant that nsus[0..i] are in valid positions should hold, i.e. none of them overlap.
+        self.moafc4(&mut collisions, nsu_bb_overlap);
+        let mut spatial_grid_id_to_obj = self.moafc5();
+
+        // Phase 2 (TODO): Semispectral units?
+
+        // Phase 3: Spectral Units + Projectiles
+        self.moafc6(&mut collisions, &mut spatial_grid_id_to_obj);
+
+        // wrap up by officially moving objects
+        self.moafc7();
+
+        self.moafc8(&mut collisions);
+        collisions
+    }
+
+    #[inline(never)]
+    fn moafc1(&mut self) {
         self.basic_projectiles.retain(|x| !matches!(x.borrow().movement, RofizObjectMovement::_Delete()));
         self.nonspectral_units.retain(|x| !matches!(x.borrow().movement, RofizObjectMovement::_Delete()));
         self.spectral_units.retain(|x| !matches!(x.borrow().movement, RofizObjectMovement::_Delete()));
+    }
+
+    #[inline(never)]
+    fn moafc2(&mut self) {
         for obj_rc in self.movable_objs_iter() {
             let mut obj = obj_rc.as_ref().borrow_mut();
             obj.start_moafc();
         }
+    }
 
+    #[inline(never)]
+    fn moafc3(&mut self) -> Vec<Vec<usize>> {
         let mut nsu_bb_overlap = Vec::new();
         for i in 0..self.nonspectral_units.len() {
             let mut i_bb_overlap = Vec::new();
@@ -232,11 +263,11 @@ impl RofizState {
             }
             nsu_bb_overlap.push(i_bb_overlap);
         }
+        nsu_bb_overlap
+    }
 
-        let mut collisions = Vec::new();
-
-        // Phase 1: Check for collisions between nonspectral units and basic walls
-        // At any point, the invariant that nsus[0..i] are in valid positions should hold, i.e. none of them overlap.
+    #[inline(never)]
+    fn moafc4(&mut self, collisions: &mut Vec<RofizCollision>, nsu_bb_overlap: Vec<Vec<usize>>) {
         let mut i = 0;
 
         while i < self.nonspectral_units.len() {
@@ -323,7 +354,10 @@ impl RofizState {
                 None => i + 1,
             }
         }
+    }
 
+    #[inline(never)]
+    fn moafc5(&mut self) -> Vec<Rc<RefCell<RofizObjMovable>>> {
         let mut spatial_grid_id_to_obj = Vec::new();
         self.spatial_grid.iter_mut().for_each(|column| column.iter_mut().for_each(|cell| cell.clear()));
         for i in 0..self.nonspectral_units.len() {
@@ -342,14 +376,16 @@ impl RofizState {
             }
             spatial_grid_id_to_obj.push(self.nonspectral_units[i].clone());
         }
+        spatial_grid_id_to_obj
+    }
 
-        // Phase 2: Semispectral units?
-
-        // Phase 3: Spectral Units + Projectiles
+    #[inline(never)]
+    fn moafc6(&mut self, collisions: &mut Vec<RofizCollision>, spatial_grid_id_to_obj: &mut Vec<Rc<RefCell<RofizObjMovable>>>) {
+        let mut collision_candidates = Vec::<usize>::new();
         for (i, mo_rc) in self.spectral_units.iter().chain(self.basic_projectiles.iter()).enumerate() {
+            collision_candidates.clear();
             let mo = mo_rc.as_ref().borrow_mut();
 
-            let mut spatial_grid_ids = Vec::<usize>::new();
             // [start, end). Note that half-open interval. Use f32s to prevent underflows (bounding boxes may have
             // negative bounds)
             let xstart = f32::clamp(mo.bounding_box.x1, 0.0, self.wall_x_end as f32) as usize;
@@ -365,15 +401,15 @@ impl RofizState {
                         }
                     }
 
-                    spatial_grid_ids.extend(self.spatial_grid[x][y].iter());
+                    collision_candidates.extend(self.spatial_grid[x][y].iter());
                 }
             }
 
-            spatial_grid_ids.sort_unstable();
-            spatial_grid_ids.dedup();
+            collision_candidates.sort_unstable();
+            collision_candidates.dedup();
 
-            for sg_id in spatial_grid_ids {
-                let sgo = spatial_grid_id_to_obj[sg_id].borrow();
+            for sg_id in collision_candidates.iter() {
+                let sgo = spatial_grid_id_to_obj[*sg_id].borrow();
                 if mo.overlaps_ro_movable(&sgo) {
                     collisions.push(RofizCollision::new(mo.room_object_id, sgo.room_object_id));
                 }
@@ -389,16 +425,20 @@ impl RofizState {
                 spatial_grid_id_to_obj.push(mo_rc.clone());
             }
         }
+    }
 
-        // wrap up by officially moving objects
+    #[inline(never)]
+    fn moafc7(&mut self) {
         for mo_rc in self.movable_objs_iter() {
             let mut mo = mo_rc.as_ref().borrow_mut();
             mo.officially_move();
         }
+    }
 
+    #[inline(never)]
+    fn moafc8(&mut self, collisions: &mut Vec<RofizCollision>) {
         collisions.sort_unstable();
         collisions.dedup();
-        collisions
     }
 
     // returns true if the object was moved back to a different location
