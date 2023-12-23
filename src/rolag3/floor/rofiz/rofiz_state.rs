@@ -1,35 +1,20 @@
-use std::{rc::{Rc, Weak}, cell::RefCell};
+use std::{rc::Rc, sync::Arc};
 
 use crate::{rolag3::floor::{room_object::room_object_def::RoomObjectId, rofiz::rofiz_object::RofizObjectMovement}, geometry::shape::{Shape, BoundingBox}};
 
-use super::rofiz_object::{RofizObjBasicWall, RofizObjMovable, Hitbox, Transformation};
-
-
-#[derive(Debug, Clone)]
-enum RofizObjectRefVal {
-    BasicWall(Weak<RefCell<RofizObjBasicWall>>),
-    BasicProjectile(Weak<RefCell<RofizObjMovable>>),
-    SpectralUnit(Weak<RefCell<RofizObjMovable>>),
-    NonspectralUnit(Weak<RefCell<RofizObjMovable>>),
-}
+use super::{rofiz_object::{RofizObjBasicWall, RofizObjMovable, Hitbox, Transformation}, object_pool::{RofizObjPoolRef, RofizObjPool}};
 
 #[derive(Debug, Clone)]
 pub struct RofizObjectRef {
-    _ref_count: Rc<()>,
-    val: RofizObjectRefVal // purely used to hide the actual ref from external callers
+    _ref_count: Arc<()>,
+    pool_ref: RofizObjPoolRef // purely used to hide the actual ref from external callers
 }
 
 impl RofizObjectRef {
-    fn new(val : RofizObjectRefVal) -> Self {
-        let ref_count = match val {
-            RofizObjectRefVal::BasicWall(ref x) => x.upgrade().unwrap().borrow().external_ref_count.clone(),
-            RofizObjectRefVal::BasicProjectile(ref x) => x.upgrade().unwrap().borrow().external_ref_count.clone(),
-            RofizObjectRefVal::SpectralUnit(ref x) => x.upgrade().unwrap().borrow().external_ref_count.clone(),
-            RofizObjectRefVal::NonspectralUnit(ref x) => x.upgrade().unwrap().borrow().external_ref_count.clone(),
-        };
+    fn new(_ref_count: Arc<()>, pool_ref: RofizObjPoolRef) -> Self {
         Self {
-            _ref_count: ref_count,
-            val
+            _ref_count,
+            pool_ref,
         }
     }
 }
@@ -38,14 +23,15 @@ pub struct RofizState {
     // only used before floor start
     floor_started: bool,
 
-    basic_walls: Vec<Rc<RefCell<RofizObjBasicWall>>>,
-    basic_projectiles: Vec<Rc<RefCell<RofizObjMovable>>>,
-    spectral_units: Vec<Rc<RefCell<RofizObjMovable>>>,
-    nonspectral_units: Vec<Rc<RefCell<RofizObjMovable>>>,
+    obj_pool: RofizObjPool,
+    basic_walls: Vec<RofizObjPoolRef>,
+    basic_projectiles: Vec<RofizObjPoolRef>,
+    spectral_units: Vec<RofizObjPoolRef>,
+    nonspectral_units: Vec<RofizObjPoolRef>,
 
     wall_x_end: usize,
     wall_y_end: usize,
-    has_wall_at_coordinate: Vec<Vec<Option<Rc<RefCell<RofizObjBasicWall>>>>>,
+    has_wall_at_coordinate: Vec<Vec<Option<RofizObjPoolRef>>>,
 
     obj_creation_counter: usize,
 
@@ -58,6 +44,7 @@ impl RofizState {
     pub fn new() -> Self {
         Self {
             floor_started: false,
+            obj_pool: RofizObjPool::new(),
             basic_walls: Vec::new(),
             basic_projectiles: Vec::new(),
             spectral_units: Vec::new(),
@@ -78,7 +65,8 @@ impl RofizState {
 
         let mut max_x = 0;
         let mut max_y = 0;
-        for bw in self.basic_walls.iter().map(|x| x.borrow()) {
+        for bw_ref in self.basic_walls.iter() {
+            let bw = self.obj_pool.get_bw(bw_ref);
             max_x = u32::max(bw.x, max_x);
             max_y = u32::max(bw.y, max_y);
         }
@@ -90,8 +78,9 @@ impl RofizState {
         self.wall_x_end = (max_x + 1) as usize;
         self.wall_y_end = (max_y + 1) as usize;
         let mut has_wall_at_coordinate = vec![vec![None; self.wall_y_end]; self.wall_x_end];
-        for bw in self.basic_walls.iter() {
-            has_wall_at_coordinate[bw.borrow().x as usize][bw.borrow().y as usize] = Some(bw.clone());
+        for bw_ref in self.basic_walls.iter() {
+            let bw = self.obj_pool.get_bw(bw_ref);
+            has_wall_at_coordinate[bw.x as usize][bw.y as usize] = Some(*bw_ref);
         }
 
         self.has_wall_at_coordinate = has_wall_at_coordinate;
@@ -101,18 +90,36 @@ impl RofizState {
     #[inline(never)]
     pub fn start_new_tick(&mut self) {
         assert!(self.floor_started, "floor must be started before Rofiz starts new tick");
-        for obj in self.basic_projectiles.iter_mut()
-                .chain(self.spectral_units.iter_mut())
-                .chain(self.nonspectral_units.iter_mut()) {
-            obj.as_ref().borrow_mut().movement = RofizObjectMovement::NoMove();
+        for obj in self.basic_projectiles.iter()
+                .chain(self.spectral_units.iter())
+                .chain(self.nonspectral_units.iter()) {
+            self.obj_pool.get_mo_mut(obj).movement = RofizObjectMovement::NoMove();
         }
-        self.basic_projectiles.retain(|x| Rc::strong_count(&x.borrow().external_ref_count) > 1);
-        self.nonspectral_units.retain(|x| Rc::strong_count(&x.borrow().external_ref_count) > 1);
-        self.spectral_units.retain(|x| Rc::strong_count(&x.borrow().external_ref_count) > 1);
+        self.basic_projectiles.retain(|x| {
+            if Arc::strong_count(&self.obj_pool.get_mo_mut(x).external_ref_count) == 1 {
+                self.obj_pool.del_mo(x);
+                return false;
+            }
+            true
+        });
+        self.nonspectral_units.retain(|x| {
+            if Arc::strong_count(&self.obj_pool.get_mo_mut(x).external_ref_count) == 1 {
+                self.obj_pool.del_mo(x);
+                return false;
+            }
+            true
+        });
+        self.spectral_units.retain(|x| {
+            if Arc::strong_count(&self.obj_pool.get_mo_mut(x).external_ref_count) == 1 {
+                self.obj_pool.del_mo(x);
+                return false;
+            }
+            true
+        });
         self.basic_walls.iter().for_each(|x| {
-            let count = Rc::strong_count(&x.borrow().external_ref_count);
+            let count = Arc::strong_count(&self.obj_pool.get_bw(x).external_ref_count);
             if count <= 1 {
-                panic!("Basic wall with id {} has Rc={}. Basic walls can't be deleted after room finalization, so expected Rc>1.", x.borrow().id, count);
+                panic!("Basic wall with id {} has Rc={}. Basic walls can't be deleted after room finalization, so expected Rc>1.", &self.obj_pool.get_bw(x).id, count);
             }
         });
     }
@@ -120,7 +127,14 @@ impl RofizState {
     pub fn remove_wall_at(&mut self, x: u32, y: u32) {
         assert!(!self.floor_started, "cannot remove basic wall after Rofiz floor started");
         let old_len = self.basic_walls.len();
-        self.basic_walls.retain(|bw| x!=bw.borrow().x || y!=bw.borrow().y);
+        self.basic_walls.retain(|bw_ref| {
+            let bw = self.obj_pool.get_bw(&bw_ref);
+            if x==bw.x && y==bw.y {
+                self.obj_pool.del_bw(bw_ref);
+                return false;
+            }
+            return true;
+        });
         let new_len = self.basic_walls.len();
         assert!(new_len+1 == old_len, "expected to remove one Rofiz wall at (x, y) = ({}, {}). old_len={}, new_len={}", x, y, old_len, new_len);
     }
@@ -128,81 +142,66 @@ impl RofizState {
     pub fn add_basic_wall(&mut self, floor_object_id: RoomObjectId, x: u32, y: u32) -> RofizObjectRef {
         assert!(!self.floor_started, "cannot add basic wall after Rofiz floor started");
         let new_wall = Self::new_rofiz_obj_basic_wall(self, floor_object_id, x, y);
-        let rc = Rc::new(RefCell::new(new_wall));
-        self.basic_walls.push(rc.clone());
-        RofizObjectRef::new(RofizObjectRefVal::BasicWall(Rc::downgrade(&rc)))
+        let ref_count = new_wall.external_ref_count.clone();
+        let pool_ref = self.obj_pool.add_bw(new_wall);
+        self.basic_walls.push(pool_ref);
+        RofizObjectRef::new(ref_count, pool_ref)
     }
 
     pub fn add_nonspectral_unit(&mut self, floor_object_id: RoomObjectId, hitbox: Hitbox) -> RofizObjectRef {
         // todo: add logic here to verify that the nonspectral unit doesn't intersect with any other nonspectral unit
         // or any wall.
         let obj = self.new_rofiz_obj_movable(hitbox, floor_object_id);
-        let rc = Rc::new(RefCell::new(obj));
-        self.nonspectral_units.push(rc.clone());
-        RofizObjectRef::new(RofizObjectRefVal::NonspectralUnit(Rc::downgrade(&rc)))
+        let ref_count = obj.external_ref_count.clone();
+        let pool_ref = self.obj_pool.add_mo(obj);
+        self.nonspectral_units.push(pool_ref);
+        RofizObjectRef::new(ref_count, pool_ref)
     }
 
     pub fn add_spectral_unit(&mut self, floor_object_id: RoomObjectId, hitbox: Hitbox) -> RofizObjectRef {
         let obj = self.new_rofiz_obj_movable(hitbox, floor_object_id);
-        let rc = Rc::new(RefCell::new(obj));
-        self.spectral_units.push(rc.clone());
-        RofizObjectRef::new(RofizObjectRefVal::SpectralUnit(Rc::downgrade(&rc)))
+        let ref_count = obj.external_ref_count.clone();
+        let pool_ref = self.obj_pool.add_mo(obj);
+        self.spectral_units.push(pool_ref);
+        RofizObjectRef::new(ref_count, pool_ref)
     }
 
     pub fn add_basic_projectile(&mut self, floor_object_id: RoomObjectId, hitbox: Hitbox) -> RofizObjectRef {
         let obj = self.new_rofiz_obj_movable(hitbox, floor_object_id);
-        let rc = Rc::new(RefCell::new(obj));
-        self.basic_projectiles.push(rc.clone());
-        RofizObjectRef::new(RofizObjectRefVal::BasicProjectile(Rc::downgrade(&rc)))
+        let ref_count = obj.external_ref_count.clone();
+        let pool_ref = self.obj_pool.add_mo(obj);
+        self.basic_projectiles.push(pool_ref);
+        RofizObjectRef::new(ref_count, pool_ref)
     }
 
     pub fn steal_movable_object_hitbox(&mut self, obj_ref: &RofizObjectRef) -> Hitbox {
-        match obj_ref.val {
-            RofizObjectRefVal::BasicWall(_) => panic!("accessing BasicWall in move_object_new_hitbox() is not supported"),
-            RofizObjectRefVal::BasicProjectile(ref p) => {
-                let shared = p.upgrade().unwrap();
-                let mut rom = shared.as_ref().borrow_mut();
-                match rom.movement {
-                    RofizObjectMovement::NewHitbox(ref mut h) => {
-                        let mut dummy = Hitbox::default();
-                        std::mem::swap(&mut dummy, h);
-                        return dummy;
-                    },
-                    _ => Hitbox::default(),
-                }
-            }
-            RofizObjectRefVal::SpectralUnit(_) => todo!(),
-            RofizObjectRefVal::NonspectralUnit(_) => todo!(),
+        if obj_ref.pool_ref.is_bw {
+            unimplemented!();
+        }
+        let rom = self.obj_pool.get_mo_mut(&obj_ref.pool_ref);
+        match rom.movement {
+            RofizObjectMovement::NewHitbox(ref mut h) => {
+                let mut dummy = Hitbox::default();
+                std::mem::swap(&mut dummy, h);
+                return dummy;
+            },
+            _ => Hitbox::default(),
         }
     }
 
     pub fn move_object(&mut self, obj_ref: &RofizObjectRef, movement: RofizObjectMovement) {
-        match obj_ref.val {
-            RofizObjectRefVal::BasicWall(_) => panic!("accessing BasicWall in move_object() is not supported"),
-            RofizObjectRefVal::BasicProjectile(ref p) => p.upgrade().unwrap().as_ref().borrow_mut().movement = movement,
-            RofizObjectRefVal::SpectralUnit(ref p) => p.upgrade().unwrap().as_ref().borrow_mut().movement = movement,
-            RofizObjectRefVal::NonspectralUnit(ref p) => p.upgrade().unwrap().as_ref().borrow_mut().movement = movement,
-        };
+        assert!(!obj_ref.pool_ref.is_bw);
+        self.obj_pool.get_mo_mut(&obj_ref.pool_ref).movement = movement;
     }
 
     pub fn get_movable_object_xform(&self, obj_ref: &RofizObjectRef) -> Transformation {
-        match obj_ref.val {
-            RofizObjectRefVal::BasicWall(_) => panic!("accessing BasicWall in get_movable_object_xform() is not supported"),
-            RofizObjectRefVal::BasicProjectile(ref p) => p.upgrade().unwrap().borrow().current.transformation,
-            RofizObjectRefVal::SpectralUnit(ref p) => p.upgrade().unwrap().borrow().current.transformation,
-            RofizObjectRefVal::NonspectralUnit(ref p) => p.upgrade().unwrap().borrow().current.transformation,
-        }
+        assert!(!obj_ref.pool_ref.is_bw);
+        self.obj_pool.get_mo(&obj_ref.pool_ref).current.transformation
     }
 
     pub fn get_movable_object_xformed_shape(&self, obj_ref: &RofizObjectRef) -> Shape {
-        let wp = match &obj_ref.val {
-            RofizObjectRefVal::BasicWall(_) => panic!("accessing BasicWall in get_movable_object_xform() is not supported"),
-            RofizObjectRefVal::BasicProjectile(p) => p.clone(),
-            RofizObjectRefVal::SpectralUnit(p) => p.clone(),
-            RofizObjectRefVal::NonspectralUnit(p) => p.clone(),
-        };
-        let rc = wp.upgrade().unwrap();
-        let hitbox = &rc.borrow().current;
+        assert!(!obj_ref.pool_ref.is_bw);
+        let hitbox = &self.obj_pool.get_mo(&obj_ref.pool_ref).current;
         let mut ret = Shape::dummy();
         hitbox.transformation.replace_shape_with_transformed(&mut ret,&hitbox.shape);
         ret
@@ -236,17 +235,32 @@ impl RofizState {
 
     #[inline(never)]
     fn moafc1(&mut self) {
-        self.basic_projectiles.retain(|x| !matches!(x.borrow().movement, RofizObjectMovement::_Delete()));
-        self.nonspectral_units.retain(|x| !matches!(x.borrow().movement, RofizObjectMovement::_Delete()));
-        self.spectral_units.retain(|x| !matches!(x.borrow().movement, RofizObjectMovement::_Delete()));
+        self.basic_projectiles.retain(|x| {
+            if matches!(self.obj_pool.get_mo_mut(x).movement, RofizObjectMovement::_Delete()) {
+                self.obj_pool.del_mo(x);
+                return false;
+            }
+            true
+        });
+        self.nonspectral_units.retain(|x| {
+            if matches!(self.obj_pool.get_mo_mut(x).movement, RofizObjectMovement::_Delete()) {
+                self.obj_pool.del_mo(x);
+                return false;
+            }
+            true
+        });
+        self.spectral_units.retain(|x| {
+            if matches!(self.obj_pool.get_mo_mut(x).movement, RofizObjectMovement::_Delete()) {
+                self.obj_pool.del_mo(x);
+                return false;
+            }
+            true
+        });
     }
 
     #[inline(never)]
     fn moafc2(&mut self) {
-        for obj_rc in self.movable_objs_iter() {
-            let mut obj = obj_rc.as_ref().borrow_mut();
-            obj.start_moafc();
-        }
+        self.obj_pool.start_moafc();
     }
 
     #[inline(never)]
@@ -255,8 +269,7 @@ impl RofizState {
         for i in 0..self.nonspectral_units.len() {
             let mut i_bb_overlap = Vec::new();
             for j in 0..i {
-                let nsu_i = self.nonspectral_units[i].borrow();
-                let nsu_j = self.nonspectral_units[j].borrow();
+                let (nsu_i, nsu_j) = self.obj_pool.get_mo_mo_mut(&self.nonspectral_units[i], &self.nonspectral_units[j]);
                 if BoundingBox::overlap(&nsu_i.bounding_box, &nsu_j.bounding_box) {
                     i_bb_overlap.push(j);
                 }
@@ -272,7 +285,7 @@ impl RofizState {
 
         while i < self.nonspectral_units.len() {
             // verify that nsu[i] doesn't overlap with any walls
-            let mut nsu_i = self.nonspectral_units[i].as_ref().borrow_mut();
+            let mut nsu_i = self.obj_pool.movable[self.nonspectral_units[i].idx as usize].as_mut().unwrap();
             // [start, end). Note that half-open interval. Use f32s to prevent underflows (bounding boxes may have
             // negative bounds)
             let xstart = f32::clamp(nsu_i.bounding_box.x1, 0.0, self.wall_x_end as f32) as usize;
@@ -282,7 +295,7 @@ impl RofizState {
             for x in xstart..xend {
                 for y in ystart..yend {
                     if let Some(ref bw) = self.has_wall_at_coordinate[x][y] {
-                        let bw = bw.borrow();
+                        let bw = self.obj_pool.basic_walls[bw.idx as usize].as_ref().unwrap();
                         if nsu_i.overlaps_ro_wall(&bw) {
                             collisions.push(RofizCollision::new(nsu_i.room_object_id, bw.room_object_id));
                             // keep moving the unit back while both of the following hold:
@@ -305,7 +318,7 @@ impl RofizState {
                 }
                 bbo_idx += 1;
 
-                let mut nsu_j = self.nonspectral_units[j].as_ref().borrow_mut();
+                let (mut nsu_i, mut nsu_j) = self.obj_pool.get_mo_mo_mut(&self.nonspectral_units[i], &self.nonspectral_units[j]);
                 if nsu_i.overlaps_ro_movable(&nsu_j) {
                     collisions.push(RofizCollision::new(nsu_i.room_object_id, nsu_j.room_object_id));
 
@@ -357,11 +370,11 @@ impl RofizState {
     }
 
     #[inline(never)]
-    fn moafc5(&mut self) -> Vec<Rc<RefCell<RofizObjMovable>>> {
+    fn moafc5(&mut self) -> Vec<RofizObjPoolRef> {
         let mut spatial_grid_id_to_obj = Vec::new();
         self.spatial_grid.iter_mut().for_each(|column| column.iter_mut().for_each(|cell| cell.clear()));
         for i in 0..self.nonspectral_units.len() {
-            let nsu_i = self.nonspectral_units[i].borrow();
+            let nsu_i = self.obj_pool.get_mo_mut(&self.nonspectral_units[i]);
             // [start, end). Note that half-open interval. Use f32s to prevent underflows (bounding boxes may have
             // negative bounds)
             let xstart = f32::clamp(nsu_i.bounding_box.x1, 0.0, self.wall_x_end as f32) as usize;
@@ -380,11 +393,11 @@ impl RofizState {
     }
 
     #[inline(never)]
-    fn moafc6(&mut self, collisions: &mut Vec<RofizCollision>, spatial_grid_id_to_obj: &mut Vec<Rc<RefCell<RofizObjMovable>>>) {
+    fn moafc6(&mut self, collisions: &mut Vec<RofizCollision>, spatial_grid_id_to_obj: &mut Vec<RofizObjPoolRef>) {
         let mut collision_candidates = Vec::<usize>::new();
         for (i, mo_rc) in self.spectral_units.iter().chain(self.basic_projectiles.iter()).enumerate() {
             collision_candidates.clear();
-            let mo = mo_rc.as_ref().borrow_mut();
+            let mo = self.obj_pool.movable[mo_rc.idx as usize].as_ref().unwrap();
 
             // [start, end). Note that half-open interval. Use f32s to prevent underflows (bounding boxes may have
             // negative bounds)
@@ -395,7 +408,7 @@ impl RofizState {
             for x in xstart..xend {
                 for y in ystart..yend {
                     if let Some(ref bw) = self.has_wall_at_coordinate[x][y] {
-                        let bw = bw.as_ref().borrow();
+                        let bw = self.obj_pool.basic_walls[bw.idx as usize].as_ref().unwrap();
                         if mo.overlaps_ro_wall(&bw) {
                             collisions.push(RofizCollision::new(mo.room_object_id, bw.room_object_id));
                         }
@@ -408,8 +421,8 @@ impl RofizState {
             collision_candidates.sort_unstable();
             collision_candidates.dedup();
 
-            for sg_id in collision_candidates.iter() {
-                let sgo = spatial_grid_id_to_obj[*sg_id].borrow();
+            for sg_idx in collision_candidates.iter() {
+                let sgo = self.obj_pool.movable[spatial_grid_id_to_obj[*sg_idx].idx as usize].as_ref().unwrap();
                 if mo.overlaps_ro_movable(&sgo) {
                     collisions.push(RofizCollision::new(mo.room_object_id, sgo.room_object_id));
                 }
@@ -422,16 +435,17 @@ impl RofizState {
                         self.spatial_grid[x][y].push(spatial_grid_id_to_obj.len());
                     }
                 }
-                spatial_grid_id_to_obj.push(mo_rc.clone());
+                spatial_grid_id_to_obj.push(*mo_rc);
             }
         }
     }
 
     #[inline(never)]
     fn moafc7(&mut self) {
-        for mo_rc in self.movable_objs_iter() {
-            let mut mo = mo_rc.as_ref().borrow_mut();
-            mo.officially_move();
+        for mo_rc in         self.basic_projectiles.iter()
+        .chain(self.spectral_units.iter())
+        .chain(self.nonspectral_units.iter()) {
+            self.obj_pool.get_mo_mut(mo_rc).officially_move();
         }
     }
 
@@ -470,7 +484,7 @@ impl RofizState {
         }
     }
 
-    fn movable_objs_iter(&mut self) -> impl Iterator<Item = &Rc<RefCell<RofizObjMovable>>> {
+    fn movable_objs_iter(&mut self) -> impl Iterator<Item = &RofizObjPoolRef> {
         self.basic_projectiles.iter()
                 .chain(self.spectral_units.iter())
                 .chain(self.nonspectral_units.iter())
@@ -482,7 +496,7 @@ impl RofizState {
         let bounding_box = BoundingBox::of_shape(&shape);
         RofizObjBasicWall { 
             id: self.obj_creation_counter, 
-            external_ref_count: Rc::new(()),
+            external_ref_count: Arc::new(()),
             room_object_id: floor_object_id,
             x, 
             y, 
@@ -495,7 +509,7 @@ impl RofizState {
         self.obj_creation_counter += 1;
         RofizObjMovable { 
             id: self.obj_creation_counter, 
-            external_ref_count: Rc::new(()),
+            external_ref_count: Arc::new(()),
             current: hitbox, 
             movement: RofizObjectMovement::NoMove(), 
             move_with_fallbacks_idx: 0,

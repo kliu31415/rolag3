@@ -11,6 +11,7 @@ pub fn run() {
     std::env::set_var("RUST_BACKTRACE", "full");
     std::env::set_var("RUST_LOG", "warn");
     env_logger::init();
+    rayon::ThreadPoolBuilder::new().num_threads(2).build_global().unwrap();
     let mut window = gfx::window::make_window_and_renderer("Rolag3", 320, 200, 1920, 1200);
     let mut event_handler = Rolag3EventHandler::new_test1(window.get_renderer());
     window.run_event_loop(&mut event_handler);
