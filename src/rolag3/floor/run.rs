@@ -14,6 +14,7 @@ pub struct RunFloorContext<'a> {
     pub prev_mouse_x: f64,
     pub prev_mouse_y: f64,
     pub rng: &'a mut StdRng,
+    pub run_validation: bool,
 }
 
 pub fn run_floor_frame(mut ctx: RunFloorContext) {
@@ -29,6 +30,7 @@ pub fn run_floor_frame(mut ctx: RunFloorContext) {
             player_input: &ctx.player_input,
             tick_length,
             rng: ctx.rng,
+            run_validation: ctx.run_validation,
         };
         run_floor_tick(tick_ctx);
         ctx.player_input.mouse_wheel_line_deltas = Box::new([]);
@@ -66,6 +68,7 @@ struct RunFloorTickContext<'a> {
     pub player_input: &'a PlayerInput,
     pub tick_length: f64,
     pub rng: &'a mut StdRng,
+    pub run_validation: bool,
 }
 
 #[inline(never)]
@@ -74,7 +77,7 @@ fn run_floor_tick(ctx: RunFloorTickContext) {
 
     {
         room.room_time += ctx.tick_length;
-        room.rofiz.start_new_tick();
+        room.rofiz.start_new_tick(ctx.run_validation);
         let mut act1_context = Act1Context::new(
             ctx.player_input, 
             &mut room.rofiz, 
@@ -96,7 +99,9 @@ fn run_floor_tick(ctx: RunFloorTickContext) {
         }
     }
 
-    room.room_objects.validate();
+    if ctx.run_validation {
+        room.room_objects.validate_end_tick();
+    }
 
     let wtmr = player.borrow_mut().poll_wants_to_move_rooms();
     if let Some(rci) = wtmr {

@@ -399,7 +399,7 @@ impl RoomObjectCollection {
     }
 
     #[inline(never)]
-    pub fn validate(&self) {
+    pub fn validate_end_tick(&self) {
         let mut unique_ids = HashSet::new();
         for ro in self.room_objects_by_type.iter() {
             let id = ro.borrow().get_metadata().get_id();

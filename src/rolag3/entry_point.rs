@@ -3,7 +3,7 @@ use std::collections::VecDeque;
 use rand::{rngs:: StdRng, SeedableRng};
 use winit::{event::{Event, WindowEvent, KeyEvent, ElementState, MouseButton}, event_loop::EventLoopWindowTarget, keyboard::{PhysicalKey, KeyCode}};
 
-use crate::{gfx::{self, window::{Window, EventHandler}, renderer::{ColorRGBA32f, DrawTextPosition, DrawOpCCS, DrawOpText, DrawOpWithMetadata, DrawOp, Renderer}, input::PollableInput}, util::time::now_unix};
+use crate::{gfx::{self, window::{Window, EventHandler}, renderer::{ColorRGBA32f, DrawTextPosition, DrawOpCCS, DrawOpText, DrawOpWithMetadata, DrawOp, Renderer}, input::PollableInput}, util::{time::now_unix, config::Config}};
 
 use super::floor::{draw::{DrawFloorContext, get_draw_floor_ops}, run::{RunFloorContext, run_floor_frame, PlayerInput, PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, floor_def::Floor};
 
@@ -23,6 +23,7 @@ struct Rolag3EventHandler {
     rng: StdRng,
     prev_mouse_xy: Option<(f64, f64)>,
     cached_mem_draw_ops: Vec<DrawOpWithMetadata>,
+    config: Config,
 }
 
 impl EventHandler for Rolag3EventHandler {
@@ -86,6 +87,7 @@ impl Rolag3EventHandler {
             rng,
             prev_mouse_xy: None,
             cached_mem_draw_ops: Vec::new(),
+            config: Config::new_no_validation(),
         }
     }
 
@@ -164,6 +166,7 @@ impl Rolag3EventHandler {
             prev_mouse_x,
             prev_mouse_y,
             rng: &mut self.rng,
+            run_validation: self.config.get_opt_bool("run_validation_override").or(Some(true)).unwrap(),
         };
         run_floor_frame(run_floor_ctx);
         self.prev_mouse_xy = Some((mouse_x, mouse_y));

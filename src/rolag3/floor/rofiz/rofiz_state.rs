@@ -88,7 +88,7 @@ impl RofizState {
     }
 
     #[inline(never)]
-    pub fn start_new_tick(&mut self) {
+    pub fn start_new_tick(&mut self, run_validation: bool) {
         assert!(self.floor_started, "floor must be started before Rofiz starts new tick");
         for obj in self.basic_projectiles.iter()
                 .chain(self.spectral_units.iter())
@@ -116,12 +116,15 @@ impl RofizState {
             }
             true
         });
-        self.basic_walls.iter().for_each(|x| {
-            let count = Arc::strong_count(&self.obj_pool.get_bw(x).external_ref_count);
-            if count <= 1 {
-                panic!("Basic wall with id {} has Rc={}. Basic walls can't be deleted after room finalization, so expected Rc>1.", &self.obj_pool.get_bw(x).id, count);
-            }
-        });
+
+        if run_validation {
+            self.basic_walls.iter().for_each(|x| {
+                let count = Arc::strong_count(&self.obj_pool.get_bw(x).external_ref_count);
+                if count <= 1 {
+                    panic!("Basic wall with id {} has Rc={}. Basic walls can't be deleted after room finalization, so expected Rc>1.", &self.obj_pool.get_bw(x).id, count);
+                }
+            });
+        }
     }
 
     pub fn remove_wall_at(&mut self, x: u32, y: u32) {
