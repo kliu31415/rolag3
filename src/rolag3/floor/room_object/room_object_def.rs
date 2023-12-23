@@ -1,4 +1,4 @@
-use std::{rc::{Rc, Weak}, cell::RefCell, collections::{HashSet, HashMap}, ops::Range};
+use std::{rc::{Rc, Weak}, cell::RefCell, collections::{HashSet, HashMap, BTreeMap}, ops::Range};
 
 use rand::{rngs::StdRng, Rng};
 
@@ -118,8 +118,8 @@ pub struct RoomObjectMetadata {
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, PartialOrd, Ord)]
 pub struct RoomObjectRef {
-    pub id: RoomObjectId, // guaranteed to be unique across all RoomObjects of all types
     pub typ: RoomObjectType, // used solely as an optimization
+    pub id: RoomObjectId, // guaranteed to be unique across all RoomObjects of all types
 }
 
 pub type RoomObjectId = usize;
@@ -150,62 +150,62 @@ pub struct RoomObjectCollection {
 }
 
 struct RoomObjectsByType {
-    player: Vec<Rc<RefCell<dyn RoomObject>>>, // size 0 (player not present in room) or 1 (player present)
-    ro_wall: Vec<Rc<RefCell<dyn RoomObject>>>,
-    ro_projectile: Vec<Rc<RefCell<dyn RoomObject>>>,
-    ro_unit: Vec<Rc<RefCell<dyn RoomObject>>>,
-    ro_other: Vec<Rc<RefCell<dyn RoomObject>>>,
+    player: Option<Rc<RefCell<dyn RoomObject>>>,
+    room_objects: BTreeMap<RoomObjectRef, Rc<RefCell<dyn RoomObject>>>,
+}
+
+fn range_all_of_type(t: RoomObjectType) -> Range<RoomObjectRef> {
+    let a = RoomObjectRef {
+        id: RoomObjectId::MIN,
+        typ: t,
+    };
+    let b = RoomObjectRef {
+        id: RoomObjectId::MAX,
+        typ: t,
+    };
+    a..b
 }
 
 impl RoomObjectsByType {
-    fn vec_mut_all_objects(&mut self) -> Vec<&mut Vec<Rc<RefCell<dyn RoomObject>>>> {
-        vec![&mut self.player, &mut self.ro_wall, &mut self.ro_projectile, &mut self.ro_unit, &mut self.ro_other]
-    }
-
-    fn vec_all_objects(&self) -> Vec<&Vec<Rc<RefCell<dyn RoomObject>>>> {
-        vec![&self.player, &self.ro_wall, &self.ro_projectile, &self.ro_unit, &self.ro_other]
-    }
-
-    fn iter(&self) -> impl Iterator<Item = &Rc<RefCell<dyn RoomObject>>> {
-        self.vec_all_objects().into_iter().flatten()
-    }
-
     fn object_count(&self) -> usize {
-        self.vec_all_objects().into_iter().map(|v| v.len()).sum()
+        self.room_objects.len()
     }
 
     fn remove_player(&mut self) {
-        assert!(self.player.len() == 1, "remove_player() called when player is not present");
-        self.player.clear();
+        assert!(self.player.is_some(), "remove_player() called when player is not present");
+        let r = self.room_objects.remove(&self.player.as_ref().unwrap().as_ref().borrow().get_metadata().get_ref());
+        assert!(r.is_some(), "unable to remove player from RoomObjects map");
+        self.player = None;
     }
 
     fn add(&mut self, obj: Rc<RefCell<dyn RoomObject>>) {
-        if obj.borrow().is_player() {
-            assert!(self.player.is_empty(), "cannot add player to room when player is already in room");
-            self.player.push(obj);
-            return;
+        if obj.as_ref().borrow().is_player() {
+            assert!(self.player.is_none(), "cannot add player to room when player is already in room");
+            self.player = Some(obj.clone());
         }
-        let ro_type = obj.borrow().get_metadata().get_ref().typ;
-        match ro_type {
-            RoomObjectType::Wall => self.ro_wall.push(obj),
-            RoomObjectType::Projectile => self.ro_projectile.push(obj),
-            RoomObjectType::Unit => self.ro_unit.push(obj),
-            RoomObjectType::Other => self.ro_other.push(obj),
-        }
+        let ref_ = obj.as_ref().borrow().get_metadata().get_ref();
+        self.room_objects.insert(ref_, obj);
     }
 
     fn remove_wall_at(&mut self, x: u32, y: u32) {
-        let old_len = self.ro_wall.len();
-        self.ro_wall.retain(|ro| {
-            let wall_loc = ro.borrow().get_as_wall_location();
+        let to_remove = self.room_objects.range_mut(range_all_of_type(RoomObjectType::Wall)).filter_map(|(k, v)| {
+            let wall_loc = v.as_ref().borrow().get_as_wall_location();
             match wall_loc {
-                Some((wx, wy)) => !(x==wx && y==wy),
-                None => true,
+                Some((wx, wy)) => {
+                    if x==wx && y==wy {
+                        return Some(*k);
+                    }
+                    return None;
+                },
+                None => None,
             }
-        });
-        let new_len = self.ro_wall.len();
-        assert!(old_len == new_len + 1, "Tried to remove wall at (x, y) = ({}, {}) from RoomObjectCollection. \
-            Expected to remove one object. old_len={}, new_len={}", x, y, old_len, new_len);
+        }).collect::<Vec<_>>();
+        assert!(to_remove.len() == 1, "Tried to remove wall at (x, y) = ({}, {}) from RoomObjectCollection. 
+            Expected to remove one object. Got {} objects", x, y, to_remove.len());
+        for id in to_remove {
+            self.room_objects.remove(&id).expect("unable to remove RoomObject");
+        }
+
     }
 }
 
@@ -238,11 +238,8 @@ impl RoomObjectCollection {
     pub fn new() -> Self {
         Self {
             room_objects_by_type: RoomObjectsByType {
-                player: Vec::new(),
-                ro_wall: Vec::new(),
-                ro_projectile: Vec::new(),
-                ro_unit: Vec::new(),
-                ro_other: Vec::new(),
+                player: None,
+                room_objects: BTreeMap::new(),
             },
             room_already_cleared: false,
             cached_mem: RoomObjectCollectionCachedMem::new(),
@@ -263,7 +260,7 @@ impl RoomObjectCollection {
 
     pub fn validate_start_room(&self) {
         let mut unique_locations = HashSet::new();
-        self.room_objects_by_type.ro_wall.iter().filter_map(|w| w.borrow().get_as_wall_location()).for_each( |loc| {
+        self.room_objects_by_type.room_objects.range(range_all_of_type(RoomObjectType::Wall)).filter_map(|(_, w)| w.as_ref().borrow().get_as_wall_location()).for_each( |loc| {
             assert!(!unique_locations.contains(&loc), "multiple walls detected at location ({}, {})", loc.0, loc.1);
             unique_locations.insert(loc);
         });
@@ -273,7 +270,7 @@ impl RoomObjectCollection {
     pub fn act1(&mut self, ctx: &mut Act1Context) {
         self.cached_mem.reset();
 
-        for room_obj in self.room_objects_by_type.iter() {
+        for room_obj in self.room_objects_by_type.room_objects.values() {
             ctx.self_as_rc = Some(room_obj.clone());
             self.cached_mem.act1_responses.push(room_obj.borrow_mut().act1(ctx));
         }
@@ -296,13 +293,13 @@ impl RoomObjectCollection {
             };
             match op {
                 RoomObjOperation::BlackHoleForce { .. } => {
-                    self.room_objects_by_type.ro_projectile.iter().for_each(|x| x.borrow_mut().apply_operation(&op_ctx))
+                    self.room_objects_by_type.room_objects.range(range_all_of_type(RoomObjectType::Projectile)).for_each(|(_, v)| v.borrow_mut().apply_operation(&op_ctx))
                 },
                 RoomObjOperation::ClearProjectiles { .. } => {
-                    self.room_objects_by_type.ro_projectile.iter().for_each(|x| x.borrow_mut().apply_operation(&op_ctx))
+                    self.room_objects_by_type.room_objects.range(range_all_of_type(RoomObjectType::Projectile)).for_each(|(_, v)| v.borrow_mut().apply_operation(&op_ctx))
                 },
                 RoomObjOperation::UnitBudeb { .. } => {
-                    self.room_objects_by_type.ro_unit.iter().for_each(|x| x.borrow_mut().apply_operation(&op_ctx));
+                    self.room_objects_by_type.room_objects.range(range_all_of_type(RoomObjectType::Unit)).for_each(|(_, v)| v.borrow_mut().apply_operation(&op_ctx));
                 }
             }
         }
@@ -310,13 +307,13 @@ impl RoomObjectCollection {
         for (qargs, qresult) in self.cached_mem.queries.drain(..) {
             match qargs {
                 Act1QueryArgs::ClosestUnit { x, y, team_filter } => {
-                    let closest = self.room_objects_by_type.ro_unit.iter().chain(self.room_objects_by_type.player.iter())
-                        .map(|x| {
+                    let closest = self.room_objects_by_type.room_objects.range(range_all_of_type(RoomObjectType::Unit))
+                        .map(|(_, v)| {
                             let rqui_ctx = RoQueryUnitInfoContext {
-                                self_as_weak: Rc::downgrade(x),
+                                self_as_weak: Rc::downgrade(v),
                                 rofiz: ctx.rofiz,
                             };
-                            x.borrow().handle_query_unit_info(&rqui_ctx)
+                            v.as_ref().borrow().handle_query_unit_info(&rqui_ctx)
                         })
                         .filter(|x| team_filter.is_none() || team_filter.unwrap() == x.team)
                         .min_by(|a, b| {
@@ -345,13 +342,14 @@ impl RoomObjectCollection {
         if to_remove.is_empty() {
             return;
         }
-        self.room_objects_by_type.vec_mut_all_objects().iter_mut().for_each(
-            |ro_v| ro_v.retain(
-                |x| !to_remove.contains(&x.borrow().get_metadata().get_ref())));
+        for r in to_remove {
+            // TODO: should we handle removing the player here?
+            self.room_objects_by_type.room_objects.remove(&r).expect(&format!("unable to remove room object with ref={:?}", r));
+        }
     }
 
     pub fn draw(&mut self, ctx: &mut DrawContext) {
-        for fo in self.room_objects_by_type.iter() {
+        for fo in self.room_objects_by_type.room_objects.values() {
             fo.borrow_mut().draw(ctx);
         }
     }
@@ -362,8 +360,8 @@ impl RoomObjectCollection {
             return;
         }
 
-        for fo in self.room_objects_by_type.iter() {
-            if fo.borrow().blocks_room_clear() {
+        for fo in self.room_objects_by_type.room_objects.values() {
+            if fo.as_ref().borrow().blocks_room_clear() {
                 return;
             }
         }
@@ -373,7 +371,7 @@ impl RoomObjectCollection {
         let mut ctx = HandleRoomJustClearedContext {
             _rofiz: rofiz,
         };
-        for fo in self.room_objects_by_type.iter() {
+        for fo in self.room_objects_by_type.room_objects.values() {
             fo.borrow_mut().handle_room_just_cleared(&mut ctx);
         }
     }
@@ -388,34 +386,36 @@ impl RoomObjectCollection {
             panic!("should_remove.len() != obj_count. Values: {} != {}", should_remove.len(), obj_count)
         }
         let mut idx = 0;
-        self.room_objects_by_type.vec_mut_all_objects().iter_mut().for_each(|v| v.retain(|_| {idx += 1; !should_remove[idx - 1]}));
+        let to_remove = self.room_objects_by_type.room_objects.keys().filter_map(|k| {
+            idx += 1;
+            if should_remove[idx - 1] {
+                return Some(*k);
+            }
+            return None;
+        }).collect::<Vec<_>>();
+        for r in to_remove {
+            self.room_objects_by_type.room_objects.remove(&r).expect("unable to remove room object");
+        }
     }
 
     pub fn get_multi(&self, ids: HashSet<RoomObjectRef>) -> HashMap<RoomObjectRef, Rc<RefCell<dyn RoomObject>>> {
         let mut res = HashMap::new();
-        for fo in self.room_objects_by_type.iter() {
-            let id = fo.borrow().get_metadata().get_ref();
-            if ids.contains(&id) {
-                res.insert(id, fo.clone());
-            }
+        for id in ids {
+            res.insert(id, self.room_objects_by_type.room_objects.get(&id).unwrap().clone());
         }
         res
     }
 
     #[inline(never)]
     pub fn validate_end_tick(&self) {
-        let mut unique_ids = HashSet::new();
-        for ro in self.room_objects_by_type.iter() {
-            let id = ro.borrow().get_metadata().get_ref();
-            assert!(!unique_ids.contains(&id), "room contains more than one object with id={:?}", id);
-            unique_ids.insert(id);
-            let ref_count = Rc::strong_count(ro);
-            if ro.borrow().is_player() {
+        for v in self.room_objects_by_type.room_objects.values() {
+            let ref_count = Rc::strong_count(v);
+            if v.borrow().is_player() {
                 if ref_count != 3 {
-                    panic!("RoomObject Player Rc::strong_count()={}. Expected 3. Id={:?}", ref_count, ro.borrow().get_metadata().get_ref());
+                    panic!("RoomObject Player Rc::strong_count()={}. Expected 3. Id={:?}", ref_count, v.borrow().get_metadata().get_ref());
                 }
             } else if ref_count != 1 {
-                panic!("RoomObject Rc::strong_count()={}. Expected 1. Id={:?}", ref_count, ro.borrow().get_metadata().get_ref());
+                panic!("RoomObject Rc::strong_count()={}. Expected 1. Id={:?}", ref_count, v.borrow().get_metadata().get_ref());
             }
         }
     }
