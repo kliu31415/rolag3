@@ -60,6 +60,20 @@ pub fn translate_polygon(translate_by: Vector, vertexes: &mut [Point]) {
     vertexes.iter_mut().for_each(|p| {p.x += translate_by.x; p.y += translate_by.y;});
 }
 
+pub fn rotate_polygon(angle: f32, vertexes: &mut [Point]) {
+    if angle == 0.0 {
+        return;
+    }
+    let cos_theta = f32::cos(angle);
+    let sin_theta = f32::sin(angle);
+    vertexes.iter_mut().for_each(|p| {
+        let rot_x = cos_theta * p.x - sin_theta * p.y;
+        let rot_y = sin_theta * p.x + cos_theta * p.y;
+        p.x = rot_x;
+        p.y = rot_y;
+    });
+}
+
 #[cfg(test)]
 mod tests {
     use crate::geometry::shape::Point;

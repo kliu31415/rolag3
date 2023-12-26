@@ -247,6 +247,23 @@ impl DrawContext<'_> {
         DrawOp::Group(DrawOpGroup::new(ops))
     }
 
+    pub fn do_tri_fan_border(&self, color: Color, outer: &[Point], inner: &[Point]) -> DrawOp {
+        assert_eq!(outer.len(), inner.len(), "Tri fan border outer and inner vertexes must have the same length");
+        assert!(outer.len() > 2, "Degenerate tri fan border with <=2 vertexes detected");
+        let o1 = outer.iter();
+        let o2 = outer[1..].iter().chain(outer[..1].iter());
+        let i1 = inner.iter();
+        let i2 = inner[1..].iter().chain(inner[..1].iter());
+        let quads = o1.zip(o2).zip(i1.zip(i2));
+
+        let mut dops = Vec::new();
+        dops.reserve(outer.len());
+        for ((o1, o2), (i1, i2)) in quads {
+            dops.push(self.do_quad_fan(color, [*o1, *i1, *i2, *o2]));
+        }
+        self.dop_group(dops.into())
+    }
+
     pub fn do_tri_fan(&self, color: Color, vertexes: &[Point]) -> DrawOp {
         let vs_coords = vertexes
             .iter()
