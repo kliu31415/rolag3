@@ -217,6 +217,11 @@ impl StandardUnitCommon {
         self.unit_tick_length
     }
 
+    pub fn get_unit_time(&self) -> f64 {
+        // this can be called outside of act1(), e.g. in draw(), so I didn't include precondition assertions
+        self.unit_age
+    }
+
     pub fn end_act1(&mut self, rofiz: &mut RofizState) {
         assert!(self.act1_started, "cannot call standard_unit_common::end_act1() before act1 has started");
 

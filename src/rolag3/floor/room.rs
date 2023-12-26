@@ -5,7 +5,7 @@ use rand::rngs::StdRng;
 
 use crate::gfx::renderer::{TmdRef, Renderer};
 
-use super::{room_object::{unit::{enemy2::new_enemy2, enemy3::new_enemy3, enemy1::new_enemy1, boss1::new_boss1, enemy4::new_enemy4, enemy5::new_enemy5, enemy::square::blue::new_square_blue}, room_object_def::{NewRoomObjectContext, RoomObjectCollection, RoomObjectId}, wall::basic_wall::BasicWall, tiles::{room_connection::{RoomConnection, Direction}, black_hole::new_black_hole, accel_tile::new_accel_tile}, damage::DamageColor, cosmetic::ground1::new_ground1}, draw::Color, rofiz::rofiz_state::RofizState, floor_def::RoomId};
+use super::{room_object::{unit::{enemy2::new_enemy2, enemy3::new_enemy3, enemy1::new_enemy1, boss1::new_boss1, enemy4::new_enemy4, enemy5::new_enemy5, enemy::square::{blue::new_square_blue, blue_diamond::new_square_blue_circle}}, room_object_def::{NewRoomObjectContext, RoomObjectCollection, RoomObjectId}, wall::basic_wall::BasicWall, tiles::{room_connection::{RoomConnection, Direction}, black_hole::new_black_hole, accel_tile::new_accel_tile}, damage::DamageColor, cosmetic::ground1::new_ground1}, draw::Color, rofiz::rofiz_state::RofizState, floor_def::RoomId};
 
 pub struct Room {
     pub upper_left_x: u32,
@@ -110,7 +110,10 @@ impl Room {
         let enemy = new_square_blue(&mut new_floor_object_ctx, 9.0, 26.0);
         room_objects.add(Rc::new(RefCell::new(enemy)));
 
-        let enemy = new_enemy4(&mut new_floor_object_ctx, 12.0, 25.0);
+        let enemy = new_enemy4(&mut new_floor_object_ctx, 12.0, 23.0);
+        room_objects.add(Rc::new(RefCell::new(enemy)));
+
+        let enemy = new_square_blue_circle(&mut new_floor_object_ctx, 12.0, 26.0);
         room_objects.add(Rc::new(RefCell::new(enemy)));
 
         let enemy = new_enemy5(&mut new_floor_object_ctx, 16.0, 25.0);
