@@ -394,14 +394,15 @@ impl RoomObjectCollection {
             return None;
         }).collect::<Vec<_>>();
         for r in to_remove {
-            self.room_objects_by_type.room_objects.remove(&r).expect("unable to remove room object");
+            let v = self.room_objects_by_type.room_objects.remove(&r).expect("unable to remove room object");
+            assert_eq!(Rc::strong_count(&v), 1, "Rc strong count for removed object with id {} isn't 1", v.borrow().get_metadata().get_ref().id);
         }
     }
 
     pub fn get_multi(&self, ids: HashSet<RoomObjectRef>) -> HashMap<RoomObjectRef, Rc<RefCell<dyn RoomObject>>> {
         let mut res = HashMap::new();
         for id in ids {
-            res.insert(id, self.room_objects_by_type.room_objects.get(&id).unwrap().clone());
+            res.insert(id, self.room_objects_by_type.room_objects.get(&id).expect(&format!("unable to get room object with id={:?}", id)).clone());
         }
         res
     }
@@ -563,6 +564,10 @@ impl<'a> Act1Context<'a> {
     // in the range [0, 1)
     pub fn get_randf64(&mut self) -> f64 {
         self.rng.gen::<f64>()
+    }
+
+    pub fn get_randi64(&mut self, r: Range<i64>) -> i64 {
+        self.rng.gen_range(r)
     }
 
     pub fn get_room_cleared_at_time(&self) -> Option<f64> {

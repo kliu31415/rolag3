@@ -95,27 +95,6 @@ impl RofizState {
                 .chain(self.nonspectral_units.iter()) {
             self.obj_pool.get_mo_mut(obj).movement = RofizObjectMovement::NoMove();
         }
-        self.basic_projectiles.retain(|x| {
-            if Arc::strong_count(&self.obj_pool.get_mo_mut(x).external_ref_count) == 1 {
-                self.obj_pool.del_mo(x);
-                return false;
-            }
-            true
-        });
-        self.nonspectral_units.retain(|x| {
-            if Arc::strong_count(&self.obj_pool.get_mo_mut(x).external_ref_count) == 1 {
-                self.obj_pool.del_mo(x);
-                return false;
-            }
-            true
-        });
-        self.spectral_units.retain(|x| {
-            if Arc::strong_count(&self.obj_pool.get_mo_mut(x).external_ref_count) == 1 {
-                self.obj_pool.del_mo(x);
-                return false;
-            }
-            true
-        });
 
         if run_validation {
             self.basic_walls.iter().for_each(|x| {
@@ -234,21 +213,24 @@ impl RofizState {
     #[inline(never)]
     fn moafc1(&mut self) {
         self.basic_projectiles.retain(|x| {
-            if matches!(self.obj_pool.get_mo_mut(x).movement, RofizObjectMovement::_Delete()) {
+            if matches!(self.obj_pool.get_mo_mut(x).movement, RofizObjectMovement::_Delete()) ||
+            Arc::strong_count(&self.obj_pool.get_mo_mut(x).external_ref_count) == 1 {
                 self.obj_pool.del_mo(x);
                 return false;
             }
             true
         });
         self.nonspectral_units.retain(|x| {
-            if matches!(self.obj_pool.get_mo_mut(x).movement, RofizObjectMovement::_Delete()) {
+            if matches!(self.obj_pool.get_mo_mut(x).movement, RofizObjectMovement::_Delete()) ||
+            Arc::strong_count(&self.obj_pool.get_mo_mut(x).external_ref_count) == 1 {
                 self.obj_pool.del_mo(x);
                 return false;
             }
             true
         });
         self.spectral_units.retain(|x| {
-            if matches!(self.obj_pool.get_mo_mut(x).movement, RofizObjectMovement::_Delete()) {
+            if matches!(self.obj_pool.get_mo_mut(x).movement, RofizObjectMovement::_Delete()) ||
+            Arc::strong_count(&self.obj_pool.get_mo_mut(x).external_ref_count) == 1 {
                 self.obj_pool.del_mo(x);
                 return false;
             }

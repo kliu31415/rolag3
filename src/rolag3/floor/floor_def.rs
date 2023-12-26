@@ -56,8 +56,8 @@ impl Floor {
         let mut room4 = make_boss_room1(rng, &mut room_object_id_counter);
         room4.finalize_with_connections(renderer, vec![], rng, &mut room_object_id_counter);
 
-        player.borrow_mut().move_rooms(&mut room4.rofiz, MoveRooms::Teleport { x: 3.0, y: 3.0 });
-        room4.room_objects.add(player.clone());
+        player.borrow_mut().move_rooms(&mut room1.rofiz, MoveRooms::Teleport { x: 3.0, y: 3.0 });
+        room1.room_objects.add(player.clone());
         let mut rooms = HashMap::new();
         rooms.insert(1, room1);
         rooms.insert(2, room2);
@@ -67,7 +67,7 @@ impl Floor {
         Self {
             rooms,
             player,
-            player_room_id: 4,
+            player_room_id: 1,
             floor_time: 0.0,
             room_object_id_counter,
         }
