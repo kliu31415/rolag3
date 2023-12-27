@@ -3,12 +3,12 @@ use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext
 /* Blue square moves erratically. It fires no projectiles.
 */
 
-const OUTER_COLOR: Color = Color::new(0.2, 0.2, 0.2, 1.0);
+const BORDER_COLOR: Color = Color::new(0.2, 0.2, 0.2, 1.0);
 const INNER_COLOR: Color = Color::new(0.1, 0.1, 1.0, 1.0);
 
 pub struct SquareBlue {
     movement: Option<Movement>,
-    outer_vertexes: [Point; 4],
+    border_vertexes: [Point; 4],
     inner_vertexes: [Point; 4],
 }
 
@@ -18,12 +18,12 @@ struct Movement {
 }
 
 pub fn new_square_blue(ctx: &mut NewRoomObjectContext, x: f64, y: f64) -> StandardUnit1 {
-    let mut outer_vertexes: [Point; 4] = regular_polygon(4, 1.0)[..].try_into().unwrap();
-    rotate_polygon(std::f32::consts::FRAC_PI_4, &mut outer_vertexes);
-    let inner_vertexes: [Point; 4] = get_inner_polygon(0.1, &outer_vertexes)[..].try_into().unwrap();
+    let mut border_vertexes: [Point; 4] = regular_polygon(4, 1.0)[..].try_into().unwrap();
+    rotate_polygon(std::f32::consts::FRAC_PI_4, &mut border_vertexes);
+    let inner_vertexes: [Point; 4] = get_inner_polygon(0.1, &border_vertexes)[..].try_into().unwrap();
     let xform = Transformation::new(x, y, 0.0);
-    let shape = Shape::of_polygon(Box::new(outer_vertexes));
-    let us_data = SquareBlue { movement: None, outer_vertexes, inner_vertexes};
+    let shape = Shape::of_polygon(Box::new(border_vertexes));
+    let us_data = SquareBlue { movement: None, border_vertexes, inner_vertexes};
 
     StandardUnit1Builder::new(StandardUnit1BuilderReq {
         team: Team::Enemy,
@@ -61,14 +61,14 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
 
 fn draw(ctx: &mut SuDrawContext) {
     let us_data = ctx.su_ctx.us_data.downcast_mut::<SquareBlue>().unwrap();
-    let outer_color = ctx.su_ctx.su_common.get_draw_color(ctx.draw_ctx.get_room_time(), OUTER_COLOR);
+    let border_color = ctx.su_ctx.su_common.get_draw_color(ctx.draw_ctx.get_room_time(), BORDER_COLOR);
     let inner_color = ctx.su_ctx.su_common.get_draw_color(ctx.draw_ctx.get_room_time(), INNER_COLOR);
     let xform = ctx.draw_ctx.get_rofiz().get_movable_object_xform(ctx.su_ctx.su_common.get_ro_ref());
-    let outer_vertexes = us_data.outer_vertexes.map(|v| Point::new(xform.dx as f32 + v.x, xform.dy as f32 + v.y));
+    let border_vertexes = us_data.border_vertexes.map(|v| Point::new(xform.dx as f32 + v.x, xform.dy as f32 + v.y));
     let inner_vertexes = us_data.inner_vertexes.map(|v| Point::new(xform.dx as f32 + v.x, xform.dy as f32 + v.y));
-    let outer_dop = ctx.draw_ctx.do_tri_fan_border(outer_color, &outer_vertexes, &inner_vertexes);
+    let border_dop = ctx.draw_ctx.do_tri_fan_border(border_color, &border_vertexes, &inner_vertexes);
     let inner_dop = ctx.draw_ctx.do_quad_fan(inner_color, inner_vertexes);
-    ctx.draw_ctx.add_draw_op(DrawContext::Z_UNIT, ctx.draw_ctx.dop_group(Box::new([outer_dop, inner_dop])));
+    ctx.draw_ctx.add_draw_op(DrawContext::Z_UNIT, ctx.draw_ctx.dop_group(Box::new([border_dop, inner_dop])));
 }
 
 fn handle_collision(ctx: &mut SuHandleCollisionContext) -> HandleCollisionResponse {
