@@ -7,21 +7,30 @@ pub enum Budeb {
 }
 
 #[derive(Debug, Clone, Copy)]
+pub enum BudebExpiry {
+    Duration(f64),
+    OneTick,
+}
+
+#[derive(Debug, Clone, Copy)]
 pub struct BudebMaxSpeed {
-    pub time_til_expiry: f64,
     pub multiplier: f64,
+    pub expiry: BudebExpiry,
+}
+
+impl BudebMaxSpeed {
+    pub fn new(multiplier: f64, expiry: BudebExpiry) -> Self {
+        Self {
+            multiplier,
+            expiry,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
 pub struct BudebTimeSpeedMult {
     pub time_til_expiry: f64,
     pub multiplier: f64,
-}
-
-impl BudebMaxSpeed {
-    pub fn new(time_til_expiry: f64, multiplier: f64) -> Self {
-        Self { time_til_expiry, multiplier }
-    }
 }
 
 pub struct StandardUnitCommon {
@@ -331,13 +340,22 @@ impl StandardUnitCommon {
         for (i, budeb) in self.budebs.iter_mut().enumerate() {
             match budeb {
                 Budeb::SpeedMult(v) => {
-                    v.time_til_expiry -= tick_length;
-                    if v.time_til_expiry < 0.0 {
-                        expired_budeb_idx.push(i);
-                    } else {
-                        max_speed_mult = f64::max(max_speed_mult, v.multiplier);
-                        min_speed_mult = f64::min(min_speed_mult, v.multiplier);
-                    }
+                    match v.expiry {
+                        BudebExpiry::Duration(ref mut d) => {
+                            *d -= tick_length;
+                            if *d < 0.0 {
+                                expired_budeb_idx.push(i);
+                            } else {
+                                max_speed_mult = f64::max(max_speed_mult, v.multiplier);
+                                min_speed_mult = f64::min(min_speed_mult, v.multiplier);
+                            }
+                        }
+                        BudebExpiry::OneTick => {
+                            expired_budeb_idx.push(i);
+                            max_speed_mult = f64::max(max_speed_mult, v.multiplier);
+                            min_speed_mult = f64::min(min_speed_mult, v.multiplier);
+                        }
+                    };
                 },
                 Budeb::TimeSpeedMult(_) => {}, // handled in start_act1()
             }
