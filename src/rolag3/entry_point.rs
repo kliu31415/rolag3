@@ -1,5 +1,8 @@
-use std::collections::VecDeque;
+use std::{collections::VecDeque, time::SystemTime};
+use std::io::Write;
 
+use env_logger::fmt::Color;
+use log::Level;
 use rand::{rngs:: StdRng, SeedableRng};
 use winit::{event::{Event, WindowEvent, KeyEvent, ElementState, MouseButton}, event_loop::EventLoopWindowTarget, keyboard::{PhysicalKey, KeyCode}};
 
@@ -10,7 +13,31 @@ use super::floor::{draw::{DrawFloorContext, get_draw_floor_ops}, run::{RunFloorC
 pub fn run() {
     std::env::set_var("RUST_BACKTRACE", "full");
     std::env::set_var("RUST_LOG", "warn");
-    env_logger::init();
+    let time_format = time::format_description::parse("[year]-[month]-[day]-[hour]:[minute]:[second]").unwrap();
+    env_logger::Builder::new()
+        .format(move |buf, record| {
+            let t: time::OffsetDateTime = SystemTime::now().into();
+            let mut style = buf.style();
+            match record.level() {
+                Level::Error => style.set_color(Color::Red),
+                Level::Warn => style.set_color(Color::Yellow),
+                Level::Info => style.set_color(Color::Green),
+                Level::Debug => style.set_color(Color::Blue),
+                Level::Trace => style.set_color(Color::Cyan),
+            };
+            writeln!(
+                buf,
+                "[{}] {} {}:{} - {}",
+                style.value(record.level()),
+                t.format(&time_format).unwrap(),
+                record.file().unwrap_or("unknown_file"),
+                record.line().unwrap_or(0),
+                record.args(),
+            )
+        })
+        .filter(None, log::LevelFilter::Warn)
+        .init();
+
     let mut window = gfx::window::make_window_and_renderer("Rolag3", 320, 200, 1920, 1200);
     let mut event_handler = Rolag3EventHandler::new_test1(window.get_renderer());
     window.run_event_loop(&mut event_handler);

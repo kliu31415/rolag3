@@ -62,6 +62,9 @@ pub fn make_room_maze1(rng: &mut StdRng, room_object_id_counter: &mut RoomObject
     }
 }
 
+// TODO: maybe make this algorithm assign random weights to graph edges and run kruskal's on the graph, selecting the 
+// next-least-weight edge every step.
+// Right now, this algorithm randomly selects an edge every step. The complexity of this is hard to analyze.
 fn make_rectangular_maze(rng: &mut StdRng, w: usize, h: usize, additional_edges: u32) -> RectangularGraph {
     let num_cells = w * h;
     if num_cells > 10000 {
