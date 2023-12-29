@@ -73,7 +73,6 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
     ctx.su_ctx.su_common.set_translate_move(TranslateMove::Accelerate { ax: f64::cos(theta), ay: f64::sin(theta)});
     ctx.su_ctx.su_common.set_rotate_move(RotateMove::Accelerate { atheta: us_data.rotate_dir as f64 });
     let speed_mult = f64::cbrt(1.0 + us_data.excitement);
-    log::warn!("excitement={}", us_data.excitement);
     ctx.su_ctx.su_common.apply_budeb(&Budeb::SpeedMult(BudebMaxSpeed::new(speed_mult, BudebExpiry::OneTick)));
 
     if us_data.should_reset_velocity {

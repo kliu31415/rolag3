@@ -482,7 +482,7 @@ impl Renderer for WgpuRenderer {
             });
 
             // sort DrawOps by z. Order them in a way that minimizes the amount of times the shader pipeline is changed
-            self.draw_ops.sort_unstable_by(|a, b| a.z.partial_cmp(&b.z).unwrap());
+            self.draw_ops.sort_by(|a, b| a.z.partial_cmp(&b.z).unwrap());
             let mut ops_per_z = vec![Vec::new()];
             let mut ops_this_z = Vec::new();
             let mut prev_z = f64::NEG_INFINITY;
@@ -497,11 +497,10 @@ impl Renderer for WgpuRenderer {
             if !ops_this_z.is_empty() {
                 ops_per_z.push(ops_this_z);
             }
-            for (i, ops) in ops_per_z.iter_mut().enumerate() {
-                ops.sort_unstable_by_key(|x| x.get_shader_id());
-                if i % 2 == 0 {
-                    ops.reverse();
-                }
+            for ops in ops_per_z.iter_mut() {
+                ops.sort_by_key(|x| x.get_shader_id());
+                // DO NOT reverse every other ops. This reduces the number of shader changes, but it 
+                // potentially makes draw ops unstable across frames.
             }
 
             // convert DrawOps into GPU shader inputs
