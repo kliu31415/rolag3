@@ -2,7 +2,7 @@ use std::{cell::RefCell, rc::Rc, collections::VecDeque};
 
 use rand::{rngs::StdRng, Rng};
 
-use crate::rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, RoomObjectCollection, RoomObjectId}, wall::basic_wall::BasicWall, cosmetic::ground1::new_ground1, tiles::damage_tile::new_damage_tile}, rofiz::rofiz_state::RofizState, room::{RoomTile, Room}, draw::Color};
+use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, RoomObjectCollection, RoomObjectId}, wall::basic_wall::BasicWall, cosmetic::ground1::new_ground1, tiles::damage_tile::new_damage_tile}, rofiz::rofiz_state::RofizState, room::{RoomTile, Room}, draw::Color}, util::disjoint_set_union::DisjointSetUnion};
 
 pub fn make_room_maze1(rng: &mut StdRng, room_object_id_counter: &mut RoomObjectId, x: u32, y: u32) -> Room {
     let maze_w = 24;
@@ -59,6 +59,7 @@ pub fn make_room_maze1(rng: &mut StdRng, room_object_id_counter: &mut RoomObject
         room_time: 0.0,
         room_cleared_at_time: None,
         minimap_texture: None,
+        ttc: 20.0,
     }
 }
 
@@ -283,34 +284,4 @@ impl RectangularGraph {
         }
         panic!("unable to find path from ({}, {}) to ({}, {})", x1, y1, x2, y2);
      }
-}
-
-struct DisjointSetUnion {
-    p: Box<[usize]>,
-}
-
-impl DisjointSetUnion {
-    pub fn new(n: usize) -> Self {
-        Self {
-            p: (0..n).collect()
-        }
-    }
-
-    // returns true if a union of two disjoint sets actually happened
-    pub fn union(&mut self, a: usize, b: usize) -> bool { 
-        let ar = self.find(a);
-        let br = self.find(b);
-        self.p[ar] = br;
-        return ar != br
-    }
-
-    pub fn find(&mut self, a: usize) -> usize {
-        let mut cur = a;
-        while cur != self.p[cur] {
-            let next = self.p[cur];
-            self.p[cur] = self.p[next]; 
-            cur = next;
-        }
-        cur
-    }
 }

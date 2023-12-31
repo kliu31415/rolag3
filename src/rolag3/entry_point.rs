@@ -13,7 +13,7 @@ use super::floor::{draw::{DrawFloorContext, get_draw_floor_ops}, run::{RunFloorC
 pub fn run() {
     std::env::set_var("RUST_BACKTRACE", "full");
     std::env::set_var("RUST_LOG", "warn");
-    let time_format = time::format_description::parse("[year]-[month]-[day]-[hour]:[minute]:[second]").unwrap();
+    let time_format = time::format_description::parse("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond digits:3]").unwrap();
     env_logger::Builder::new()
         .format(move |buf, record| {
             let t: time::OffsetDateTime = SystemTime::now().into();
@@ -107,7 +107,8 @@ const PLAYER_TAB_OVERLAY: PhysicalKey = PhysicalKey::Code(KeyCode::Tab);
 impl Rolag3EventHandler {
     fn new_test1(renderer: &mut dyn Renderer) -> Rolag3EventHandler {
         let mut rng = StdRng::seed_from_u64(123);
-        let floor = Floor::new_test1(renderer, &mut rng);
+        let _ = Floor::new_test1(renderer, &mut rng);
+        let floor = Floor::new_test2(renderer, &mut rng);
         Rolag3EventHandler { 
             frame_timestamps: VecDeque::new(),
             floor,

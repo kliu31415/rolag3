@@ -2,9 +2,9 @@ use std::{collections::HashMap, cell::RefCell, rc::Rc};
 
 use rand::rngs::StdRng;
 
-use crate::gfx::renderer::Renderer;
+use crate::{gfx::renderer::Renderer, rolag3::floor::{rooms::empty1::get_gen_room_fn_empty1, floorgen::run::_GenFloorRoomFn}};
 
-use super::{room::{Room, RoomConnectionInfo}, room_object::{unit::player::{Player, MoveRooms}, room_object_def::{FloorCoordinate, RoomObjectId}, tiles::room_connection::Direction}, rooms::{maze1::make_room_maze1, boss_room1::make_boss_room1}};
+use super::{room::{Room, RoomConnectionInfo}, room_object::{unit::player::{Player, MoveRooms}, room_object_def::{FloorCoordinate, RoomObjectId}, tiles::room_connection::Direction}, rooms::{maze1::make_room_maze1, boss_room1::make_boss_room1}, floorgen::run::{_gen_floor, _GenFloorArgs}};
 
 pub struct Floor {
     pub rooms: HashMap<RoomId, Room>,
@@ -68,6 +68,38 @@ impl Floor {
             rooms,
             player,
             player_room_id: 1,
+            floor_time: 0.0,
+            room_object_id_counter,
+        }
+    }
+
+    pub fn new_test2(renderer: &mut dyn Renderer, rng: &mut StdRng) -> Self {
+        let mut room_object_id_counter = Self::ROOM_OBJECT_ID_COUNTER_BEGIN;
+        let player = Rc::new(RefCell::new(Player::new_test1()));
+        let gen_initial_room_fn = _GenFloorRoomFn {weight: 1.0, func: get_gen_room_fn_empty1(20, 20, 20, 20)};
+        let gen_normal_room_fns = vec![_GenFloorRoomFn {weight: 1.0, func: get_gen_room_fn_empty1(20, 50, 20, 50)}];
+        let gf_args = _GenFloorArgs {
+            grid_w: 512,
+            grid_h: 512,
+            ttc_min: 100.0,
+            ttc_max: 103.0,
+            gen_initial_room_fn,
+            gen_normal_room_fns,
+            rng,
+            room_object_id_counter: &mut room_object_id_counter,
+            save_debug_data: true,
+        };
+        let mut gf_result = _gen_floor(gf_args);
+        gf_result.rooms.iter_mut().for_each(|room| room.finalize_with_connections(renderer, vec![], rng, &mut room_object_id_counter));
+        let mut rooms = gf_result.rooms.drain(..).enumerate().collect::<HashMap<_, _>>();
+        assert!(rooms.len() >= 1);
+        player.borrow_mut().move_rooms(&mut rooms.get_mut(&0).unwrap().rofiz, MoveRooms::Teleport { x: 3.0, y: 3.0 });
+        rooms.get_mut(&0).unwrap().room_objects.add(player.clone());
+
+        Self {
+            rooms,
+            player,
+            player_room_id: 0,
             floor_time: 0.0,
             room_object_id_counter,
         }

@@ -18,6 +18,8 @@ pub struct Room {
     pub room_time: f64,
     pub room_cleared_at_time: Option<f64>,
     pub minimap_texture: Option<TmdRef>,
+
+    pub ttc: f64,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -148,6 +150,7 @@ impl Room {
             room_time: 0.0,
             room_cleared_at_time: None,
             minimap_texture: None,
+            ttc: 50.0,
         }
     }
 
@@ -197,6 +200,7 @@ impl Room {
             room_time: 0.0,
             room_cleared_at_time: None,
             minimap_texture: None,
+            ttc: 20.0,
         }
     }
 
