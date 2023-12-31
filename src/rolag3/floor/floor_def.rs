@@ -2,9 +2,9 @@ use std::{collections::HashMap, cell::RefCell, rc::Rc};
 
 use rand::rngs::StdRng;
 
-use crate::{gfx::renderer::Renderer, rolag3::floor::{rooms::empty1::get_gen_room_fn_empty1, floorgen::run::_GenFloorRoomFn}};
+use crate::{gfx::renderer::Renderer, rolag3::floor::{rooms::empty1::get_gen_room_fn_empty1, floorgen::run::GenFloorRoomFn}};
 
-use super::{room::{Room, RoomConnectionInfo}, room_object::{unit::player::{Player, MoveRooms}, room_object_def::{FloorCoordinate, RoomObjectId}, tiles::room_connection::Direction}, rooms::{maze1::make_room_maze1, boss_room1::make_boss_room1}, floorgen::run::{_gen_floor, _GenFloorArgs}};
+use super::{room::{Room, RoomConnectionInfo}, room_object::{unit::player::{Player, MoveRooms}, room_object_def::{FloorCoordinate, RoomObjectId}, tiles::room_connection::Direction}, rooms::{maze1::make_room_maze1, boss_room1::make_boss_room1}, floorgen::run::{gen_floor, GenFloorArgs}};
 
 pub struct Floor {
     pub rooms: HashMap<RoomId, Room>,
@@ -16,6 +16,8 @@ pub struct Floor {
     // This has caused bugs when the player (id=1) and the first wall constructed in a room (id=1) collide.
     // TODO: in the future, make all room objects across all floors in a run share the same counter.
     pub room_object_id_counter: RoomObjectId,
+    pub floor_w: u32,
+    pub floor_h: u32,
 }
 
 pub type RoomId = usize;
@@ -70,15 +72,17 @@ impl Floor {
             player_room_id: 1,
             floor_time: 0.0,
             room_object_id_counter,
+            floor_w: 200,
+            floor_h: 200,
         }
     }
 
     pub fn new_test2(renderer: &mut dyn Renderer, rng: &mut StdRng) -> Self {
         let mut room_object_id_counter = Self::ROOM_OBJECT_ID_COUNTER_BEGIN;
         let player = Rc::new(RefCell::new(Player::new_test1()));
-        let gen_initial_room_fn = _GenFloorRoomFn {weight: 1.0, func: get_gen_room_fn_empty1(20, 20, 20, 20)};
-        let gen_normal_room_fns = vec![_GenFloorRoomFn {weight: 1.0, func: get_gen_room_fn_empty1(20, 50, 20, 50)}];
-        let gf_args = _GenFloorArgs {
+        let gen_initial_room_fn = GenFloorRoomFn {weight: 1.0, func: get_gen_room_fn_empty1(20, 20, 20, 20)};
+        let gen_normal_room_fns = vec![GenFloorRoomFn {weight: 1.0, func: get_gen_room_fn_empty1(20, 50, 20, 50)}];
+        let gf_args = GenFloorArgs {
             grid_w: 512,
             grid_h: 512,
             ttc_min: 100.0,
@@ -89,7 +93,7 @@ impl Floor {
             room_object_id_counter: &mut room_object_id_counter,
             save_debug_data: true,
         };
-        let mut gf_result = _gen_floor(gf_args);
+        let mut gf_result = gen_floor(gf_args);
         gf_result.rooms.iter_mut().for_each(|room| room.finalize_with_connections(renderer, vec![], rng, &mut room_object_id_counter));
         let mut rooms = gf_result.rooms.drain(..).enumerate().collect::<HashMap<_, _>>();
         assert!(rooms.len() >= 1);
@@ -102,6 +106,8 @@ impl Floor {
             player_room_id: 0,
             floor_time: 0.0,
             room_object_id_counter,
+            floor_w: gf_result.floor_w,
+            floor_h: gf_result.floor_h,
         }
     }
 

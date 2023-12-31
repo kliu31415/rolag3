@@ -24,7 +24,7 @@ pub struct Room {
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum RoomTile {
-    _NotInRoom,
+    NotInRoom,
     Ground,
     Wall,
     Connection,
@@ -214,7 +214,7 @@ impl Room {
         for x in 0..width {
             for y in 0..height {
                 let color = match tiles[x][y] {
-                    RoomTile::_NotInRoom => (0, 0, 0, 0), //completely transparent
+                    RoomTile::NotInRoom => (0, 0, 0, 0), //completely transparent
                     RoomTile::Ground => (255, 255, 255, 255),
                     RoomTile::Wall => (25, 25, 25, 255),
                     RoomTile::Connection => (140, 70, 0, 255),

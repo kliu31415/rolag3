@@ -71,9 +71,9 @@ fn get_draw_tab_overlay_ops(ctx: DrawTabOverlayContext) -> DrawOp {
         } else {
             ColorRGBA32f::new(1.0, 1.0, 1.0, 0.2)
         };
-        let center_x = 30.0;
-        let center_y = 15.0;
-        let pixels_per_tile = 5.0;
+        let center_x = ctx.floor.floor_w as f32 / 2.0;
+        let center_y = ctx.floor.floor_h as f32 / 2.0;
+        let pixels_per_tile = 2.0;
         ops.push(DrawOp::Texture2(DrawOpTexture2 { 
             texture: room.minimap_texture.clone().unwrap(), 
             color_mod, 

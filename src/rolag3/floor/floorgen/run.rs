@@ -10,15 +10,15 @@ use crate::rolag3::floor::room_object::room_object_def::RoomObjectId;
 use crate::rolag3::floor::rooms::hallway1::{HallwayGridCell, make_hallway1};
 use crate::rolag3::floor::{floor_def::RoomId, room::Room};
 
-pub struct _GenFloorArgs<'a> {
+pub struct GenFloorArgs<'a> {
     pub grid_w: u32,
     pub grid_h: u32,
 
     pub ttc_min: f64,
     pub ttc_max: f64,
 
-    pub gen_initial_room_fn: _GenFloorRoomFn,
-    pub gen_normal_room_fns: Vec<_GenFloorRoomFn>,
+    pub gen_initial_room_fn: GenFloorRoomFn,
+    pub gen_normal_room_fns: Vec<GenFloorRoomFn>,
 
     pub rng: &'a mut StdRng,
     pub room_object_id_counter: &'a mut RoomObjectId,
@@ -26,11 +26,11 @@ pub struct _GenFloorArgs<'a> {
     pub save_debug_data: bool,
 }
 
-impl<'a> _GenFloorArgs<'a> {
+impl<'a> GenFloorArgs<'a> {
 
 }
 
-pub struct _GenFloorRoomFn {
+pub struct GenFloorRoomFn {
     pub weight: f64,
     pub func: Box<dyn Fn(&mut GenFloorRoomContext) -> Room>,
 }
@@ -50,9 +50,13 @@ enum FloorGenGridCell {
 
 pub struct GenFloorResult {
     pub rooms: Vec<Room>,
+    pub floor_w: u32,
+    pub floor_h: u32,
 }
 
-pub fn _gen_floor(mut args: _GenFloorArgs) -> GenFloorResult {
+const HALLWAY_DIST: i32 = 5;
+
+pub fn gen_floor(mut args: GenFloorArgs) -> GenFloorResult {
     assert!(args.ttc_min >= 0.0);
     assert!(args.ttc_min <= args.ttc_max, "expected ttc_min({}) =< ttc_max({})", args.ttc_min, args.ttc_max);
     if args.ttc_min * 1.01 > args.ttc_max {
@@ -83,11 +87,125 @@ pub fn _gen_floor(mut args: _GenFloorArgs) -> GenFloorResult {
         None
     };
 
-    let mut grid = vec![vec![FloorGenGridCell::Empty; args.grid_h as usize]; args.grid_w as usize];
-    grid[(args.grid_w as usize) / 2][(args.grid_h as usize) / 2] = FloorGenGridCell::PlaceRoomHere;
+    let (starting_room, normal_room_candidates) = gen_room_candidates(&mut args);
 
-    let normal_room_weights = WeightedIndex::new(args.gen_normal_room_fns.iter().map(|x| x.weight)).expect("failed to unwrap WeightedIndex made from room gen weights");
+    let mut rooms = pick_rooms(&mut args, starting_room, normal_room_candidates);
+
+    let grid = place_rooms(&mut args, &mut rooms);
+
+    if let Some(ref path) = save_debug_path {
+        let img = ImageBuffer::from_fn(args.grid_w, args.grid_h, |x, y| {
+            match grid[x as usize][y as usize] {
+                FloorGenGridCell::Empty => image::Rgb([255u8, 255u8, 255u8]),
+                FloorGenGridCell::Blocked => image::Rgb([255u8, 0u8, 0u8]),
+                FloorGenGridCell::PlaceRoomHere => image::Rgb([0u8, 255u8, 0u8]),
+                FloorGenGridCell::Room(id) => {
+                    if id == 0 {
+                        image::Rgb([127u8 * ((x % 2) as u8), 0u8, 255u8])
+                    } else {
+                        image::Rgb([0u8, 0u8, 255u8])
+                    }
+                }
+            }
+        });
+        log::debug!("saving rooms on grid image");
+        img.save(format!("{}/rooms-on-grid.png", path)).expect("unable to save rooms on grid image");
+    }
+
+    // now generate hallways that link together rooms
+    // Hallways are 5 away from rooms. Find hallway tiles using a BFS.
+    let (hallway_grid, mst_vertexes, graph_edges) = make_hallway_candidate_grid(&mut args, &rooms, &grid);
+
+    if let Some(ref path) = save_debug_path {
+        let req_set = mst_vertexes.iter().map(|v| *v).collect::<HashSet<_>>();
+        let img = ImageBuffer::from_fn(args.grid_w, args.grid_h, |x, y| {
+            if req_set.contains(&(x, y)) {
+                image::Rgb([0u8, 255u8, 255u8]) 
+            } else if hallway_grid[x as usize][y as usize] {
+                image::Rgb([0u8, 0u8, 0u8])
+            } else {
+                image::Rgb([255u8, 255u8, 255u8])
+            }
+        });
+        log::debug!("saving gen floor hallway candidates image");
+        img.save(format!("{}/hallway-candidates.png", path)).expect("unable to save hallway candidate image");
+    }
+
+    log::trace!("start compute steiner tree");
+    let mut steiner_tree = compute_approx_steiner_tree(&mst_vertexes, &graph_edges);
+    log::trace!("end compute steiner tree");
+    // remove steiner tree edges (A, B) where A and B are both room cells. These are dummy edges used to simulate the
+    // fact that as long as one room cell is in the steiner tree, the entire room is.
+    steiner_tree.0.retain(|((x1, y1), (x2, y2))| !matches!(grid[*x1 as usize][*y1 as usize], FloorGenGridCell::Room(_)) || !matches!(grid[*x2 as usize][*y2 as usize], FloorGenGridCell::Room(_)));
     
+    if let Some(ref path) = save_debug_path {
+        let mut st_set = HashSet::new();
+        steiner_tree.0.iter().for_each(|(a, b)| {
+            st_set.insert(*a);
+            st_set.insert(*b);
+        });
+        let req_set = mst_vertexes.iter().map(|v| *v).collect::<HashSet<_>>();
+        let img = ImageBuffer::from_fn(args.grid_w, args.grid_h, |x, y| {
+            if req_set.contains(&(x, y)) {
+                image::Rgb([0u8, 255u8, 255u8]) 
+            } else if st_set.contains(&(x, y)) {
+                image::Rgb([0u8, 0u8, 0u8])
+            } else if let FloorGenGridCell::Room(id) = grid[x as usize][y as usize] {
+                if id == 0 {
+                    image::Rgb([127u8 * ((x % 2) as u8), 0u8, 255u8])
+                } else {
+                    image::Rgb([0u8, 0u8, 255u8])
+                }
+            } else {
+                image::Rgb([255u8, 255u8, 255u8])
+            }
+        });
+        log::debug!("saving gen floor steiner tree image");
+        img.save(format!("{}/steiner-tree.png", path)).expect("unable to save steiner tree image");
+    }
+
+    let smeared_steiner_hallway_grid = compute_smeared_steiner_hallway_grid(&mut args, &grid, &steiner_tree.0);
+    
+    if let Some(ref path) = save_debug_path {
+        let mut st_set = HashSet::new();
+        steiner_tree.0.iter().for_each(|(a, b)| {
+            st_set.insert(*a);
+            st_set.insert(*b);
+        });
+        let req_set = mst_vertexes.iter().map(|v| *v).collect::<HashSet<_>>();
+        let img = ImageBuffer::from_fn(args.grid_w, args.grid_h, |x, y| {
+            if req_set.contains(&(x, y)) {
+                image::Rgb([0u8, 255u8, 255u8]) 
+            } else if smeared_steiner_hallway_grid[x as usize][y as usize] == HallwayGridCell::Hallway {
+                image::Rgb([255u8, 255u8, 0u8])
+            } else if smeared_steiner_hallway_grid[x as usize][y as usize] == HallwayGridCell::Wall {
+                image::Rgb([0u8, 0u8, 0u8])
+            } else if let FloorGenGridCell::Room(id) = grid[x as usize][y as usize] {
+                if id == 0 {
+                    image::Rgb([127u8 * ((x % 2) as u8), 0u8, 255u8])
+                } else {
+                    image::Rgb([0u8, 0u8, 255u8])
+                }
+            } else {
+                image::Rgb([255u8, 255u8, 255u8])
+            }
+        });
+        log::debug!("saving gen floor finalized image");
+        img.save(format!("{}/floor-final.png", path)).expect("unable to save floor finalized image");
+    }
+
+    let hallway = make_hallway1(&smeared_steiner_hallway_grid, &mut args.rng, &mut args.room_object_id_counter);
+    rooms.push(hallway);
+
+    GenFloorResult {
+        rooms,
+        floor_w: args.grid_w, // TODO: use the smallest bounding box for floor_w/floor_h
+        floor_h: args.grid_h,
+    }
+}
+
+fn gen_room_candidates(args: &mut GenFloorArgs) -> (Room, Vec<Room>) {
+    let normal_room_weights = WeightedIndex::new(args.gen_normal_room_fns.iter().map(|x| x.weight)).expect("failed to unwrap WeightedIndex made from room gen weights");
     let mut gen_room_ctx = GenFloorRoomContext {
         rng: args.rng,
         room_object_id_counter: args.room_object_id_counter,
@@ -105,8 +223,10 @@ pub fn _gen_floor(mut args: _GenFloorArgs) -> GenFloorResult {
         let f = &mut args.gen_normal_room_fns[idx];
         normal_room_candidates.push((f.func)(&mut gen_room_ctx));
     }
+    (starting_room, normal_room_candidates)
+}
 
-    let mut rooms: Vec<Room> = Vec::new();
+fn pick_rooms(args: &mut GenFloorArgs, starting_room: Room, normal_room_candidates: Vec<Room>) -> Vec<Room> {
     let mut tries1 = 0;
     loop {
         tries1 += 1;
@@ -125,6 +245,7 @@ pub fn _gen_floor(mut args: _GenFloorArgs) -> GenFloorResult {
         }
         
         if ttc <= args.ttc_max {
+            let mut rooms = Vec::new();
             rooms.push(starting_room);
             let mut r_cnt = 0;
             normal_room_candidates.into_iter().filter(|_| {
@@ -132,11 +253,15 @@ pub fn _gen_floor(mut args: _GenFloorArgs) -> GenFloorResult {
                 r_cnt += 1;
                 res
             }).for_each(|r| rooms.push(r));
-            break;
+            return rooms;
         }
     }
+}
 
-    let hallway_dist = 5;
+fn place_rooms(args: &mut GenFloorArgs, rooms: &mut Vec<Room>) -> Vec<Vec<FloorGenGridCell>> {
+    let mut grid = vec![vec![FloorGenGridCell::Empty; args.grid_h as usize]; args.grid_w as usize];
+    grid[(args.grid_w as usize) / 2][(args.grid_h as usize) / 2] = FloorGenGridCell::PlaceRoomHere;
+
     let mut room_place_candidates = Vec::new();
     for (i, room) in rooms.iter_mut().enumerate() {
         assert!(room.ttc >= 0.0);
@@ -205,7 +330,7 @@ pub fn _gen_floor(mut args: _GenFloorArgs) -> GenFloorResult {
         room.upper_left_y = position.1;
         // room.id = rooms.len()
 
-        let surround = hallway_dist * 2;
+        let surround = HALLWAY_DIST * 2;
         let xmin = i32::max(room.upper_left_x as i32 - surround, 0) as u32;
         let xmax = i32::min((room.upper_left_x + room.width) as i32 + surround, args.grid_w as i32) as u32;
         let ymin = i32::max(room.upper_left_y as i32 - surround, 0) as u32;
@@ -230,22 +355,15 @@ pub fn _gen_floor(mut args: _GenFloorArgs) -> GenFloorResult {
             }
         }
     }
-    if let Some(ref path) = save_debug_path {
-        let img = ImageBuffer::from_fn(args.grid_w, args.grid_h, |x, y| {
-            match grid[x as usize][y as usize] {
-                FloorGenGridCell::Empty => image::Rgb([255u8, 255u8, 255u8]),
-                FloorGenGridCell::Blocked => image::Rgb([127u8, 0u8, 0u8]),
-                FloorGenGridCell::PlaceRoomHere => image::Rgb([0u8, 127u8, 0u8]),
-                FloorGenGridCell::Room(_) => image::Rgb([0u8, 0u8, 127u8]),
-            }
-        });
-        log::debug!("saving rooms on grid image");
-        img.save(format!("{}/rooms-on-grid.png", path)).expect("unable to save rooms on grid image");
-    }
-    log::trace!("finished placing rooms on grid");
 
-    // now generate hallways that link together rooms
-    // Hallways are 5 away from rooms. Find hallway tiles using a BFS.
+    return grid;
+}
+
+fn make_hallway_candidate_grid(
+    args: &mut GenFloorArgs, 
+    rooms: &Vec<Room>, 
+    grid: &Vec<Vec<FloorGenGridCell>>
+) -> (Vec<Vec<bool>>, Vec<(u32, u32)>, Vec<GraphEdge<(u32, u32)>>) {
     let mut q = VecDeque::new();
     let mut dist = vec![vec![None; args.grid_h as usize]; args.grid_w as usize];
     for i in 0..(args.grid_w as i32) {
@@ -260,7 +378,7 @@ pub fn _gen_floor(mut args: _GenFloorArgs) -> GenFloorResult {
     let mut hallway_grid = vec![vec![false; args.grid_h as usize]; args.grid_w as usize];
     while !q.is_empty() {
         let cur = q.pop_front().unwrap();
-        if dist[cur.0 as usize][cur.1 as usize].unwrap() == hallway_dist {
+        if dist[cur.0 as usize][cur.1 as usize].unwrap() == HALLWAY_DIST {
             hallway_grid[cur.0 as usize][cur.1 as usize] = true;
         }
         for dx in -1..=1 {
@@ -322,7 +440,7 @@ pub fn _gen_floor(mut args: _GenFloorArgs) -> GenFloorResult {
                 panic!("room connection ({}, {}) is not in any cardinal direction", *cx, *cy);
             };
             mst_vertexes.push((room.upper_left_x + cx, room.upper_left_y + cy));
-            (0..=hallway_dist).into_iter().for_each(|i| {
+            (0..=HALLWAY_DIST).into_iter().for_each(|i| {
                 let x = (room.upper_left_x + cx) as i32 + i * dx;
                 let y = (room.upper_left_y + cy) as i32 + i * dy;
                 hallway_grid[x as usize][y as usize] = true;
@@ -338,21 +456,6 @@ pub fn _gen_floor(mut args: _GenFloorArgs) -> GenFloorResult {
                 weight: 0,
             });
         }
-    }
-
-    if let Some(ref path) = save_debug_path {
-        let req_set = mst_vertexes.iter().map(|v| *v).collect::<HashSet<_>>();
-        let img = ImageBuffer::from_fn(args.grid_w, args.grid_h, |x, y| {
-            if req_set.contains(&(x, y)) {
-                image::Rgb([0u8, 255u8, 255u8]) 
-            } else if hallway_grid[x as usize][y as usize] {
-                image::Rgb([0u8, 0u8, 0u8])
-            } else {
-                image::Rgb([255u8, 255u8, 255u8])
-            }
-        });
-        log::debug!("saving gen floor hallway candidates image");
-        img.save(format!("{}/hallway-candidates.png", path)).expect("unable to save hallway candidate image");
     }
 
     // generate an (undirected) edge list of the hallway graph
@@ -381,36 +484,17 @@ pub fn _gen_floor(mut args: _GenFloorArgs) -> GenFloorResult {
             }
         }
     }
-    log::trace!("start compute steiner tree");
-    let mut steiner_tree = compute_approx_steiner_tree(&mst_vertexes, &graph_edges);
-    log::trace!("end compute steiner tree");
-    // remove steiner tree edges (A, B) where A and B are both room cells. These are dummy edges used to simulate the
-    // fact that as long as one room cell is in the steiner tree, the entire room is.
-    steiner_tree.0.retain(|((x1, y1), (x2, y2))| !matches!(grid[*x1 as usize][*y1 as usize], FloorGenGridCell::Room(_)) || !matches!(grid[*x2 as usize][*y2 as usize], FloorGenGridCell::Room(_)));
-    if let Some(ref path) = save_debug_path {
-        let mut st_set = HashSet::new();
-        steiner_tree.0.iter().for_each(|(a, b)| {
-            st_set.insert(*a);
-            st_set.insert(*b);
-        });
-        let req_set = mst_vertexes.iter().map(|v| *v).collect::<HashSet<_>>();
-        let img = ImageBuffer::from_fn(args.grid_w, args.grid_h, |x, y| {
-            if req_set.contains(&(x, y)) {
-                image::Rgb([0u8, 255u8, 255u8]) 
-            } else if st_set.contains(&(x, y)) {
-                image::Rgb([0u8, 0u8, 0u8])
-            } else if matches!(grid[x as usize][y as usize], FloorGenGridCell::Room(_)) {
-                image::Rgb([0u8, 0u8, 255u8]) 
-            } else {
-                image::Rgb([255u8, 255u8, 255u8])
-            }
-        });
-        log::debug!("saving gen floor steiner tree image");
-        img.save(format!("{}/steiner-tree.png", path)).expect("unable to save steiner tree image");
-    }
 
+    (hallway_grid, mst_vertexes, graph_edges)
+}
+
+fn compute_smeared_steiner_hallway_grid(
+    args: &mut GenFloorArgs,
+    grid: &Vec<Vec<FloorGenGridCell>>,
+    steiner_tree: &Vec<((u32, u32), (u32, u32))>,
+) -> Vec<Vec<HallwayGridCell>> {
     let mut steiner_hallway_grid = vec![vec![HallwayGridCell::Empty; args.grid_h as usize]; args.grid_w as usize];
-    for ((x1, y1), (x2, y2)) in steiner_tree.0.iter() {
+    for ((x1, y1), (x2, y2)) in steiner_tree.iter() {
         if !matches!(grid[*x1 as usize][*y1 as usize], FloorGenGridCell::Room(_)) {
             steiner_hallway_grid[*x1 as usize][*y1 as usize] = HallwayGridCell::Hallway;
         }
@@ -440,8 +524,6 @@ pub fn _gen_floor(mut args: _GenFloorArgs) -> GenFloorResult {
             }
         }
     }
-    // drop the old grid so we don't accidentally use it
-    drop(steiner_hallway_grid);
 
     // smear the hallway again to generate walls bounding the hallway
     for x in 0..(args.grid_w as i32) {
@@ -465,35 +547,5 @@ pub fn _gen_floor(mut args: _GenFloorArgs) -> GenFloorResult {
         }
     }
 
-    if let Some(ref path) = save_debug_path {
-        let mut st_set = HashSet::new();
-        steiner_tree.0.iter().for_each(|(a, b)| {
-            st_set.insert(*a);
-            st_set.insert(*b);
-        });
-        let req_set = mst_vertexes.iter().map(|v| *v).collect::<HashSet<_>>();
-        let img = ImageBuffer::from_fn(args.grid_w, args.grid_h, |x, y| {
-            if req_set.contains(&(x, y)) {
-                image::Rgb([0u8, 255u8, 255u8]) 
-            } else if smeared_steiner_hallway_grid[x as usize][y as usize] == HallwayGridCell::Hallway {
-                image::Rgb([255u8, 255u8, 0u8])
-            } else if smeared_steiner_hallway_grid[x as usize][y as usize] == HallwayGridCell::Wall {
-                image::Rgb([0u8, 0u8, 0u8])
-            } else if matches!(grid[x as usize][y as usize], FloorGenGridCell::Room(_)) {
-                image::Rgb([0u8, 0u8, 255u8]) 
-            } else {
-                image::Rgb([255u8, 255u8, 255u8])
-            }
-        });
-        log::debug!("saving gen floor finalized image");
-        img.save(format!("{}/floor-final.png", path)).expect("unable to save floor finalized image");
-    }
-
-    let hallway = make_hallway1(&smeared_steiner_hallway_grid, &mut args.rng, &mut args.room_object_id_counter);
-    rooms.push(hallway);
-
-    GenFloorResult {
-        rooms,
-    }
+    smeared_steiner_hallway_grid
 }
-

@@ -18,7 +18,7 @@ pub fn make_hallway1(grid: &Vec<Vec<HallwayGridCell>>, rng: &mut StdRng, room_ob
     let mut rofiz = RofizState::new();
     let mut new_floor_object_ctx = NewRoomObjectContext::new(&mut rofiz, room_object_id_counter, 0.0, rng);
     let mut room_objects = RoomObjectCollection::new();
-    let mut tiles = vec![vec![RoomTile::Ground; grid[0].len()]; grid.len()];
+    let mut tiles = vec![vec![RoomTile::NotInRoom; grid[0].len()]; grid.len()];
 
     for x in 0..grid.len() {
         for y in 0..grid[0].len() {
