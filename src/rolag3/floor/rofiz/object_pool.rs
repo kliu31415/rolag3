@@ -6,13 +6,14 @@ use super::rofiz_object::{RofizObjBasicWall, RofizObjMovable};
 
 use rayon::prelude::*;
 
-pub const ROFIZ_OBJ_POOL_SECTORS: usize = 8;
-pub const ROFIZ_OBJ_POOL_BW_PER_SECTOR: usize = 512;
-pub const ROFIZ_OBJ_POOL_MO_PER_SECTOR: usize = 2048;
+const INITIAL_POOL_SIZE: usize = 16;
+const MAX_LOAD_FACTOR: f64 = 0.7;
 
 pub struct RofizObjPool {
-    pub basic_walls: Box<[Option<RofizObjBasicWall>]>,
-    pub movable: Box<[Option<RofizObjMovable>]>,
+    pub basic_walls: Vec<Option<RofizObjBasicWall>>,
+    pub movable: Vec<Option<RofizObjMovable>>,
+    pub bw_occupancy: usize,
+    pub mo_occupancy: usize,
 
     pub timings: VecDeque<f64>,
 }
@@ -26,19 +27,21 @@ pub struct RofizObjPoolRef {
 impl RofizObjPool {
     pub fn new() -> Self {
         let mut basic_walls = Vec::new();
-        basic_walls.reserve(ROFIZ_OBJ_POOL_SECTORS * ROFIZ_OBJ_POOL_BW_PER_SECTOR);
-        for _ in 0..ROFIZ_OBJ_POOL_SECTORS * ROFIZ_OBJ_POOL_BW_PER_SECTOR {
+        basic_walls.reserve(INITIAL_POOL_SIZE);
+        for _ in 0..INITIAL_POOL_SIZE {
             basic_walls.push(None);
         }
         let mut movable = Vec::new();
-        movable.reserve(ROFIZ_OBJ_POOL_SECTORS * ROFIZ_OBJ_POOL_MO_PER_SECTOR);
-        for _ in 0..ROFIZ_OBJ_POOL_SECTORS * ROFIZ_OBJ_POOL_MO_PER_SECTOR {
+        movable.reserve(INITIAL_POOL_SIZE);
+        for _ in 0..INITIAL_POOL_SIZE {
             movable.push(None);
         }
         Self {
-            basic_walls: basic_walls.into(),
-            movable: movable.into(),
+            basic_walls,
+            movable,
             timings: VecDeque::new(),
+            bw_occupancy: 0,
+            mo_occupancy: 0,
         }
     }
 
@@ -77,6 +80,15 @@ impl RofizObjPool {
     }
 
     pub fn add_bw(&mut self, bw: RofizObjBasicWall) -> RofizObjPoolRef {
+        self.bw_occupancy += 1;
+        if self.bw_occupancy as f64 > self.basic_walls.len() as f64 * MAX_LOAD_FACTOR {
+            let new_size = self.basic_walls.len() * 2;
+            self.basic_walls.reserve_exact(new_size);
+            while self.basic_walls.len() < new_size {
+                self.basic_walls.push(None);
+            }
+        }
+
         let mut tries = 0;
         let mut cur = bw.id;
         loop {
@@ -96,6 +108,15 @@ impl RofizObjPool {
     }
 
     pub fn add_mo(&mut self, mo: RofizObjMovable) -> RofizObjPoolRef {
+        self.mo_occupancy += 1;
+        if self.mo_occupancy as f64 > self.movable.len() as f64 * MAX_LOAD_FACTOR {
+            let new_size = self.movable.len() * 2;
+            self.movable.reserve_exact(new_size);
+            while self.movable.len() < new_size {
+                self.movable.push(None);
+            }
+        }
+
         let mut tries = 0;
         let mut cur = mo.id;
         loop {
@@ -116,11 +137,13 @@ impl RofizObjPool {
 
     pub fn del_mo(&mut self, a: &RofizObjPoolRef) {
         assert!(!a.is_bw);
+        self.mo_occupancy -= 1;
         self.movable[a.idx as usize] = None;
     }
 
     pub fn del_bw(&mut self, a: &RofizObjPoolRef) {
         assert!(a.is_bw);
+        self.bw_occupancy -= 1;
         self.basic_walls[a.idx as usize] = None;
     }
     
