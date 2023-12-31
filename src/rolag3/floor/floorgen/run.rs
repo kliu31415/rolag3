@@ -56,6 +56,7 @@ pub struct GenFloorResult {
 
 const HALLWAY_DIST: i32 = 5;
 
+#[inline(never)]
 pub fn gen_floor(mut args: GenFloorArgs) -> GenFloorResult {
     assert!(args.ttc_min >= 0.0);
     assert!(args.ttc_min <= args.ttc_max, "expected ttc_min({}) =< ttc_max({})", args.ttc_min, args.ttc_max);
@@ -204,6 +205,7 @@ pub fn gen_floor(mut args: GenFloorArgs) -> GenFloorResult {
     }
 }
 
+#[inline(never)]
 fn gen_room_candidates(args: &mut GenFloorArgs) -> (Room, Vec<Room>) {
     let normal_room_weights = WeightedIndex::new(args.gen_normal_room_fns.iter().map(|x| x.weight)).expect("failed to unwrap WeightedIndex made from room gen weights");
     let mut gen_room_ctx = GenFloorRoomContext {
@@ -226,6 +228,7 @@ fn gen_room_candidates(args: &mut GenFloorArgs) -> (Room, Vec<Room>) {
     (starting_room, normal_room_candidates)
 }
 
+#[inline(never)]
 fn pick_rooms(args: &mut GenFloorArgs, starting_room: Room, normal_room_candidates: Vec<Room>) -> Vec<Room> {
     let mut tries1 = 0;
     loop {
@@ -258,11 +261,14 @@ fn pick_rooms(args: &mut GenFloorArgs, starting_room: Room, normal_room_candidat
     }
 }
 
+#[inline(never)]
 fn place_rooms(args: &mut GenFloorArgs, rooms: &mut Vec<Room>) -> Vec<Vec<FloorGenGridCell>> {
     let mut grid = vec![vec![FloorGenGridCell::Empty; args.grid_h as usize]; args.grid_w as usize];
     grid[(args.grid_w as usize) / 2][(args.grid_h as usize) / 2] = FloorGenGridCell::PlaceRoomHere;
 
     let mut room_place_candidates = Vec::new();
+    let mut psum_blocked = vec![vec![0; args.grid_h as usize]; args.grid_w as usize];
+    let mut psum_place_room_here = vec![vec![0; args.grid_h as usize]; args.grid_w as usize];
     for (i, room) in rooms.iter_mut().enumerate() {
         assert!(room.ttc >= 0.0);
         // Rooms need to be at least 5x5, because a connection is 5 tiles wide (including the walls; the inside is 3)
@@ -278,8 +284,46 @@ fn place_rooms(args: &mut GenFloorArgs, rooms: &mut Vec<Room>) -> Vec<Vec<FloorG
 
         room_place_candidates.clear();
 
+        psum_blocked.iter_mut().for_each(|v| v.fill(0));
+        psum_place_room_here.iter_mut().for_each(|v| v.fill(0));
+        for x in 0..(args.grid_w as usize){
+            for y in 0..(args.grid_h as usize) {
+                (psum_blocked[x][y], psum_place_room_here[x][y]) = match grid[x][y] {
+                    FloorGenGridCell::Empty => (0, 0),
+                    FloorGenGridCell::Blocked | FloorGenGridCell::Room(_) => (1, 0),
+                    FloorGenGridCell::PlaceRoomHere => (0, 1),
+                };
+                if x > 0 {
+                    psum_blocked[x][y] += psum_blocked[x-1][y];
+                    psum_place_room_here[x][y] += psum_place_room_here[x-1][y];
+                    if y > 0 {
+                        psum_blocked[x][y] -= psum_blocked[x-1][y-1];
+                        psum_place_room_here[x][y] -= psum_place_room_here[x-1][y-1];
+                    }
+                }
+                if y > 0 {
+                    psum_blocked[x][y] += psum_blocked[x][y-1];
+                    psum_place_room_here[x][y] += psum_place_room_here[x][y-1];
+                }
+            }
+        }
+
         let xmax = args.grid_w - room.width - buffer;
         let ymax = args.grid_h - room.height - buffer;
+        for x1 in buffer as usize..=xmax as usize {
+            for y1 in buffer as usize..=ymax as usize {
+                let x2 = x1 + (room.width as usize) - 1;
+                let y2 = y1 + (room.height as usize) - 1;
+                let blocked = psum_blocked[x2][y2] - psum_blocked[x1-1][y2] - psum_blocked[x2][y1-1] + psum_blocked[x1-1][y1-1];
+                let prh = psum_place_room_here[x2][y2] - psum_place_room_here[x1-1][y2] - psum_place_room_here[x2][y1-1] + psum_place_room_here[x1-1][y1-1];
+
+                if blocked == 0 && prh > 0 {
+                    room_place_candidates.push((x1 as u32, y1 as u32));
+                }
+            }
+        }
+
+        /*
         for x in buffer..=xmax {
             let mut blocked_count = 0;
             let mut place_room_here_count = 0;
@@ -318,6 +362,7 @@ fn place_rooms(args: &mut GenFloorArgs, rooms: &mut Vec<Room>) -> Vec<Vec<FloorG
                 }
             }
         }
+        */
 
         log::trace!("found {} candidate locations to place room #{}", room_place_candidates.len(), i);
 
@@ -359,6 +404,7 @@ fn place_rooms(args: &mut GenFloorArgs, rooms: &mut Vec<Room>) -> Vec<Vec<FloorG
     return grid;
 }
 
+#[inline(never)]
 fn make_hallway_candidate_grid(
     args: &mut GenFloorArgs, 
     rooms: &Vec<Room>, 
@@ -488,6 +534,7 @@ fn make_hallway_candidate_grid(
     (hallway_grid, mst_vertexes, graph_edges)
 }
 
+#[inline(never)]
 fn compute_smeared_steiner_hallway_grid(
     args: &mut GenFloorArgs,
     grid: &Vec<Vec<FloorGenGridCell>>,

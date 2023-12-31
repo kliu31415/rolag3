@@ -10,6 +10,7 @@ pub struct GraphEdge<T: Copy + Hash + Eq + Default> {
     pub weight: u32,
 }
 
+#[inline(never)]
 pub fn compute_approx_steiner_tree<T: Copy + Hash + Eq + Default>(required: &Vec<T>, edges: &Vec<GraphEdge<T>>) -> (Vec<(T, T)>, u32) {
     if required.len() < 2 {
         return (Vec::new(), 0);
@@ -53,6 +54,7 @@ struct SteinerTreeU32Result {
     cost: u32,
 }
 
+#[inline(never)]
 fn compute_approx_steiner_tree_u32(required: &Vec<u32>, adj_list: &Vec<Vec<AdjListEdge>>) -> SteinerTreeU32Result {
     if required.len() < 2 {
         return SteinerTreeU32Result {
