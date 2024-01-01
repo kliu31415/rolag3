@@ -2,7 +2,7 @@ use std::{cell::RefCell, rc::Rc, collections::VecDeque};
 
 use rand::{rngs::StdRng, Rng};
 
-use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, RoomObjectCollection, RoomObjectId}, wall::basic_wall::BasicWall, cosmetic::ground1::new_ground1, tiles::damage_tile::new_damage_tile}, rofiz::rofiz_state::RofizState, room::{RoomTile, Room}, draw::Color}, util::disjoint_set_union::DisjointSetUnion};
+use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, RoomObjectCollection, RoomObjectId}, wall::basic_wall::BasicWall, cosmetic::ground1::new_ground1, tiles::damage_tile::new_damage_tile}, rofiz::rofiz_state::RofizState, room::Room, draw::Color}, util::disjoint_set_union::DisjointSetUnion};
 
 pub fn make_room_maze1(rng: &mut StdRng, room_object_id_counter: &mut RoomObjectId, x: u32, y: u32) -> Room {
     let maze_w = 24;
@@ -15,23 +15,17 @@ pub fn make_room_maze1(rng: &mut StdRng, room_object_id_counter: &mut RoomObject
     let room_w = 5 * maze_w + 1;
     let room_h = 5 * maze_h + 1;
 
-    let mut tiles = vec![vec![RoomTile::Ground; room_h as usize]; room_w as usize];
-
     for i in 0..room_w {
         let wall = BasicWall::new(&mut new_floor_object_ctx, i as u32, 0, Color::new(0.1, 0.2, 0.3, 1.0));
-        tiles[i as usize][0] = RoomTile::Wall;
         room_objects.add(Rc::new(RefCell::new(wall)));
         let wall = BasicWall::new(&mut new_floor_object_ctx, i as u32, room_h as u32 - 1, Color::new(0.1, 0.2, 0.3, 1.0));
-        tiles[i as usize][room_h - 1] = RoomTile::Wall;
         room_objects.add(Rc::new(RefCell::new(wall)));
     }
     
     for i in 1..(room_h-1) {
         let wall = BasicWall::new(&mut new_floor_object_ctx, 0, i as u32, Color::new(0.1, 0.2, 0.3, 1.0));
-        tiles[0][i as usize] = RoomTile::Wall;
         room_objects.add(Rc::new(RefCell::new(wall)));
         let wall = BasicWall::new(&mut new_floor_object_ctx, (room_w - 1) as u32, i as u32, Color::new(0.1, 0.2, 0.3, 1.0));
-        tiles[room_w - 1][i as usize] = RoomTile::Wall;
         room_objects.add(Rc::new(RefCell::new(wall)));
     }
 
@@ -53,7 +47,7 @@ pub fn make_room_maze1(rng: &mut StdRng, room_object_id_counter: &mut RoomObject
         upper_left_y: y,
         width: room_w as u32,
         height: room_h as u32,
-        tiles,
+        tiles: Vec::new(),
         room_objects,
         rofiz,
         room_time: 0.0,

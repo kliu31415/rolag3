@@ -96,10 +96,10 @@ impl EventHandler for Rolag3EventHandler {
     }
 }
 
-const PLAYER_MOVE_UP: PhysicalKey = PhysicalKey::Code(KeyCode::KeyW);
+const PLAYER_MOVE_UP: PhysicalKey = PhysicalKey::Code(KeyCode::KeyF);
 const PLAYER_MOVE_DOWN: PhysicalKey = PhysicalKey::Code(KeyCode::KeyS);
-const PLAYER_MOVE_LEFT: PhysicalKey = PhysicalKey::Code(KeyCode::KeyA);
-const PLAYER_MOVE_RIGHT: PhysicalKey = PhysicalKey::Code(KeyCode::KeyD);
+const PLAYER_MOVE_LEFT: PhysicalKey = PhysicalKey::Code(KeyCode::KeyR);
+const PLAYER_MOVE_RIGHT: PhysicalKey = PhysicalKey::Code(KeyCode::KeyT);
 const PLAYER_TEST_INPUT1: PhysicalKey = PhysicalKey::Code(KeyCode::Enter);
 const PLAYER_ACTIVE_ITEM1: PhysicalKey = PhysicalKey::Code(KeyCode::Space);
 const PLAYER_TAB_OVERLAY: PhysicalKey = PhysicalKey::Code(KeyCode::Tab);

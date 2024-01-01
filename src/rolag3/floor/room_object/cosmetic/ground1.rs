@@ -30,6 +30,14 @@ impl RoomObject for Ground1 {
     fn is_spectral(&self) -> bool {
         true
     }
+
+    fn add_as_ground_location_to(&self, locs: &mut Vec<(u32, u32)>) {
+        for i in self.x .. self.x + self.w {
+            for j in self.y .. self.y + self.h {
+                locs.push((i, j));
+            }
+        }
+    }
 }
 
 pub fn new_ground1(ctx: &mut NewRoomObjectContext, color: Color, x: u32, y: u32, w: u32, h: u32) -> Ground1 {

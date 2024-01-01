@@ -106,6 +106,9 @@ impl RoomObject for BasicWall {
     fn get_as_wall_location(&self) -> Option<(u32, u32)> {
         Some((self.x, self.y))
     }
+    fn add_as_wall_location_to(&self, locs: &mut Vec<(u32, u32)>) {
+        locs.push((self.x, self.y));
+    }
 
     fn is_spectral(&self) -> bool {
         false

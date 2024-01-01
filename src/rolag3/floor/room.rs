@@ -1,4 +1,4 @@
-use std::{rc::Rc, cell::RefCell};
+use std::{rc::Rc, cell::RefCell, collections::HashSet};
 
 
 use rand::rngs::StdRng;
@@ -42,6 +42,24 @@ pub struct RoomConnectionInfo {
 
 impl Room {
     pub fn finalize_with_connections(&mut self, renderer: &mut dyn Renderer, connections: Vec<RoomConnectionInfo>, rng: &mut StdRng, room_object_id_counter: &mut RoomObjectId) {
+        assert!(self.tiles.is_empty(), "room tiles array should not be set before room finalization");
+        self.tiles = vec![vec![RoomTile::NotInRoom; self.height as usize]; self.width as usize];
+
+        let ground_locs = self.room_objects.get_ground_locations();
+        for (x, y) in ground_locs.iter() {
+            self.tiles[*x as usize][*y as usize] = RoomTile::Ground;
+        }
+
+        let wall_locs = self.room_objects.get_wall_locations();
+        for (x, y) in wall_locs.iter() {
+            self.tiles[*x as usize][*y as usize] = RoomTile::Wall;
+        }
+
+        let glset = ground_locs.iter().cloned().collect::<HashSet<_>>();
+        let wlset = wall_locs.iter().cloned().collect::<HashSet<_>>();
+        let gw_intersection = glset.intersection(&wlset).collect::<Vec<_>>();
+        assert_eq!(gw_intersection.len(), 0, "found overlapping cells between ground_locs and wall_locs: {:?}", gw_intersection);
+
         for c in connections.iter() {
             for (x, y) in RoomConnection::get_occupied_coords(c.x, c.y, c.direction) {
                 self.room_objects.remove_wall_at(x, y);
@@ -72,23 +90,17 @@ impl Room {
         let width = 30;
         let height = 30;
 
-        let mut tiles = vec![vec![RoomTile::Ground; height as usize]; width as usize];
-
         for i in 0..30 {
             let wall = BasicWall::new(&mut new_floor_object_ctx, i, 0, Color::new(0.1, 0.2, 0.3, 1.0));
-            tiles[i as usize][0] = RoomTile::Wall;
             room_objects.add(Rc::new(RefCell::new(wall)));
             let wall = BasicWall::new(&mut new_floor_object_ctx, i, 29, Color::new(0.1, 0.2, 0.3, 1.0));
-            tiles[i as usize][29] = RoomTile::Wall;
             room_objects.add(Rc::new(RefCell::new(wall)));
         }
         
         for i in 1..29 {
             let wall = BasicWall::new(&mut new_floor_object_ctx, 0, i, Color::new(0.1, 0.2, 0.3, 1.0));
-            tiles[0][i as usize] = RoomTile::Wall;
             room_objects.add(Rc::new(RefCell::new(wall)));
             let wall = BasicWall::new(&mut new_floor_object_ctx, 29, i, Color::new(0.1, 0.2, 0.3, 1.0));
-            tiles[29][i as usize] = RoomTile::Wall;
             room_objects.add(Rc::new(RefCell::new(wall)));
         }
 
@@ -144,7 +156,7 @@ impl Room {
             upper_left_y: 0,
             width,
             height,
-            tiles,
+            tiles: Vec::new(),
             room_objects,
             rofiz,
             room_time: 0.0,
@@ -162,23 +174,17 @@ impl Room {
         let width = 30;
         let height = 30;
 
-        let mut tiles = vec![vec![RoomTile::Ground; height as usize]; width as usize];
-
         for i in 0..30 {
             let wall = BasicWall::new(&mut new_floor_object_ctx, i, 0, Color::new(0.1, 0.2, 0.3, 1.0));
-            tiles[i as usize][0] = RoomTile::Wall;
             room_objects.add(Rc::new(RefCell::new(wall)));
             let wall = BasicWall::new(&mut new_floor_object_ctx, i, 29, Color::new(0.1, 0.2, 0.3, 1.0));
-            tiles[i as usize][29] = RoomTile::Wall;
             room_objects.add(Rc::new(RefCell::new(wall)));
         }
         
         for i in 1..29 {
             let wall = BasicWall::new(&mut new_floor_object_ctx, 0, i, Color::new(0.1, 0.2, 0.3, 1.0));
-            tiles[0][i as usize] = RoomTile::Wall;
             room_objects.add(Rc::new(RefCell::new(wall)));
             let wall = BasicWall::new(&mut new_floor_object_ctx, 29, i, Color::new(0.1, 0.2, 0.3, 1.0));
-            tiles[29][i as usize] = RoomTile::Wall;
             room_objects.add(Rc::new(RefCell::new(wall)));
         }
 
@@ -194,7 +200,7 @@ impl Room {
             upper_left_y: 0,
             width,
             height,
-            tiles,
+            tiles: Vec::new(),
             room_objects,
             rofiz,
             room_time: 0.0,

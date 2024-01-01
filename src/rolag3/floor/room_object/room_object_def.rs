@@ -49,6 +49,12 @@ pub trait RoomObject {
     fn get_as_wall_location(&self) -> Option<(u32, u32)> {
         None
     }
+    fn add_as_wall_location_to(&self, _locs: &mut Vec<(u32, u32)>) {
+        // nop by default
+    }
+    fn add_as_ground_location_to(&self, _locs: &mut Vec<(u32, u32)>) {
+        // nop by default
+    }
 
     fn handle_query_unit_info(&self, _ctx: &RoQueryUnitInfoContext) -> RoQueryUnitInfoResponse {
         unimplemented!("handle_query_unit_info() can only be called for units. Called for {:?}", self.get_metadata().get_ref());
@@ -205,7 +211,18 @@ impl RoomObjectsByType {
         for id in to_remove {
             self.room_objects.remove(&id).expect("unable to remove RoomObject");
         }
+    }
 
+    fn get_wall_locations(&self) -> Vec<(u32, u32)> {
+        let mut locs = Vec::new();
+        self.room_objects.values().for_each(|x| x.borrow().add_as_wall_location_to(&mut locs));
+        locs
+    }
+
+    fn get_ground_locations(&self) -> Vec<(u32, u32)> {
+        let mut locs = Vec::new();
+        self.room_objects.values().for_each(|x| x.borrow().add_as_ground_location_to(&mut locs));
+        locs
     }
 }
 
@@ -256,6 +273,14 @@ impl RoomObjectCollection {
 
     pub fn remove_wall_at(&mut self, x: u32, y: u32) {
         self.room_objects_by_type.remove_wall_at(x, y);
+    }
+
+    pub fn get_wall_locations(&self) -> Vec<(u32, u32)> {
+        self.room_objects_by_type.get_wall_locations()
+    }
+
+    pub fn get_ground_locations(&self) -> Vec<(u32, u32)> {
+        self.room_objects_by_type.get_ground_locations()
     }
 
     pub fn validate_start_room(&self) {
