@@ -2,9 +2,11 @@ use std::{rc::Rc, cell::RefCell, ops::Range};
 
 use rand::{rngs::StdRng, Rng};
 
-use crate::rolag3::floor::{room_object::{room_object_def::{RoomObjectId, NewRoomObjectContext, RoomObjectCollection}, wall::basic_wall::BasicWall, cosmetic::ground1::new_ground1}, room::Room, rofiz::rofiz_state::RofizState, draw::Color, floorgen::run::GenFloorRoomContext};
+use crate::rolag3::floor::{room_object::{room_object_def::{RoomObjectId, NewRoomObjectContext, RoomObjectCollection}, wall::basic_wall::BasicWall, cosmetic::ground1::new_ground1}, room::Room, rofiz::rofiz_state::RofizState, draw::Color, floorgen::run::{GenFloorRoomContext, GenFloorRoomResponse}};
 
-pub fn get_gen_room_fn_empty1(w_min: u32, w_max: u32, h_min: u32, h_max: u32) -> Box<dyn Fn(&mut GenFloorRoomContext) -> Room> {
+use super::util::connection_candidates::all_borders_as_connection_candidates;
+
+pub fn get_gen_room_fn_empty1(w_min: u32, w_max: u32, h_min: u32, h_max: u32) -> Box<dyn Fn(&mut GenFloorRoomContext) -> GenFloorRoomResponse> {
     assert!(w_min <= w_max);
     assert!(h_min <= h_max);
     Box::new(move |ctx: &mut GenFloorRoomContext| {
@@ -12,7 +14,7 @@ pub fn get_gen_room_fn_empty1(w_min: u32, w_max: u32, h_min: u32, h_max: u32) ->
     })
 }
 
-pub fn make_room_empty1(rng: &mut StdRng, room_object_id_counter: &mut RoomObjectId, widths: Range<u32>, heights: Range<u32>) -> Room {
+pub fn make_room_empty1(rng: &mut StdRng, room_object_id_counter: &mut RoomObjectId, widths: Range<u32>, heights: Range<u32>) -> GenFloorRoomResponse {
     let width = rng.gen_range(widths);
     let height = rng.gen_range(heights);
     let ttc = 0.1 * f64::sqrt((width * height) as f64);
@@ -40,17 +42,20 @@ pub fn make_room_empty1(rng: &mut StdRng, room_object_id_counter: &mut RoomObjec
     let ground = new_ground1(&mut new_floor_object_ctx, Color::new(0.02, 0.0, 0.0, 1.0), 1, 1, width-2, height-2);
     room_objects.add(Rc::new(RefCell::new(ground)));
 
-    Room {
-        upper_left_x: 0,
-        upper_left_y: 0,
-        width,
-        height,
-        tiles: Vec::new(),
-        room_objects,
-        rofiz,
-        room_time: 0.0,
-        room_cleared_at_time: None,
-        minimap_texture: None,
-        ttc,
+    GenFloorRoomResponse {
+        room: Room {
+            upper_left_x: 0,
+            upper_left_y: 0,
+            width,
+            height,
+            tiles: Vec::new(),
+            room_objects,
+            rofiz,
+            room_time: 0.0,
+            room_cleared_at_time: None,
+            minimap_texture: None,
+            ttc,
+            connection_candidates: all_borders_as_connection_candidates(width, height),
+        },
     }
 }

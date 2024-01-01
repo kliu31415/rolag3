@@ -18,6 +18,7 @@ pub struct Room {
     pub room_time: f64,
     pub room_cleared_at_time: Option<f64>,
     pub minimap_texture: Option<TmdRef>,
+    pub connection_candidates: Vec<(u32, u32)>,
 
     pub ttc: f64,
 }
@@ -163,6 +164,7 @@ impl Room {
             room_cleared_at_time: None,
             minimap_texture: None,
             ttc: 50.0,
+            connection_candidates: Vec::new(),
         }
     }
 
@@ -207,6 +209,7 @@ impl Room {
             room_cleared_at_time: None,
             minimap_texture: None,
             ttc: 20.0,
+            connection_candidates: Vec::new(),
         }
     }
 

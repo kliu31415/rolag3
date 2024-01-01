@@ -32,12 +32,16 @@ impl<'a> GenFloorArgs<'a> {
 
 pub struct GenFloorRoomFn {
     pub weight: f64,
-    pub func: Box<dyn Fn(&mut GenFloorRoomContext) -> Room>,
+    pub func: Box<dyn Fn(&mut GenFloorRoomContext) -> GenFloorRoomResponse>,
 }
 
 pub struct GenFloorRoomContext<'a> {
     pub rng: &'a mut StdRng,
     pub room_object_id_counter: &'a mut RoomObjectId,
+}
+
+pub struct GenFloorRoomResponse {
+    pub room: Room,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -212,7 +216,7 @@ fn gen_room_candidates(args: &mut GenFloorArgs) -> (Room, Vec<Room>) {
         rng: args.rng,
         room_object_id_counter: args.room_object_id_counter,
     };
-    let starting_room = (args.gen_initial_room_fn.func)(&mut gen_room_ctx);
+    let starting_room = (args.gen_initial_room_fn.func)(&mut gen_room_ctx).room;
     assert!(starting_room.ttc <= args.ttc_max);
     let mut normal_room_candidates = Vec::new();
     let num_nrc = 100;
@@ -223,7 +227,7 @@ fn gen_room_candidates(args: &mut GenFloorArgs) -> (Room, Vec<Room>) {
             room_object_id_counter: args.room_object_id_counter,
         };
         let f = &mut args.gen_normal_room_fns[idx];
-        normal_room_candidates.push((f.func)(&mut gen_room_ctx));
+        normal_room_candidates.push((f.func)(&mut gen_room_ctx).room);
     }
     (starting_room, normal_room_candidates)
 }
@@ -447,18 +451,11 @@ fn make_hallway_candidate_grid(
     let mut mst_vertexes = Vec::new();
     for (i, room) in rooms.iter().enumerate() {
         let mut connections = Vec::new();
-        let mut candidates = Vec::new();
         // these assertions are to be extra-safe. They should never trigger, because room w/h is checked for earlier.
         assert!(room.width >= 5);
         assert!(room.height >= 5);
-        for x in 2..(room.width-2) {
-            candidates.push((x, 0));
-            candidates.push((x, room.height - 1));
-        }
-        for y in 2..(room.height-2) {
-            candidates.push((0, y));
-            candidates.push((room.width - 1, y));
-        }
+        let mut candidates = room.connection_candidates.clone();
+        assert_ne!(candidates.len(), 0);
         loop {
             let candidate = candidates[args.rng.gen_range(0..candidates.len())];
             connections.push(candidate);

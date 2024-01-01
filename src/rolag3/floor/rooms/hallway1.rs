@@ -46,6 +46,7 @@ pub fn make_hallway1(grid: &Vec<Vec<HallwayGridCell>>, rng: &mut StdRng, room_ob
         room_time: 0.0,
         room_cleared_at_time: None,
         minimap_texture: None,
-        ttc: 0.0
+        ttc: 0.0,
+        connection_candidates: Vec::new(),
     }
 }

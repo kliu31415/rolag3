@@ -54,6 +54,7 @@ pub fn make_room_maze1(rng: &mut StdRng, room_object_id_counter: &mut RoomObject
         room_cleared_at_time: None,
         minimap_texture: None,
         ttc: 20.0,
+        connection_candidates: Vec::new(),
     }
 }
 

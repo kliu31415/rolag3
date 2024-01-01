@@ -43,6 +43,7 @@ pub fn make_boss_room1(rng: &mut StdRng, room_object_id_counter: &mut RoomObject
         room_time: 0.0,
         room_cleared_at_time: None,
         minimap_texture: None,
-        ttc: 50.0
+        ttc: 50.0,
+        connection_candidates: Vec::new(),
     }
 }
