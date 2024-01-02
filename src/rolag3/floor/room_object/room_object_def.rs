@@ -425,12 +425,22 @@ impl RoomObjectCollection {
         }
     }
 
-    pub fn get_multi(&self, ids: HashSet<RoomObjectRef>) -> HashMap<RoomObjectRef, Rc<RefCell<dyn RoomObject>>> {
+    pub fn _get_multi(&self, ids: HashSet<RoomObjectRef>) -> HashMap<RoomObjectRef, Rc<RefCell<dyn RoomObject>>> {
         let mut res = HashMap::new();
         for id in ids {
+            // TODO: if _get_multi is used in the future, the below line needs to be more efficient.
+            // Right now, a new formatted string is allocated every loop, which the profiler shows is very slow.
             res.insert(id, self.room_objects_by_type.room_objects.get(&id).expect(&format!("unable to get room object with id={:?}", id)).clone());
         }
         res
+    }
+
+    pub fn get(&self, id: &RoomObjectRef) -> Rc<RefCell<dyn RoomObject>> {
+        let opt = self.room_objects_by_type.room_objects.get(id);
+        let Some(r) = opt.cloned() else {
+            panic!("unable to get room object with id={:?}", *id);
+        };
+        r
     }
 
     #[inline(never)]
