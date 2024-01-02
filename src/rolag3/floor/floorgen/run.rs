@@ -209,70 +209,22 @@ pub fn gen_floor(mut args: GenFloorArgs) -> GenFloorResult {
                 HallwayGridCell::Empty => {},
                 HallwayGridCell::Hallway | HallwayGridCell::Wall => {
                     assert!(!matches!(grid[x][y], FloorGenGridCell::Room(_)));
-                    grid[x][y] = FloorGenGridCell::Room(rooms.len());
                 }
             }
         }
     }
-    let hallway = make_hallway1(&smeared_steiner_hallway_grid, &mut args.rng, &mut args.room_object_id_counter);
-    rooms.push(hallway);
 
-    let st_vertexes = steiner_tree.0.iter()
-        .flat_map(|(a, b)| [*a, *b]);
-    let mut rci = vec![Vec::new(); rooms.len()];
-    for k in st_vertexes {
-        if let Some(v) = mst_vertexes.get(&k) {
-            let FloorGenGridCell::Room(r1id) = grid[k.0 as usize][k.1 as usize] else {
-                panic!("floor gen grid[{}][{}]={:?}, but expected room as r2id", 
-                k.0 as usize, 
-                k.1 as usize, 
-                grid[k.0 as usize][k.1 as usize]);
-            };
-            assert_eq!(*v, r1id, "Req vertexes map and grid disagree on room ID");
-            let x1 = k.0 - rooms[r1id].upper_left_x;
-            let y1 = k.1 - rooms[r1id].upper_left_y;
-            let dir1_array = rooms[r1id].connection_candidates.iter()
-                .filter(|(x, y, _)| *x==x1 && *y==y1)
-                .map(|(_, _, d)| *d)
-                .collect::<Vec<_>>();
-            assert_eq!(dir1_array.len(), 1);
-            let dir1 = dir1_array[0];
-            let floor_x2 = k.0 as i32 + dir1.to_dxy().0;
-            let floor_y2 = k.1 as i32 + dir1.to_dxy().1;
-            assert!(floor_x2 >= 0);
-            assert!(floor_y2 >= 0);
-            let FloorGenGridCell::Room(r2id) = grid[floor_x2 as usize][floor_y2 as usize] else {
-                panic!("floor gen grid[{}][{}]={:?}, but expected room as r2id", 
-                    floor_x2, 
-                    floor_y2, 
-                    grid[floor_x2 as usize][floor_y2 as usize]);
-            };
-            let room_x2 = floor_x2 - (rooms[r2id].upper_left_x as i32);
-            let room_y2 = floor_y2 - (rooms[r2id].upper_left_y as i32);
-            assert!(room_x2 >= 0);
-            assert!(room_y2 >= 0);
+    let mut hallway_rooms = compute_hallway_rooms(
+        &mut grid, 
+        args.grid_w, 
+        args.grid_h, 
+        &smeared_steiner_hallway_grid, 
+        args.rng, 
+        args.room_object_id_counter, 
+        rooms.len());
+    rooms.append(&mut hallway_rooms);
 
-            let rci1 = RoomConnectionInfo {
-                x: x1,
-                y: y1,
-                direction: dir1,
-                connects_to_room_id: r2id,
-                connects_to_x: room_x2 as u32,
-                connects_to_y: room_y2 as u32,
-            };
-
-            let rci2 = RoomConnectionInfo {
-                x: room_x2 as u32,
-                y: room_y2 as u32,
-                direction: dir1.inverted(),
-                connects_to_room_id: r1id,
-                connects_to_x: x1,
-                connects_to_y: y1,
-            };
-            rci[r1id].push(rci1);
-            rci[r2id].push(rci2);
-        }
-    }
+    let rci = get_rci(&rooms, &grid, &steiner_tree.0, &mst_vertexes);
 
     GenFloorResult {
         rooms,
@@ -667,4 +619,162 @@ fn compute_smeared_steiner_hallway_grid(
     }
 
     smeared_steiner_hallway_grid
+}
+
+fn compute_hallway_rooms(
+    grid: &mut Vec<Vec<FloorGenGridCell>>, 
+    grid_w: u32, 
+    grid_h: u32, 
+    sshg: &Vec<Vec<HallwayGridCell>>,
+    rng: &mut StdRng,
+    room_object_id_counter: &mut RoomObjectId,
+    room_count: usize,
+) -> Vec<Room> {
+    let (hallway_bbs, hid_grid) = get_disjoint_hallways(&sshg);
+    for x in 0..grid_w {
+        for y in 0..grid_h {
+            if let Some(hid) = hid_grid[x as usize][y as usize] {
+                assert!(!matches!(grid[x as usize][y as usize], FloorGenGridCell::Room(_)));
+                grid[x as usize][y as usize] = FloorGenGridCell::Room(hid + room_count);
+            }
+        }
+    }
+
+    let mut hallway_rooms = Vec::new();
+    for (i, bb) in hallway_bbs.iter().enumerate() {
+        let hallway = make_hallway1(&sshg, &hid_grid, i, &bb, rng, room_object_id_counter);
+        hallway_rooms.push(hallway);
+    }
+    hallway_rooms
+}
+
+fn get_disjoint_hallways(hg: &Vec<Vec<HallwayGridCell>>) -> (Vec<BoundingBoxUsize>, Vec<Vec<Option<usize>>>) {
+    assert!(!hg.is_empty());
+    let mut hid_grid = vec![vec![None; hg[0].len()]; hg.len()];
+    let mut hid_counter = 0;
+    let mut bounding_boxes = Vec::new();
+    for x in 0..hg.len() {
+        for y in 0..hg[0].len() {
+            if hg[x][y] != HallwayGridCell::Empty && hid_grid[x][y].is_none() {
+                let mut bb = BoundingBoxUsize {
+                    x1: x,
+                    x2: x,
+                    y1: y,
+                    y2: y,
+                };
+                dfs_disjoint_hallways(hg, &mut hid_grid, hid_counter, x, y, &mut bb);
+                bounding_boxes.push(bb);
+                hid_counter += 1;
+            }
+        }
+    }
+    (bounding_boxes, hid_grid)
+}
+
+pub struct BoundingBoxUsize {
+    pub x1: usize,
+    pub x2: usize,
+    pub y1: usize,
+    pub y2: usize,
+}
+
+fn dfs_disjoint_hallways(
+    hg: &Vec<Vec<HallwayGridCell>>, 
+    hid_grid: &mut Vec<Vec<Option<usize>>>, 
+    hid: usize, 
+    x: usize, 
+    y: usize,
+    bb: &mut BoundingBoxUsize,
+) {
+    if hg[x][y] == HallwayGridCell::Empty {
+        return;
+    }
+    if hid_grid[x][y].is_some() {
+        return;
+    }
+
+    bb.x1 = usize::min(bb.x1, x);
+    bb.x2 = usize::max(bb.x2, x);
+    bb.y1 = usize::min(bb.y1, y);
+    bb.y2 = usize::max(bb.y2, y);
+
+    hid_grid[x][y] = Some(hid);
+
+    if x > 0 {
+        dfs_disjoint_hallways(hg, hid_grid, hid, x-1, y, bb);
+    }
+    if x+1 != hg.len() {
+        dfs_disjoint_hallways(hg, hid_grid, hid, x+1, y, bb);
+    }
+    if y > 0 {
+        dfs_disjoint_hallways(hg, hid_grid, hid, x, y-1, bb);
+    }
+    if y+1 != hg[0].len() {
+        dfs_disjoint_hallways(hg, hid_grid, hid, x, y+1, bb);
+    }
+}
+
+fn get_rci(
+    rooms: &Vec<Room>, 
+    grid: &Vec<Vec<FloorGenGridCell>>,
+    st_vertexes: &Vec<((u32, u32), (u32, u32))>,
+    mst_vertexes: &HashMap<(u32, u32), RoomId>,
+) -> Vec<Vec<RoomConnectionInfo>> {
+    let st_vertexes = st_vertexes.iter()
+        .flat_map(|(a, b)| [*a, *b]);
+    let mut rci = vec![Vec::new(); rooms.len()];
+    for k in st_vertexes {
+        if let Some(v) = mst_vertexes.get(&k) {
+            let FloorGenGridCell::Room(r1id) = grid[k.0 as usize][k.1 as usize] else {
+                panic!("floor gen grid[{}][{}]={:?}, but expected room as r2id", 
+                k.0 as usize, 
+                k.1 as usize, 
+                grid[k.0 as usize][k.1 as usize]);
+            };
+            assert_eq!(*v, r1id, "Req vertexes map and grid disagree on room ID");
+            let x1 = k.0 - rooms[r1id].upper_left_x;
+            let y1 = k.1 - rooms[r1id].upper_left_y;
+            let dir1_array = rooms[r1id].connection_candidates.iter()
+                .filter(|(x, y, _)| *x==x1 && *y==y1)
+                .map(|(_, _, d)| *d)
+                .collect::<Vec<_>>();
+            assert_eq!(dir1_array.len(), 1);
+            let dir1 = dir1_array[0];
+            let floor_x2 = k.0 as i32 + dir1.to_dxy().0;
+            let floor_y2 = k.1 as i32 + dir1.to_dxy().1;
+            assert!(floor_x2 >= 0);
+            assert!(floor_y2 >= 0);
+            let FloorGenGridCell::Room(r2id) = grid[floor_x2 as usize][floor_y2 as usize] else {
+                panic!("floor gen grid[{}][{}]={:?}, but expected room as r2id", 
+                    floor_x2, 
+                    floor_y2, 
+                    grid[floor_x2 as usize][floor_y2 as usize]);
+            };
+            let room_x2 = floor_x2 - (rooms[r2id].upper_left_x as i32);
+            let room_y2 = floor_y2 - (rooms[r2id].upper_left_y as i32);
+            assert!(room_x2 >= 0);
+            assert!(room_y2 >= 0);
+
+            let rci1 = RoomConnectionInfo {
+                x: x1,
+                y: y1,
+                direction: dir1,
+                connects_to_room_id: r2id,
+                connects_to_x: room_x2 as u32,
+                connects_to_y: room_y2 as u32,
+            };
+
+            let rci2 = RoomConnectionInfo {
+                x: room_x2 as u32,
+                y: room_y2 as u32,
+                direction: dir1.inverted(),
+                connects_to_room_id: r1id,
+                connects_to_x: x1,
+                connects_to_y: y1,
+            };
+            rci[r1id].push(rci1);
+            rci[r2id].push(rci2);
+        }
+    }
+    rci
 }

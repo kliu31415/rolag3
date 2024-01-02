@@ -34,6 +34,7 @@ pub enum RoomTile {
 
 #[derive(Debug, Copy, Clone)]
 pub struct RoomConnectionInfo {
+    // (x, y) represents the center tile coordinate of the connection
     pub x: u32,
     pub y: u32,
     pub direction: Direction,

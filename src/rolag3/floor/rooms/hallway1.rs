@@ -2,7 +2,7 @@ use std::{rc::Rc, cell::RefCell};
 
 use rand::rngs::StdRng;
 
-use crate::rolag3::floor::{room::Room, room_object::{room_object_def::{RoomObjectId, RoomObjectCollection, NewRoomObjectContext}, wall::basic_wall::BasicWall, cosmetic::ground1::new_ground1}, draw::Color, rofiz::rofiz_state::RofizState};
+use crate::rolag3::floor::{room::Room, room_object::{room_object_def::{RoomObjectId, RoomObjectCollection, NewRoomObjectContext}, wall::basic_wall::BasicWall, cosmetic::ground1::new_ground1}, draw::Color, rofiz::rofiz_state::RofizState, floorgen::run::BoundingBoxUsize};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum HallwayGridCell {
@@ -11,24 +11,35 @@ pub enum HallwayGridCell {
     Wall,
 }
 
-pub fn make_hallway1(grid: &Vec<Vec<HallwayGridCell>>, rng: &mut StdRng, room_object_id_counter: &mut RoomObjectId) -> Room {
-    assert!(grid.len() > 0);
-    assert!(grid[0].len() > 0);
+#[inline(never)]
+pub fn make_hallway1(
+    hgc_grid: &Vec<Vec<HallwayGridCell>>, 
+    hid_grid: &Vec<Vec<Option<usize>>>,
+    hid: usize,
+    bb: &BoundingBoxUsize,
+    rng: &mut StdRng, 
+    room_object_id_counter: &mut RoomObjectId,
+) -> Room {
+    assert!(hgc_grid.len() > 0);
+    assert!(hgc_grid[0].len() > 0);
 
     let mut rofiz = RofizState::new();
     let mut new_floor_object_ctx = NewRoomObjectContext::new(&mut rofiz, room_object_id_counter, 0.0, rng);
     let mut room_objects = RoomObjectCollection::new();
 
-    for x in 0..grid.len() {
-        for y in 0..grid[0].len() {
-            match grid[x][y] {
+    for x in bb.x1 ..= bb.x2 {
+        for y in bb.y1 ..= bb.y2 {
+            if hid_grid[x][y] != Some(hid) {
+                continue;
+            }
+            match hgc_grid[x][y] {
                 HallwayGridCell::Empty => {},
                 HallwayGridCell::Hallway => {
-                    let ground = new_ground1(&mut new_floor_object_ctx, Color::new(0.02, 0.0, 0.0, 1.0), x as u32, y as u32, 1, 1);
+                    let ground = new_ground1(&mut new_floor_object_ctx, Color::new(0.02, 0.0, 0.0, 1.0), (x - bb.x1) as u32, (y - bb.y1) as u32, 1, 1);
                     room_objects.add(Rc::new(RefCell::new(ground)));
                 },
                 HallwayGridCell::Wall => {
-                    let wall = BasicWall::new(&mut new_floor_object_ctx, x as u32, y as u32, Color::new(0.1, 0.2, 0.3, 1.0));
+                    let wall = BasicWall::new(&mut new_floor_object_ctx, (x - bb.x1) as u32, (y - bb.y1) as u32, Color::new(0.1, 0.2, 0.3, 1.0));
                     room_objects.add(Rc::new(RefCell::new(wall)));
                 },
             }
@@ -36,10 +47,10 @@ pub fn make_hallway1(grid: &Vec<Vec<HallwayGridCell>>, rng: &mut StdRng, room_ob
     }
 
     Room {
-        upper_left_x: 0,
-        upper_left_y: 0,
-        width: grid.len() as u32,
-        height: grid[0].len() as u32,
+        upper_left_x: bb.x1 as u32,
+        upper_left_y: bb.y1 as u32,
+        width: (bb.x2 - bb.x1 + 1) as u32,
+        height: (bb.y2 - bb.y1 + 1) as u32,
         tiles: Vec::new(),
         room_objects,
         rofiz,
