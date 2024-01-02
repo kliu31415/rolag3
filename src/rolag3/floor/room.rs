@@ -5,7 +5,7 @@ use rand::rngs::StdRng;
 
 use crate::gfx::renderer::{TmdRef, Renderer};
 
-use super::{room_object::{unit::{enemy2::new_enemy2, enemy3::new_enemy3, enemy1::new_enemy1, boss1::new_boss1, enemy4::new_enemy4, enemy5::new_enemy5, enemy::{square::{blue::new_square_blue, blue_circle::new_square_blue_circle, blue_diamond::new_square_blue_diamond}, regular_tri::{red_tri::new_regtri_red_tri, red::new_regtri_red}}}, room_object_def::{NewRoomObjectContext, RoomObjectCollection, RoomObjectId}, wall::basic_wall::BasicWall, tiles::{room_connection::{RoomConnection, Direction}, black_hole::new_black_hole, accel_tile::new_accel_tile}, damage::DamageColor, cosmetic::ground1::new_ground1}, draw::Color, rofiz::rofiz_state::RofizState, floor_def::RoomId};
+use super::{room_object::{unit::{enemy2::new_enemy2, enemy3::new_enemy3, enemy1::new_enemy1, boss1::new_boss1, enemy4::new_enemy4, enemy5::new_enemy5, enemy::{square::{blue::new_square_blue, blue_circle::new_square_blue_circle, blue_diamond::new_square_blue_diamond}, regular_tri::{red_tri::new_regtri_red_tri, red::new_regtri_red}}}, room_object_def::{NewRoomObjectContext, RoomObjectCollection, RoomObjectId}, wall::basic_wall::{BasicWall, WallTheme}, tiles::{room_connection::{RoomConnection, Direction}, black_hole::new_black_hole, accel_tile::new_accel_tile}, damage::DamageColor, cosmetic::ground1::{new_ground1, GroundTheme}}, draw::Color, rofiz::rofiz_state::RofizState, floor_def::RoomId};
 
 pub struct Room {
     pub upper_left_x: u32,
@@ -44,7 +44,14 @@ pub struct RoomConnectionInfo {
 }
 
 impl Room {
-    pub fn finalize_with_connections(&mut self, renderer: &mut dyn Renderer, connections: Vec<RoomConnectionInfo>, rng: &mut StdRng, room_object_id_counter: &mut RoomObjectId) {
+    pub fn finalize_with_connections(
+        &mut self, 
+        renderer: &mut dyn Renderer, 
+        connections: Vec<RoomConnectionInfo>, 
+        rng: &mut StdRng, 
+        room_object_id_counter: &mut RoomObjectId,
+        ground_theme: GroundTheme,
+    ) {
         assert!(self.tiles.is_empty(), "room tiles array should not be set before room finalization");
         self.tiles = vec![vec![RoomTile::NotInRoom; self.height as usize]; self.width as usize];
 
@@ -74,7 +81,7 @@ impl Room {
                 self.rofiz.remove_wall_at(x, y, expected);
                 self.tiles[x as usize][y as usize] = RoomTile::Connection;
                 let mut nfo_ctx = NewRoomObjectContext::new(&mut self.rofiz, room_object_id_counter, 0.0, rng);
-                let ground = new_ground1(&mut nfo_ctx, Color::new(0.02, 0.0, 0.0, 1.0), x, y, 1, 1);
+                let ground = new_ground1(&mut nfo_ctx, ground_theme, x, y, 1, 1);
                 self.room_objects.add(Rc::new(RefCell::new(ground)));
             }
         }
@@ -96,22 +103,24 @@ impl Room {
 
         let width = 30;
         let height = 30;
+        let wall_theme = WallTheme::Monocolor(Color::new(0.1, 0.2, 0.3, 1.0));
 
         for i in 0..30 {
-            let wall = BasicWall::new(&mut new_floor_object_ctx, i, 0, Color::new(0.1, 0.2, 0.3, 1.0));
+            let wall = BasicWall::new(&mut new_floor_object_ctx, wall_theme, i, 0);
             room_objects.add(Rc::new(RefCell::new(wall)));
-            let wall = BasicWall::new(&mut new_floor_object_ctx, i, 29, Color::new(0.1, 0.2, 0.3, 1.0));
+            let wall = BasicWall::new(&mut new_floor_object_ctx, wall_theme, i, 29);
             room_objects.add(Rc::new(RefCell::new(wall)));
         }
         
         for i in 1..29 {
-            let wall = BasicWall::new(&mut new_floor_object_ctx, 0, i, Color::new(0.1, 0.2, 0.3, 1.0));
+            let wall = BasicWall::new(&mut new_floor_object_ctx, wall_theme, 0, i);
             room_objects.add(Rc::new(RefCell::new(wall)));
-            let wall = BasicWall::new(&mut new_floor_object_ctx, 29, i, Color::new(0.1, 0.2, 0.3, 1.0));
+            let wall = BasicWall::new(&mut new_floor_object_ctx, wall_theme, 29, i);
             room_objects.add(Rc::new(RefCell::new(wall)));
         }
 
-        let ground = new_ground1(&mut new_floor_object_ctx, Color::new(0.02, 0.0, 0.0, 1.0), 1, 1, 28, 28);
+        let ground_theme = GroundTheme::Monocolor(Color::new(0.02, 0.0, 0.0, 1.0));
+        let ground = new_ground1(&mut new_floor_object_ctx, ground_theme, 1, 1, 28, 28);
         room_objects.add(Rc::new(RefCell::new(ground)));
 
         for i in 1..5 {
@@ -182,18 +191,19 @@ impl Room {
 
         let width = 30;
         let height = 30;
+        let wall_theme = WallTheme::Monocolor(Color::new(0.1, 0.2, 0.3, 1.0));
 
         for i in 0..30 {
-            let wall = BasicWall::new(&mut new_floor_object_ctx, i, 0, Color::new(0.1, 0.2, 0.3, 1.0));
+            let wall = BasicWall::new(&mut new_floor_object_ctx, wall_theme, i, 0);
             room_objects.add(Rc::new(RefCell::new(wall)));
-            let wall = BasicWall::new(&mut new_floor_object_ctx, i, 29, Color::new(0.1, 0.2, 0.3, 1.0));
+            let wall = BasicWall::new(&mut new_floor_object_ctx, wall_theme, i, 29);
             room_objects.add(Rc::new(RefCell::new(wall)));
         }
         
         for i in 1..29 {
-            let wall = BasicWall::new(&mut new_floor_object_ctx, 0, i, Color::new(0.1, 0.2, 0.3, 1.0));
+            let wall = BasicWall::new(&mut new_floor_object_ctx, wall_theme, 0, i);
             room_objects.add(Rc::new(RefCell::new(wall)));
-            let wall = BasicWall::new(&mut new_floor_object_ctx, 29, i, Color::new(0.1, 0.2, 0.3, 1.0));
+            let wall = BasicWall::new(&mut new_floor_object_ctx, wall_theme, 29, i);
             room_objects.add(Rc::new(RefCell::new(wall)));
         }
 

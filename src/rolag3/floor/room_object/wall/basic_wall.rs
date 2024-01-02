@@ -8,9 +8,9 @@ pub struct BasicWall {
     md: RoomObjectMetadata,
     _ro_ref: RofizObjectRef,
     // (x, y) is coordinate of the top left vertex of the wall. Note it's the corner of a vertex, not the wall's center.
+    theme: WallTheme,
     x: u32,
     y: u32,
-    color: Color,
 }
 
 impl RoomObject for BasicWall {
@@ -59,10 +59,11 @@ impl RoomObject for BasicWall {
         let mut main_wall_vertexes = [[(Point::new(0.0, 0.0), Color::new(0.0, 0.0, 0.0, 0.0)); 3]; 3];
         for dx in [-1i32, 0, 1] {
             for dy in [-1i32, 0, 1] {
+                let WallTheme::Monocolor(color) = self.theme;
                 let color = if wall_faces_open_area_at[(dx + 1) as usize][(dy + 1) as usize] {
-                    self.color
+                    color
                 } else {
-                    Color::new(self.color.r, self.color.g, self.color.b, 0.0)
+                    Color::new(color.r, color.g, color.b, 0.0)
                 };
                 let x = (self.x as f32) + 0.5 * (dx as f32 + 1.0);
                 let y = (self.y as f32) + 0.5 * (dy as f32 + 1.0);
@@ -121,9 +122,14 @@ impl Wall for BasicWall {
 }
 
 impl BasicWall {
-    pub fn new(ctx: &mut NewRoomObjectContext, x: u32, y: u32, color: Color) -> Self {
+    pub fn new(ctx: &mut NewRoomObjectContext, theme: WallTheme, x: u32, y: u32) -> Self {
         let md = RoomObjectMetadata::new(ctx, RoomObjectType::Wall);
         let _ro_ref = ctx.add_basic_wall(md.get_ref(), x, y);
-        Self {md, _ro_ref, x, y, color}
+        Self {md, _ro_ref, theme, x, y}
     }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum WallTheme {
+    Monocolor(Color),
 }

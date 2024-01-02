@@ -2,7 +2,7 @@ use std::{collections::HashMap, cell::RefCell, rc::Rc};
 
 use rand::rngs::StdRng;
 
-use crate::{gfx::renderer::Renderer, rolag3::floor::{rooms::empty1::get_gen_room_fn_empty1, floorgen::run::GenFloorRoomFn}};
+use crate::{gfx::renderer::Renderer, rolag3::floor::{rooms::empty1::get_gen_room_fn_empty1, floorgen::run::GenFloorRoomFn, room_object::{cosmetic::ground1::GroundTheme, wall::basic_wall::WallTheme}, draw::Color}};
 
 use super::{room::{Room, RoomConnectionInfo}, room_object::{unit::player::{Player, MoveRooms}, room_object_def::{FloorCoordinate, RoomObjectId}, tiles::room_connection::Direction}, rooms::{maze1::make_room_maze1, boss_room1::make_boss_room1}, floorgen::run::{gen_floor, GenFloorArgs}};
 
@@ -39,7 +39,8 @@ impl Floor {
             connects_to_x: 0,
             connects_to_y: 10,
         };
-        room1.finalize_with_connections(renderer, vec![connection1_info1], rng, &mut room_object_id_counter);
+        let ground_theme = GroundTheme::Monocolor(Color::new(0.02, 0.0, 0.0, 1.0));
+        room1.finalize_with_connections(renderer, vec![connection1_info1], rng, &mut room_object_id_counter, ground_theme);
 
         let connection1_info2 = RoomConnectionInfo {
             x: 0,
@@ -50,13 +51,13 @@ impl Floor {
             connects_to_y: 10,
         };
         let mut room2 = Room::new_test_room2(rng, &mut room_object_id_counter);
-        room2.finalize_with_connections(renderer, vec![connection1_info2], rng, &mut room_object_id_counter);
+        room2.finalize_with_connections(renderer, vec![connection1_info2], rng, &mut room_object_id_counter, ground_theme);
 
         let mut room3 = make_room_maze1(rng, &mut room_object_id_counter, 30, 30);
-        room3.finalize_with_connections(renderer, vec![], rng, &mut room_object_id_counter);
+        room3.finalize_with_connections(renderer, vec![], rng, &mut room_object_id_counter, ground_theme);
 
         let mut room4 = make_boss_room1(rng, &mut room_object_id_counter);
-        room4.finalize_with_connections(renderer, vec![], rng, &mut room_object_id_counter);
+        room4.finalize_with_connections(renderer, vec![], rng, &mut room_object_id_counter, ground_theme);
 
         player.borrow_mut().move_rooms(&mut room1.rofiz, MoveRooms::Teleport { x: 3.0, y: 3.0 });
         room1.room_objects.add(player.clone());
@@ -82,9 +83,13 @@ impl Floor {
         let player = Rc::new(RefCell::new(Player::new_test1()));
         let gen_initial_room_fn = GenFloorRoomFn {weight: 1.0, func: get_gen_room_fn_empty1(20, 20, 20, 20)};
         let gen_normal_room_fns = vec![GenFloorRoomFn {weight: 1.0, func: get_gen_room_fn_empty1(20, 50, 20, 50)}];
+        let ground_theme = GroundTheme::Monocolor(Color::new(0.02, 0.0, 0.0, 1.0));
+        let wall_theme = WallTheme::Monocolor(Color::new(0.1, 0.2, 0.3, 1.0));
         let gf_args = GenFloorArgs {
             grid_w: 512,
             grid_h: 512,
+            ground_theme,
+            wall_theme,
             ttc_min: 100.0,
             ttc_max: 103.0,
             gen_initial_room_fn,
@@ -100,7 +105,7 @@ impl Floor {
         player.borrow_mut().move_rooms(&mut rooms.get_mut(&0).unwrap().rofiz, MoveRooms::Teleport { x: 3.0, y: 3.0 });
         rooms.get_mut(&0).unwrap().room_objects.add(player.clone());
         gf_result.connections.drain(..).enumerate().for_each(|(rid, rci)| {
-            rooms.get_mut(&rid).unwrap().finalize_with_connections(renderer, rci, rng, &mut room_object_id_counter);
+            rooms.get_mut(&rid).unwrap().finalize_with_connections(renderer, rci, rng, &mut room_object_id_counter, ground_theme);
         });
 
         Self {

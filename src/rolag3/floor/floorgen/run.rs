@@ -7,13 +7,18 @@ use rand::distributions::Distribution;
 
 use crate::rolag3::floor::floorgen::steiner::{GraphEdge, compute_approx_steiner_tree};
 use crate::rolag3::floor::room::RoomConnectionInfo;
+use crate::rolag3::floor::room_object::cosmetic::ground1::GroundTheme;
 use crate::rolag3::floor::room_object::room_object_def::RoomObjectId;
+use crate::rolag3::floor::room_object::wall::basic_wall::WallTheme;
 use crate::rolag3::floor::rooms::hallway1::{HallwayGridCell, make_hallway1};
 use crate::rolag3::floor::{floor_def::RoomId, room::Room};
 
 pub struct GenFloorArgs<'a> {
     pub grid_w: u32,
     pub grid_h: u32,
+
+    pub ground_theme: GroundTheme,
+    pub wall_theme: WallTheme,
 
     pub ttc_min: f64,
     pub ttc_max: f64,
@@ -39,6 +44,8 @@ pub struct GenFloorRoomFn {
 pub struct GenFloorRoomContext<'a> {
     pub rng: &'a mut StdRng,
     pub room_object_id_counter: &'a mut RoomObjectId,
+    pub ground_theme: GroundTheme,
+    pub wall_theme: WallTheme,
 }
 
 pub struct GenFloorRoomResponse {
@@ -221,7 +228,9 @@ pub fn gen_floor(mut args: GenFloorArgs) -> GenFloorResult {
         &smeared_steiner_hallway_grid, 
         args.rng, 
         args.room_object_id_counter, 
-        rooms.len());
+        rooms.len(),
+        args.ground_theme,
+        args.wall_theme);
     rooms.append(&mut hallway_rooms);
 
     let rci = get_rci(&rooms, &grid, &steiner_tree.0, &mst_vertexes);
@@ -240,6 +249,8 @@ fn gen_room_candidates(args: &mut GenFloorArgs) -> (Room, Vec<Room>) {
     let mut gen_room_ctx = GenFloorRoomContext {
         rng: args.rng,
         room_object_id_counter: args.room_object_id_counter,
+        ground_theme: args.ground_theme,
+        wall_theme: args.wall_theme,
     };
     let starting_room = (args.gen_initial_room_fn.func)(&mut gen_room_ctx).room;
     assert!(starting_room.ttc <= args.ttc_max);
@@ -250,6 +261,8 @@ fn gen_room_candidates(args: &mut GenFloorArgs) -> (Room, Vec<Room>) {
         let mut gen_room_ctx = GenFloorRoomContext {
             rng: args.rng,
             room_object_id_counter: args.room_object_id_counter,
+            ground_theme: args.ground_theme,
+            wall_theme: args.wall_theme,
         };
         let f = &mut args.gen_normal_room_fns[idx];
         normal_room_candidates.push((f.func)(&mut gen_room_ctx).room);
@@ -629,6 +642,8 @@ fn compute_hallway_rooms(
     rng: &mut StdRng,
     room_object_id_counter: &mut RoomObjectId,
     room_count: usize,
+    ground_theme: GroundTheme,
+    wall_theme: WallTheme,
 ) -> Vec<Room> {
     let (hallway_bbs, hid_grid) = get_disjoint_hallways(&sshg);
     for x in 0..grid_w {
@@ -642,7 +657,7 @@ fn compute_hallway_rooms(
 
     let mut hallway_rooms = Vec::new();
     for (i, bb) in hallway_bbs.iter().enumerate() {
-        let hallway = make_hallway1(&sshg, &hid_grid, i, &bb, rng, room_object_id_counter);
+        let hallway = make_hallway1(&sshg, &hid_grid, i, &bb, rng, room_object_id_counter, ground_theme, wall_theme);
         hallway_rooms.push(hallway);
     }
     hallway_rooms

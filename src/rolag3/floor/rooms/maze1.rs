@@ -2,7 +2,7 @@ use std::{cell::RefCell, rc::Rc, collections::VecDeque};
 
 use rand::{rngs::StdRng, Rng};
 
-use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, RoomObjectCollection, RoomObjectId}, wall::basic_wall::BasicWall, cosmetic::ground1::new_ground1, tiles::damage_tile::new_damage_tile}, rofiz::rofiz_state::RofizState, room::Room, draw::Color}, util::disjoint_set_union::DisjointSetUnion};
+use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, RoomObjectCollection, RoomObjectId}, wall::basic_wall::{BasicWall, WallTheme}, cosmetic::ground1::{new_ground1, GroundTheme}, tiles::damage_tile::new_damage_tile}, rofiz::rofiz_state::RofizState, room::Room, draw::Color}, util::disjoint_set_union::DisjointSetUnion};
 
 pub fn make_room_maze1(rng: &mut StdRng, room_object_id_counter: &mut RoomObjectId, x: u32, y: u32) -> Room {
     let maze_w = 24;
@@ -15,21 +15,24 @@ pub fn make_room_maze1(rng: &mut StdRng, room_object_id_counter: &mut RoomObject
     let room_w = 5 * maze_w + 1;
     let room_h = 5 * maze_h + 1;
 
+    let wall_theme = WallTheme::Monocolor(Color::new(0.1, 0.2, 0.3, 1.0));
+
     for i in 0..room_w {
-        let wall = BasicWall::new(&mut new_floor_object_ctx, i as u32, 0, Color::new(0.1, 0.2, 0.3, 1.0));
+        let wall = BasicWall::new(&mut new_floor_object_ctx, wall_theme, i as u32, 0);
         room_objects.add(Rc::new(RefCell::new(wall)));
-        let wall = BasicWall::new(&mut new_floor_object_ctx, i as u32, room_h as u32 - 1, Color::new(0.1, 0.2, 0.3, 1.0));
+        let wall = BasicWall::new(&mut new_floor_object_ctx, wall_theme, i as u32, room_h as u32 - 1);
         room_objects.add(Rc::new(RefCell::new(wall)));
     }
     
     for i in 1..(room_h-1) {
-        let wall = BasicWall::new(&mut new_floor_object_ctx, 0, i as u32, Color::new(0.1, 0.2, 0.3, 1.0));
+        let wall = BasicWall::new(&mut new_floor_object_ctx, wall_theme, 0, i as u32);
         room_objects.add(Rc::new(RefCell::new(wall)));
-        let wall = BasicWall::new(&mut new_floor_object_ctx, (room_w - 1) as u32, i as u32, Color::new(0.1, 0.2, 0.3, 1.0));
+        let wall = BasicWall::new(&mut new_floor_object_ctx, wall_theme, (room_w - 1) as u32, i as u32);
         room_objects.add(Rc::new(RefCell::new(wall)));
     }
 
-    let ground = new_ground1(&mut new_floor_object_ctx, Color::new(0.02, 0.0, 0.0, 1.0), 1, 1, room_w as u32 - 2, room_h as u32 - 2);
+    let ground_theme = GroundTheme::Monocolor(Color::new(0.02, 0.0, 0.0, 1.0));
+    let ground = new_ground1(&mut new_floor_object_ctx, ground_theme, 1, 1, room_w as u32 - 2, room_h as u32 - 2);
     room_objects.add(Rc::new(RefCell::new(ground)));
 
     let maze_wall_array = maze.get_maze_wall_array(4);
