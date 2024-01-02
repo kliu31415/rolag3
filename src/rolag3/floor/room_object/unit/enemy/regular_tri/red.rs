@@ -95,7 +95,7 @@ fn draw(ctx: &mut SuDrawContext) {
     let xform = ctx.draw_ctx.get_rofiz().get_movable_object_xform(ctx.su_ctx.su_common.get_ro_ref());
     let border = xform.get_transformed_polygon(&us_data.border).vertexes;
     let inner = xform.get_transformed_polygon(&us_data.inner).vertexes;
-    let dop_border = ctx.draw_ctx.do_tri_fan_border(border_color, &border, &inner);
+    let dop_border = ctx.draw_ctx.do_thick_border(border_color, &border, &inner);
     let dop_inner = ctx.draw_ctx.do_tri_fan(inner_color, &inner);
 
     let dop = ctx.draw_ctx.dop_group(vec![dop_border, dop_inner].into());

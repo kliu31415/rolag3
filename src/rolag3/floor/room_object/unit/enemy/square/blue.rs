@@ -66,7 +66,7 @@ fn draw(ctx: &mut SuDrawContext) {
     let xform = ctx.draw_ctx.get_rofiz().get_movable_object_xform(ctx.su_ctx.su_common.get_ro_ref());
     let border_vertexes = us_data.border_vertexes.map(|v| Point::new(xform.dx as f32 + v.x, xform.dy as f32 + v.y));
     let inner_vertexes = us_data.inner_vertexes.map(|v| Point::new(xform.dx as f32 + v.x, xform.dy as f32 + v.y));
-    let border_dop = ctx.draw_ctx.do_tri_fan_border(border_color, &border_vertexes, &inner_vertexes);
+    let border_dop = ctx.draw_ctx.do_thick_border(border_color, &border_vertexes, &inner_vertexes);
     let inner_dop = ctx.draw_ctx.do_quad_fan(inner_color, inner_vertexes);
     ctx.draw_ctx.add_draw_op(DrawContext::Z_UNIT, ctx.draw_ctx.dop_group(Box::new([border_dop, inner_dop])));
 }

@@ -107,8 +107,8 @@ const PLAYER_TAB_OVERLAY: PhysicalKey = PhysicalKey::Code(KeyCode::Tab);
 impl Rolag3EventHandler {
     fn new_test1(renderer: &mut dyn Renderer) -> Rolag3EventHandler {
         let mut rng = StdRng::seed_from_u64(123);
-        let _ = Floor::new_test1(renderer, &mut rng);
-        let floor = Floor::new_test2(renderer, &mut rng);
+        let floor = Floor::new_test1(renderer, &mut rng);
+        let _ = Floor::new_test2(renderer, &mut rng);
         Rolag3EventHandler { 
             frame_timestamps: VecDeque::new(),
             floor,

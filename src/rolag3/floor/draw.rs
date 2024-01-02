@@ -247,9 +247,9 @@ impl DrawContext<'_> {
         DrawOp::Group(DrawOpGroup::new(ops))
     }
 
-    pub fn do_tri_fan_border(&self, color: Color, outer: &[Point], inner: &[Point]) -> DrawOp {
-        assert_eq!(outer.len(), inner.len(), "Tri fan border outer and inner vertexes must have the same length");
-        assert!(outer.len() > 2, "Degenerate tri fan border with <=2 vertexes detected");
+    pub fn do_thick_border(&self, color: Color, outer: &[Point], inner: &[Point]) -> DrawOp {
+        assert_eq!(outer.len(), inner.len(), "Thick border outer and inner vertexes must have the same length");
+        assert!(outer.len() > 2, "Degenerate thick border with <=2 vertexes detected");
         let o1 = outer.iter();
         let o2 = outer[1..].iter().chain(outer[..1].iter());
         let i1 = inner.iter();

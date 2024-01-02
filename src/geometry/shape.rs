@@ -135,6 +135,11 @@ impl Point {
             y: lerp_f32(u.y, v.y, a),
         }
     }
+    pub fn rotated(&self, theta: f32) -> Self {
+        let cos_theta = f32::cos(theta);
+        let sin_theta = f32::sin(theta);
+        Point::new(cos_theta * self.x - sin_theta * self.y, sin_theta * self.x + cos_theta * self.y)
+    }
 }
 
 impl Default for Point {
@@ -180,6 +185,14 @@ impl Vector {
 
     pub fn norm(&self) -> f32 {
         f32::hypot(self.x, self.y)
+    }
+
+    pub fn normalized(&self) -> Self {
+        let n = self.norm();
+        Self {
+            x: self.x / n,
+            y: self.y / n,
+        }
     }
 }
 

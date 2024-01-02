@@ -86,12 +86,12 @@ impl Floor {
         let ground_theme = GroundTheme::Monocolor(Color::new(0.02, 0.0, 0.0, 1.0));
         let wall_theme = WallTheme::Monocolor(Color::new(0.1, 0.2, 0.3, 1.0));
         let gf_args = GenFloorArgs {
-            grid_w: 512,
-            grid_h: 512,
+            grid_w: 256,
+            grid_h: 256,
             ground_theme,
             wall_theme,
-            ttc_min: 100.0,
-            ttc_max: 103.0,
+            ttc_min: 50.0,
+            ttc_max: 53.0,
             gen_initial_room_fn,
             gen_normal_room_fns,
             rng,

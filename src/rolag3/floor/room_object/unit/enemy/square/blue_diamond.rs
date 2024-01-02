@@ -137,7 +137,7 @@ fn draw(ctx: &mut SuDrawContext) {
     let border_vertexes = us_data.border_vertexes.map(|v| Point::new(xform.dx as f32 + v.x, xform.dy as f32 + v.y));
     let outer_vertexes = us_data.outer_vertexes.map(|v| Point::new(xform.dx as f32 + v.x, xform.dy as f32 + v.y));
     let inner_vertexes = us_data.proj_vertexes.map(|v| Point::new(xform.dx as f32 + v.x, xform.dy as f32 + v.y));
-    let border_dop = ctx.draw_ctx.do_tri_fan_border(border_color, &border_vertexes, &outer_vertexes);
+    let border_dop = ctx.draw_ctx.do_thick_border(border_color, &border_vertexes, &outer_vertexes);
     let outer_dop = ctx.draw_ctx.do_quad_fan(outer_color, outer_vertexes);
     let inner_dop = ctx.draw_ctx.do_quad_fan(inner_color, inner_vertexes);
     ctx.draw_ctx.add_draw_op(DrawContext::Z_UNIT, ctx.draw_ctx.dop_group(Box::new([border_dop, outer_dop, inner_dop])));
