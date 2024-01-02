@@ -140,6 +140,7 @@ pub struct StandardUnit1Builder {
     handle_collision_logic: HandleCollisionLogic,
     hc_projectile_logic: HcProjectileLogic,
     hitbox: Option<(Transformation, Shape)>,
+    damageable: bool,
 }
 
 pub enum HandleCollisionLogic {
@@ -168,6 +169,7 @@ impl StandardUnit1Builder {
             handle_collision_logic: HandleCollisionLogic::Nop,
             hc_projectile_logic: HcProjectileLogic::Default_,
             hitbox: None,
+            damageable: true,
         }
     }
 
@@ -207,6 +209,11 @@ impl StandardUnit1Builder {
         self
     }
 
+    pub fn damageable(mut self, damageable: bool) -> Self {
+        self.damageable = damageable;
+        self
+    }
+
     pub fn build(self, ctx: &mut NewRoomObjectContext) -> StandardUnit1 {
         let (xform, shape) = match self.hitbox {
             Some(x) => x,
@@ -215,7 +222,16 @@ impl StandardUnit1Builder {
         let md = RoomObjectMetadata::new(ctx, RoomObjectType::Unit);
         let hitbox = Hitbox::new(xform, shape);
         let ro_ref = ctx.add_nonspectral_unit(md.get_ref(), hitbox);
-        let su_common = StandardUnitCommon::new(ro_ref, self.req.hp, self.req.engine_power, self.req.tire_traction, self.angular_power, self.angular_traction, 100.0, 2.0);
+        let su_common = StandardUnitCommon::new(
+            ro_ref, 
+            self.damageable,
+            self.req.hp, 
+            self.req.engine_power, 
+            self.req.tire_traction, 
+            self.angular_power, 
+            self.angular_traction, 
+            100.0, 
+            2.0);
         
         let handle_collision_fn = match self.handle_collision_logic {
             HandleCollisionLogic::Nop => Box::new(handle_collision_nop),

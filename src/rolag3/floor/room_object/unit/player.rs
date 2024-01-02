@@ -259,7 +259,7 @@ impl Player {
 
         // Rofiz will automatically clean up the old su_common.rofiz_object, because it'll detect that no RoomObjects
         // hold a reference to it anymore.
-        self.su_common = Some(StandardUnitCommon::new(ro_ref, 1e3, 15.0, 500.0, 0.0, 0.0, 150.0, 10.0));
+        self.su_common = Some(StandardUnitCommon::new(ro_ref, true, 1e3, 15.0, 500.0, 0.0, 0.0, 150.0, 10.0));
     }
 
     pub fn get_center_point(&self, rofiz: &RofizState) -> FloorCoordinate {

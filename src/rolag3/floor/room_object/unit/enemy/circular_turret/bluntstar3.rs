@@ -26,15 +26,15 @@ pub fn new_circular_turret_bluntstar3(ctx: &mut NewRoomObjectContext, x: f64, y:
     let turret_inner_vertexes = get_inner_polygon(TURRET_BORDER_THICKNESS, &turret_border_vertexes);
     let xform = Transformation::new(x, y, 0.0);
     let circle_inner_color = match color {
-        DamageColor::Red => Color::new(0.4, 0.1, 0.1, 1.0),
-        DamageColor::Green => Color::new(0.1, 0.4, 0.1, 1.0),
-        DamageColor::Blue => Color::new(0.1, 0.1, 0.4, 1.0),
+        DamageColor::Red => Color::new(0.2, 0.1, 0.1, 1.0),
+        DamageColor::Green => Color::new(0.1, 0.2, 0.1, 1.0),
+        DamageColor::Blue => Color::new(0.1, 0.1, 0.2, 1.0),
         _ => panic!("can't create turret with color {:?}", color),
     };
     let turret_inner_color = match color {
-        DamageColor::Red => Color::new(1.0, 0.1, 0.1, 1.0),
-        DamageColor::Green => Color::new(0.1, 1.0, 0.1, 1.0),
-        DamageColor::Blue => Color::new(0.1, 0.1, 1.0, 1.0),
+        DamageColor::Red => Color::new(1.0, 0.01, 0.01, 1.0),
+        DamageColor::Green => Color::new(0.01, 1.0, 0.01, 1.0),
+        DamageColor::Blue => Color::new(0.01, 0.01, 1.0, 1.0),
         _ => panic!("can't create turret with color {:?}", color),
     };
     let us_data = CirTurBluntStar3 {
@@ -46,19 +46,19 @@ pub fn new_circular_turret_bluntstar3(ctx: &mut NewRoomObjectContext, x: f64, y:
         turret_inner_xformed_cache: Shape::default(),
     };
 
-    // TODO: make turret undamageable
     StandardUnit1Builder::new(StandardUnit1BuilderReq {
         team: Team::Enemy,
         damage_color: DamageColor::Blue,
-        hp: 1000.0,
-        engine_power: 1.0, // nop
-        tire_traction: 1.0, // nop
+        hp: 1.0, // dummy
+        engine_power: 1.0, // dummy
+        tire_traction: 1.0, // dummy
     }).act1_fn(Box::new(act1))
         .draw_fn(Box::new(draw))
         .hitbox(xform, Shape::of_circle(Point::new(0.0, 0.0), CIRCLE_BORDER_RADIUS))
         .us_data(Box::new(us_data))
         .angular_power(1.0)
         .angular_traction(10.0)
+        .damageable(false)
         .build(ctx)
 }
 

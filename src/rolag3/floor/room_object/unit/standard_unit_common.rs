@@ -56,6 +56,7 @@ pub struct StandardUnitCommon {
     prev_position: Option<Transformation>,
     prev_desired_movement: Option<Transformation>,
 
+    damageable: bool,
     max_hp: f64,
     hp: f64,
     last_damaged_time: f64,
@@ -89,7 +90,17 @@ impl StandardUnitCommon {
     const GRAVITY: f64 = 1.0;
     const EPSILON: f64 = 1e-20;
 
-    pub fn new(ro_ref: RofizObjectRef, hp: f64, engine_power: f64, tire_friction: f64, angular_power: f64, angular_traction: f64, velocity_cap: f64, min_effective_velocity: f64) -> Self {
+    pub fn new(
+        ro_ref: RofizObjectRef, 
+        damageable: bool, 
+        hp: f64, 
+        engine_power: f64, 
+        tire_friction: f64, 
+        angular_power: f64, 
+        angular_traction: f64, 
+        velocity_cap: f64, 
+        min_effective_velocity: f64,
+    ) -> Self {
         Self {
             ro_ref,
             engine_power,
@@ -112,6 +123,7 @@ impl StandardUnitCommon {
             prev_position: None,
             prev_desired_movement: None,
 
+            damageable,
             max_hp: hp,
             hp,
             last_damaged_time: -100.0,
@@ -402,7 +414,7 @@ impl StandardUnitCommon {
             panic!("damage < 0. Expected positive damage.");
         }
         
-        if damage == 0.0 {
+        if !self.damageable || damage == 0.0 {
             return TakeDamageResponse {
                 dead: false,
                 damage_taken: 0.0,
