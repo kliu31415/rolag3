@@ -31,7 +31,7 @@ impl Direction {
             Direction::Up => Direction::Down,
             Direction::Right => Direction::Left,
             Direction::Down => Direction::Up,
-            Direction::Left => Direction::Left,
+            Direction::Left => Direction::Right,
         }
     }
 }
@@ -147,8 +147,8 @@ impl RoomConnection {
     pub fn new(ctx: &mut NewRoomObjectContext, rci: RoomConnectionInfo) -> Self {
         let md = RoomObjectMetadata::new(ctx, RoomObjectType::Other);
         let shape = match rci.direction {
-            Direction::Up | Direction::Down => Shape::of_rect(Rect::new(rci.x as f32, rci.y as f32, 3.0, 1.0)),
-            Direction::Left | Direction::Right => Shape::of_rect(Rect::new(rci.x as f32, rci.y as f32, 1.0, 3.0)),
+            Direction::Up | Direction::Down => Shape::of_rect(Rect::new((rci.x - 1) as f32, rci.y as f32, 3.0, 1.0)),
+            Direction::Left | Direction::Right => Shape::of_rect(Rect::new(rci.x as f32, (rci.y - 1) as f32, 1.0, 3.0)),
         };
         let xform = Transformation::new(0.0, 0.0, 0.0);
         let ro_wall = ctx.add_nonspectral_unit(md.get_ref(), Hitbox::new(xform, shape));

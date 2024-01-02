@@ -244,10 +244,10 @@ impl Player {
     pub fn move_rooms(&mut self, new_room_rofiz: &mut RofizState, mr: MoveRooms) {
         let (x, y) = match mr {
             MoveRooms::Connection(rci) => match rci.direction {
-                Direction::Up => (rci.connects_to_x as f32, rci.connects_to_y as f32 - 0.0001 - 0.5 * Self::PLAYER_S),
-                Direction::Right => (rci.connects_to_x as f32 + 1.0001 + 0.5 * Self::PLAYER_S, rci.connects_to_y as f32),
-                Direction::Down => (rci.connects_to_x as f32, rci.connects_to_y as f32 + 1.0001 + 0.5 * Self::PLAYER_S),
-                Direction::Left => (rci.connects_to_x as f32 - 0.0001 - 0.5 * Self::PLAYER_S, rci.connects_to_y as f32),
+                Direction::Up => (rci.connects_to_x as f32 + 0.5, rci.connects_to_y as f32 - 0.0001 - 0.5 * Self::PLAYER_S),
+                Direction::Right => (rci.connects_to_x as f32 + 1.0001 + 0.5 * Self::PLAYER_S, rci.connects_to_y as f32 + 0.5),
+                Direction::Down => (rci.connects_to_x as f32 + 0.5, rci.connects_to_y as f32 + 1.0001 + 0.5 * Self::PLAYER_S),
+                Direction::Left => (rci.connects_to_x as f32 - 0.0001 - 0.5 * Self::PLAYER_S, rci.connects_to_y as f32 + 0.5),
             },
             MoveRooms::Teleport { x, y } => (x as f32, y as f32),
         };

@@ -34,7 +34,8 @@ impl RoomObject for BasicWall {
                 if x < 0 || y < 0 || x>=room_w || y>=room_h {
                     continue;
                 }
-                if room_tiles[x as usize][y as usize] != RoomTile::Wall {
+                let rt = room_tiles[x as usize][y as usize];
+                if rt != RoomTile::Wall && rt != RoomTile::NotInRoom {
                     wall_faces_open_area_at[(dx+1) as usize][(dy+1) as usize] = true;
                 }
             }
