@@ -231,7 +231,8 @@ impl StandardUnit1Builder {
             self.angular_power, 
             self.angular_traction, 
             100.0, 
-            2.0);
+            2.0,
+            0.2);
         
         let handle_collision_fn = match self.handle_collision_logic {
             HandleCollisionLogic::Nop => Box::new(handle_collision_nop),

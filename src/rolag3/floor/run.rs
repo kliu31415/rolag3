@@ -19,7 +19,7 @@ pub struct RunFloorContext<'a> {
 
 pub fn run_floor_frame(mut ctx: RunFloorContext) {
     let tick_length = ctx.frame_length / (ctx.ticks_per_frame as f64);
-    assert!(tick_length < 0.002, "tick_length({}) is too small, which may cause issues with Rofiz", tick_length);
+    assert!(tick_length < 0.002, "tick_length({}) is too large, which may cause issues with Rofiz", tick_length);
     let next_mouse_x = ctx.player_input.mouse_x;
     let next_mouse_y = ctx.player_input.mouse_y;
     for i in 0 .. ctx.ticks_per_frame {

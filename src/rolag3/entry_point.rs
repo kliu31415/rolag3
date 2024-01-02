@@ -152,7 +152,7 @@ impl Rolag3EventHandler {
         let mut frame_length = 0.01;
         if self.frame_timestamps.len() >= 2 {
             frame_length = self.frame_timestamps.back().unwrap() - self.frame_timestamps[self.frame_timestamps.len()-2];
-            frame_length = f64::min(frame_length, 0.035);
+            frame_length = f64::min(frame_length, 0.018);
         }
 
         let player_position = self.floor.get_player_center();
@@ -176,7 +176,7 @@ impl Rolag3EventHandler {
         }
 
         let run_floor_ctx = RunFloorContext {
-            ticks_per_frame: 20,
+            ticks_per_frame: 10,
             frame_length,
             floor: &mut self.floor,
             player_input: PlayerInput {

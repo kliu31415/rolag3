@@ -41,6 +41,7 @@ pub struct StandardUnitCommon {
     angular_traction: f64,
     velocity_cap: f64, // prevents accel tiles from making the player too fast
     min_effective_velocity: f64, // determines how much force is applied at rest and low velocities
+    min_effective_angular_velocity: f64, // determines how much force is applied at rest and low velocities
 
     velocity_x: f64,
     velocity_y: f64,
@@ -100,6 +101,7 @@ impl StandardUnitCommon {
         angular_traction: f64, 
         velocity_cap: f64, 
         min_effective_velocity: f64,
+        min_effective_angular_velocity: f64,
     ) -> Self {
         Self {
             ro_ref,
@@ -112,6 +114,7 @@ impl StandardUnitCommon {
             velocity_theta: 0.0,
             velocity_cap,
             min_effective_velocity,
+            min_effective_angular_velocity,
 
             act1_started: false,
             unit_tick_length: 0.0,
@@ -248,6 +251,7 @@ impl StandardUnitCommon {
 
         let tick_length = self.unit_tick_length;
         let min_velocity = self.min_effective_velocity;
+        let min_angular_velocity = self.min_effective_angular_velocity;
 
         match self.translate {
             TranslateMove::Nop => {},
@@ -285,7 +289,7 @@ impl StandardUnitCommon {
                 if f64::abs(atheta) < Self::EPSILON {
                     return;
                 }
-                let f_angular = self.angular_traction * self.angular_power / f64::max(self.velocity_theta, min_velocity);
+                let f_angular = self.angular_traction * self.angular_power / f64::max(self.velocity_theta, min_angular_velocity);
                 let accel = tick_length * f_angular / Self::MASS;
                 self.velocity_theta += accel;
             })(),
@@ -295,7 +299,7 @@ impl StandardUnitCommon {
                     return;
                 }
         
-                let f_angular = self.angular_traction * self.angular_power / f64::max(self.velocity_theta, min_velocity);
+                let f_angular = self.angular_traction * self.angular_power / f64::max(self.velocity_theta, min_angular_velocity);
                 self.decelerate_theta(tick_length, f_angular);
             })(),
             RotateMove::ResetVelocity => {
@@ -334,6 +338,7 @@ impl StandardUnitCommon {
         // Friction is computed with the post-acceleration velocity. This should only make a small difference in
         // practice, but I'm just making a note in case there are bugs.
         self.decelerate_xy(tick_length, self.tire_friction * Self::MASS * Self::GRAVITY);
+        self.decelerate_theta(tick_length, self.angular_traction * Self::MASS * Self::GRAVITY);
 
         // we have to cap the underlying velocity. We can't just compute a separate scaled velocity while leaving the
         // underlying the same. The reason is because if the player's velocity is 10000, and we compute a separate
