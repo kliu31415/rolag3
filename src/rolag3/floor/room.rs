@@ -73,6 +73,9 @@ impl Room {
                 // in Rofiz with Rc=1 (1 internal ref, 0 external refs), which causes a panic.
                 self.rofiz.remove_wall_at(x, y, expected);
                 self.tiles[x as usize][y as usize] = RoomTile::Connection;
+                let mut nfo_ctx = NewRoomObjectContext::new(&mut self.rofiz, room_object_id_counter, 0.0, rng);
+                let ground = new_ground1(&mut nfo_ctx, Color::new(0.02, 0.0, 0.0, 1.0), x, y, 1, 1);
+                self.room_objects.add(Rc::new(RefCell::new(ground)));
             }
         }
         self.minimap_texture = Some(Self::make_minimap_texture(renderer, &self.tiles));
