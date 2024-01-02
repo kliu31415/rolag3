@@ -10,10 +10,30 @@ pub struct RoomConnection {
 
 #[derive(Debug, Copy, Clone)]
 pub enum Direction {
-    _Up,
+    Up,
     Right,
-    _Down,
+    Down,
     Left
+}
+
+impl Direction {
+    pub fn to_dxy(&self) -> (i32, i32) {
+        match self {
+            Direction::Up => (0, -1),
+            Direction::Right => (1, 0),
+            Direction::Down => (0, 1),
+            Direction::Left => (-1, 0),
+        }
+    }
+
+    pub fn inverted(&self) -> Self {
+        match self {
+            Direction::Up => Direction::Down,
+            Direction::Right => Direction::Left,
+            Direction::Down => Direction::Up,
+            Direction::Left => Direction::Left,
+        }
+    }
 }
 
 impl RoomObject for RoomConnection {
@@ -29,10 +49,10 @@ impl RoomObject for RoomConnection {
                     assert!(self.ro_connection.is_none());
                     self.ro_wall = None;
                     let shape = match self.rci.direction {
-                        Direction::_Up => Shape::of_rect(Rect::new(self.rci.x as f32, self.rci.y as f32, 3.0, 0.01)),
-                        Direction::Right => Shape::of_rect(Rect::new(self.rci.x as f32 + 0.99, self.rci.y as f32, 0.01, 3.0)),
-                        Direction::_Down => Shape::of_rect(Rect::new(self.rci.x as f32, self.rci.y as f32 + 0.99, 3.0, 0.01)),
-                        Direction::Left => Shape::of_rect(Rect::new(self.rci.x as f32, self.rci.y as f32, 0.01, 3.0)),
+                        Direction::Up => Shape::of_rect(Rect::new(self.rci.x as f32 - 1.0, self.rci.y as f32, 3.0, 0.01)),
+                        Direction::Right => Shape::of_rect(Rect::new(self.rci.x as f32 + 0.99, self.rci.y as f32 - 1.0, 0.01, 3.0)),
+                        Direction::Down => Shape::of_rect(Rect::new(self.rci.x as f32 - 1.0, self.rci.y as f32 + 0.99, 3.0, 0.01)),
+                        Direction::Left => Shape::of_rect(Rect::new(self.rci.x as f32, self.rci.y as f32 - 1.0, 0.01, 3.0)),
                     };
                     let xform = Transformation::new(0.0, 0.0, 0.0);
                     self.ro_connection = Some(ctx.get_rofiz().add_nonspectral_unit(self.md.get_ref(), Hitbox::new(xform, shape)));
@@ -47,29 +67,29 @@ impl RoomObject for RoomConnection {
             None => {
                 let color = Color::new(0.5, 0.2, 0.0, 1.0);
                 let vertexes = match self.rci.direction {
-                    Direction::Left => [
-                        Point::new(self.rci.x as f32, self.rci.y as f32),
-                        Point::new((self.rci.x + 1) as f32, self.rci.y as f32),
-                        Point::new((self.rci.x + 1) as f32, (self.rci.y + 3) as f32),
-                        Point::new(self.rci.x as f32, (self.rci.y + 3) as f32),
-                    ],
-                    Direction::_Up => [
-                        Point::new(self.rci.x as f32, self.rci.y as f32),
-                        Point::new((self.rci.x + 3) as f32, self.rci.y as f32),
-                        Point::new((self.rci.x + 3) as f32, (self.rci.y + 1) as f32),
-                        Point::new(self.rci.x as f32, (self.rci.y + 1) as f32),
+                    Direction::Up => [
+                        Point::new((self.rci.x - 1) as f32, self.rci.y as f32),
+                        Point::new((self.rci.x + 2) as f32, self.rci.y as f32),
+                        Point::new((self.rci.x + 2) as f32, (self.rci.y + 1) as f32),
+                        Point::new((self.rci.x - 1) as f32, (self.rci.y + 1) as f32),
                     ],
                     Direction::Right => [
-                        Point::new(self.rci.x as f32, self.rci.y as f32),
-                        Point::new((self.rci.x + 1) as f32, self.rci.y as f32),
-                        Point::new((self.rci.x + 1) as f32, (self.rci.y + 3) as f32),
-                        Point::new(self.rci.x as f32, (self.rci.y + 3) as f32),
+                        Point::new(self.rci.x as f32, (self.rci.y - 1) as f32),
+                        Point::new((self.rci.x + 1) as f32, (self.rci.y - 1) as f32),
+                        Point::new((self.rci.x + 1) as f32, (self.rci.y + 2) as f32),
+                        Point::new(self.rci.x as f32, (self.rci.y + 2) as f32),
                     ],
-                    Direction::_Down => [
-                        Point::new(self.rci.x as f32, self.rci.y as f32),
-                        Point::new((self.rci.x + 3) as f32, self.rci.y as f32),
-                        Point::new((self.rci.x + 3) as f32, (self.rci.y + 1) as f32),
-                        Point::new(self.rci.x as f32, (self.rci.y + 1) as f32),
+                    Direction::Down => [
+                        Point::new((self.rci.x - 1) as f32, self.rci.y as f32),
+                        Point::new((self.rci.x + 2) as f32, self.rci.y as f32),
+                        Point::new((self.rci.x + 2) as f32, (self.rci.y + 1) as f32),
+                        Point::new((self.rci.x - 1) as f32, (self.rci.y + 1) as f32),
+                    ],
+                    Direction::Left => [
+                        Point::new(self.rci.x as f32, (self.rci.y - 1) as f32),
+                        Point::new((self.rci.x + 1) as f32, (self.rci.y - 1) as f32),
+                        Point::new((self.rci.x + 1) as f32, (self.rci.y + 2) as f32),
+                        Point::new(self.rci.x as f32, (self.rci.y + 2) as f32),
                     ],
                 };
                 let dop = ctx.do_quad_fan(color, vertexes);
@@ -79,29 +99,29 @@ impl RoomObject for RoomConnection {
                 let color_opaque = Color::new(0.0, 0.0, 0.0, 1.0);
                 let color_transparent = Color::new(0.0, 0.0, 0.0, 0.0);
                 let vertexes = match self.rci.direction {
-                    Direction::Left => [
-                        (Point::new(self.rci.x as f32, self.rci.y as f32), color_opaque),
-                        (Point::new((self.rci.x + 1) as f32, self.rci.y as f32), color_transparent),
-                        (Point::new((self.rci.x + 1) as f32, (self.rci.y + 3) as f32), color_transparent),
-                        (Point::new(self.rci.x as f32, (self.rci.y + 3) as f32), color_opaque),
-                    ],
-                    Direction::_Up => [
-                        (Point::new(self.rci.x as f32, self.rci.y as f32), color_opaque),
-                        (Point::new((self.rci.x + 3) as f32, self.rci.y as f32), color_opaque),
-                        (Point::new((self.rci.x + 3) as f32, (self.rci.y + 1) as f32), color_transparent),
-                        (Point::new(self.rci.x as f32, (self.rci.y + 1) as f32), color_transparent),
+                    Direction::Up => [
+                        (Point::new((self.rci.x - 1) as f32, self.rci.y as f32), color_opaque),
+                        (Point::new((self.rci.x + 2) as f32, self.rci.y as f32), color_opaque),
+                        (Point::new((self.rci.x + 2) as f32, (self.rci.y + 1) as f32), color_transparent),
+                        (Point::new((self.rci.x - 1) as f32, (self.rci.y + 1) as f32), color_transparent),
                     ],
                     Direction::Right => [
-                        (Point::new(self.rci.x as f32, self.rci.y as f32), color_transparent),
-                        (Point::new((self.rci.x + 1) as f32, self.rci.y as f32), color_opaque),
-                        (Point::new((self.rci.x + 1) as f32, (self.rci.y + 3) as f32), color_opaque),
-                        (Point::new(self.rci.x as f32, (self.rci.y + 3) as f32), color_transparent),
+                        (Point::new(self.rci.x as f32, (self.rci.y - 1) as f32), color_transparent),
+                        (Point::new((self.rci.x + 1) as f32, (self.rci.y - 1) as f32), color_opaque),
+                        (Point::new((self.rci.x + 1) as f32, (self.rci.y + 2) as f32), color_opaque),
+                        (Point::new(self.rci.x as f32, (self.rci.y + 2) as f32), color_transparent),
                     ],
-                    Direction::_Down => [
-                        (Point::new(self.rci.x as f32, self.rci.y as f32), color_transparent),
-                        (Point::new((self.rci.x + 3) as f32, self.rci.y as f32), color_transparent),
-                        (Point::new((self.rci.x + 3) as f32, (self.rci.y + 1) as f32), color_opaque),
-                        (Point::new(self.rci.x as f32, (self.rci.y + 1) as f32), color_opaque),
+                    Direction::Down => [
+                        (Point::new((self.rci.x - 1) as f32, self.rci.y as f32), color_transparent),
+                        (Point::new((self.rci.x + 2) as f32, self.rci.y as f32), color_transparent),
+                        (Point::new((self.rci.x + 2) as f32, (self.rci.y + 1) as f32), color_opaque),
+                        (Point::new((self.rci.x - 1) as f32, (self.rci.y + 1) as f32), color_opaque),
+                    ],
+                    Direction::Left => [
+                        (Point::new(self.rci.x as f32, (self.rci.y - 1) as f32), color_opaque),
+                        (Point::new((self.rci.x + 1) as f32, (self.rci.y - 1) as f32), color_transparent),
+                        (Point::new((self.rci.x + 1) as f32, (self.rci.y + 2) as f32), color_transparent),
+                        (Point::new(self.rci.x as f32, (self.rci.y + 2) as f32), color_opaque),
                     ],
                 };
                 let dop = ctx.do_quad_fan_multicolor(vertexes);
@@ -124,12 +144,10 @@ impl RoomObject for RoomConnection {
 }
 
 impl RoomConnection {
-    pub const WIDTH: f32 = 3.0;
-
     pub fn new(ctx: &mut NewRoomObjectContext, rci: RoomConnectionInfo) -> Self {
         let md = RoomObjectMetadata::new(ctx, RoomObjectType::Other);
         let shape = match rci.direction {
-            Direction::_Up | Direction::_Down => Shape::of_rect(Rect::new(rci.x as f32, rci.y as f32, 3.0, 1.0)),
+            Direction::Up | Direction::Down => Shape::of_rect(Rect::new(rci.x as f32, rci.y as f32, 3.0, 1.0)),
             Direction::Left | Direction::Right => Shape::of_rect(Rect::new(rci.x as f32, rci.y as f32, 1.0, 3.0)),
         };
         let xform = Transformation::new(0.0, 0.0, 0.0);
@@ -144,8 +162,8 @@ impl RoomConnection {
 
     pub fn get_occupied_coords(x: u32, y: u32, direction: Direction) -> [(u32, u32); 3] {
         match direction {
-            Direction::_Up | Direction::_Down => [(x, y), (x+1, y), (x+2, y)],
-            Direction::Left | Direction::Right => [(x, y), (x, y+1), (x, y+2)],
+            Direction::Up | Direction::Down => [(x-1, y), (x, y), (x+1, y)],
+            Direction::Left | Direction::Right => [(x, y-1), (x, y), (x, y+1)],
         }
     }
 }

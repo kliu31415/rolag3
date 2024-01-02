@@ -18,9 +18,10 @@ pub struct Room {
     pub room_time: f64,
     pub room_cleared_at_time: Option<f64>,
     pub minimap_texture: Option<TmdRef>,
-    pub connection_candidates: Vec<(u32, u32)>,
+    pub connection_candidates: Vec<(u32, u32, Direction)>,
 
     pub ttc: f64,
+    pub is_hallway: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -63,12 +64,13 @@ impl Room {
 
         for c in connections.iter() {
             for (x, y) in RoomConnection::get_occupied_coords(c.x, c.y, c.direction) {
-                self.room_objects.remove_wall_at(x, y);
+                let expected = if self.is_hallway {0..1} else {1..2};
+                self.room_objects.remove_wall_at(x, y, expected.clone());
                 // we have to explicitly remove the basic wall from Rofiz. Rofiz has a built-in assert when running
                 // that ensures all Rofiz objects corresponding to basic walls have Rc > 1, because basic walls 
                 // can never be deleted after the floor starts. If we don't explicitly remove the wall, it'll remain
-                // in Rofiz with Rc=1, which causes a panic.
-                self.rofiz.remove_wall_at(x, y);
+                // in Rofiz with Rc=1 (1 internal ref, 0 external refs), which causes a panic.
+                self.rofiz.remove_wall_at(x, y, expected);
                 self.tiles[x as usize][y as usize] = RoomTile::Connection;
             }
         }
@@ -165,6 +167,7 @@ impl Room {
             minimap_texture: None,
             ttc: 50.0,
             connection_candidates: Vec::new(),
+            is_hallway: false,
         }
     }
 
@@ -210,6 +213,7 @@ impl Room {
             minimap_texture: None,
             ttc: 20.0,
             connection_candidates: Vec::new(),
+            is_hallway: false,
         }
     }
 

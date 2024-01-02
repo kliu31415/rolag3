@@ -56,6 +56,7 @@ pub fn make_room_empty1(rng: &mut StdRng, room_object_id_counter: &mut RoomObjec
             minimap_texture: None,
             ttc,
             connection_candidates: all_borders_as_connection_candidates(width, height),
+            is_hallway: false,
         },
     }
 }

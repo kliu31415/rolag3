@@ -1,4 +1,4 @@
-use std::collections::{VecDeque, HashSet};
+use std::collections::{VecDeque, HashSet, HashMap};
 
 use image::ImageBuffer;
 use rand::Rng;
@@ -6,6 +6,7 @@ use rand::{distributions::WeightedIndex, rngs::StdRng};
 use rand::distributions::Distribution;
 
 use crate::rolag3::floor::floorgen::steiner::{GraphEdge, compute_approx_steiner_tree};
+use crate::rolag3::floor::room::RoomConnectionInfo;
 use crate::rolag3::floor::room_object::room_object_def::RoomObjectId;
 use crate::rolag3::floor::rooms::hallway1::{HallwayGridCell, make_hallway1};
 use crate::rolag3::floor::{floor_def::RoomId, room::Room};
@@ -56,6 +57,7 @@ pub struct GenFloorResult {
     pub rooms: Vec<Room>,
     pub floor_w: u32,
     pub floor_h: u32,
+    pub connections: Vec<Vec<RoomConnectionInfo>>,
 }
 
 const HALLWAY_DIST: i32 = 5;
@@ -96,7 +98,7 @@ pub fn gen_floor(mut args: GenFloorArgs) -> GenFloorResult {
 
     let mut rooms = pick_rooms(&mut args, starting_room, normal_room_candidates);
 
-    let grid = place_rooms(&mut args, &mut rooms);
+    let mut grid = place_rooms(&mut args, &mut rooms);
 
     if let Some(ref path) = save_debug_path {
         let img = ImageBuffer::from_fn(args.grid_w, args.grid_h, |x, y| {
@@ -122,7 +124,7 @@ pub fn gen_floor(mut args: GenFloorArgs) -> GenFloorResult {
     let (hallway_grid, mst_vertexes, graph_edges) = make_hallway_candidate_grid(&mut args, &rooms, &grid);
 
     if let Some(ref path) = save_debug_path {
-        let req_set = mst_vertexes.iter().map(|v| *v).collect::<HashSet<_>>();
+        let req_set = mst_vertexes.keys().map(|v| *v).collect::<HashSet<_>>();
         let img = ImageBuffer::from_fn(args.grid_w, args.grid_h, |x, y| {
             if req_set.contains(&(x, y)) {
                 image::Rgb([0u8, 255u8, 255u8]) 
@@ -137,11 +139,13 @@ pub fn gen_floor(mut args: GenFloorArgs) -> GenFloorResult {
     }
 
     log::trace!("start compute steiner tree");
-    let mut steiner_tree = compute_approx_steiner_tree(&mst_vertexes, &graph_edges);
+    let mut steiner_tree = compute_approx_steiner_tree(&mst_vertexes.keys().cloned().collect(), &graph_edges);
     log::trace!("end compute steiner tree");
     // remove steiner tree edges (A, B) where A and B are both room cells. These are dummy edges used to simulate the
     // fact that as long as one room cell is in the steiner tree, the entire room is.
-    steiner_tree.0.retain(|((x1, y1), (x2, y2))| !matches!(grid[*x1 as usize][*y1 as usize], FloorGenGridCell::Room(_)) || !matches!(grid[*x2 as usize][*y2 as usize], FloorGenGridCell::Room(_)));
+    steiner_tree.0.retain(|((x1, y1), (x2, y2))| 
+        !matches!(grid[*x1 as usize][*y1 as usize], FloorGenGridCell::Room(_)) 
+        || !matches!(grid[*x2 as usize][*y2 as usize], FloorGenGridCell::Room(_)));
     
     if let Some(ref path) = save_debug_path {
         let mut st_set = HashSet::new();
@@ -149,7 +153,7 @@ pub fn gen_floor(mut args: GenFloorArgs) -> GenFloorResult {
             st_set.insert(*a);
             st_set.insert(*b);
         });
-        let req_set = mst_vertexes.iter().map(|v| *v).collect::<HashSet<_>>();
+        let req_set = mst_vertexes.keys().map(|v| *v).collect::<HashSet<_>>();
         let img = ImageBuffer::from_fn(args.grid_w, args.grid_h, |x, y| {
             if req_set.contains(&(x, y)) {
                 image::Rgb([0u8, 255u8, 255u8]) 
@@ -177,7 +181,7 @@ pub fn gen_floor(mut args: GenFloorArgs) -> GenFloorResult {
             st_set.insert(*a);
             st_set.insert(*b);
         });
-        let req_set = mst_vertexes.iter().map(|v| *v).collect::<HashSet<_>>();
+        let req_set = mst_vertexes.keys().map(|v| *v).collect::<HashSet<_>>();
         let img = ImageBuffer::from_fn(args.grid_w, args.grid_h, |x, y| {
             if req_set.contains(&(x, y)) {
                 image::Rgb([0u8, 255u8, 255u8]) 
@@ -199,13 +203,82 @@ pub fn gen_floor(mut args: GenFloorArgs) -> GenFloorResult {
         img.save(format!("{}/floor-final.png", path)).expect("unable to save floor finalized image");
     }
 
+    for x in 0..smeared_steiner_hallway_grid.len() {
+        for y in 0..smeared_steiner_hallway_grid[x].len() {
+            match smeared_steiner_hallway_grid[x][y] {
+                HallwayGridCell::Empty => {},
+                HallwayGridCell::Hallway | HallwayGridCell::Wall => {
+                    assert!(!matches!(grid[x][y], FloorGenGridCell::Room(_)));
+                    grid[x][y] = FloorGenGridCell::Room(rooms.len());
+                }
+            }
+        }
+    }
     let hallway = make_hallway1(&smeared_steiner_hallway_grid, &mut args.rng, &mut args.room_object_id_counter);
     rooms.push(hallway);
+
+    let st_vertexes = steiner_tree.0.iter()
+        .flat_map(|(a, b)| [*a, *b]);
+    let mut rci = vec![Vec::new(); rooms.len()];
+    for k in st_vertexes {
+        if let Some(v) = mst_vertexes.get(&k) {
+            let FloorGenGridCell::Room(r1id) = grid[k.0 as usize][k.1 as usize] else {
+                panic!("floor gen grid[{}][{}]={:?}, but expected room as r2id", 
+                k.0 as usize, 
+                k.1 as usize, 
+                grid[k.0 as usize][k.1 as usize]);
+            };
+            assert_eq!(*v, r1id, "Req vertexes map and grid disagree on room ID");
+            let x1 = k.0 - rooms[r1id].upper_left_x;
+            let y1 = k.1 - rooms[r1id].upper_left_y;
+            let dir1_array = rooms[r1id].connection_candidates.iter()
+                .filter(|(x, y, _)| *x==x1 && *y==y1)
+                .map(|(_, _, d)| *d)
+                .collect::<Vec<_>>();
+            assert_eq!(dir1_array.len(), 1);
+            let dir1 = dir1_array[0];
+            let floor_x2 = k.0 as i32 + dir1.to_dxy().0;
+            let floor_y2 = k.1 as i32 + dir1.to_dxy().1;
+            assert!(floor_x2 >= 0);
+            assert!(floor_y2 >= 0);
+            let FloorGenGridCell::Room(r2id) = grid[floor_x2 as usize][floor_y2 as usize] else {
+                panic!("floor gen grid[{}][{}]={:?}, but expected room as r2id", 
+                    floor_x2, 
+                    floor_y2, 
+                    grid[floor_x2 as usize][floor_y2 as usize]);
+            };
+            let room_x2 = floor_x2 - (rooms[r2id].upper_left_x as i32);
+            let room_y2 = floor_y2 - (rooms[r2id].upper_left_y as i32);
+            assert!(room_x2 >= 0);
+            assert!(room_y2 >= 0);
+
+            let rci1 = RoomConnectionInfo {
+                x: x1,
+                y: y1,
+                direction: dir1,
+                connects_to_room_id: r2id,
+                connects_to_x: room_x2 as u32,
+                connects_to_y: room_y2 as u32,
+            };
+
+            let rci2 = RoomConnectionInfo {
+                x: room_x2 as u32,
+                y: room_y2 as u32,
+                direction: dir1.inverted(),
+                connects_to_room_id: r1id,
+                connects_to_x: x1,
+                connects_to_y: y1,
+            };
+            rci[r1id].push(rci1);
+            rci[r2id].push(rci2);
+        }
+    }
 
     GenFloorResult {
         rooms,
         floor_w: args.grid_w, // TODO: use the smallest bounding box for floor_w/floor_h
         floor_h: args.grid_h,
+        connections: rci,
     }
 }
 
@@ -413,7 +486,7 @@ fn make_hallway_candidate_grid(
     args: &mut GenFloorArgs, 
     rooms: &Vec<Room>, 
     grid: &Vec<Vec<FloorGenGridCell>>
-) -> (Vec<Vec<bool>>, Vec<(u32, u32)>, Vec<GraphEdge<(u32, u32)>>) {
+) -> (Vec<Vec<bool>>, HashMap<(u32, u32), RoomId>, Vec<GraphEdge<(u32, u32)>>) {
     let mut q = VecDeque::new();
     let mut dist = vec![vec![None; args.grid_h as usize]; args.grid_w as usize];
     for i in 0..(args.grid_w as i32) {
@@ -446,9 +519,9 @@ fn make_hallway_candidate_grid(
         }
     }
 
-    // add some connections from each room to the surrounding hallways
+    // add some candidate connections from each room to the surrounding hallways
     let mut graph_edges = Vec::new();
-    let mut mst_vertexes = Vec::new();
+    let mut req_vertexes_to_room_id = HashMap::new();
     for (i, room) in rooms.iter().enumerate() {
         let mut connections = Vec::new();
         // these assertions are to be extra-safe. They should never trigger, because room w/h is checked for earlier.
@@ -459,18 +532,18 @@ fn make_hallway_candidate_grid(
         loop {
             let candidate = candidates[args.rng.gen_range(0..candidates.len())];
             connections.push(candidate);
-            candidates.retain(|(x, y)| candidate.0.abs_diff(*x) >= 7 || candidate.1.abs_diff(*y) >= 7);
+            candidates.retain(|(x, y, _)| candidate.0.abs_diff(*x) >= 7 || candidate.1.abs_diff(*y) >= 7);
             if candidates.is_empty() {
                 break;
             }
-            if connections.len() >= 6 { // magic number of 6 connections per room
+            if connections.len() >= 6 { // magic number of 6 connection candidates per room
                 break;
             }
         }
     
         assert!(!connections.is_empty(), "room {} has no connections to hallways and is isolated", i);
 
-        for (cx, cy) in connections.iter() {
+        for (cx, cy, _) in connections.iter() {
             let (dx, dy) = if *cx == 0 { // Left
                 (-1, 0)
             } else if *cy == 0 { // Up
@@ -482,14 +555,16 @@ fn make_hallway_candidate_grid(
             } else {
                 panic!("room connection ({}, {}) is not in any cardinal direction", *cx, *cy);
             };
-            mst_vertexes.push((room.upper_left_x + cx, room.upper_left_y + cy));
+            let key = (room.upper_left_x + cx, room.upper_left_y + cy);
+            assert!(!req_vertexes_to_room_id.contains_key(&key), "cannot assign the same connection tile to multiple rooms");
+            req_vertexes_to_room_id.insert(key, i);
             (0..=HALLWAY_DIST).into_iter().for_each(|i| {
                 let x = (room.upper_left_x + cx) as i32 + i * dx;
                 let y = (room.upper_left_y + cy) as i32 + i * dy;
                 hallway_grid[x as usize][y as usize] = true;
             });
         }
-        let world_coord_connections = connections.iter().map(|(x, y)| (x + room.upper_left_x, y + room.upper_left_y));
+        let world_coord_connections = connections.iter().map(|(x, y, _)| (x + room.upper_left_x, y + room.upper_left_y));
         for ((x1, y1), (x2, y2)) in world_coord_connections.clone().skip(1).zip(world_coord_connections) {
             // add 0-cost edges between all connection tiles in the same room.
             // Only one connection vertex per room needs to be added to the Steiner tree. 0-cost edges simulates that.
@@ -528,7 +603,7 @@ fn make_hallway_candidate_grid(
         }
     }
 
-    (hallway_grid, mst_vertexes, graph_edges)
+    (hallway_grid, req_vertexes_to_room_id, graph_edges)
 }
 
 #[inline(never)]

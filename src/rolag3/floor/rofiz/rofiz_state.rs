@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{sync::Arc, ops::Range};
 
 use crate::{rolag3::floor::{room_object::room_object_def::RoomObjectRef, rofiz::rofiz_object::RofizObjectMovement}, geometry::shape::{Shape, BoundingBox}};
 
@@ -106,7 +106,7 @@ impl RofizState {
         }
     }
 
-    pub fn remove_wall_at(&mut self, x: u32, y: u32) {
+    pub fn remove_wall_at(&mut self, x: u32, y: u32, expected: Range<usize>) {
         assert!(!self.floor_started, "cannot remove basic wall after Rofiz floor started");
         let old_len = self.basic_walls.len();
         self.basic_walls.retain(|bw_ref| {
@@ -118,7 +118,8 @@ impl RofizState {
             return true;
         });
         let new_len = self.basic_walls.len();
-        assert!(new_len+1 == old_len, "expected to remove one Rofiz wall at (x, y) = ({}, {}). old_len={}, new_len={}", x, y, old_len, new_len);
+        let diff = old_len - new_len;
+        assert!(expected.contains(&diff), "expected to remove {:?} Rofiz wall at (x, y) = ({}, {}). old_len={}, new_len={}", expected, x, y, old_len, new_len);
     }
 
     pub fn add_basic_wall(&mut self, floor_object_id: RoomObjectRef, x: u32, y: u32) -> RofizObjectRef {

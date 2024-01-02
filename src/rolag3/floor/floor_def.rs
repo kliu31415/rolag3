@@ -94,11 +94,14 @@ impl Floor {
             save_debug_data: true,
         };
         let mut gf_result = gen_floor(gf_args);
-        gf_result.rooms.iter_mut().for_each(|room| room.finalize_with_connections(renderer, vec![], rng, &mut room_object_id_counter));
+        //gf_result.rooms.iter_mut().for_each(|room| room.finalize_with_connections(renderer, vec![], rng, &mut room_object_id_counter));
         let mut rooms = gf_result.rooms.drain(..).enumerate().collect::<HashMap<_, _>>();
         assert!(rooms.len() >= 1);
         player.borrow_mut().move_rooms(&mut rooms.get_mut(&0).unwrap().rofiz, MoveRooms::Teleport { x: 3.0, y: 3.0 });
         rooms.get_mut(&0).unwrap().room_objects.add(player.clone());
+        gf_result.connections.drain(..).enumerate().for_each(|(rid, rci)| {
+            rooms.get_mut(&rid).unwrap().finalize_with_connections(renderer, rci, rng, &mut room_object_id_counter);
+        });
 
         Self {
             rooms,

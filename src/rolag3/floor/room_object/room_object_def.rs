@@ -193,7 +193,7 @@ impl RoomObjectsByType {
         self.room_objects.insert(ref_, obj);
     }
 
-    fn remove_wall_at(&mut self, x: u32, y: u32) {
+    fn remove_wall_at(&mut self, x: u32, y: u32, expected: Range<usize>) {
         let to_remove = self.room_objects.range_mut(range_all_of_type(RoomObjectType::Wall)).filter_map(|(k, v)| {
             let wall_loc = v.as_ref().borrow().get_as_wall_location();
             match wall_loc {
@@ -206,8 +206,9 @@ impl RoomObjectsByType {
                 None => None,
             }
         }).collect::<Vec<_>>();
-        assert!(to_remove.len() == 1, "Tried to remove wall at (x, y) = ({}, {}) from RoomObjectCollection. 
-            Expected to remove one object. Got {} objects", x, y, to_remove.len());
+        assert!(expected.contains(&to_remove.len()), 
+            "Tried to remove wall at (x, y) = ({}, {}) from RoomObjectCollection. 
+            Expected to remove {:?} objects. Got {} objects", x, y, expected, to_remove.len());
         for id in to_remove {
             self.room_objects.remove(&id).expect("unable to remove RoomObject");
         }
@@ -271,8 +272,8 @@ impl RoomObjectCollection {
         self.room_objects_by_type.add(obj);
     }
 
-    pub fn remove_wall_at(&mut self, x: u32, y: u32) {
-        self.room_objects_by_type.remove_wall_at(x, y);
+    pub fn remove_wall_at(&mut self, x: u32, y: u32, expected: Range<usize>) {
+        self.room_objects_by_type.remove_wall_at(x, y, expected);
     }
 
     pub fn get_wall_locations(&self) -> Vec<(u32, u32)> {

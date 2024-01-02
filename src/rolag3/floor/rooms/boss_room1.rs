@@ -45,5 +45,6 @@ pub fn make_boss_room1(rng: &mut StdRng, room_object_id_counter: &mut RoomObject
         minimap_texture: None,
         ttc: 50.0,
         connection_candidates: Vec::new(),
+        is_hallway: false,
     }
 }
