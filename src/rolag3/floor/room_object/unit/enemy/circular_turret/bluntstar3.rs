@@ -5,8 +5,8 @@ use std::{rc::Rc, cell::RefCell};
 
 use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Team, Act1Response}, unit::{standard_unit1::{StandardUnit1, StandardUnit1Builder, StandardUnit1BuilderReq, SuAct1Context, SuDrawContext}, standard_unit_common::RotateMove}, damage::DamageColor, projectile::projectile2::{Proj2Shape, NewProjectile2Args}}, draw::{Color, DrawContext}, rofiz::rofiz_object::Transformation}, geometry::{shape::{Point, Shape, Vector}, star::get_blunt_star, util::get_inner_polygon}};
 
-const CIRCLE_BORDER_COLOR: Color = Color::new(0.2, 0.2, 0.2, 1.0);
-const TURRET_BORDER_COLOR: Color = Color::new(0.2, 0.2, 0.2, 1.0);
+const CIRCLE_BORDER_COLOR: Color = Color::new(0.5, 0.5, 0.5, 1.0);
+const TURRET_BORDER_COLOR: Color = Color::new(0.5, 0.5, 0.5, 1.0);
 
 const CIRCLE_BORDER_RADIUS: f32 = 1.5;
 const CIRCLE_INNER_RADIUS: f32 = 1.4;
@@ -78,7 +78,7 @@ pub fn new_circular_turret_bluntstar3(ctx: &mut NewRoomObjectContext, x: f64, y:
     StandardUnit1Builder::new(StandardUnit1BuilderReq {
         team: Team::Enemy,
         damage_color: color,
-        collision_damage: 10.0,
+        collision_damage: 0.0,
         hp: 1.0, // dummy
         engine_power: 1.0, // dummy
         tire_traction: 1.0, // dummy

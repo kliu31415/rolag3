@@ -50,6 +50,7 @@ impl RofizObjMovable {
         match self.movement {
             RofizObjectMovement::NoMove() => self.current.transformation.replace_shape_with_transformed(&mut self.temp_hitbox, &self.current.shape),
             RofizObjectMovement::Move(ref t) => (self.current.transformation.add(t)).replace_shape_with_transformed(&mut self.temp_hitbox, &self.current.shape),
+            RofizObjectMovement::_SetXform(ref t) => t.replace_shape_with_transformed(&mut self.temp_hitbox, &self.current.shape),
             RofizObjectMovement::MoveWithFallbacks(ref v) => (self.current.transformation.add(&v[0])).replace_shape_with_transformed(&mut self.temp_hitbox, &self.current.shape),
             RofizObjectMovement::NewHitbox(ref h) => h.transformation.replace_shape_with_transformed(&mut self.temp_hitbox, &h.shape), 
             RofizObjectMovement::_Delete() => panic!("there should be no rofiz objects with Delete movement. Loc 1a."),
@@ -58,6 +59,11 @@ impl RofizObjMovable {
         self.bounding_box = match self.movement {
             RofizObjectMovement::NoMove() => BoundingBox::of_shape(&self.temp_hitbox),
             RofizObjectMovement::Move(_) => {
+                let mut b = BoundingBox::of_shape(&self.initial_hitbox);
+                b.combine(&BoundingBox::of_shape(&self.temp_hitbox));
+                b
+            }
+            RofizObjectMovement::_SetXform(_) => {
                 let mut b = BoundingBox::of_shape(&self.initial_hitbox);
                 b.combine(&BoundingBox::of_shape(&self.temp_hitbox));
                 b
@@ -110,6 +116,7 @@ impl RofizObjMovable {
         match self.movement {
             RofizObjectMovement::NoMove() => {},
             RofizObjectMovement::Move(ref t) => self.current.transformation = self.current.transformation.add(t),
+            RofizObjectMovement::_SetXform(ref t) => self.current.transformation = *t,
             RofizObjectMovement::MoveWithFallbacks(ref v) => {
                 if self.fallback_idx < v.len() {
                     self.current.transformation = self.current.transformation.add(&v[self.fallback_idx]);
@@ -127,6 +134,7 @@ impl RofizObjMovable {
 pub enum RofizObjectMovement {
     NoMove(),
     Move(Transformation),
+    _SetXform(Transformation),
     MoveWithFallbacks(Vec<Transformation>),
     NewHitbox(Hitbox),
     _Delete(),

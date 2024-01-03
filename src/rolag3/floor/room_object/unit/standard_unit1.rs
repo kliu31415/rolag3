@@ -1,6 +1,6 @@
 use std::any::Any;
 
-use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, RoomObject, RoomObjectMetadata, Act1Context, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse, RoomObjectType, RoQueryUnitInfoContext, RoQueryUnitInfoResponse, RoomObjApplyOperationContext, RoomObjOperation, HcStandardUnitContext, HcStandardUnitResponse}, damage::DamageColor}, draw::DrawContext, rofiz::rofiz_object::{Transformation, Hitbox}}, geometry::shape::Shape};
+use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, RoomObject, RoomObjectMetadata, Act1Context, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse, RoomObjectType, RoQueryUnitInfoContext, RoQueryUnitInfoResponse, RoomObjApplyOperationContext, RoomObjOperation, HcStandardUnitContext, HcStandardUnitResponse}, damage::DamageColor}, draw::DrawContext, rofiz::{rofiz_object::{Transformation, Hitbox}, rofiz_state::RofizObjectRef}}, geometry::shape::Shape};
 
 use super::{Unit, standard_unit_common::StandardUnitCommon};
 
@@ -21,6 +21,7 @@ pub struct Su1Data {
     damage_color: DamageColor,
     su_common: StandardUnitCommon,
     blocks_room_clear: bool,
+    secondary_ro_refs: Vec<RofizObjectRef>
 }
 
 pub struct Su1Logic {
@@ -139,6 +140,7 @@ impl Su1Data {
             team: self.team,
             damage_color: self.damage_color,
             su_common: &mut self.su_common,
+            secondary_ro_refs: &mut self.secondary_ro_refs,
         }
     }
 }
@@ -165,11 +167,11 @@ pub struct StandardUnit1Builder {
     hc_projectile_logic: HcProjectileLogic,
     hitbox: Option<(Transformation, Shape)>,
     damageable: bool,
-    rofiz_obj_type: RofizObjType,
+    secondary_hitboxes: Vec<(Transformation, Shape, RofizObjType)>,
 }
 
 pub enum RofizObjType {
-    NonspectralUnit,
+    _NonspectralUnit,
     BasicProjectile,
 }
 
@@ -200,7 +202,7 @@ impl StandardUnit1Builder {
             hc_projectile_logic: HcProjectileLogic::Default_,
             hitbox: None,
             damageable: true,
-            rofiz_obj_type: RofizObjType::NonspectralUnit,
+            secondary_hitboxes: Vec::new(),
         }
     }
 
@@ -245,8 +247,8 @@ impl StandardUnit1Builder {
         self
     }
 
-    pub fn rofiz_obj_type(mut self, rofiz_obj_type: RofizObjType) -> Self {
-        self.rofiz_obj_type = rofiz_obj_type;
+    pub fn add_secondary_hitbox(mut self, xform: Transformation, shape: Shape, rofiz_obj_type: RofizObjType) -> Self {
+        self.secondary_hitboxes.push((xform, shape, rofiz_obj_type));
         self
     }
 
@@ -257,10 +259,7 @@ impl StandardUnit1Builder {
         };
         let md = RoomObjectMetadata::new(ctx, RoomObjectType::Unit);
         let hitbox = Hitbox::new(xform, shape);
-        let ro_ref = match self.rofiz_obj_type {
-            RofizObjType::NonspectralUnit => ctx.add_nonspectral_unit(md.get_ref(), hitbox),
-            RofizObjType::BasicProjectile => ctx.add_basic_projectile(md.get_ref(), hitbox),
-        };
+        let ro_ref = ctx.add_nonspectral_unit(md.get_ref(), hitbox);
         let su_common = StandardUnitCommon::new(
             ro_ref, 
             self.damageable,
@@ -273,6 +272,16 @@ impl StandardUnit1Builder {
             100.0, 
             2.0,
             0.2);
+
+        let mut secondary_hitboxes = Vec::new();
+        for (xform, shape, typ) in self.secondary_hitboxes {
+            let hitbox = Hitbox::new(xform, shape);
+            let ro_ref = match typ {
+                RofizObjType::_NonspectralUnit => ctx.add_nonspectral_unit(md.get_ref(), hitbox),
+                RofizObjType::BasicProjectile => ctx.add_basic_projectile(md.get_ref(), hitbox),
+            };
+            secondary_hitboxes.push(ro_ref);
+        }
         
         let handle_collision_fn = match self.handle_collision_logic {
             HandleCollisionLogic::Nop => Box::new(handle_collision_nop),
@@ -292,6 +301,7 @@ impl StandardUnit1Builder {
                 damage_color: self.req.damage_color,
                 su_common, 
                 blocks_room_clear: self.damageable,
+                secondary_ro_refs: secondary_hitboxes,
             },
             logic: Su1Logic {
                 act1_fn: self.act1_fn,
@@ -309,6 +319,7 @@ pub struct SuContext<'a> {
     pub team: Team,
     pub damage_color: DamageColor,
     pub su_common: &'a mut StandardUnitCommon,
+    pub secondary_ro_refs: &'a mut Vec<RofizObjectRef>,
 }
 
 pub struct SuAct1Context<'a, 'b> {

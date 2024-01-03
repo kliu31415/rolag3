@@ -121,7 +121,9 @@ fn detect_and_handle_collisions(room: &mut Room, rng: &mut StdRng, tick_len: f64
     let mut removed = HashSet::<RoomObjectRef>::new();
     for collision in collisions.iter() {
         if collision.room_obj_ref1 == collision.room_obj_ref2 {
-            panic!("found collision between object and itself. ref={:?}", collision.room_obj_ref1);
+            // a collision between an object and itself can occur. In this case, we ignore the collision.
+            // These collisions often happen when a RoomObject owns multiple RofizObjects
+            continue;
         }
         if removed.contains(&collision.room_obj_ref1) || removed.contains(&collision.room_obj_ref2) {
             continue;
