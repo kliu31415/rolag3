@@ -1,4 +1,4 @@
-use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Team, Act1Response}, unit::{standard_unit1::{StandardUnit1, StandardUnit1Builder, StandardUnit1BuilderReq, SuAct1Context, SuDrawContext}, standard_unit_common::RotateMove}, damage::DamageColor}, draw::{Color, DrawContext}, rofiz::rofiz_object::Transformation}, geometry::shape::{Shape, Rect}};
+use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Team, Act1Response}, unit::{standard_unit1::{StandardUnit1, StandardUnit1Builder, StandardUnit1BuilderReq, SuAct1Context, SuDrawContext, RofizObjType}, standard_unit_common::RotateMove}, damage::DamageColor}, draw::{Color, DrawContext}, rofiz::rofiz_object::Transformation}, geometry::shape::{Shape, Rect}};
 
 /* RotatingLaserBasic is a single laser that rotates at a slow speed
 */
@@ -7,7 +7,7 @@ const LASER_WIDTH: f32 = 0.15;
 const LASER_LENGTH: f32 = 5.0;
 
 struct RotatingLaserBasic {
-    damage_color: DamageColor,
+    rotate_dir: f64,
     draw_color: Color,
     rect: Shape,
     xformed_rect_cache: Shape,
@@ -15,21 +15,24 @@ struct RotatingLaserBasic {
 
 pub fn new_rotating_laser(
     ctx: &mut NewRoomObjectContext, 
-    x: f64, 
-    y: f64, 
+    xform: Transformation,
     color: DamageColor,
     angular_power: f64,
 ) -> StandardUnit1 {
-    let xform = Transformation::new(x, y, 0.0);
     let draw_color = match color {
         DamageColor::Red => Color::new(5.0, 0.1, 0.1, 1.0),
         DamageColor::Green => Color::new(0.1, 1.5, 0.1, 1.0),
         DamageColor::Blue => Color::new(0.1, 0.1, 14.0, 1.0),
         _ => panic!("can't create rotating laser with color {:?}", color),
     };
+    let (angular_power, rotate_dir) = if angular_power < 0.0 {
+        (-angular_power, -1.0)
+    } else {
+        (angular_power, 1.0)
+    };
     let rect = Shape::of_rect(Rect::new(0.0, -LASER_WIDTH / 2.0, LASER_LENGTH, LASER_WIDTH));
     let us_data = RotatingLaserBasic {
-        damage_color: color,
+        rotate_dir,
         draw_color,
         rect: rect.clone(),
         xformed_rect_cache: Shape::default(),
@@ -48,11 +51,14 @@ pub fn new_rotating_laser(
         .angular_power(angular_power)
         .angular_traction(10.0)
         .damageable(false)
+        .rofiz_obj_type(RofizObjType::BasicProjectile)
+        .is_spectral(true)
         .build(ctx)
 }
 
 fn act1(ctx: &mut SuAct1Context) -> Act1Response {
-    ctx.su_ctx.su_common.set_rotate_move(RotateMove::Accelerate { atheta: 1.0 });
+    let us_data = ctx.su_ctx.us_data.downcast_mut::<RotatingLaserBasic>().unwrap();
+    ctx.su_ctx.su_common.set_rotate_move(RotateMove::Accelerate { atheta: us_data.rotate_dir });
     Act1Response::new()
 }
 

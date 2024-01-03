@@ -21,6 +21,7 @@ pub struct Su1Data {
     damage_color: DamageColor,
     su_common: StandardUnitCommon,
     blocks_room_clear: bool,
+    is_spectral: bool,
 }
 
 pub struct Su1Logic {
@@ -76,7 +77,7 @@ impl RoomObject for StandardUnit1 {
     }
 
     fn is_spectral(&self) -> bool {
-        false
+        self.data.is_spectral
     }
 
     fn blocks_room_clear(&self) -> bool {
@@ -141,8 +142,14 @@ pub struct StandardUnit1Builder {
     handle_collision_logic: HandleCollisionLogic,
     hc_projectile_logic: HcProjectileLogic,
     hitbox: Option<(Transformation, Shape)>,
-    additional_hitboxes: Vec<(Transformation, Shape)>,
     damageable: bool,
+    rofiz_obj_type: RofizObjType,
+    is_spectral: bool,
+}
+
+pub enum RofizObjType {
+    NonspectralUnit,
+    BasicProjectile,
 }
 
 pub enum HandleCollisionLogic {
@@ -171,8 +178,9 @@ impl StandardUnit1Builder {
             handle_collision_logic: HandleCollisionLogic::Nop,
             hc_projectile_logic: HcProjectileLogic::Default_,
             hitbox: None,
-            additional_hitboxes: Vec::new(),
             damageable: true,
+            rofiz_obj_type: RofizObjType::NonspectralUnit,
+            is_spectral: false,
         }
     }
 
@@ -212,13 +220,18 @@ impl StandardUnit1Builder {
         self
     }
 
-    pub fn additional_hitbox(mut self, xform: Transformation, shape: Shape) -> Self {
-        self.additional_hitboxes.push((xform, shape));
+    pub fn damageable(mut self, damageable: bool) -> Self {
+        self.damageable = damageable;
         self
     }
 
-    pub fn damageable(mut self, damageable: bool) -> Self {
-        self.damageable = damageable;
+    pub fn rofiz_obj_type(mut self, rofiz_obj_type: RofizObjType) -> Self {
+        self.rofiz_obj_type = rofiz_obj_type;
+        self
+    }
+    
+    pub fn is_spectral(mut self, is_spectral: bool) -> Self {
+        self.is_spectral = is_spectral;
         self
     }
 
@@ -229,7 +242,10 @@ impl StandardUnit1Builder {
         };
         let md = RoomObjectMetadata::new(ctx, RoomObjectType::Unit);
         let hitbox = Hitbox::new(xform, shape);
-        let ro_ref = ctx.add_nonspectral_unit(md.get_ref(), hitbox);
+        let ro_ref = match self.rofiz_obj_type {
+            RofizObjType::NonspectralUnit => ctx.add_nonspectral_unit(md.get_ref(), hitbox),
+            RofizObjType::BasicProjectile => ctx.add_basic_projectile(md.get_ref(), hitbox),
+        };
         let su_common = StandardUnitCommon::new(
             ro_ref, 
             self.damageable,
@@ -260,6 +276,7 @@ impl StandardUnit1Builder {
                 damage_color: self.req.damage_color,
                 su_common, 
                 blocks_room_clear: self.damageable,
+                is_spectral: self.is_spectral,
             },
             logic: Su1Logic {
                 act1_fn: self.act1_fn,
