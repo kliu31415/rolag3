@@ -1,4 +1,6 @@
-use crate::rolag3::floor::{rofiz::{rofiz_object::{RofizObjectMovement, Transformation}, rofiz_state::{RofizState, RofizObjectRef}}, draw::Color};
+use std::collections::HashMap;
+
+use crate::{rolag3::floor::{rofiz::{rofiz_object::{RofizObjectMovement, Transformation}, rofiz_state::{RofizState, RofizObjectRef}}, draw::Color, room_object::room_object_def::RoomObjectRef}, util::token_bucket::TokenBucket};
 
 #[derive(Debug, Clone, Copy)]
 pub enum Budeb {
@@ -33,6 +35,8 @@ pub struct BudebTimeSpeedMult {
     pub multiplier: f64,
 }
 
+const COLLISION_DAMAGE_INSTANT_MULT: f64 = 0.25;
+
 pub struct StandardUnitCommon {
     ro_ref: RofizObjectRef,
     engine_power: f64, // intuitively, equal to the max speed in tiles/s
@@ -58,6 +62,8 @@ pub struct StandardUnitCommon {
     prev_desired_movement: Option<Transformation>,
 
     damageable: bool,
+    collision_damage: f64,
+    collision_damage_token_buckets: HashMap<RoomObjectRef /* self is dealer, other was dealt damage */, TokenBucket>,
     max_hp: f64,
     hp: f64,
     last_damaged_time: f64,
@@ -94,6 +100,7 @@ impl StandardUnitCommon {
     pub fn new(
         ro_ref: RofizObjectRef, 
         damageable: bool, 
+        collision_damage: f64,
         hp: f64, 
         engine_power: f64, 
         tire_friction: f64, 
@@ -127,6 +134,8 @@ impl StandardUnitCommon {
             prev_desired_movement: None,
 
             damageable,
+            collision_damage,
+            collision_damage_token_buckets: HashMap::new(),
             max_hp: hp,
             hp,
             last_damaged_time: -100.0,
@@ -412,6 +421,23 @@ impl StandardUnitCommon {
 
     pub fn apply_budeb(&mut self, budeb: &Budeb) {
         self.budebs.push(*budeb);
+    }
+
+    pub fn take_collision_damage_from(
+        &mut self, 
+        self_id: RoomObjectRef, 
+        damage_mult: f64, 
+        other: &mut StandardUnitCommon,
+    ) -> TakeDamageResponse {
+        if !other.collision_damage_token_buckets.contains_key(&self_id) {
+            let tb = TokenBucket::new(other.collision_damage * COLLISION_DAMAGE_INSTANT_MULT, other.collision_damage);
+            other.collision_damage_token_buckets.insert(self_id, tb);
+        }
+        let tb = other.collision_damage_token_buckets.get_mut(&self_id).unwrap();
+        // note that the rate of collision damage is dependent on the OTHER's time speed, not SELF's time speed. This
+        // means that if OTHER has its time speed doubled and SELF has no time multiplier, SELF takes 2x collision dmg.
+        let damage = tb.take_all(other.unit_age) * damage_mult;
+        self.take_damage(damage)
     }
 
     pub fn take_damage(&mut self, damage: f64) -> TakeDamageResponse {

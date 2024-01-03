@@ -78,6 +78,7 @@ pub fn new_circular_turret_bluntstar3(ctx: &mut NewRoomObjectContext, x: f64, y:
     StandardUnit1Builder::new(StandardUnit1BuilderReq {
         team: Team::Enemy,
         damage_color: color,
+        collision_damage: 10.0,
         hp: 1.0, // dummy
         engine_power: 1.0, // dummy
         tire_traction: 1.0, // dummy

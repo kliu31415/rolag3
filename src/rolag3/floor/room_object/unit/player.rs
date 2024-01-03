@@ -1,4 +1,4 @@
-use crate::{rolag3::floor::{run::{PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, draw::DrawContext, room_object::{room_object_def::{RoomObject, Act1Context, FloorCoordinate, NewRoomObjectContext, RoomObjectMetadata, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse, RoQueryUnitInfoContext, RoQueryUnitInfoResponse, HcTileContext, HcTileEffect, HcTileResponse, RoomObjApplyOperationContext, RoomObjOperation}, tiles::room_connection::Direction, damage::DamageColor, unit::standard_unit_common::BudebExpiry}, rofiz::{rofiz_object::{Hitbox, Transformation}, rofiz_state::RofizState}, room::RoomConnectionInfo}, geometry::shape::{Shape, Point}, gfx::{renderer::{DrawOp, DrawOpGroup, ColorRGBA32f, DrawOpText, DrawTextPosition}, draw_op_util::draw_op_rect}};
+use crate::{rolag3::floor::{run::{PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, draw::DrawContext, room_object::{room_object_def::{RoomObject, Act1Context, FloorCoordinate, NewRoomObjectContext, RoomObjectMetadata, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse, RoQueryUnitInfoContext, RoQueryUnitInfoResponse, HcTileContext, HcTileEffect, HcTileResponse, RoomObjApplyOperationContext, RoomObjOperation, HcStandardUnitContext, HcStandardUnitResponse}, tiles::room_connection::Direction, damage::DamageColor, unit::standard_unit_common::BudebExpiry}, rofiz::{rofiz_object::{Hitbox, Transformation}, rofiz_state::RofizState}, room::RoomConnectionInfo}, geometry::shape::{Shape, Point}, gfx::{renderer::{DrawOp, DrawOpGroup, ColorRGBA32f, DrawOpText, DrawTextPosition}, draw_op_util::draw_op_rect}};
 
 use super::{Unit, standard_unit_common::{StandardUnitCommon, Budeb, BudebMaxSpeed, TranslateMove, PolarForce}, weapon::{weapon_def::{Weapon, WeaponHandleTickContext, DrawWeaponHudContext, DrawWeaponOnOwnerContext}, weapon1::new_weapon1, weapon2::new_weapon2, weapon3::new_weapon3}, active_item::{active_item_def::{ActiveItem, ActiveItemHandleTickContext}, clear_enemy_projectiles::new_active_item_clear_projectiles, slow_enemy_time::new_active_item_slow_enemy_time}};
 
@@ -161,12 +161,18 @@ impl RoomObject for Player {
         ctx.add_draw_op(DrawContext::Z_UNIT_PLAYER, dop);
     }
 
-    fn handle_collision(&mut self, _ctx: &mut HandleCollisionContext) -> HandleCollisionResponse {
-        HandleCollisionResponse::new()
+    fn handle_collision(&mut self, ctx: &mut HandleCollisionContext) -> HandleCollisionResponse {
+        let hcsu_ctx = &mut HcStandardUnitContext {
+            suc: self.su_common.as_mut().unwrap(),
+            team: Team::Player,
+            damage_color: self.damage_color,
+        };
+        let hcsu_resp = ctx.get_other().borrow_mut().handle_collision_standard_unit(hcsu_ctx);
+        HandleCollisionResponse::new().remove_room_objs(&hcsu_resp.room_objects_to_delete)
     }
 
     fn handle_collision_projectile(&mut self, ctx: &HcProjectileContext) -> HcProjectileResponse {
-        if matches!(ctx.team, Team::Player) {
+        if ctx.team == Team::Player {
             return HcProjectileResponse::nop();
         }
         let damage_mult = DamageColor::get_damage_mult(ctx.damage_color, self.damage_color);
@@ -178,6 +184,23 @@ impl RoomObject for Player {
         HcProjectileResponse { 
             projectile_consumed: true,
             damage_dealt: td_response.damage_taken,
+            room_objects_to_delete,
+        }
+    }
+
+    fn handle_collision_standard_unit<'a>(&mut self, ctx: &mut HcStandardUnitContext<'a>) -> HcStandardUnitResponse {
+        if matches!(ctx.team, Team::Player) {
+            return HcStandardUnitResponse {
+                room_objects_to_delete: Vec::new(),
+            }
+        }
+        let damage_mult = DamageColor::get_damage_mult(ctx.damage_color, self.damage_color);
+        let td_resp = self.su_common.as_mut().unwrap().take_collision_damage_from(self.md.get_ref(), damage_mult, ctx.suc);
+        let mut room_objects_to_delete = Vec::new();
+        if td_resp.dead {
+            room_objects_to_delete.push(self.md.get_ref());
+        }
+        HcStandardUnitResponse {
             room_objects_to_delete,
         }
     }
@@ -258,6 +281,7 @@ impl Player {
         self.su_common = Some(StandardUnitCommon::new(
             ro_ref, 
             true, 
+            10.0, /* keep this a nonzero value for now to make visually verifying the unit-unit collision stack works properly easier */
             1e3, 
             15.0, 
             500.0, 

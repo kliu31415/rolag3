@@ -1,6 +1,6 @@
 use std::any::Any;
 
-use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, RoomObject, RoomObjectMetadata, Act1Context, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse, RoomObjectType, RoQueryUnitInfoContext, RoQueryUnitInfoResponse, RoomObjApplyOperationContext, RoomObjOperation}, damage::DamageColor}, draw::DrawContext, rofiz::rofiz_object::{Transformation, Hitbox}}, geometry::shape::Shape};
+use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, RoomObject, RoomObjectMetadata, Act1Context, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse, RoomObjectType, RoQueryUnitInfoContext, RoQueryUnitInfoResponse, RoomObjApplyOperationContext, RoomObjOperation, HcStandardUnitContext, HcStandardUnitResponse}, damage::DamageColor}, draw::DrawContext, rofiz::rofiz_object::{Transformation, Hitbox}}, geometry::shape::Shape};
 
 use super::{Unit, standard_unit_common::StandardUnitCommon};
 
@@ -58,12 +58,21 @@ impl RoomObject for StandardUnit1 {
     }
 
     fn handle_collision(&mut self, ctx: &mut HandleCollisionContext) -> HandleCollisionResponse {
+        let hcsu_ctx = &mut HcStandardUnitContext {
+            suc: &mut self.data.su_common,
+            team: self.data.team,
+            damage_color: self.data.damage_color,
+        };
+        let hcsu_resp = ctx.get_other().borrow_mut().handle_collision_standard_unit(hcsu_ctx);
+
         let mut su_ctx= self.data.get_su_ctx();
         let su_hc_ctx = &mut SuHandleCollisionContext {
             su_ctx: &mut su_ctx,
             hc_ctx: ctx,
         };
-        (self.logic.handle_collision_fn)(su_hc_ctx)
+        let resp = (self.logic.handle_collision_fn)(su_hc_ctx);
+
+        resp.remove_room_objs(&hcsu_resp.room_objects_to_delete)
     }
 
     fn handle_collision_projectile(&mut self, ctx: &HcProjectileContext) -> HcProjectileResponse {
@@ -73,6 +82,23 @@ impl RoomObject for StandardUnit1 {
             hcp_ctx: ctx,
         };
         (self.logic.hc_projectile_fn)(su_hcp_ctx)
+    }
+
+    fn handle_collision_standard_unit<'a>(&mut self, ctx: &mut HcStandardUnitContext<'a>) -> HcStandardUnitResponse {
+        if ctx.team == self.data.team {
+            return HcStandardUnitResponse {
+                room_objects_to_delete: Vec::new(),
+            }
+        }
+        let damage_mult = DamageColor::get_damage_mult(ctx.damage_color, self.data.damage_color);
+        let td_resp = self.data.su_common.take_collision_damage_from(self.data.md.get_ref(), damage_mult, ctx.suc);
+        let mut room_objects_to_delete = Vec::new();
+        if td_resp.dead {
+            room_objects_to_delete.push(self.data.md.get_ref());
+        }
+        HcStandardUnitResponse {
+            room_objects_to_delete,
+        }
     }
 
     fn blocks_room_clear(&self) -> bool {
@@ -120,6 +146,7 @@ impl Su1Data {
 pub struct StandardUnit1BuilderReq {
     pub team: Team,
     pub damage_color: DamageColor,
+    pub collision_damage: f64,
     pub hp: f64,
     pub engine_power: f64,
     pub tire_traction: f64,
@@ -237,6 +264,7 @@ impl StandardUnit1Builder {
         let su_common = StandardUnitCommon::new(
             ro_ref, 
             self.damageable,
+            self.req.collision_damage,
             self.req.hp, 
             self.req.engine_power, 
             self.req.tire_traction, 

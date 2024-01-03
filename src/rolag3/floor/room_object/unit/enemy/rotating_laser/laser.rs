@@ -41,6 +41,7 @@ pub fn new_rotating_laser(
     StandardUnit1Builder::new(StandardUnit1BuilderReq {
         team: Team::Enemy,
         damage_color: color,
+        collision_damage: 10.0,
         hp: 1.0, // dummy
         engine_power: 1.0, // dummy
         tire_traction: 1.0, // dummy

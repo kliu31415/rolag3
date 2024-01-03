@@ -4,7 +4,7 @@ use rand::{rngs::StdRng, Rng};
 
 use crate::rolag3::floor::{draw::DrawContext, run::PlayerInput, rofiz::{rofiz_state::{RofizState, RofizObjectRef}, rofiz_object::Hitbox}, room::{RoomConnectionInfo, RoomTile}, floor_def::Floor};
 
-use super::{damage::DamageColor, unit::standard_unit_common::Budeb};
+use super::{damage::DamageColor, unit::standard_unit_common::{Budeb, StandardUnitCommon}};
 
 pub trait RoomObject {
     fn is_player(&self) -> bool {
@@ -23,6 +23,11 @@ pub trait RoomObject {
         HcProjectileResponse {
             projectile_consumed: false,
             damage_dealt: 0.0,
+            room_objects_to_delete: Vec::new(),
+        }
+    }
+    fn handle_collision_standard_unit<'a>(&mut self, _: &mut HcStandardUnitContext<'a>) -> HcStandardUnitResponse {
+        HcStandardUnitResponse {
             room_objects_to_delete: Vec::new(),
         }
     }
@@ -815,6 +820,16 @@ impl HcProjectileResponse {
             room_objects_to_delete: Vec::new(),
         }
     }
+}
+
+pub struct HcStandardUnitContext<'a> {
+    pub suc: &'a mut StandardUnitCommon,
+    pub team: Team,
+    pub damage_color: DamageColor,
+}
+
+pub struct HcStandardUnitResponse {
+    pub room_objects_to_delete: Vec<RoomObjectRef>,
 }
 
 pub struct HcBlackHoleContext {
