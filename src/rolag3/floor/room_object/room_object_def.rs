@@ -43,6 +43,9 @@ pub trait RoomObject {
     }
 
     fn is_spectral(&self) -> bool;
+    fn blocks_projectiles(&self) -> bool {
+        false
+    }
     fn blocks_room_clear(&self) -> bool {
         false
     }

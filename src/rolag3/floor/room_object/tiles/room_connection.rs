@@ -141,6 +141,9 @@ impl RoomObject for RoomConnection {
     fn is_spectral(&self) -> bool {
         false
     }
+    fn blocks_projectiles(&self) -> bool {
+        true
+    }
 }
 
 impl RoomConnection {
@@ -164,6 +167,17 @@ impl RoomConnection {
         match direction {
             Direction::Up | Direction::Down => [(x-1, y), (x, y), (x+1, y)],
             Direction::Left | Direction::Right => [(x, y-1), (x, y), (x, y+1)],
+        }
+    }
+
+    pub fn get_add_invis_wall_rect(x: u32, y: u32, direction: Direction) -> Rect {
+        let x = x as f32;
+        let y = y as f32;
+        match direction {
+            Direction::Up => Rect::new(x - 2.0, y - 1.0, 5.0, 1.0),
+            Direction::Down => Rect::new(x - 2.0, y + 1.0, 5.0, 1.0),
+            Direction::Left => Rect::new(x - 1.0, y - 2.0, 1.0, 5.0),
+            Direction::Right => Rect::new(x + 1.0, y - 2.0, 1.0, 5.0),
         }
     }
 }

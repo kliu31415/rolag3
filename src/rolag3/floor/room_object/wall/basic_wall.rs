@@ -115,6 +115,9 @@ impl RoomObject for BasicWall {
     fn is_spectral(&self) -> bool {
         false
     }
+    fn blocks_projectiles(&self) -> bool {
+        true
+    }
 }
 
 impl Wall for BasicWall {

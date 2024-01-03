@@ -135,10 +135,15 @@ impl Point {
             y: lerp_f32(u.y, v.y, a),
         }
     }
+
     pub fn rotated(&self, theta: f32) -> Self {
         let cos_theta = f32::cos(theta);
         let sin_theta = f32::sin(theta);
         Point::new(cos_theta * self.x - sin_theta * self.y, sin_theta * self.x + cos_theta * self.y)
+    }
+
+    pub fn translated(&self, d: Vector) -> Self {
+        Point::new(self.x + d.x, self.y + d.y)
     }
 }
 
@@ -193,6 +198,12 @@ impl Vector {
             x: self.x / n,
             y: self.y / n,
         }
+    }
+
+    pub fn rotated(&self, theta: f32) -> Self {
+        let cos_theta = f32::cos(theta);
+        let sin_theta = f32::sin(theta);
+        Vector::new(cos_theta * self.x - sin_theta * self.y, sin_theta * self.x + cos_theta * self.y)
     }
 }
 

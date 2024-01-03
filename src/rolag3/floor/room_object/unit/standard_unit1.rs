@@ -20,6 +20,7 @@ pub struct Su1Data {
     team: Team,
     damage_color: DamageColor,
     su_common: StandardUnitCommon,
+    blocks_room_clear: bool,
 }
 
 pub struct Su1Logic {
@@ -79,7 +80,7 @@ impl RoomObject for StandardUnit1 {
     }
 
     fn blocks_room_clear(&self) -> bool {
-        true
+        self.data.blocks_room_clear
     }
 
     fn apply_operation(&mut self, ctx: &RoomObjApplyOperationContext) {
@@ -140,6 +141,7 @@ pub struct StandardUnit1Builder {
     handle_collision_logic: HandleCollisionLogic,
     hc_projectile_logic: HcProjectileLogic,
     hitbox: Option<(Transformation, Shape)>,
+    additional_hitboxes: Vec<(Transformation, Shape)>,
     damageable: bool,
 }
 
@@ -169,6 +171,7 @@ impl StandardUnit1Builder {
             handle_collision_logic: HandleCollisionLogic::Nop,
             hc_projectile_logic: HcProjectileLogic::Default_,
             hitbox: None,
+            additional_hitboxes: Vec::new(),
             damageable: true,
         }
     }
@@ -206,6 +209,11 @@ impl StandardUnit1Builder {
 
     pub fn hitbox(mut self, xform: Transformation, shape: Shape) -> Self {
         self.hitbox = Some((xform, shape));
+        self
+    }
+
+    pub fn additional_hitbox(mut self, xform: Transformation, shape: Shape) -> Self {
+        self.additional_hitboxes.push((xform, shape));
         self
     }
 
@@ -251,6 +259,7 @@ impl StandardUnit1Builder {
                 team: self.req.team, 
                 damage_color: self.req.damage_color,
                 su_common, 
+                blocks_room_clear: self.damageable,
             },
             logic: Su1Logic {
                 act1_fn: self.act1_fn,

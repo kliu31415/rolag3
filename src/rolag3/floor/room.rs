@@ -3,7 +3,7 @@ use std::{rc::Rc, cell::RefCell, collections::HashSet};
 
 use rand::rngs::StdRng;
 
-use crate::gfx::renderer::{TmdRef, Renderer};
+use crate::{gfx::renderer::{TmdRef, Renderer}, rolag3::floor::room_object::wall::invisible_wall::InvisibleWall};
 
 use super::{room_object::{unit::{enemy2::new_enemy2, enemy3::new_enemy3, enemy1::new_enemy1, boss1::new_boss1, enemy4::new_enemy4, enemy5::new_enemy5, enemy::{square::{blue::new_square_blue, blue_circle::new_square_blue_circle, blue_diamond::new_square_blue_diamond}, regular_tri::{red_tri::new_regtri_red_tri, red::new_regtri_red}, circular_turret::bluntstar3::new_circular_turret_bluntstar3}}, room_object_def::{NewRoomObjectContext, RoomObjectCollection, RoomObjectId}, wall::basic_wall::{BasicWall, WallTheme}, tiles::{room_connection::{RoomConnection, Direction}, black_hole::new_black_hole, accel_tile::new_accel_tile}, damage::DamageColor, cosmetic::ground1::{new_ground1, GroundTheme}}, draw::Color, rofiz::rofiz_state::RofizState, floor_def::RoomId};
 
@@ -84,6 +84,11 @@ impl Room {
                 let ground = new_ground1(&mut nfo_ctx, ground_theme, x, y, 1, 1);
                 self.room_objects.add(Rc::new(RefCell::new(ground)));
             }
+
+            let iw_rect = RoomConnection::get_add_invis_wall_rect(c.x, c.y, c.direction);
+            let mut nfo_ctx = NewRoomObjectContext::new(&mut self.rofiz, room_object_id_counter, 0.0, rng);
+            let invis_wall = InvisibleWall::new(&mut nfo_ctx, iw_rect);
+            self.room_objects.add(Rc::new(RefCell::new(invis_wall)));
         }
         self.minimap_texture = Some(Self::make_minimap_texture(renderer, &self.tiles));
 

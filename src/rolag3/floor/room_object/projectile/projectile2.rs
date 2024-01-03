@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Weak};
 
-use crate::{rolag3::floor::{room_object::{room_object_def::{RoomObject, NewRoomObjectContext, Act1Response, HandleCollisionResponse, HcProjectileContext, Team, RoomObjectType, RoomObjOperation}, damage::DamageColor}, draw::{DrawContext, Color}, rofiz::rofiz_object::{Transformation, RofizObjectMovement}}, geometry::shape::{Shape, Point}};
+use crate::{rolag3::floor::{room_object::{room_object_def::{RoomObject, NewRoomObjectContext, Act1Response, HandleCollisionResponse, HcProjectileContext, Team, RoomObjOperation}, damage::DamageColor}, draw::{DrawContext, Color}, rofiz::rofiz_object::{Transformation, RofizObjectMovement}}, geometry::shape::{Shape, Point}};
 
 use super::standard_projectile1::{Sp1Builder, Sp1BuilderReq, StandardProjectile1, SpAct1Context, SpDrawContext, SpHandleCollisionContext, SpApplyOperationContext};
 
@@ -95,7 +95,7 @@ fn draw(ctx: &mut SpDrawContext) {
 }
 
 fn handle_collision(ctx: &mut SpHandleCollisionContext) -> HandleCollisionResponse {
-    if ctx.hc_ctx.get_other().borrow().get_metadata().get_ref().typ == RoomObjectType::Wall {
+    if ctx.hc_ctx.get_other().borrow().blocks_projectiles() {
         return HandleCollisionResponse::new().remove_room_obj(ctx.sp_ctx.md.get_ref());
     }
     let hcp_response = ctx.hc_ctx.get_other().borrow_mut().handle_collision_projectile(&HcProjectileContext{
