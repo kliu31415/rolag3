@@ -130,10 +130,10 @@ fn detect_and_handle_collisions(room: &mut Room, rng: &mut StdRng, tick_len: f64
         let obj1 = room.room_objects.get(&collision.room_obj_ref1);
         let obj2 = room.room_objects.get(&collision.room_obj_ref2);
 
-        let mut hc_ctx = HandleCollisionContext::new(obj2.clone(), rng, room.room_time, tick_len, &room.rofiz);
+        let mut hc_ctx = HandleCollisionContext::new(obj2.clone(), collision.is2_spectral, rng, room.room_time, tick_len, &room.rofiz);
         let hc1r = obj1.borrow_mut().handle_collision(&mut hc_ctx);
 
-        let mut hc_ctx = HandleCollisionContext::new(obj1.clone(), rng, room.room_time, tick_len, &room.rofiz);
+        let mut hc_ctx = HandleCollisionContext::new(obj1.clone(), collision.is1_spectral, rng, room.room_time, tick_len, &room.rofiz);
         let hc2r = obj2.borrow_mut().handle_collision(&mut hc_ctx);
 
         // remove these objects immediately so that during future collisions, they're considered invalid.

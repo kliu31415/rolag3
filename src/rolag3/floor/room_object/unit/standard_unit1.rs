@@ -21,7 +21,6 @@ pub struct Su1Data {
     damage_color: DamageColor,
     su_common: StandardUnitCommon,
     blocks_room_clear: bool,
-    is_spectral: bool,
 }
 
 pub struct Su1Logic {
@@ -74,10 +73,6 @@ impl RoomObject for StandardUnit1 {
             hcp_ctx: ctx,
         };
         (self.logic.hc_projectile_fn)(su_hcp_ctx)
-    }
-
-    fn is_spectral(&self) -> bool {
-        self.data.is_spectral
     }
 
     fn blocks_room_clear(&self) -> bool {
@@ -144,7 +139,6 @@ pub struct StandardUnit1Builder {
     hitbox: Option<(Transformation, Shape)>,
     damageable: bool,
     rofiz_obj_type: RofizObjType,
-    is_spectral: bool,
 }
 
 pub enum RofizObjType {
@@ -180,7 +174,6 @@ impl StandardUnit1Builder {
             hitbox: None,
             damageable: true,
             rofiz_obj_type: RofizObjType::NonspectralUnit,
-            is_spectral: false,
         }
     }
 
@@ -229,11 +222,6 @@ impl StandardUnit1Builder {
         self.rofiz_obj_type = rofiz_obj_type;
         self
     }
-    
-    pub fn is_spectral(mut self, is_spectral: bool) -> Self {
-        self.is_spectral = is_spectral;
-        self
-    }
 
     pub fn build(self, ctx: &mut NewRoomObjectContext) -> StandardUnit1 {
         let (xform, shape) = match self.hitbox {
@@ -276,7 +264,6 @@ impl StandardUnit1Builder {
                 damage_color: self.req.damage_color,
                 su_common, 
                 blocks_room_clear: self.damageable,
-                is_spectral: self.is_spectral,
             },
             logic: Su1Logic {
                 act1_fn: self.act1_fn,

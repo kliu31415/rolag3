@@ -202,10 +202,6 @@ impl RoomObject for Player {
         }
     }
 
-    fn is_spectral(&self) -> bool {
-        false
-    }
-
     fn handle_query_unit_info(&self, ctx: &RoQueryUnitInfoContext) -> RoQueryUnitInfoResponse {
         let xform = ctx.get_rofiz().get_movable_object_xform(self.su_common.as_ref().unwrap().get_ro_ref());
         RoQueryUnitInfoResponse { 

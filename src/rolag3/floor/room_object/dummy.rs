@@ -22,8 +22,4 @@ impl RoomObject for Dummy {
     fn handle_collision(&mut self, _ctx: &mut super::room_object_def::HandleCollisionContext) -> super::room_object_def::HandleCollisionResponse {
         unimplemented!()
     }
-
-    fn is_spectral(&self) -> bool {
-        unimplemented!()
-    }
 }

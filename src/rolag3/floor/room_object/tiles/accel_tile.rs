@@ -65,10 +65,6 @@ impl RoomObject for AccelTile {
         }
         HandleCollisionResponse::new()
     }
-
-    fn is_spectral(&self) -> bool {
-        true
-    }
 }
 
 pub fn new_accel_tile(ctx: &mut NewRoomObjectContext, x: u32, y: u32) -> AccelTile {

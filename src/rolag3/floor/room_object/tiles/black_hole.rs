@@ -56,10 +56,6 @@ impl RoomObject for BlackHole {
         }
         HandleCollisionResponse::new().remove_room_objs(hbh_response.room_objects_to_delete.as_slice())
     }
-
-    fn is_spectral(&self) -> bool {
-        true
-    }
 }
 
 pub fn new_black_hole(ctx: &mut NewRoomObjectContext, color: Option<DamageColor>, x: f64, y: f64) -> BlackHole {

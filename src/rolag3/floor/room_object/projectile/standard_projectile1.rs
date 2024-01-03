@@ -107,10 +107,6 @@ impl RoomObject for StandardProjectile1 {
         };
         (self.logic.apply_operation_fn)(&mut sp_ao_ctx)
     }
-
-    fn is_spectral(&self) -> bool {
-        true
-    }
 }
 
 impl Projectile for StandardProjectile1 {

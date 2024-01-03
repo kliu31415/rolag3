@@ -112,9 +112,6 @@ impl RoomObject for BasicWall {
         locs.push((self.x, self.y));
     }
 
-    fn is_spectral(&self) -> bool {
-        false
-    }
     fn blocks_projectiles(&self) -> bool {
         true
     }

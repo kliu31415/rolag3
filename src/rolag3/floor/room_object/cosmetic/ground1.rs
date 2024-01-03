@@ -28,10 +28,6 @@ impl RoomObject for Ground1 {
         unimplemented!("Ground1 should never collide with another other room object")
     }
 
-    fn is_spectral(&self) -> bool {
-        true
-    }
-
     fn add_as_ground_location_to(&self, locs: &mut Vec<(u32, u32)>) {
         for i in self.x .. self.x + self.w {
             for j in self.y .. self.y + self.h {

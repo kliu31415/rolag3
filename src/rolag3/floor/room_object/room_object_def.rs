@@ -42,7 +42,6 @@ pub trait RoomObject {
         // nop by default
     }
 
-    fn is_spectral(&self) -> bool;
     fn blocks_projectiles(&self) -> bool {
         false
     }
@@ -710,6 +709,7 @@ impl<'a> HandleRoomJustClearedContext<'a> {
 
 pub struct HandleCollisionContext<'a> {
     other: Rc<RefCell<dyn RoomObject>>,
+    other_is_spectral: bool,
     rng: &'a mut StdRng,
     room_time: f64,
     _tick_length: f64,
@@ -717,9 +717,10 @@ pub struct HandleCollisionContext<'a> {
 }
 
 impl<'a> HandleCollisionContext<'a> {
-    pub fn new(other: Rc<RefCell<dyn RoomObject>>, rng: &'a mut StdRng, room_time: f64, tick_length: f64, rofiz: &'a RofizState) -> Self {
+    pub fn new(other: Rc<RefCell<dyn RoomObject>>, other_is_spectral: bool, rng: &'a mut StdRng, room_time: f64, tick_length: f64, rofiz: &'a RofizState) -> Self {
         Self { 
             other,
+            other_is_spectral,
             rng,
             room_time,
             _tick_length: tick_length,
@@ -729,6 +730,10 @@ impl<'a> HandleCollisionContext<'a> {
     
     pub fn get_other(&mut self) -> Rc<RefCell<dyn RoomObject>> {
         self.other.clone()
+    }
+
+    pub fn is_other_spectral(&self) -> bool {
+        self.other_is_spectral
     }
 
     // in the range [0, 1)

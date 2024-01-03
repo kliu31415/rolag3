@@ -99,10 +99,6 @@ impl RoomObject for DamageTile {
         }
         HandleCollisionResponse::new()
     }
-    
-    fn is_spectral(&self) -> bool {
-        true
-    }
 }
 
 pub fn new_damage_tile(ctx: &mut NewRoomObjectContext, x: u32, y: u32) -> DamageTile {

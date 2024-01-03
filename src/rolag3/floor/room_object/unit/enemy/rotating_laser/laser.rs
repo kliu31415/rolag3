@@ -52,7 +52,6 @@ pub fn new_rotating_laser(
         .angular_traction(10.0)
         .damageable(false)
         .rofiz_obj_type(RofizObjType::BasicProjectile)
-        .is_spectral(true)
         .build(ctx)
 }
 

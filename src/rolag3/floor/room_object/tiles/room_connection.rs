@@ -138,9 +138,6 @@ impl RoomObject for RoomConnection {
         HandleCollisionResponse::new()
     }
 
-    fn is_spectral(&self) -> bool {
-        false
-    }
     fn blocks_projectiles(&self) -> bool {
         true
     }

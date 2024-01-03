@@ -30,6 +30,7 @@ pub struct RofizObjMovable {
     pub movement: RofizObjectMovement,
     pub move_with_fallbacks_idx: usize,
     pub room_object_ref: RoomObjectRef,
+    pub is_spectral: bool,
 
     pub cached_mem_hitbox: Hitbox,
 

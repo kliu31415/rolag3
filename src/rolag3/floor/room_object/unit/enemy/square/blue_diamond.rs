@@ -145,7 +145,7 @@ fn draw(ctx: &mut SuDrawContext) {
 
 fn handle_collision(ctx: &mut SuHandleCollisionContext) -> HandleCollisionResponse {
     let us_data = ctx.su_ctx.us_data.downcast_mut::<SquareBlueDiamond>().unwrap();
-    if !ctx.hc_ctx.get_other().borrow().is_spectral() {
+    if !ctx.hc_ctx.is_other_spectral() {
         us_data.should_reset_velocity = true;
     }
     HandleCollisionResponse::new()

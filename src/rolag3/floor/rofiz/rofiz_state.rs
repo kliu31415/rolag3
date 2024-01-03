@@ -134,7 +134,7 @@ impl RofizState {
     pub fn add_nonspectral_unit(&mut self, floor_object_id: RoomObjectRef, hitbox: Hitbox) -> RofizObjectRef {
         // todo: add logic here to verify that the nonspectral unit doesn't intersect with any other nonspectral unit
         // or any wall.
-        let obj = self.new_rofiz_obj_movable(hitbox, floor_object_id);
+        let obj = self.new_rofiz_obj_movable(hitbox, floor_object_id, false);
         let ref_count = obj.external_ref_count.clone();
         let pool_ref = self.obj_pool.add_mo(obj);
         self.nonspectral_units.push(pool_ref);
@@ -142,7 +142,7 @@ impl RofizState {
     }
 
     pub fn add_spectral_unit(&mut self, floor_object_id: RoomObjectRef, hitbox: Hitbox) -> RofizObjectRef {
-        let obj = self.new_rofiz_obj_movable(hitbox, floor_object_id);
+        let obj = self.new_rofiz_obj_movable(hitbox, floor_object_id, true);
         let ref_count = obj.external_ref_count.clone();
         let pool_ref = self.obj_pool.add_mo(obj);
         self.spectral_units.push(pool_ref);
@@ -150,7 +150,7 @@ impl RofizState {
     }
 
     pub fn add_basic_projectile(&mut self, floor_object_id: RoomObjectRef, hitbox: Hitbox) -> RofizObjectRef {
-        let obj = self.new_rofiz_obj_movable(hitbox, floor_object_id);
+        let obj = self.new_rofiz_obj_movable(hitbox, floor_object_id, true);
         let ref_count = obj.external_ref_count.clone();
         let pool_ref = self.obj_pool.add_mo(obj);
         self.basic_projectiles.push(pool_ref);
@@ -278,7 +278,7 @@ impl RofizState {
                     if let Some(ref bw) = self.has_wall_at_coordinate[x][y] {
                         let bw = self.obj_pool.basic_walls[bw.idx as usize].as_ref().unwrap();
                         if nsu_i.overlaps_ro_wall(&bw) {
-                            collisions.push(RofizCollision::new(nsu_i.room_object_ref, bw.room_object_ref));
+                            collisions.push(RofizCollision::new(nsu_i.room_object_ref, false, bw.room_object_ref, false));
                             // keep moving the unit back while both of the following hold:
                             // 1. the unit is moved back to a different position
                             // 2. the different position overlaps with a wall.
@@ -301,7 +301,7 @@ impl RofizState {
 
                 let (mut nsu_i, mut nsu_j) = self.obj_pool.get_mo_mo_mut(&self.nonspectral_units[i], &self.nonspectral_units[j]);
                 if nsu_i.overlaps_ro_movable(&nsu_j) {
-                    collisions.push(RofizCollision::new(nsu_i.room_object_ref, nsu_j.room_object_ref));
+                    collisions.push(RofizCollision::new(nsu_i.room_object_ref, false, nsu_j.room_object_ref, false));
 
                     // if this collision can be solved by only one of nsu_i and one of nsu_j moving back, do that.
                     // This is to avoid deadlock, e.g. object A is right above object B. Object A's velocity is
@@ -391,7 +391,7 @@ impl RofizState {
                     if let Some(ref bw) = self.has_wall_at_coordinate[x][y] {
                         let bw = self.obj_pool.basic_walls[bw.idx as usize].as_ref().unwrap();
                         if mo.overlaps_ro_wall(&bw) {
-                            collisions.push(RofizCollision::new(mo.room_object_ref, bw.room_object_ref));
+                            collisions.push(RofizCollision::new(mo.room_object_ref, true, bw.room_object_ref, false));
                         }
                     }
 
@@ -405,7 +405,7 @@ impl RofizState {
             for sg_idx in collision_candidates.iter() {
                 let sgo = self.obj_pool.movable[spatial_grid_id_to_obj[*sg_idx].idx as usize].as_ref().unwrap();
                 if mo.overlaps_ro_movable(&sgo) {
-                    collisions.push(RofizCollision::new(mo.room_object_ref, sgo.room_object_ref));
+                    collisions.push(RofizCollision::new(mo.room_object_ref, true, sgo.room_object_ref, sgo.is_spectral));
                 }
             }
 
@@ -486,7 +486,7 @@ impl RofizState {
         }
     }
 
-    fn new_rofiz_obj_movable(&mut self, hitbox: Hitbox, room_object_ref: RoomObjectRef) -> RofizObjMovable {
+    fn new_rofiz_obj_movable(&mut self, hitbox: Hitbox, room_object_ref: RoomObjectRef, is_spectral: bool) -> RofizObjMovable {
         self.obj_creation_counter += 1;
         RofizObjMovable { 
             id: self.obj_creation_counter, 
@@ -494,6 +494,7 @@ impl RofizState {
             current: hitbox, 
             movement: RofizObjectMovement::NoMove(), 
             move_with_fallbacks_idx: 0,
+            is_spectral,
 
             cached_mem_hitbox: Hitbox::default(),
 
@@ -531,14 +532,18 @@ pub struct RofizStats {
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct RofizCollision {
     pub room_obj_ref1: RoomObjectRef,
+    pub is1_spectral: bool,
     pub room_obj_ref2: RoomObjectRef,
+    pub is2_spectral: bool,
 }
 
 impl RofizCollision {
-    fn new(room_obj_ref1: RoomObjectRef, room_obj_ref2: RoomObjectRef) -> Self {
+    fn new(room_obj_ref1: RoomObjectRef, is1_spectral: bool, room_obj_ref2: RoomObjectRef, is2_spectral: bool) -> Self {
         Self {
             room_obj_ref1,
+            is1_spectral,
             room_obj_ref2,
+            is2_spectral,
         }
     }
 }
