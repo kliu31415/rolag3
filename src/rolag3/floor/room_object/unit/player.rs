@@ -189,7 +189,7 @@ impl RoomObject for Player {
     }
 
     fn handle_collision_standard_unit<'a>(&mut self, ctx: &mut HcStandardUnitContext<'a>) -> HcStandardUnitResponse {
-        if matches!(ctx.team, Team::Player) {
+        if ctx.team == Team::Player {
             return HcStandardUnitResponse {
                 room_objects_to_delete: Vec::new(),
             }
