@@ -1,8 +1,6 @@
 use std::{rc::{Rc, Weak}, cell::RefCell, collections::{HashSet, HashMap, BTreeMap}, ops::Range};
 
-use rand::{rngs::StdRng, Rng};
-
-use crate::rolag3::floor::{draw::DrawContext, run::PlayerInput, rofiz::{rofiz_state::{RofizState, RofizObjectRef}, rofiz_object::Hitbox}, room::{RoomConnectionInfo, RoomTile}, floor_def::Floor};
+use crate::{rolag3::floor::{draw::DrawContext, run::PlayerInput, rofiz::{rofiz_state::{RofizState, RofizObjectRef}, rofiz_object::Hitbox}, room::{RoomConnectionInfo, RoomTile}, floor_def::Floor}, util::rng::Rng};
 
 use super::{damage::DamageColor, unit::standard_unit_common::{Budeb, StandardUnitCommon}};
 
@@ -469,11 +467,11 @@ pub struct NewRoomObjectContext<'a> {
     rofiz: &'a mut RofizState,
     room_object_id_counter: &'a mut RoomObjectId,
     room_time: f64,
-    rng: &'a mut StdRng,
+    rng: &'a mut Rng,
 }
 
 impl<'a> NewRoomObjectContext<'a> {
-    pub fn new(rofiz: &'a mut RofizState, room_object_id_counter: &'a mut RoomObjectId, room_time: f64, rng: &'a mut StdRng) -> Self {
+    pub fn new(rofiz: &'a mut RofizState, room_object_id_counter: &'a mut RoomObjectId, room_time: f64, rng: &'a mut Rng) -> Self {
         Self {
             rofiz,
             room_object_id_counter,
@@ -502,15 +500,15 @@ impl<'a> NewRoomObjectContext<'a> {
     
     // in the range [0, 1)
     pub fn get_randf64(&mut self) -> f64 {
-        self.rng.gen::<f64>()
+        self.rng.gen_f64()
     }
 
     pub fn _get_randu64(&mut self, r: Range<u64>) -> u64 {
-        self.rng.gen_range(r)
+        self.rng.gen_u64_range(r)
     }
 
     pub fn get_randi64(&mut self, r: Range<i64>) -> i64 {
-        self.rng.gen_range(r)
+        self.rng.gen_i64_range(r)
     }
 
     pub fn add_basic_wall(&mut self, floor_object_id: RoomObjectRef, x: u32, y: u32) -> RofizObjectRef {
@@ -549,7 +547,7 @@ pub struct Act1Context<'a> {
     self_as_rc: Option<Rc<RefCell<dyn RoomObject>>>,
     tick_length: f64,
     room_time: f64,
-    rng: &'a mut StdRng,
+    rng: &'a mut Rng,
     room_cleared_at_time: Option<f64>,
     _room_width: u32,
     _room_height: u32,
@@ -563,7 +561,7 @@ impl<'a> Act1Context<'a> {
         room_object_id_counter: &'a mut RoomObjectId, 
         tick_length: f64, 
         room_time: f64,
-        rng: &'a mut StdRng,
+        rng: &'a mut Rng,
         room_cleared_at_time: Option<f64>,
         room_width: u32,
         room_height: u32,
@@ -606,11 +604,11 @@ impl<'a> Act1Context<'a> {
 
     // in the range [0, 1)
     pub fn get_randf64(&mut self) -> f64 {
-        self.rng.gen::<f64>()
+        self.rng.gen_f64()
     }
 
     pub fn get_randi64(&mut self, r: Range<i64>) -> i64 {
-        self.rng.gen_range(r)
+        self.rng.gen_i64_range(r)
     }
 
     pub fn get_room_cleared_at_time(&self) -> Option<f64> {
@@ -715,14 +713,14 @@ impl<'a> HandleRoomJustClearedContext<'a> {
 pub struct HandleCollisionContext<'a> {
     other: Rc<RefCell<dyn RoomObject>>,
     other_is_spectral: bool,
-    rng: &'a mut StdRng,
+    rng: &'a mut Rng,
     room_time: f64,
     _tick_length: f64,
     _rofiz: &'a RofizState,
 }
 
 impl<'a> HandleCollisionContext<'a> {
-    pub fn new(other: Rc<RefCell<dyn RoomObject>>, other_is_spectral: bool, rng: &'a mut StdRng, room_time: f64, tick_length: f64, rofiz: &'a RofizState) -> Self {
+    pub fn new(other: Rc<RefCell<dyn RoomObject>>, other_is_spectral: bool, rng: &'a mut Rng, room_time: f64, tick_length: f64, rofiz: &'a RofizState) -> Self {
         Self { 
             other,
             other_is_spectral,
@@ -743,15 +741,15 @@ impl<'a> HandleCollisionContext<'a> {
 
     // in the range [0, 1)
     pub fn _get_randf64(&mut self) -> f64 {
-        self.rng.gen::<f64>()
+        self.rng.gen_f64()
     }
 
     pub fn _get_randu64(&mut self, r: Range<u64>) -> u64 {
-        self.rng.gen_range(r)
+        self.rng.gen_u64_range(r)
     }
 
     pub fn get_randi64(&mut self, r: Range<i64>) -> i64 {
-        self.rng.gen_range(r)
+        self.rng.gen_i64_range(r)
     }
 
     pub fn get_room_time(&self) -> f64 {

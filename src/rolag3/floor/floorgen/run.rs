@@ -1,9 +1,6 @@
 use std::collections::{VecDeque, HashSet, HashMap};
 
 use image::ImageBuffer;
-use rand::Rng;
-use rand::{distributions::WeightedIndex, rngs::StdRng};
-use rand::distributions::Distribution;
 
 use crate::rolag3::floor::floorgen::steiner::{GraphEdge, compute_approx_steiner_tree};
 use crate::rolag3::floor::room::RoomConnectionInfo;
@@ -12,6 +9,7 @@ use crate::rolag3::floor::room_object::room_object_def::RoomObjectId;
 use crate::rolag3::floor::room_object::wall::basic_wall::WallTheme;
 use crate::rolag3::floor::rooms::hallway1::{HallwayGridCell, make_hallway1};
 use crate::rolag3::floor::{floor_def::RoomId, room::Room};
+use crate::util::rng::Rng;
 
 pub struct GenFloorArgs<'a> {
     pub grid_w: u32,
@@ -26,7 +24,7 @@ pub struct GenFloorArgs<'a> {
     pub gen_initial_room_fn: GenFloorRoomFn,
     pub gen_normal_room_fns: Vec<GenFloorRoomFn>,
 
-    pub rng: &'a mut StdRng,
+    pub rng: &'a mut Rng,
     pub room_object_id_counter: &'a mut RoomObjectId,
 
     pub save_debug_data: bool,
@@ -42,7 +40,7 @@ pub struct GenFloorRoomFn {
 }
 
 pub struct GenFloorRoomContext<'a> {
-    pub rng: &'a mut StdRng,
+    pub rng: &'a mut Rng,
     pub room_object_id_counter: &'a mut RoomObjectId,
     pub ground_theme: GroundTheme,
     pub wall_theme: WallTheme,
@@ -93,6 +91,7 @@ pub fn gen_floor(mut args: GenFloorArgs) -> GenFloorResult {
     }
 
     let save_debug_path = if args.save_debug_data {
+        use rand::Rng;
         let path = format!("tmp/gen-floor-{}", rand::thread_rng().gen_range(0..u64::MAX));
         std::fs::create_dir_all(path.clone()).expect(&format!("unable to recursively create folders in path {}", path));
         log::debug!("saving gen_floor() debug info to path: {}", path);
@@ -245,7 +244,6 @@ pub fn gen_floor(mut args: GenFloorArgs) -> GenFloorResult {
 
 #[inline(never)]
 fn gen_room_candidates(args: &mut GenFloorArgs) -> (Room, Vec<Room>) {
-    let normal_room_weights = WeightedIndex::new(args.gen_normal_room_fns.iter().map(|x| x.weight)).expect("failed to unwrap WeightedIndex made from room gen weights");
     let mut gen_room_ctx = GenFloorRoomContext {
         rng: args.rng,
         room_object_id_counter: args.room_object_id_counter,
@@ -256,8 +254,9 @@ fn gen_room_candidates(args: &mut GenFloorArgs) -> (Room, Vec<Room>) {
     assert!(starting_room.ttc <= args.ttc_max);
     let mut normal_room_candidates = Vec::new();
     let num_nrc = 100;
+    let weights = args.gen_normal_room_fns.iter().map(|x| x.weight).collect::<Box<_>>();
     while normal_room_candidates.len() < num_nrc {
-        let idx = normal_room_weights.sample(args.rng);
+        let idx = args.rng.sample_weighted_iter_f64(&weights);
         let mut gen_room_ctx = GenFloorRoomContext {
             rng: args.rng,
             room_object_id_counter: args.room_object_id_counter,
@@ -282,7 +281,7 @@ fn pick_rooms(args: &mut GenFloorArgs, starting_room: Room, normal_room_candidat
         while ttc < args.ttc_min {
             tries2 += 1;
             assert!(tries2 < 10000);
-            let nrc_idx = args.rng.gen_range(0..normal_room_candidates.len());
+            let nrc_idx = args.rng.gen_usize_range(0..normal_room_candidates.len());
             if !chosen_nrcs.contains(&nrc_idx) {
                 chosen_nrcs.insert(nrc_idx);
                 ttc += normal_room_candidates[nrc_idx].ttc;
@@ -412,7 +411,7 @@ fn place_rooms(args: &mut GenFloorArgs, rooms: &mut Vec<Room>) -> Vec<Vec<FloorG
             panic!("unable to find place to place room. This should ideally be handled more gracefully.");
         }
 
-        let position = room_place_candidates[args.rng.gen_range(0..room_place_candidates.len())];
+        let position = room_place_candidates[args.rng.gen_usize_range(0..room_place_candidates.len())];
         room.upper_left_x = position.0;
         room.upper_left_y = position.1;
         // room.id = rooms.len()
@@ -495,7 +494,7 @@ fn make_hallway_candidate_grid(
         let mut candidates = room.connection_candidates.clone();
         assert_ne!(candidates.len(), 0);
         loop {
-            let candidate = candidates[args.rng.gen_range(0..candidates.len())];
+            let candidate = candidates[args.rng.gen_usize_range(0..candidates.len())];
             connections.push(candidate);
             candidates.retain(|(x, y, _)| candidate.0.abs_diff(*x) >= 7 || candidate.1.abs_diff(*y) >= 7);
             if candidates.is_empty() {
@@ -639,7 +638,7 @@ fn compute_hallway_rooms(
     grid_w: u32, 
     grid_h: u32, 
     sshg: &Vec<Vec<HallwayGridCell>>,
-    rng: &mut StdRng,
+    rng: &mut Rng,
     room_object_id_counter: &mut RoomObjectId,
     room_count: usize,
     ground_theme: GroundTheme,

@@ -1,8 +1,6 @@
 use std::{collections::HashMap, cell::RefCell, rc::Rc};
 
-use rand::rngs::StdRng;
-
-use crate::{gfx::renderer::Renderer, rolag3::floor::{rooms::empty1::get_gen_room_fn_empty1, floorgen::run::GenFloorRoomFn, room_object::{cosmetic::ground1::GroundTheme, wall::basic_wall::WallTheme}, draw::Color}};
+use crate::{gfx::renderer::Renderer, rolag3::floor::{rooms::empty1::get_gen_room_fn_empty1, floorgen::run::GenFloorRoomFn, room_object::{cosmetic::ground1::GroundTheme, wall::basic_wall::WallTheme}, draw::Color}, util::rng::Rng};
 
 use super::{room::{Room, RoomConnectionInfo}, room_object::{unit::player::{Player, MoveRooms}, room_object_def::{FloorCoordinate, RoomObjectId}, tiles::room_connection::Direction}, rooms::{maze1::make_room_maze1, boss_room1::make_boss_room1}, floorgen::run::{gen_floor, GenFloorArgs}};
 
@@ -27,7 +25,7 @@ impl Floor {
     pub const ROOM_OBJECT_ID_COUNTER_BEGIN: RoomObjectId = 100;
     pub const PLAYER_ROOM_OBJECT_ID: RoomObjectId = 1;
 
-    pub fn new_test1(renderer: &mut dyn Renderer, rng: &mut StdRng) -> Self {
+    pub fn new_test1(renderer: &mut dyn Renderer, rng: &mut Rng) -> Self {
         let mut room_object_id_counter = Self::ROOM_OBJECT_ID_COUNTER_BEGIN;
         let player = Rc::new(RefCell::new(Player::new_test1()));
         let mut room1 = Room::new_test_room1(rng, &mut room_object_id_counter);
@@ -78,7 +76,7 @@ impl Floor {
         }
     }
 
-    pub fn new_test2(renderer: &mut dyn Renderer, rng: &mut StdRng) -> Self {
+    pub fn new_test2(renderer: &mut dyn Renderer, rng: &mut Rng) -> Self {
         let mut room_object_id_counter = Self::ROOM_OBJECT_ID_COUNTER_BEGIN;
         let player = Rc::new(RefCell::new(Player::new_test1()));
         let gen_initial_room_fn = GenFloorRoomFn {weight: 1.0, func: get_gen_room_fn_empty1(20, 20, 20, 20)};

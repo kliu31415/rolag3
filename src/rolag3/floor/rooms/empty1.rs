@@ -1,8 +1,6 @@
 use std::{rc::Rc, cell::RefCell, ops::Range};
 
-use rand::{rngs::StdRng, Rng};
-
-use crate::rolag3::floor::{room_object::{room_object_def::{RoomObjectId, NewRoomObjectContext, RoomObjectCollection}, wall::basic_wall::{BasicWall, WallTheme}, cosmetic::ground1::{new_ground1, GroundTheme}}, room::Room, rofiz::rofiz_state::RofizState, floorgen::run::{GenFloorRoomContext, GenFloorRoomResponse}};
+use crate::{rolag3::floor::{room_object::{room_object_def::{RoomObjectId, NewRoomObjectContext, RoomObjectCollection}, wall::basic_wall::{BasicWall, WallTheme}, cosmetic::ground1::{new_ground1, GroundTheme}}, room::Room, rofiz::rofiz_state::RofizState, floorgen::run::{GenFloorRoomContext, GenFloorRoomResponse}}, util::rng::Rng};
 
 use super::util::connection_candidates::all_borders_as_connection_candidates;
 
@@ -26,15 +24,15 @@ pub fn get_gen_room_fn_empty1(
 }
 
 pub fn make_room_empty1(
-    rng: &mut StdRng, 
+    rng: &mut Rng, 
     room_object_id_counter: &mut RoomObjectId, 
     ground_theme: GroundTheme,
     wall_theme: WallTheme,
     widths: Range<u32>, 
     heights: Range<u32>,
 ) -> GenFloorRoomResponse {
-    let width = rng.gen_range(widths);
-    let height = rng.gen_range(heights);
+    let width = rng.gen_u32_range(widths);
+    let height = rng.gen_u32_range(heights);
     let ttc = 0.1 * f64::sqrt((width * height) as f64);
 
     let mut rofiz = RofizState::new();

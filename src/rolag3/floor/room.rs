@@ -1,9 +1,6 @@
 use std::{rc::Rc, cell::RefCell, collections::HashSet};
 
-
-use rand::rngs::StdRng;
-
-use crate::{gfx::renderer::{TmdRef, Renderer}, rolag3::floor::room_object::wall::invisible_wall::InvisibleWall};
+use crate::{gfx::renderer::{TmdRef, Renderer}, rolag3::floor::room_object::wall::invisible_wall::InvisibleWall, util::rng::Rng};
 
 use super::{room_object::{unit::{enemy2::new_enemy2, enemy3::new_enemy3, enemy1::new_enemy1, boss1::new_boss1, enemy4::new_enemy4, enemy5::new_enemy5, enemy::{square::{blue::new_square_blue, blue_circle::new_square_blue_circle, blue_diamond::new_square_blue_diamond}, regular_tri::{red_tri::new_regtri_red_tri, red::new_regtri_red}, circular_turret::bluntstar3::new_circular_turret_bluntstar3, rotating_laser::laser::new_rotating_laser}}, room_object_def::{NewRoomObjectContext, RoomObjectCollection, RoomObjectId}, wall::basic_wall::{BasicWall, WallTheme}, tiles::{room_connection::{RoomConnection, Direction}, black_hole::new_black_hole, accel_tile::new_accel_tile}, damage::DamageColor, cosmetic::ground1::{new_ground1, GroundTheme}}, draw::Color, rofiz::{rofiz_state::RofizState, rofiz_object::Transformation}, floor_def::RoomId};
 
@@ -48,7 +45,7 @@ impl Room {
         &mut self, 
         renderer: &mut dyn Renderer, 
         connections: Vec<RoomConnectionInfo>, 
-        rng: &mut StdRng, 
+        rng: &mut Rng, 
         room_object_id_counter: &mut RoomObjectId,
         ground_theme: GroundTheme,
     ) {
@@ -101,7 +98,7 @@ impl Room {
         self.rofiz.finalize_start_floor();
     }
 
-    pub fn new_test_room1(rng: &mut StdRng, room_object_id_counter: &mut RoomObjectId) -> Self {
+    pub fn new_test_room1(rng: &mut Rng, room_object_id_counter: &mut RoomObjectId) -> Self {
         let mut rofiz = RofizState::new();
         let mut new_floor_object_ctx = NewRoomObjectContext::new(&mut rofiz, room_object_id_counter, 0.0, rng);
         let mut room_objects = RoomObjectCollection::new();
@@ -195,7 +192,7 @@ impl Room {
         }
     }
 
-    pub fn new_test_room2(rng: &mut StdRng, room_object_id_counter: &mut RoomObjectId) -> Self {
+    pub fn new_test_room2(rng: &mut Rng, room_object_id_counter: &mut RoomObjectId) -> Self {
         let mut rofiz = RofizState::new();
         let mut new_floor_object_ctx = NewRoomObjectContext::new(&mut rofiz, room_object_id_counter, 0.0, rng);
         let mut room_objects = RoomObjectCollection::new();

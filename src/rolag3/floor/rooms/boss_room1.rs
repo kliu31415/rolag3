@@ -1,10 +1,8 @@
 use std::{rc::Rc, cell::RefCell};
 
-use rand::rngs::StdRng;
+use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, RoomObjectCollection, RoomObjectId}, wall::basic_wall::{BasicWall, WallTheme}, cosmetic::ground1::{new_ground1, GroundTheme}, unit::boss1::new_boss1}, rofiz::rofiz_state::RofizState, room::Room, draw::Color}, util::rng::Rng};
 
-use crate::rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, RoomObjectCollection, RoomObjectId}, wall::basic_wall::{BasicWall, WallTheme}, cosmetic::ground1::{new_ground1, GroundTheme}, unit::boss1::new_boss1}, rofiz::rofiz_state::RofizState, room::Room, draw::Color};
-
-pub fn make_boss_room1(rng: &mut StdRng, room_object_id_counter: &mut RoomObjectId) -> Room {
+pub fn make_boss_room1(rng: &mut Rng, room_object_id_counter: &mut RoomObjectId) -> Room {
     let mut rofiz = RofizState::new();
     let mut new_floor_object_ctx = NewRoomObjectContext::new(&mut rofiz, room_object_id_counter, 0.0, rng);
     let mut room_objects = RoomObjectCollection::new();

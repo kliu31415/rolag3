@@ -3,9 +3,9 @@ use std::io::Write;
 
 use env_logger::fmt::Color;
 use log::Level;
-use rand::{rngs:: StdRng, SeedableRng};
 use winit::{event::{Event, WindowEvent, KeyEvent, ElementState, MouseButton}, event_loop::EventLoopWindowTarget, keyboard::{PhysicalKey, KeyCode}};
 
+use crate::util::rng::Rng;
 use crate::{gfx::{self, window::{Window, EventHandler}, renderer::{ColorRGBA32f, DrawTextPosition, DrawOpCCS, DrawOpText, DrawOpWithMetadata, DrawOp, Renderer}, input::PollableInput}, util::{time::now_unix, config::Config}};
 
 use super::floor::{draw::{DrawFloorContext, get_draw_floor_ops}, run::{RunFloorContext, run_floor_frame, PlayerInput, PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, floor_def::Floor};
@@ -47,7 +47,7 @@ pub fn run() {
 struct Rolag3EventHandler {
     frame_timestamps: VecDeque<f64>,
     floor: Floor,
-    rng: StdRng,
+    rng: Rng,
     prev_mouse_xy: Option<(f64, f64)>,
     cached_mem_draw_ops: Vec<DrawOpWithMetadata>,
     config: Config,
@@ -106,7 +106,7 @@ const PLAYER_TAB_OVERLAY: PhysicalKey = PhysicalKey::Code(KeyCode::Tab);
 
 impl Rolag3EventHandler {
     fn new_test1(renderer: &mut dyn Renderer) -> Rolag3EventHandler {
-        let mut rng = StdRng::seed_from_u64(123);
+        let mut rng = Rng::new_seed_u64(123);
         let floor = Floor::new_test1(renderer, &mut rng);
         let _ = Floor::new_test2(renderer, &mut rng);
         Rolag3EventHandler { 

@@ -1,10 +1,8 @@
 use std::{cell::RefCell, rc::Rc, collections::VecDeque};
 
-use rand::{rngs::StdRng, Rng};
+use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, RoomObjectCollection, RoomObjectId}, wall::basic_wall::{BasicWall, WallTheme}, cosmetic::ground1::{new_ground1, GroundTheme}, tiles::damage_tile::new_damage_tile}, rofiz::rofiz_state::RofizState, room::Room, draw::Color}, util::{disjoint_set_union::DisjointSetUnion, rng::Rng}};
 
-use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, RoomObjectCollection, RoomObjectId}, wall::basic_wall::{BasicWall, WallTheme}, cosmetic::ground1::{new_ground1, GroundTheme}, tiles::damage_tile::new_damage_tile}, rofiz::rofiz_state::RofizState, room::Room, draw::Color}, util::disjoint_set_union::DisjointSetUnion};
-
-pub fn make_room_maze1(rng: &mut StdRng, room_object_id_counter: &mut RoomObjectId, x: u32, y: u32) -> Room {
+pub fn make_room_maze1(rng: &mut Rng, room_object_id_counter: &mut RoomObjectId, x: u32, y: u32) -> Room {
     let maze_w = 24;
     let maze_h = 24;
     let maze = make_rectangular_maze(rng, maze_w, maze_h, 10);
@@ -65,7 +63,7 @@ pub fn make_room_maze1(rng: &mut StdRng, room_object_id_counter: &mut RoomObject
 // TODO: maybe make this algorithm assign random weights to graph edges and run kruskal's on the graph, selecting the 
 // next-least-weight edge every step.
 // Right now, this algorithm randomly selects an edge every step. The complexity of this is hard to analyze.
-fn make_rectangular_maze(rng: &mut StdRng, w: usize, h: usize, additional_edges: u32) -> RectangularGraph {
+fn make_rectangular_maze(rng: &mut Rng, w: usize, h: usize, additional_edges: u32) -> RectangularGraph {
     let num_cells = w * h;
     if num_cells > 10000 {
         log::warn!("generating unusually large maze (w={}, h={})", w, h);
@@ -74,9 +72,9 @@ fn make_rectangular_maze(rng: &mut StdRng, w: usize, h: usize, additional_edges:
     let mut unions_to_go = num_cells - 1;
     let mut graph = RectangularGraph::new(w, h);
     while unions_to_go > 0 {
-        let x1 = rng.gen_range(0..w) as i32;
-        let y1 = rng.gen_range(0..h) as i32;
-        let direction = RectGraphDir::from_idx(rng.gen_range(0..4));
+        let x1 = rng.gen_usize_range(0..w) as i32;
+        let y1 = rng.gen_usize_range(0..h) as i32;
+        let direction = RectGraphDir::from_idx(rng.gen_usize_range(0..4));
         let dxy = direction.to_dxy();
         let x2 = x1 + dxy.0;
         let y2 = y1 + dxy.1;
@@ -100,9 +98,9 @@ fn make_rectangular_maze(rng: &mut StdRng, w: usize, h: usize, additional_edges:
             if num_tries > 0 && num_tries % (num_candidates_to_gen * 100) == 0{
                 log::warn!("number of tries({}) to add a new rect graph edge is very large. Maze size ({}, {}), additional edges={}.", num_tries, w, h, additional_edges);
             }
-            let x1 = rng.gen_range(0..w) as i32;
-            let y1 = rng.gen_range(0..h) as i32;
-            let direction = RectGraphDir::from_idx(rng.gen_range(0..4));
+            let x1 = rng.gen_usize_range(0..w) as i32;
+            let y1 = rng.gen_usize_range(0..h) as i32;
+            let direction = RectGraphDir::from_idx(rng.gen_usize_range(0..4));
             if graph.get_has_connection(x1 as usize, y1 as usize)[direction.to_idx()] {
                 continue;
             }
