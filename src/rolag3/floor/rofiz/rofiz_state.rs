@@ -432,8 +432,20 @@ impl RofizState {
 
     #[inline(never)]
     fn moafc8(&mut self, collisions: &mut Vec<RofizCollision>) {
-        collisions.sort_unstable();
-        collisions.dedup();
+        // A single RoomObject may own both spectral and nonspectral RofizObjects. 
+        // Therefore, we must use a key to dedupe collisions.
+        // Additionally, we need to ensure that if the two collisions (a, b) and (b, a) are detected,
+        // only one of them survives deduping.
+        collisions.sort_unstable_by_key(|x| Self::order_room_obj_refs(x.room_obj_ref1, x.room_obj_ref2));
+        collisions.dedup_by_key(|x| Self::order_room_obj_refs(x.room_obj_ref1, x.room_obj_ref2));
+    }
+
+    fn order_room_obj_refs<'a>(a: RoomObjectRef, b: RoomObjectRef) -> (RoomObjectRef, RoomObjectRef) {
+        if a < b {
+            (a, b)
+        } else {
+            (b, a)
+        }
     }
 
     // returns true if the object was moved back to a different location

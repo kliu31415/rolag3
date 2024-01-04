@@ -3,11 +3,11 @@ use std::collections::{VecDeque, HashSet, HashMap};
 use image::ImageBuffer;
 
 use crate::rolag3::floor::floorgen::steiner::{GraphEdge, compute_approx_steiner_tree};
-use crate::rolag3::floor::room::RoomConnectionInfo;
+use crate::rolag3::floor::room::{RoomConnectionInfo, RoomCtorArgs};
 use crate::rolag3::floor::room_object::cosmetic::ground1::GroundTheme;
 use crate::rolag3::floor::room_object::room_object_def::RoomObjectId;
 use crate::rolag3::floor::room_object::wall::basic_wall::WallTheme;
-use crate::rolag3::floor::rooms::hallway1::{HallwayGridCell, make_hallway1};
+use crate::rolag3::floor::roomgen::hallway1::{HallwayGridCell, make_hallway1};
 use crate::rolag3::floor::{floor_def::RoomId, room::Room};
 use crate::util::rng::Rng;
 
@@ -47,7 +47,7 @@ pub struct GenFloorRoomContext<'a> {
 }
 
 pub struct GenFloorRoomResponse {
-    pub room: Room,
+    pub room_ctor_args: RoomCtorArgs,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -250,7 +250,7 @@ fn gen_room_candidates(args: &mut GenFloorArgs) -> (Room, Vec<Room>) {
         ground_theme: args.ground_theme,
         wall_theme: args.wall_theme,
     };
-    let starting_room = (args.gen_initial_room_fn.func)(&mut gen_room_ctx).room;
+    let starting_room = (args.gen_initial_room_fn.func)(&mut gen_room_ctx).room_ctor_args.to_room();
     assert!(starting_room.ttc <= args.ttc_max);
     let mut normal_room_candidates = Vec::new();
     let num_nrc = 100;
@@ -264,7 +264,7 @@ fn gen_room_candidates(args: &mut GenFloorArgs) -> (Room, Vec<Room>) {
             wall_theme: args.wall_theme,
         };
         let f = &mut args.gen_normal_room_fns[idx];
-        normal_room_candidates.push((f.func)(&mut gen_room_ctx).room);
+        normal_room_candidates.push((f.func)(&mut gen_room_ctx).room_ctor_args.to_room());
     }
     (starting_room, normal_room_candidates)
 }

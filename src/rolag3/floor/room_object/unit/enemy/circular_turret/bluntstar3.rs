@@ -151,7 +151,7 @@ fn draw(ctx: &mut SuDrawContext) {
     let mut dop_group = vec![circles_dop, turret_border_dop, turret_inner_dop];
     assert!(us_data.since_shot_proj >= 0.0);
     let shoot_delta_t = f64::min(us_data.since_shot_proj, f64::max(0.0, PROJ_SHOOT_INTERVAL - us_data.since_shot_proj));
-    let lerp_t = f64::powi(f64::min(1.0, shoot_delta_t * 5.0 / PROJ_SHOOT_INTERVAL), 2);
+    let lerp_t = f64::min(1.0, shoot_delta_t * 5.0 / PROJ_SHOOT_INTERVAL);
     let proj_inner_color = Color::lerp(us_data.proj_color, us_data.proj_origin_color, lerp_t as f32);
     for i in 0..3 {
         let center = us_data.proj_origin

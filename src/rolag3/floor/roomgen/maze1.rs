@@ -1,10 +1,31 @@
 use std::{cell::RefCell, rc::Rc, collections::VecDeque};
 
-use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, RoomObjectCollection, RoomObjectId}, wall::basic_wall::{BasicWall, WallTheme}, cosmetic::ground1::{new_ground1, GroundTheme}, tiles::damage_tile::new_damage_tile}, rofiz::rofiz_state::RofizState, room::Room, draw::Color}, util::{disjoint_set_union::DisjointSetUnion, rng::Rng}};
+use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, RoomObjectCollection, RoomObjectId}, wall::basic_wall::{BasicWall, WallTheme}, cosmetic::ground1::{new_ground1, GroundTheme}, tiles::damage_tile::new_damage_tile}, rofiz::rofiz_state::RofizState, room::RoomCtorArgs, floorgen::run::{GenFloorRoomResponse, GenFloorRoomContext}}, util::{disjoint_set_union::DisjointSetUnion, rng::Rng}};
 
-pub fn make_room_maze1(rng: &mut Rng, room_object_id_counter: &mut RoomObjectId, x: u32, y: u32) -> Room {
-    let maze_w = 24;
-    let maze_h = 24;
+pub fn get_gen_room_fn_maze1(
+    w: usize, 
+    h: usize,
+) -> Box<dyn Fn(&mut GenFloorRoomContext) -> GenFloorRoomResponse> {
+    Box::new(move |ctx: &mut GenFloorRoomContext| {
+        make_room_maze1(
+            ctx.rng, 
+            ctx.room_object_id_counter, 
+            ctx.ground_theme,
+            ctx.wall_theme,
+            w,
+            h,
+        )
+    })
+}
+
+fn make_room_maze1(
+    rng: &mut Rng, 
+    room_object_id_counter: &mut RoomObjectId, 
+    ground_theme: GroundTheme,
+    wall_theme: WallTheme,
+    maze_w: usize,
+    maze_h: usize,
+) -> GenFloorRoomResponse {
     let maze = make_rectangular_maze(rng, maze_w, maze_h, 10);
     let mut rofiz = RofizState::new();
     let mut new_floor_object_ctx = NewRoomObjectContext::new(&mut rofiz, room_object_id_counter, 0.0, rng);
@@ -12,8 +33,6 @@ pub fn make_room_maze1(rng: &mut Rng, room_object_id_counter: &mut RoomObjectId,
 
     let room_w = 5 * maze_w + 1;
     let room_h = 5 * maze_h + 1;
-
-    let wall_theme = WallTheme::Monocolor(Color::new(0.1, 0.2, 0.3, 1.0));
 
     for i in 0..room_w {
         let wall = BasicWall::new(&mut new_floor_object_ctx, wall_theme, i as u32, 0);
@@ -29,7 +48,6 @@ pub fn make_room_maze1(rng: &mut Rng, room_object_id_counter: &mut RoomObjectId,
         room_objects.add(Rc::new(RefCell::new(wall)));
     }
 
-    let ground_theme = GroundTheme::Monocolor(Color::new(0.02, 0.0, 0.0, 1.0));
     let ground = new_ground1(&mut new_floor_object_ctx, ground_theme, 1, 1, room_w as u32 - 2, room_h as u32 - 2);
     room_objects.add(Rc::new(RefCell::new(ground)));
 
@@ -43,20 +61,16 @@ pub fn make_room_maze1(rng: &mut Rng, room_object_id_counter: &mut RoomObjectId,
         }
     }
 
-    Room {
-        upper_left_x: x,
-        upper_left_y: y,
-        width: room_w as u32,
-        height: room_h as u32,
-        tiles: Vec::new(),
-        room_objects,
-        rofiz,
-        room_time: 0.0,
-        room_cleared_at_time: None,
-        minimap_texture: None,
-        ttc: 20.0,
-        connection_candidates: Vec::new(),
-        is_hallway: false,
+    GenFloorRoomResponse {
+        room_ctor_args: RoomCtorArgs {
+            width: room_w as u32,
+            height: room_h as u32,
+            room_objects,
+            rofiz,
+            ttc: 20.0,
+            connection_candidates: Vec::new(),
+            is_hallway: false,
+        },
     }
 }
 

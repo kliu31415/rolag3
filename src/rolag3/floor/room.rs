@@ -2,7 +2,7 @@ use std::{rc::Rc, cell::RefCell, collections::HashSet};
 
 use crate::{gfx::renderer::{TmdRef, Renderer}, rolag3::floor::room_object::wall::invisible_wall::InvisibleWall, util::rng::Rng};
 
-use super::{room_object::{unit::{enemy2::new_enemy2, enemy3::new_enemy3, enemy1::new_enemy1, boss1::new_boss1, enemy4::new_enemy4, enemy5::new_enemy5, enemy::{square::{blue::new_square_blue, blue_circle::new_square_blue_circle, blue_diamond::new_square_blue_diamond}, regular_tri::{red_tri::new_regtri_red_tri, red::new_regtri_red}, circular_turret::bluntstar3::new_circular_turret_bluntstar3, rotating_laser::laser::new_rotating_laser}}, room_object_def::{NewRoomObjectContext, RoomObjectCollection, RoomObjectId}, wall::basic_wall::{BasicWall, WallTheme}, tiles::{room_connection::{RoomConnection, Direction}, black_hole::new_black_hole, accel_tile::new_accel_tile}, damage::DamageColor, cosmetic::ground1::{new_ground1, GroundTheme}}, draw::Color, rofiz::{rofiz_state::RofizState, rofiz_object::Transformation}, floor_def::RoomId};
+use super::{room_object::{room_object_def::{NewRoomObjectContext, RoomObjectCollection, RoomObjectId}, tiles::room_connection::{RoomConnection, Direction}, cosmetic::ground1::{new_ground1, GroundTheme}}, rofiz::rofiz_state::RofizState, floor_def::RoomId};
 
 pub struct Room {
     pub upper_left_x: u32,
@@ -98,147 +98,6 @@ impl Room {
         self.rofiz.finalize_start_floor();
     }
 
-    pub fn new_test_room1(rng: &mut Rng, room_object_id_counter: &mut RoomObjectId) -> Self {
-        let mut rofiz = RofizState::new();
-        let mut new_floor_object_ctx = NewRoomObjectContext::new(&mut rofiz, room_object_id_counter, 0.0, rng);
-        let mut room_objects = RoomObjectCollection::new();
-
-        let width = 30;
-        let height = 30;
-        let wall_theme = WallTheme::Monocolor(Color::new(0.1, 0.2, 0.3, 1.0));
-
-        for i in 0..30 {
-            let wall = BasicWall::new(&mut new_floor_object_ctx, wall_theme, i, 0);
-            room_objects.add(Rc::new(RefCell::new(wall)));
-            let wall = BasicWall::new(&mut new_floor_object_ctx, wall_theme, i, 29);
-            room_objects.add(Rc::new(RefCell::new(wall)));
-        }
-        
-        for i in 1..29 {
-            let wall = BasicWall::new(&mut new_floor_object_ctx, wall_theme, 0, i);
-            room_objects.add(Rc::new(RefCell::new(wall)));
-            let wall = BasicWall::new(&mut new_floor_object_ctx, wall_theme, 29, i);
-            room_objects.add(Rc::new(RefCell::new(wall)));
-        }
-
-        let ground_theme = GroundTheme::Monocolor(Color::new(0.02, 0.0, 0.0, 1.0));
-        let ground = new_ground1(&mut new_floor_object_ctx, ground_theme, 1, 1, 28, 28);
-        room_objects.add(Rc::new(RefCell::new(ground)));
-
-        for i in 1..5 {
-            for j in 1..4 {
-                let enemy = new_enemy1(&mut new_floor_object_ctx, (6 + i*2) as f64, (6 + j*2) as f64);
-                room_objects.add(Rc::new(RefCell::new(enemy)));
-            }
-            for j in 4..7 {
-                let enemy = new_enemy2(&mut new_floor_object_ctx, (6 + i*2) as f64, (6 + j*2) as f64);
-                room_objects.add(Rc::new(RefCell::new(enemy)));
-            }
-        }
-
-        let enemy = new_enemy3(&mut new_floor_object_ctx, 9.0, 23.0);
-        room_objects.add(Rc::new(RefCell::new(enemy)));
-
-        let enemy = new_square_blue(&mut new_floor_object_ctx, 9.0, 26.0);
-        room_objects.add(Rc::new(RefCell::new(enemy)));
-
-        let enemy = new_enemy4(&mut new_floor_object_ctx, 12.0, 23.0);
-        room_objects.add(Rc::new(RefCell::new(enemy)));
-
-        let enemy = new_square_blue_circle(&mut new_floor_object_ctx, 12.0, 26.0);
-        room_objects.add(Rc::new(RefCell::new(enemy)));
-
-        let enemy = new_enemy5(&mut new_floor_object_ctx, 16.0, 23.0);
-        room_objects.add(Rc::new(RefCell::new(enemy)));
-
-        let enemy = new_square_blue_diamond(&mut new_floor_object_ctx, 16.0, 26.0);
-        room_objects.add(Rc::new(RefCell::new(enemy)));
-
-        let enemy = new_boss1(&mut new_floor_object_ctx, 5.0, 25.0);
-        room_objects.add(Rc::new(RefCell::new(enemy)));
-        
-        let enemy = new_regtri_red_tri(&mut new_floor_object_ctx, 15.0, 3.0);
-        room_objects.add(Rc::new(RefCell::new(enemy)));
-
-        let enemy = new_regtri_red(&mut new_floor_object_ctx, 18.0, 3.0);
-        room_objects.add(Rc::new(RefCell::new(enemy)));
-
-        let enemy = new_circular_turret_bluntstar3(&mut new_floor_object_ctx, 18.0, 6.0, DamageColor::Blue);
-        room_objects.add(Rc::new(RefCell::new(enemy)));
-
-        let enemy = new_rotating_laser(&mut new_floor_object_ctx, Transformation::new(18.0, 9.0, 0.0), DamageColor::Blue, 1.0);
-        room_objects.add(Rc::new(RefCell::new(enemy)));
-
-        let bhole = new_black_hole(&mut new_floor_object_ctx, Some(DamageColor::Green), 15.0, 15.0);
-        room_objects.add(Rc::new(RefCell::new(bhole)));
-
-        let accel_tile = new_accel_tile(&mut new_floor_object_ctx, 10, 10);
-        room_objects.add(Rc::new(RefCell::new(accel_tile)));
-
-        Self {
-            upper_left_x: 0,
-            upper_left_y: 0,
-            width,
-            height,
-            tiles: Vec::new(),
-            room_objects,
-            rofiz,
-            room_time: 0.0,
-            room_cleared_at_time: None,
-            minimap_texture: None,
-            ttc: 50.0,
-            connection_candidates: Vec::new(),
-            is_hallway: false,
-        }
-    }
-
-    pub fn new_test_room2(rng: &mut Rng, room_object_id_counter: &mut RoomObjectId) -> Self {
-        let mut rofiz = RofizState::new();
-        let mut new_floor_object_ctx = NewRoomObjectContext::new(&mut rofiz, room_object_id_counter, 0.0, rng);
-        let mut room_objects = RoomObjectCollection::new();
-
-        let width = 30;
-        let height = 30;
-        let wall_theme = WallTheme::Monocolor(Color::new(0.1, 0.2, 0.3, 1.0));
-
-        for i in 0..30 {
-            let wall = BasicWall::new(&mut new_floor_object_ctx, wall_theme, i, 0);
-            room_objects.add(Rc::new(RefCell::new(wall)));
-            let wall = BasicWall::new(&mut new_floor_object_ctx, wall_theme, i, 29);
-            room_objects.add(Rc::new(RefCell::new(wall)));
-        }
-        
-        for i in 1..29 {
-            let wall = BasicWall::new(&mut new_floor_object_ctx, wall_theme, 0, i);
-            room_objects.add(Rc::new(RefCell::new(wall)));
-            let wall = BasicWall::new(&mut new_floor_object_ctx, wall_theme, 29, i);
-            room_objects.add(Rc::new(RefCell::new(wall)));
-        }
-
-        for i in 1..5 {
-            for j in 4..7 {
-                let enemy = new_enemy2(&mut new_floor_object_ctx, (15 + i*2) as f64, (15 + j*2) as f64);
-                room_objects.add(Rc::new(RefCell::new(enemy)));
-            }
-        }
-
-        Self {
-            upper_left_x: 30,
-            upper_left_y: 0,
-            width,
-            height,
-            tiles: Vec::new(),
-            room_objects,
-            rofiz,
-            room_time: 0.0,
-            room_cleared_at_time: None,
-            minimap_texture: None,
-            ttc: 20.0,
-            connection_candidates: Vec::new(),
-            is_hallway: false,
-        }
-    }
-
     fn make_minimap_texture(renderer: &mut dyn Renderer, tiles: &Vec<Vec<RoomTile>>) -> TmdRef {
         if tiles.is_empty() {
             panic!("Room has no tiles. Cannot make texture");
@@ -262,5 +121,35 @@ impl Room {
             }
         }
         renderer.bytes_to_texture_rgba8888("room minimap texture", bytes.as_ref(), width as u32, height as u32)
+    }
+}
+
+pub struct RoomCtorArgs {
+    pub width: u32,
+    pub height: u32,
+    pub room_objects: RoomObjectCollection,
+    pub rofiz: RofizState,
+    pub connection_candidates: Vec<(u32, u32, Direction)>,
+    pub ttc: f64,
+    pub is_hallway: bool,
+}
+
+impl RoomCtorArgs {
+    pub fn to_room(self) -> Room {
+        Room {
+            upper_left_x: 0,
+            upper_left_y: 0,
+            width: self.width,
+            height: self.height,
+            tiles: Vec::new(),
+            room_objects: self.room_objects,
+            rofiz: self.rofiz,
+            room_time: 0.0,
+            room_cleared_at_time: None,
+            minimap_texture: None,
+            ttc: self.ttc,
+            connection_candidates: self.connection_candidates,
+            is_hallway: self.is_hallway,
+        }
     }
 }
