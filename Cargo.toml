@@ -9,6 +9,10 @@ edition = "2021"
 inherits = "release"
 debug = true
 
+[profile.release-lto]
+inherits = "release"
+lto = "thin"
+
 [dependencies]
 bumpalo = { version = "3.14.0", features = [ "collections" ]}
 bytemuck = { version = "1.14.0", features = [ "derive" ]}

@@ -169,6 +169,7 @@ fn get_draw_fillable_bar_ops(args: DrawFillableBarArgs) -> DrawOp {
     let unfilled_part = draw_op_rect(args.unfilled_part_color, inner_x + fill_len, inner_y, inner_w - fill_len, inner_h);
     ops.push(unfilled_part);
 
+    // TO DEBUG: a panic has occurred before because the font size was 0 while drawing HP text  
     if let Some(text_color) = args.text_color {
         ops.push(DrawOp::Text(DrawOpText { 
             text: format!("{} / {}", args.bar_cur_amount.ceil(), args.bar_max_amount.ceil()), 
