@@ -12,9 +12,15 @@ pub struct Projectile2Data {
     color: Color,
     velocity_x: f64,
     velocity_y: f64,
+    age: f64,
+
     homing_to_enemies_force: Option<f64>,
     homing_query_result: Option<Rc<RefCell<Act1QueryResult>>>,
+
+    adjust_velocity_fn: Option<AdjustVelocityFn>,
 }
+
+type AdjustVelocityFn = Box<dyn Fn((f64, f64), f64) -> (f64, f64)>;
 
 pub struct Projectile2BuilderReq {
     pub team: Team, 
@@ -32,6 +38,7 @@ pub struct Projectile2BuilderReq {
 pub struct Projectile2Builder {
     req: Projectile2BuilderReq,
     homing_to_enemies_power: Option<f64>,
+    adjust_velocity_fn: Option<AdjustVelocityFn>,
 }
 
 impl Projectile2Builder {
@@ -39,11 +46,17 @@ impl Projectile2Builder {
         Self {
             req,
             homing_to_enemies_power: None,
+            adjust_velocity_fn: None,
         }
     }
 
     pub fn homing_to_enemies_power(mut self, power: f64) -> Self {
         self.homing_to_enemies_power = Some(power);
+        self
+    }
+
+    pub fn adjust_velocity_fn(mut self, adj_fn: AdjustVelocityFn) -> Self {
+        self.adjust_velocity_fn = Some(adj_fn);
         self
     }
 
@@ -56,6 +69,8 @@ impl Projectile2Builder {
             velocity_y: self.req.velocity_y,
             homing_to_enemies_force: self.homing_to_enemies_power,
             homing_query_result: None,
+            adjust_velocity_fn: self.adjust_velocity_fn,
+            age: 0.0,
         };
         let shape = match self.req.shape {
             Proj2Shape::TriFan { vertexes, .. } => Shape::of_polygon(vertexes),
@@ -106,13 +121,22 @@ fn act1(ctx: &mut SpAct1Context) -> Act1Response {
                 }
             }
         }
+        let args = Act1QueryArgs::ClosestUnit { x: xform.dx, y: xform.dy, team_filter: Some(ctx.sp_ctx.team.other()) };
+        ps_data.homing_query_result = Some(response.add_query(args));
     }
-    let args = Act1QueryArgs::ClosestUnit { x: xform.dx, y: xform.dy, team_filter: Some(ctx.sp_ctx.team.other()) };
-    ps_data.homing_query_result = Some(response.add_query(args));
 
-    let dx = ps_data.velocity_x * tick_len;
-    let dy = ps_data.velocity_y * tick_len;
+    let mut velocity_x = ps_data.velocity_x;
+    let mut velocity_y = ps_data.velocity_y;
+    if let Some(ref av_fn) = ps_data.adjust_velocity_fn {
+        (velocity_x, velocity_y) = (av_fn)((velocity_x, velocity_y), ps_data.age);
+    }
+
+    let dx = velocity_x * tick_len;
+    let dy = velocity_y * tick_len;
     ctx.act1_ctx.get_rofiz().move_object(ctx.sp_ctx.ro_ref, RofizObjectMovement::Move(Transformation::new(dx, dy, 0.0)));
+
+    ps_data.age += tick_len;
+
     response
 }
 

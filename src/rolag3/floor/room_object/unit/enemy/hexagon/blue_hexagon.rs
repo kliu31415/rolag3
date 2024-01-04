@@ -7,11 +7,11 @@ use std::{cell::RefCell, rc::Rc};
 use crate::{rolag3::floor::{draw::{Color, DrawContext}, room_object::{room_object_def::{NewRoomObjectContext, Team, Act1Response, HandleCollisionResponse}, unit::{standard_unit1::{StandardUnit1, StandardUnit1Builder, StandardUnit1BuilderReq, HandleCollisionLogic, SuAct1Context, SuDrawContext, SuHandleCollisionContext}, standard_unit_common::TranslateMove}, damage::DamageColor, projectile::projectile2::{Proj2Shape, Projectile2BuilderReq, Projectile2Builder}}, rofiz::rofiz_object::Transformation}, geometry::{shape::{Shape, Point}, util::{regular_polygon, get_inner_polygon}}};
 
 const BORDER_COLOR: Color = Color::new(0.2, 0.2, 0.2, 1.0);
-const OUTER_COLOR: Color = Color::new(0.0, 0.15, 0.0, 1.0);
-const INNER_COLOR: Color = Color::new(0.0, 0.6, 0.0, 1.0);
-const PROJ_COLOR: Color = Color::new(0.2, 1.4, 0.2, 1.0);
+const OUTER_COLOR: Color = Color::new(0.0, 0.0, 0.2, 1.0);
+const INNER_COLOR: Color = Color::new(0.0, 0.0, 1.0, 1.0);
+const PROJ_COLOR: Color = Color::new(0.2, 0.2, 14.0, 1.0);
 
-pub struct HexagonRedHexagon {
+pub struct HexagonBlueHexagon {
     spit_projectile_start: Option<SpitProjectileInfo>,
     border_vertexes: [Point; 6],
     outer_vertexes: [Point; 6],
@@ -25,13 +25,13 @@ struct SpitProjectileInfo {
     proj_spit: bool,
 }
 
-pub fn new_hexagon_green_hexagon(ctx: &mut NewRoomObjectContext, x: f64, y: f64) -> StandardUnit1 {
+pub fn new_hexagon_blue_hexagon(ctx: &mut NewRoomObjectContext, x: f64, y: f64) -> StandardUnit1 {
     let border_vertexes: [Point; 6] = regular_polygon(6, 0.9)[..].try_into().unwrap();
     let outer_vertexes: [Point; 6] = get_inner_polygon(0.1, &border_vertexes)[..].try_into().unwrap();
     let inner_vertexes: [Point; 6] = get_inner_polygon(0.55, &border_vertexes)[..].try_into().unwrap();
     let xform = Transformation::new(x, y, 0.0);
     let shape = Shape::of_polygon(Box::new(border_vertexes));
-    let us_data = HexagonRedHexagon {
+    let us_data = HexagonBlueHexagon {
         spit_projectile_start: None,
         border_vertexes,
         outer_vertexes,
@@ -42,7 +42,7 @@ pub fn new_hexagon_green_hexagon(ctx: &mut NewRoomObjectContext, x: f64, y: f64)
 
     StandardUnit1Builder::new(StandardUnit1BuilderReq {
         team: Team::Enemy,
-        damage_color: DamageColor::Green,
+        damage_color: DamageColor::Blue,
         collision_damage: 10.0,
         hp: 20.0,
         engine_power: 15.0,
@@ -56,51 +56,77 @@ pub fn new_hexagon_green_hexagon(ctx: &mut NewRoomObjectContext, x: f64, y: f64)
 }
 
 fn act1(ctx: &mut SuAct1Context) -> Act1Response {
-    let us_data = ctx.su_ctx.us_data.downcast_mut::<HexagonRedHexagon>().unwrap();
+    let us_data = ctx.su_ctx.us_data.downcast_mut::<HexagonBlueHexagon>().unwrap();
 
     let mut response = Act1Response::new();
     let tick_len = ctx.su_ctx.su_common.get_unit_tick_len();
 
-    if us_data.spit_projectile_start.is_none() && ctx.act1_ctx.get_randf64() < tick_len {
-        us_data.translate_dir = ctx.act1_ctx.get_randi64(0..6);
-        us_data.spit_projectile_start = Some(SpitProjectileInfo { start: ctx.act1_ctx.get_room_time(), proj_spit: false});
-    }
-
-    if let Some(ref mut sps) = us_data.spit_projectile_start {
-        if !sps.proj_spit && ctx.act1_ctx.get_room_time() - sps.start > 0.5 {
-            sps.proj_spit = true;
-            let xform = ctx.act1_ctx.get_rofiz().get_movable_object_xform(ctx.su_ctx.su_common.get_ro_ref());
-            let self_as_weak = ctx.act1_ctx.get_self_as_weak();
-            let mut nfo_ctx = NewRoomObjectContext::from_act1_ctx(ctx.act1_ctx);
-            for i in 0..6 {
-                let angle = (i as f64) * 1.0/3.0 * std::f64::consts::PI;
-                let proj_speed = 10.0;
-                let shape = Proj2Shape::TriFan {
-                    center: Point::new(0.0, 0.0), 
-                    vertexes: Box::new(us_data.inner_vertexes),
-                };
-                let proj = Projectile2Builder::new(
-                    Projectile2BuilderReq {
-                        team: Team::Enemy,
-                        damage_color: DamageColor::Green,
-                        damage: 6.0,
-                        owner: self_as_weak.clone(),
-                        lifespan: 8.0,
-                        velocity_x: proj_speed * f64::cos(angle),
-                        velocity_y: proj_speed * f64::sin(angle),
-                        xform,
-                        shape,
-                        color: PROJ_COLOR,
-                    }
-                ).homing_to_enemies_power(200.0)
-                    .build(&mut nfo_ctx);
-                response.add_room_obj(Rc::new(RefCell::new(proj)));
+    match us_data.spit_projectile_start {
+        Some(ref mut sps) => {
+            if !sps.proj_spit && ctx.act1_ctx.get_room_time() - sps.start > 0.5 {
+                sps.proj_spit = true;
+                let main_dir_angle = ctx.act1_ctx.get_randf64() * 2.0 * std::f64::consts::PI;
+                let xform = ctx.act1_ctx.get_rofiz().get_movable_object_xform(ctx.su_ctx.su_common.get_ro_ref());
+                let self_as_weak = ctx.act1_ctx.get_self_as_weak();
+                let mut nfo_ctx = NewRoomObjectContext::from_act1_ctx(ctx.act1_ctx);
+                for i in 0..6 {
+                    let angle = (i as f64) * 1.0/3.0 * std::f64::consts::PI;
+                    let shape = Proj2Shape::TriFan {
+                        center: Point::new(0.0, 0.0), 
+                        vertexes: Box::new(us_data.inner_vertexes),
+                    };
+                    let adjust_velocity_fn = move |_: (f64, f64), age: f64| -> (f64, f64) {
+                        let radians_per_s = 3.0;
+                        let radial_expand_velocity = 5.0;
+                        let expand_until = 0.8;
+                        let (adj_x, adj_y) = if age < expand_until {
+                            let k = age * radial_expand_velocity * radians_per_s;
+                            let rotate_vx = k * -f64::sin(angle + radians_per_s * age);
+                            let rotate_vy = k * f64::cos(angle + radians_per_s * age);
+                            (radial_expand_velocity * f64::cos(angle + radians_per_s * age) + rotate_vx, 
+                             radial_expand_velocity * f64::sin(angle + radians_per_s * age) + rotate_vy)
+                        } else if age < 1.2 {
+                            let k = expand_until * radial_expand_velocity * radians_per_s;
+                            let rotate_vx = k * -f64::sin(angle + radians_per_s * age);
+                            let rotate_vy = k * f64::cos(angle + radians_per_s * age);
+                            (rotate_vx, rotate_vy)
+                        } else {
+                            let main_dir_velocity = 10.0;
+                            let k = expand_until * radial_expand_velocity * radians_per_s;
+                            let rotate_vx = k * -f64::sin(angle + radians_per_s * age);
+                            let rotate_vy = k * f64::cos(angle + radians_per_s * age);
+                            (main_dir_velocity * f64::cos(main_dir_angle) + rotate_vx, 
+                             main_dir_velocity * f64::sin(main_dir_angle) + rotate_vy)
+                        };
+                        (adj_x, adj_y)
+                    };
+                    let proj = Projectile2Builder::new(
+                        Projectile2BuilderReq {
+                            team: Team::Enemy,
+                            damage_color: DamageColor::Blue,
+                            damage: 6.0,
+                            owner: self_as_weak.clone(),
+                            lifespan: 8.0,
+                            velocity_x: 0.0,
+                            velocity_y: 0.0,
+                            xform,
+                            shape,
+                            color: PROJ_COLOR,
+                        }
+                    ).adjust_velocity_fn(Box::new(adjust_velocity_fn))
+                        .build(&mut nfo_ctx);
+                    response.add_room_obj(Rc::new(RefCell::new(proj)));
+                }
             }
-        }
-        if ctx.act1_ctx.get_room_time() - sps.start > 1.0 {
-            us_data.spit_projectile_start = None;
-        }
-    }
+            if ctx.act1_ctx.get_room_time() - sps.start > 1.0 {
+                us_data.spit_projectile_start = None;
+            }
+        },
+        None => if ctx.act1_ctx.get_randf64() < tick_len {
+            us_data.translate_dir = ctx.act1_ctx.get_randi64(0..6);
+            us_data.spit_projectile_start = Some(SpitProjectileInfo { start: ctx.act1_ctx.get_room_time(), proj_spit: false});
+        },
+    };
 
     match us_data.spit_projectile_start {
         Some(_) => {
@@ -121,7 +147,7 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
 }
 
 fn draw(ctx: &mut SuDrawContext) {
-    let us_data = ctx.su_ctx.us_data.downcast_mut::<HexagonRedHexagon>().unwrap();
+    let us_data = ctx.su_ctx.us_data.downcast_mut::<HexagonBlueHexagon>().unwrap();
     let border_color = ctx.su_ctx.su_common.get_draw_color(ctx.draw_ctx.get_room_time(), BORDER_COLOR);
     let outer_color = ctx.su_ctx.su_common.get_draw_color(ctx.draw_ctx.get_room_time(), OUTER_COLOR);
     let inner_color = match us_data.spit_projectile_start {
@@ -140,7 +166,7 @@ fn draw(ctx: &mut SuDrawContext) {
 }
 
 fn handle_collision(ctx: &mut SuHandleCollisionContext) -> HandleCollisionResponse {
-    let us_data = ctx.su_ctx.us_data.downcast_mut::<HexagonRedHexagon>().unwrap();
+    let us_data = ctx.su_ctx.us_data.downcast_mut::<HexagonBlueHexagon>().unwrap();
     if !ctx.hc_ctx.is_other_spectral() {
         us_data.should_reset_velocity = true;
         us_data.translate_dir = ctx.hc_ctx.get_randi64(0..6);
