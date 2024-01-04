@@ -1,4 +1,4 @@
-use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Act1Response, HandleCollisionResponse, Team, Act1QueryArgs, Act1QueryResult}, projectile::projectile2::{NewProjectile2Args, Proj2Shape}, damage::DamageColor}, rofiz::rofiz_object::Transformation, draw::{Color, DrawContext}}, geometry::shape::{Shape, Point}};
+use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Act1Response, HandleCollisionResponse, Team, Act1QueryArgs, Act1QueryResult}, projectile::projectile2::{Projectile2BuilderReq, Proj2Shape, Projectile2Builder}, damage::DamageColor}, rofiz::rofiz_object::Transformation, draw::{Color, DrawContext}}, geometry::shape::{Shape, Point}};
 
 use super::{standard_unit1::{StandardUnit1, StandardUnit1Builder, StandardUnit1BuilderReq, SuAct1Context, SuDrawContext, SuHandleCollisionContext, HandleCollisionLogic}, standard_unit_common::TranslateMove};
 
@@ -87,18 +87,20 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
                 center: Point::new(0.0, 0.0), 
                 vertexes: vec![Point::new(-0.4, -0.4), Point::new(0.4, -0.4), Point::new(0.4, 0.4), Point::new(-0.4, 0.4)].into_boxed_slice(), 
             };
-            let proj = NewProjectile2Args{
-                team: Team::Enemy,
-                damage_color: DamageColor::Blue,
-                damage: 3.0,
-                owner: self_as_weak,
-                lifespan: 2.0,
-                velocity_x: sps.proj_dx,
-                velocity_y: sps.proj_dy,
-                xform,
-                shape,
-                color: Color::new(0.0, 0.0, 15.0, 1.0),
-            }.new(&mut nfo_ctx);
+            let proj = Projectile2Builder::new(
+                Projectile2BuilderReq{
+                    team: Team::Enemy,
+                    damage_color: DamageColor::Blue,
+                    damage: 3.0,
+                    owner: self_as_weak,
+                    lifespan: 2.0,
+                    velocity_x: sps.proj_dx,
+                    velocity_y: sps.proj_dy,
+                    xform,
+                    shape,
+                    color: Color::new(0.0, 0.0, 15.0, 1.0),
+                }
+            ).build(&mut nfo_ctx);
             response.add_room_obj(Rc::new(RefCell::new(proj)));
         }
         if ctx.act1_ctx.get_room_time() - sps.start > 1.0 {

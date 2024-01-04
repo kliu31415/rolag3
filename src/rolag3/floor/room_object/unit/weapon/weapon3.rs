@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
-use crate::{rolag3::floor::{room_object::{projectile::projectile2::{NewProjectile2Args, Proj2Shape}, damage::DamageColor}, draw::Color}, gfx::draw_op_util::draw_op_circle, geometry::shape::Point};
+use crate::{rolag3::floor::{room_object::{projectile::projectile2::{Projectile2BuilderReq, Proj2Shape, Projectile2Builder}, damage::DamageColor}, draw::Color}, gfx::draw_op_util::draw_op_circle, geometry::shape::Point};
 
 use super::weapon_def::{Weapon, WeaponHandleTickContext, WeaponHandleTickResponse, DrawWeaponHudContext, DrawWeaponHudResponse, DrawWeaponOnOwnerResponse, DrawWeaponOnOwnerContext};
 
@@ -44,18 +44,20 @@ fn handle_tick_fn(ctx: &mut WeaponHandleTickContext) -> WeaponHandleTickResponse
         let velocity_x = ctx.owner_velocity_x + proj_velocity * f64::cos(angle);
         let velocity_y = ctx.owner_velocity_y + proj_velocity * f64::sin(angle);
         let shape = Proj2Shape::Circle {x: 0.0, y: 0.0, r: PROJ_RADIUS};
-        let proj = NewProjectile2Args{
-            team: ctx.owner_team,
-            damage_color: DamageColor::Red,
-            damage: 3.0,
-            owner: ctx.owner.clone(),
-            lifespan: 2.0,
-            velocity_x,
-            velocity_y,
-            xform: ctx.owner_xform,
-            shape,
-            color: PROJ_COLOR,
-        }.new(ctx.nro_ctx);
+        let proj = Projectile2Builder::new(
+            Projectile2BuilderReq{
+                team: ctx.owner_team,
+                damage_color: DamageColor::Red,
+                damage: 3.0,
+                owner: ctx.owner.clone(),
+                lifespan: 2.0,
+                velocity_x,
+                velocity_y,
+                xform: ctx.owner_xform,
+                shape,
+                color: PROJ_COLOR,
+            }
+        ).build(ctx.nro_ctx);
         response.new_room_objs.push(Rc::new(RefCell::new(proj)));
     }
     response

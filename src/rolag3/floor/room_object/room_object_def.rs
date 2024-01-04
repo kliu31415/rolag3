@@ -797,6 +797,15 @@ pub enum Team {
     Enemy,
 }
 
+impl Team {
+    pub fn other(&self) -> Self {
+        match self {
+            Team::Player => Team::Enemy,
+            Team::Enemy => Team::Player,
+        }
+    }
+}
+
 pub struct HcProjectileContext {
     pub team: Team,
     pub damage_color: DamageColor,

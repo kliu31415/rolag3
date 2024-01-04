@@ -3,7 +3,7 @@
 
 use std::{rc::Rc, cell::RefCell};
 
-use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Team, Act1Response}, unit::{standard_unit1::{StandardUnit1, StandardUnit1Builder, StandardUnit1BuilderReq, SuAct1Context, SuDrawContext}, standard_unit_common::RotateMove}, damage::DamageColor, projectile::projectile2::{Proj2Shape, NewProjectile2Args}}, draw::{Color, DrawContext}, rofiz::rofiz_object::Transformation}, geometry::{shape::{Point, Shape, Vector}, star::get_blunt_star, util::get_inner_polygon}};
+use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Team, Act1Response}, unit::{standard_unit1::{StandardUnit1, StandardUnit1Builder, StandardUnit1BuilderReq, SuAct1Context, SuDrawContext}, standard_unit_common::RotateMove}, damage::DamageColor, projectile::projectile2::{Proj2Shape, Projectile2BuilderReq, Projectile2Builder}}, draw::{Color, DrawContext}, rofiz::rofiz_object::Transformation}, geometry::{shape::{Point, Shape, Vector}, star::get_blunt_star, util::get_inner_polygon}};
 
 const CIRCLE_BORDER_COLOR: Color = Color::new(0.5, 0.5, 0.5, 1.0);
 const TURRET_BORDER_COLOR: Color = Color::new(0.5, 0.5, 0.5, 1.0);
@@ -111,18 +111,20 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
                 r: PROJ_RADIUS,
             };
             let proj_xform = Transformation::new(xform.dx + center.x as f64, xform.dy + center.y as f64, 0.0);
-            let proj = NewProjectile2Args {
-                team: Team::Enemy,
-                damage_color: us_data.damage_color,
-                damage: 3.0,
-                owner: self_as_weak.clone(),
-                lifespan: 8.0,
-                velocity_x: proj_speed * f64::cos(angle),
-                velocity_y: proj_speed * f64::sin(angle),
-                xform: proj_xform,
-                shape,
-                color: us_data.proj_color,
-            }.new(&mut nfo_ctx);
+            let proj = Projectile2Builder::new(
+                Projectile2BuilderReq {
+                    team: Team::Enemy,
+                    damage_color: us_data.damage_color,
+                    damage: 3.0,
+                    owner: self_as_weak.clone(),
+                    lifespan: 8.0,
+                    velocity_x: proj_speed * f64::cos(angle),
+                    velocity_y: proj_speed * f64::sin(angle),
+                    xform: proj_xform,
+                    shape,
+                    color: us_data.proj_color,
+                }
+            ).build(&mut nfo_ctx);
             response.add_room_obj(Rc::new(RefCell::new(proj)));
         }
         us_data.since_shot_proj += PROJ_SHOOT_INTERVAL;

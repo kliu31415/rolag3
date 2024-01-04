@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
-use crate::{rolag3::floor::{draw::{Color, DrawContext}, room_object::{room_object_def::{Act1QueryResult, NewRoomObjectContext, Team, Act1Response, Act1QueryArgs, HandleCollisionResponse}, unit::{standard_unit1::{StandardUnit1, StandardUnit1BuilderReq, StandardUnit1Builder, HandleCollisionLogic, SuAct1Context, SuDrawContext, SuHandleCollisionContext}, standard_unit_common::TranslateMove}, damage::DamageColor, projectile::projectile2::{Proj2Shape, NewProjectile2Args}}, rofiz::rofiz_object::Transformation}, geometry::{shape::{Shape, Point}, util::{rotate_polygon, regular_polygon, get_inner_polygon}}};
+use crate::{rolag3::floor::{draw::{Color, DrawContext}, room_object::{room_object_def::{Act1QueryResult, NewRoomObjectContext, Team, Act1Response, Act1QueryArgs, HandleCollisionResponse}, unit::{standard_unit1::{StandardUnit1, StandardUnit1BuilderReq, StandardUnit1Builder, HandleCollisionLogic, SuAct1Context, SuDrawContext, SuHandleCollisionContext}, standard_unit_common::TranslateMove}, damage::DamageColor, projectile::projectile2::{Proj2Shape, Projectile2BuilderReq, Projectile2Builder}}, rofiz::rofiz_object::Transformation}, geometry::{shape::{Shape, Point}, util::{rotate_polygon, regular_polygon, get_inner_polygon}}};
 
 /* SquareBlueDiamond randomly translates. Enemy1 occasionally spits a projectile in the player's direction.
 */
@@ -98,18 +98,20 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
                 y: 0.0,
                 r: PROJ_RADIUS,
             };
-            let proj = NewProjectile2Args{
-                team: Team::Enemy,
-                damage_color: DamageColor::Blue,
-                damage: 3.0,
-                owner: self_as_weak,
-                lifespan: 5.0,
-                velocity_x: sps.proj_dx,
-                velocity_y: sps.proj_dy,
-                xform,
-                shape,
-                color: PROJ_COLOR,
-            }.new(&mut nfo_ctx);
+            let proj = Projectile2Builder::new(
+                Projectile2BuilderReq{
+                    team: Team::Enemy,
+                    damage_color: DamageColor::Blue,
+                    damage: 3.0,
+                    owner: self_as_weak,
+                    lifespan: 5.0,
+                    velocity_x: sps.proj_dx,
+                    velocity_y: sps.proj_dy,
+                    xform,
+                    shape,
+                    color: PROJ_COLOR,
+                }
+            ).build(&mut nfo_ctx);
             response.add_room_obj(Rc::new(RefCell::new(proj)));
         }
         if time - sps.start > 1.0 {

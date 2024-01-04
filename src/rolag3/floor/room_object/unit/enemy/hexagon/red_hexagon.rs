@@ -4,14 +4,14 @@
 
 use std::{cell::RefCell, rc::Rc};
 
-use crate::{rolag3::floor::{draw::{Color, DrawContext}, room_object::{room_object_def::{NewRoomObjectContext, Team, Act1Response, HandleCollisionResponse}, unit::{standard_unit1::{StandardUnit1, StandardUnit1Builder, StandardUnit1BuilderReq, HandleCollisionLogic, SuAct1Context, SuDrawContext, SuHandleCollisionContext}, standard_unit_common::TranslateMove}, damage::DamageColor, projectile::projectile2::{Proj2Shape, NewProjectile2Args}}, rofiz::rofiz_object::Transformation}, geometry::{shape::{Shape, Point}, util::{regular_polygon, get_inner_polygon}}};
+use crate::{rolag3::floor::{draw::{Color, DrawContext}, room_object::{room_object_def::{NewRoomObjectContext, Team, Act1Response, HandleCollisionResponse}, unit::{standard_unit1::{StandardUnit1, StandardUnit1Builder, StandardUnit1BuilderReq, HandleCollisionLogic, SuAct1Context, SuDrawContext, SuHandleCollisionContext}, standard_unit_common::TranslateMove}, damage::DamageColor, projectile::projectile2::{Proj2Shape, Projectile2BuilderReq, Projectile2Builder}}, rofiz::rofiz_object::Transformation}, geometry::{shape::{Shape, Point}, util::{regular_polygon, get_inner_polygon}}};
 
 const BORDER_COLOR: Color = Color::new(0.2, 0.2, 0.2, 1.0);
 const OUTER_COLOR: Color = Color::new(0.2, 0.0, 0.0, 1.0);
 const INNER_COLOR: Color = Color::new(1.0, 0.0, 0.0, 1.0);
 const PROJ_COLOR: Color = Color::new(5.0, 0.2, 0.2, 1.0);
 
-pub struct HexagonRedCircle {
+pub struct HexagonRedHexagon {
     spit_projectile_start: Option<SpitProjectileInfo>,
     border_vertexes: [Point; 6],
     outer_vertexes: [Point; 6],
@@ -31,7 +31,7 @@ pub fn new_hexagon_red_hexagon(ctx: &mut NewRoomObjectContext, x: f64, y: f64) -
     let inner_vertexes: [Point; 6] = get_inner_polygon(0.55, &border_vertexes)[..].try_into().unwrap();
     let xform = Transformation::new(x, y, 0.0);
     let shape = Shape::of_polygon(Box::new(border_vertexes));
-    let us_data = HexagonRedCircle {
+    let us_data = HexagonRedHexagon {
         spit_projectile_start: None,
         border_vertexes,
         outer_vertexes,
@@ -56,7 +56,7 @@ pub fn new_hexagon_red_hexagon(ctx: &mut NewRoomObjectContext, x: f64, y: f64) -
 }
 
 fn act1(ctx: &mut SuAct1Context) -> Act1Response {
-    let us_data = ctx.su_ctx.us_data.downcast_mut::<HexagonRedCircle>().unwrap();
+    let us_data = ctx.su_ctx.us_data.downcast_mut::<HexagonRedHexagon>().unwrap();
 
     let mut response = Act1Response::new();
     let tick_len = ctx.su_ctx.su_common.get_unit_tick_len();
@@ -79,18 +79,20 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
                     center: Point::new(0.0, 0.0), 
                     vertexes: Box::new(us_data.inner_vertexes),
                 };
-                let proj = NewProjectile2Args {
-                    team: Team::Enemy,
-                    damage_color: DamageColor::Red,
-                    damage: 6.0,
-                    owner: self_as_weak.clone(),
-                    lifespan: 8.0,
-                    velocity_x: proj_speed * f64::cos(angle),
-                    velocity_y: proj_speed * f64::sin(angle),
-                    xform,
-                    shape,
-                    color: PROJ_COLOR,
-                }.new(&mut nfo_ctx);
+                let proj = Projectile2Builder::new(
+                    Projectile2BuilderReq {
+                        team: Team::Enemy,
+                        damage_color: DamageColor::Red,
+                        damage: 6.0,
+                        owner: self_as_weak.clone(),
+                        lifespan: 8.0,
+                        velocity_x: proj_speed * f64::cos(angle),
+                        velocity_y: proj_speed * f64::sin(angle),
+                        xform,
+                        shape,
+                        color: PROJ_COLOR,
+                    }
+                ).build(&mut nfo_ctx);
                 response.add_room_obj(Rc::new(RefCell::new(proj)));
             }
         }
@@ -118,7 +120,7 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
 }
 
 fn draw(ctx: &mut SuDrawContext) {
-    let us_data = ctx.su_ctx.us_data.downcast_mut::<HexagonRedCircle>().unwrap();
+    let us_data = ctx.su_ctx.us_data.downcast_mut::<HexagonRedHexagon>().unwrap();
     let border_color = ctx.su_ctx.su_common.get_draw_color(ctx.draw_ctx.get_room_time(), BORDER_COLOR);
     let outer_color = ctx.su_ctx.su_common.get_draw_color(ctx.draw_ctx.get_room_time(), OUTER_COLOR);
     let inner_color = match us_data.spit_projectile_start {
@@ -137,7 +139,7 @@ fn draw(ctx: &mut SuDrawContext) {
 }
 
 fn handle_collision(ctx: &mut SuHandleCollisionContext) -> HandleCollisionResponse {
-    let us_data = ctx.su_ctx.us_data.downcast_mut::<HexagonRedCircle>().unwrap();
+    let us_data = ctx.su_ctx.us_data.downcast_mut::<HexagonRedHexagon>().unwrap();
     if !ctx.hc_ctx.is_other_spectral() {
         us_data.should_reset_velocity = true;
         us_data.translate_dir = ctx.hc_ctx.get_randi64(0..6);
