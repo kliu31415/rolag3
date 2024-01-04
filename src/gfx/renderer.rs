@@ -210,6 +210,7 @@ struct WgpuRenderer {
     concentric_circle_sector_shader_pipeline: ConcrenticCircleSectorShaderPipeline,
     text_shader_pipeline: TextTextureShaderPipeline,
     texture2_shader_pipeline: Texture2ShaderPipeline,
+    smaa_target: Option<smaa::SmaaTarget>,
     bloom_pipeline: BloomPipeline,
     hdr_pipeline: HdrPipeline,
 
@@ -458,11 +459,13 @@ impl Renderer for WgpuRenderer {
         cached_mem.reset();
         let mut bind_groups = Vec::new();
         let buffers: Vec<_>;
+        let mut smaa_target = self.smaa_target.take().unwrap();
+        let smaa_frame = smaa_target.start_frame(&self.device, &self.queue, &self.bloom_pipeline.get_input_view());
         {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Render Pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: self.bloom_pipeline.get_input_view(),
+                    view: &smaa_frame,
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(
@@ -624,6 +627,8 @@ impl Renderer for WgpuRenderer {
         }
         std::mem::swap(&mut cached_mem, &mut self.cached_vecs);
 
+        smaa_frame.resolve();
+        self.smaa_target = Some(smaa_target);
         let output = self.surface.get_current_texture()?;
         let view = output.texture.create_view(&wgpu::TextureViewDescriptor::default());
         self.bloom_pipeline.process(&mut encoder, self.hdr_pipeline.get_input_view());
@@ -992,6 +997,14 @@ pub fn make_renderer(window: &winit::window::Window) -> Box<dyn Renderer> {
 
     let vertex_buffer_pool = VertexBufferPool::new();
     let format = WgpuRenderer::INTERMEDIATE_TEXTURE_FORMAT;
+    let smaa_target = smaa::SmaaTarget::new(
+        &device,
+        &queue,
+        window.inner_size().width,
+        window.inner_size().height,
+        format,
+        smaa::SmaaMode::Smaa1X,
+    );
     let bloom_pipeline = BloomPipeline::new(&device, format, config.width, config.height);
     let hdr_pipeline = HdrPipeline::new(&device, format, config.format, config.width, config.height);
     let triangle_shader_pipeline = TriangleShaderPipeline::new(&device, format);
@@ -1011,6 +1024,7 @@ pub fn make_renderer(window: &winit::window::Window) -> Box<dyn Renderer> {
         concentric_circle_sector_shader_pipeline,
         text_shader_pipeline,
         texture2_shader_pipeline,
+        smaa_target: Some(smaa_target),
         bloom_pipeline,
         hdr_pipeline,
         cached_text_textures: HashMap::new(),
