@@ -1,4 +1,4 @@
-use crate::{gfx::{renderer::{ColorRGBA32f, ViewSpaceCoordinate, DrawOpWithMetadata, DrawOpTriFan, DrawOp, ColoredTriVertex, DrawOpCCS, DrawOpGroup, Rect, DrawOpText, DrawTextPosition, DrawOpTexture2, DrawOpQuadFan}, draw_op_util::draw_op_rect}, geometry::shape::Point};
+use crate::{gfx::{renderer::{ColorRGBA32f, ViewSpaceCoordinate, DrawOpWithMetadata, DrawOpTriFan, DrawOp, ColoredTriVertex, DrawOpCCS, DrawOpGroup, Rect, DrawOpText, DrawTextPosition, DrawOpTexture2, DrawOpQuadFan, DrawOpTri}, draw_op_util::draw_op_rect}, geometry::shape::Point};
 
 use super::{rofiz::rofiz_state::RofizState, floor_def::Floor, room_object::unit::player::Player, room::RoomTile};
 
@@ -341,6 +341,17 @@ impl DrawContext<'_> {
             })
             .collect();
         DrawOp::TriFan(DrawOpTriFan{vertexes: vs_coords})
+    }
+
+    pub fn do_tri(&self, color: Color, vertexes: [Point; 3]) -> DrawOp {
+        let mut vs_coords = [ColoredTriVertex::default(); 3];
+        for (i, v) in vertexes.iter().enumerate() {
+            vs_coords[i] = ColoredTriVertex {
+                color: Self::color_to_rdr(&color),
+                vertex: ViewSpaceCoordinate{x: self.x_to_vsc(v.x), y: self.y_to_vsc(v.y)}
+            };
+        }
+        DrawOp::Tri(DrawOpTri{vertexes: vs_coords})
     }
 
     pub fn do_quad_fan(&self, color: Color, vertexes: [Point; 4]) -> DrawOp {

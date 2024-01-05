@@ -48,7 +48,7 @@ enum ShaderInput {
 #[derive(Debug)]
 pub enum DrawOp {
     Group(DrawOpGroup),
-    _Tri(DrawOpTri),
+    Tri(DrawOpTri),
     QuadFan(DrawOpQuadFan),
     TriFan(DrawOpTriFan),
     _TriStrip(DrawOpTriStrip),
@@ -61,7 +61,7 @@ impl DrawOp {
     fn get_shader_id(&self) -> ShaderId {
         match self {
             DrawOp::Group(ref g) => g.ops[0].get_shader_id(),
-            DrawOp::_Tri(_) => ShaderId::Triangle1,
+            DrawOp::Tri(_) => ShaderId::Triangle1,
             DrawOp::QuadFan(_) => ShaderId::Triangle1,
             DrawOp::TriFan(_) => ShaderId::Triangle1,
             DrawOp::_TriStrip(_) => ShaderId::Triangle1,
@@ -541,7 +541,7 @@ impl Renderer for WgpuRenderer {
             while let Some(op) = ordered_ops_iter.next() {
                 match op {
                     DrawOp::Group(_) => panic!("all DrawOpGroups should have been flattened by this point (1)"),
-                    DrawOp::_Tri(ref x) => {
+                    DrawOp::Tri(ref x) => {
                         self.add_tri_shader_inputs(&mut cached_mem.triangle1_shader_inputs_batch, x);
                     }
                     DrawOp::QuadFan(ref x) => {
