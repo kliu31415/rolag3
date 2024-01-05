@@ -5,7 +5,8 @@ use crate::{rolag3::floor::{rofiz::{rofiz_object::{RofizObjectMovement, Transfor
 #[derive(Debug, Clone, Copy)]
 pub enum Budeb {
     SpeedMult(BudebMaxSpeed),
-    TimeSpeedMult(BudebTimeSpeedMult)
+    TimeSpeedMult(BudebTimeSpeedMult),
+    TractionMult(BudebTractionMult),
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -30,6 +31,21 @@ impl BudebMaxSpeed {
 }
 
 #[derive(Debug, Clone, Copy)]
+pub struct BudebTractionMult {
+    pub multiplier: f64,
+    pub expiry: BudebExpiry,
+}
+
+impl BudebTractionMult {
+    pub fn new(multiplier: f64, expiry: BudebExpiry) -> Self {
+        Self {
+            multiplier,
+            expiry,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
 pub struct BudebTimeSpeedMult {
     pub time_til_expiry: f64,
     pub multiplier: f64,
@@ -40,7 +56,7 @@ const COLLISION_DAMAGE_INSTANT_MULT: f64 = 0.25;
 pub struct StandardUnitCommon {
     ro_ref: RofizObjectRef,
     engine_power: f64, // intuitively, equal to the max speed in tiles/s
-    tire_friction: f64, // intuitively, proportional to how quickly the unit reaches its max speed
+    tire_traction: f64, // intuitively, proportional to how quickly the unit reaches its max speed
     angular_power: f64,
     angular_traction: f64,
     velocity_cap: f64, // prevents accel tiles from making the player too fast
@@ -103,7 +119,7 @@ impl StandardUnitCommon {
         collision_damage: f64,
         hp: f64, 
         engine_power: f64, 
-        tire_friction: f64, 
+        tire_traction: f64, 
         angular_power: f64, 
         angular_traction: f64, 
         velocity_cap: f64, 
@@ -113,7 +129,7 @@ impl StandardUnitCommon {
         Self {
             ro_ref,
             engine_power,
-            tire_friction,
+            tire_traction,
             angular_power,
             angular_traction,
             velocity_x: 0.0,
@@ -259,9 +275,62 @@ impl StandardUnitCommon {
         assert!(self.act1_started, "cannot call standard_unit_common::end_act1() before act1 has started");
 
         let tick_length = self.unit_tick_length;
+
+        let mut max_speed_mult = 1.0;
+        let mut min_speed_mult = 1.0;
+        let mut max_traction_mult = 1.0;
+        let mut min_traction_mult = 1.0;
+        let mut expired_budeb_idx = Vec::new();
+        for (i, budeb) in self.budebs.iter_mut().enumerate() {
+            match budeb {
+                Budeb::SpeedMult(v) => {
+                    match v.expiry {
+                        BudebExpiry::Duration(ref mut d) => {
+                            *d -= tick_length;
+                            if *d < 0.0 {
+                                expired_budeb_idx.push(i);
+                            } else {
+                                max_speed_mult = f64::max(max_speed_mult, v.multiplier);
+                                min_speed_mult = f64::min(min_speed_mult, v.multiplier);
+                            }
+                        }
+                        BudebExpiry::OneTick => {
+                            expired_budeb_idx.push(i);
+                            max_speed_mult = f64::max(max_speed_mult, v.multiplier);
+                            min_speed_mult = f64::min(min_speed_mult, v.multiplier);
+                        }
+                    };
+                },
+                Budeb::TractionMult(v) => {
+                    match v.expiry {
+                        BudebExpiry::Duration(ref mut d) => {
+                            *d -= tick_length;
+                            if *d < 0.0 {
+                                expired_budeb_idx.push(i);
+                            } else {
+                                max_traction_mult = f64::max(max_traction_mult, v.multiplier);
+                                min_traction_mult = f64::min(min_traction_mult, v.multiplier);
+                            }
+                        }
+                        BudebExpiry::OneTick => {
+                            expired_budeb_idx.push(i);
+                            max_traction_mult = f64::max(max_traction_mult, v.multiplier);
+                            min_traction_mult = f64::min(min_traction_mult, v.multiplier);
+                        }
+                    }
+                },
+                Budeb::TimeSpeedMult(_) => {}, // handled in start_act1()
+            }
+        }
+        for i in expired_budeb_idx.iter().rev() {
+            self.budebs.remove(*i);
+        }
+        let speed_mult = max_speed_mult * min_speed_mult;
+        let traction_mult = max_traction_mult * min_traction_mult;
+
+        let tire_traction = self.tire_traction * traction_mult;
         let min_velocity = self.min_effective_velocity;
         let min_angular_velocity = self.min_effective_angular_velocity;
-
         match self.translate {
             TranslateMove::Nop => {},
             TranslateMove::Accelerate { ax, ay, .. } => (||{
@@ -270,7 +339,7 @@ impl StandardUnitCommon {
                     return;
                 }
                 let velocity_norm = f64::hypot(self.velocity_x, self.velocity_y);
-                let f_engine = self.tire_friction * self.engine_power / f64::max(velocity_norm, min_velocity);
+                let f_engine = tire_traction * self.engine_power / f64::max(velocity_norm, min_velocity);
                 let accel = tick_length * f_engine / Self::MASS;
                 self.velocity_x += accel * ax / axay_norm;
                 self.velocity_y += accel * ay / axay_norm;
@@ -283,7 +352,7 @@ impl StandardUnitCommon {
                     return;
                 }
         
-                let f_engine = self.tire_friction * self.engine_power / f64::max(velocity_norm, min_velocity);
+                let f_engine = tire_traction * self.engine_power / f64::max(velocity_norm, min_velocity);
                 self.decelerate_xy(tick_length, f_engine);
             })(),
             TranslateMove::ResetVelocity => {
@@ -346,7 +415,7 @@ impl StandardUnitCommon {
         // TODO: friction is calculated with slightly different velocities than the acceleration calculations. 
         // Friction is computed with the post-acceleration velocity. This should only make a small difference in
         // practice, but I'm just making a note in case there are bugs.
-        self.decelerate_xy(tick_length, self.tire_friction * Self::MASS * Self::GRAVITY);
+        self.decelerate_xy(tick_length, tire_traction * Self::MASS * Self::GRAVITY);
         self.decelerate_theta(tick_length, self.angular_traction * Self::MASS * Self::GRAVITY);
 
         // we have to cap the underlying velocity. We can't just compute a separate scaled velocity while leaving the
@@ -359,40 +428,9 @@ impl StandardUnitCommon {
             self.velocity_y *= scale;
         }
 
-        let mut max_speed_mult = 1.0;
-        let mut min_speed_mult = 1.0;
-
-        let mut expired_budeb_idx = Vec::new();
-        for (i, budeb) in self.budebs.iter_mut().enumerate() {
-            match budeb {
-                Budeb::SpeedMult(v) => {
-                    match v.expiry {
-                        BudebExpiry::Duration(ref mut d) => {
-                            *d -= tick_length;
-                            if *d < 0.0 {
-                                expired_budeb_idx.push(i);
-                            } else {
-                                max_speed_mult = f64::max(max_speed_mult, v.multiplier);
-                                min_speed_mult = f64::min(min_speed_mult, v.multiplier);
-                            }
-                        }
-                        BudebExpiry::OneTick => {
-                            expired_budeb_idx.push(i);
-                            max_speed_mult = f64::max(max_speed_mult, v.multiplier);
-                            min_speed_mult = f64::min(min_speed_mult, v.multiplier);
-                        }
-                    };
-                },
-                Budeb::TimeSpeedMult(_) => {}, // handled in start_act1()
-            }
-        }
-        for i in expired_budeb_idx.iter().rev() {
-            self.budebs.remove(*i);
-        }
-
-        let dx = self.velocity_x * tick_length * max_speed_mult * min_speed_mult;
-        let dy = self.velocity_y * tick_length * max_speed_mult * min_speed_mult;
-        let dtheta = self.velocity_theta * tick_length * max_speed_mult * min_speed_mult;
+        let dx = self.velocity_x * tick_length * speed_mult;
+        let dy = self.velocity_y * tick_length * speed_mult;
+        let dtheta = self.velocity_theta * tick_length * speed_mult;
 
         let mut movement_and_fallbacks = vec![Transformation::new(dx, dy, dtheta)];
 

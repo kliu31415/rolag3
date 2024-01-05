@@ -1,4 +1,4 @@
-use crate::{rolag3::floor::{run::{PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, draw::DrawContext, room_object::{room_object_def::{RoomObject, Act1Context, FloorCoordinate, NewRoomObjectContext, RoomObjectMetadata, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse, RoQueryUnitInfoContext, RoQueryUnitInfoResponse, HcTileContext, HcTileEffect, HcTileResponse, RoomObjApplyOperationContext, RoomObjOperation, HcStandardUnitContext, HcStandardUnitResponse}, tiles::room_connection::Direction, damage::DamageColor, unit::standard_unit_common::BudebExpiry}, rofiz::{rofiz_object::{Hitbox, Transformation}, rofiz_state::RofizState}, room::RoomConnectionInfo}, geometry::shape::{Shape, Point}, gfx::{renderer::{DrawOp, DrawOpGroup, ColorRGBA32f, DrawOpText, DrawTextPosition}, draw_op_util::draw_op_rect}};
+use crate::{rolag3::floor::{run::{PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, draw::DrawContext, room_object::{room_object_def::{RoomObject, Act1Context, FloorCoordinate, NewRoomObjectContext, RoomObjectMetadata, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse, RoQueryUnitInfoContext, RoQueryUnitInfoResponse, HcTileContext, HcTileEffect, HcTileResponse, RoomObjApplyOperationContext, RoomObjOperation, HcStandardUnitContext, HcStandardUnitResponse}, tiles::room_connection::Direction, damage::DamageColor, unit::standard_unit_common::{BudebExpiry, BudebTractionMult}}, rofiz::{rofiz_object::{Hitbox, Transformation}, rofiz_state::RofizState}, room::RoomConnectionInfo}, geometry::shape::{Shape, Point}, gfx::{renderer::{DrawOp, DrawOpGroup, ColorRGBA32f, DrawOpText, DrawTextPosition}, draw_op_util::draw_op_rect}};
 
 use super::{Unit, standard_unit_common::{StandardUnitCommon, Budeb, BudebMaxSpeed, TranslateMove, PolarForce}, weapon::{weapon_def::{Weapon, WeaponHandleTickContext, DrawWeaponHudContext, DrawWeaponOnOwnerContext}, weapon1::new_weapon1, weapon2::new_weapon2, weapon3::new_weapon3}, active_item::{active_item_def::{ActiveItem, ActiveItemHandleTickContext}, clear_enemy_projectiles::new_active_item_clear_projectiles, slow_enemy_time::new_active_item_slow_enemy_time}};
 
@@ -37,6 +37,10 @@ impl RoomObject for Player {
             match x {
                 HcTileEffect::Accelerate { force, theta } => additional_force.push(PolarForce{r: force, theta}),
                 HcTileEffect::DealDamage { damage } => {self.su_common.as_mut().unwrap().take_damage(damage);},
+                HcTileEffect::TractionMult { mult } => {
+                    let budeb = Budeb::TractionMult(BudebTractionMult::new(mult, BudebExpiry::OneTick));
+                    self.su_common.as_mut().unwrap().apply_budeb(&budeb);
+                },
             }
         });
 

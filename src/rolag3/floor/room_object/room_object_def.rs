@@ -855,6 +855,7 @@ pub struct HcTileContext {
 pub enum HcTileEffect {
     Accelerate {force: f64, theta: f64},
     DealDamage {damage: f64},
+    TractionMult {mult: f64},
 }
 
 pub struct HcTileResponse {
