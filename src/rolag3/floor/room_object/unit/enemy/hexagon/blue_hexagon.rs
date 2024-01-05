@@ -75,7 +75,7 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
                         center: Point::new(0.0, 0.0), 
                         vertexes: Box::new(us_data.inner_vertexes),
                     };
-                    let adjust_velocity_fn = move |_: (f64, f64), age: f64| -> (f64, f64) {
+                    let adjust_velocity_fn = move |velocity: (f64, f64), age: f64| -> (f64, f64) {
                         let radians_per_s = 3.0;
                         let radial_expand_velocity = 5.0;
                         let expand_until = 0.8;
@@ -98,7 +98,8 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
                             (main_dir_velocity * f64::cos(main_dir_angle) + rotate_vx, 
                              main_dir_velocity * f64::sin(main_dir_angle) + rotate_vy)
                         };
-                        (adj_x, adj_y)
+                        // use + rather than overriding completely, so external forces like black hole aren't ignored
+                        (velocity.0 + adj_x, velocity.1 + adj_y)
                     };
                     let proj = Projectile2Builder::new(
                         Projectile2BuilderReq {

@@ -263,8 +263,13 @@ impl RofizState {
     #[inline(never)]
     fn moafc4(&mut self, collisions: &mut Vec<RofizCollision>, nsu_bb_overlap: Vec<Vec<usize>>) {
         let mut i = 0;
+        // asserts on "iterations" is used to ensure that this function doesn't enter an infinite loop
+        let mut iterations = 0;
+        let iterations_max = 1e5 as u64;
 
         while i < self.nonspectral_units.len() {
+            iterations += 1;
+            assert!(iterations < iterations_max);
             // verify that nsu[i] doesn't overlap with any walls
             let mut nsu_i = self.obj_pool.movable[self.nonspectral_units[i].idx as usize].as_mut().unwrap();
             // [start, end). Note that half-open interval. Use f32s to prevent underflows (bounding boxes may have
@@ -275,6 +280,7 @@ impl RofizState {
             let yend = f32::clamp(nsu_i.bounding_box.y2 + 1.0, 0.0, self.wall_y_end as f32) as usize;
             for x in xstart..xend {
                 for y in ystart..yend {
+                    iterations += 1;
                     if let Some(ref bw) = self.has_wall_at_coordinate[x][y] {
                         let bw = self.obj_pool.basic_walls[bw.idx as usize].as_ref().unwrap();
                         if nsu_i.overlaps_ro_wall(&bw) {
@@ -283,7 +289,10 @@ impl RofizState {
                             // 1. the unit is moved back to a different position
                             // 2. the different position overlaps with a wall.
                             // Remember, we assert that the unit's original position must never overlap with a basic wall
-                            while Self::move_back(&mut nsu_i) && nsu_i.overlaps_ro_wall(&bw) {}
+                            while Self::move_back(&mut nsu_i) && nsu_i.overlaps_ro_wall(&bw) {
+                                iterations += 1;
+                                assert!(iterations < iterations_max);
+                            }
                             // since the unit moved, it needs to be rechecked against all walls.
                         }
                     }
@@ -293,6 +302,8 @@ impl RofizState {
             let mut i_override = None;
             let mut bbo_idx = 0;
             while bbo_idx < nsu_bb_overlap[i].len() {
+                iterations += 1;
+                assert!(iterations < iterations_max);
                 let j = nsu_bb_overlap[i][bbo_idx];
                 if j > i {
                     break;
@@ -311,14 +322,20 @@ impl RofizState {
                     // check if this collision can be solved just by moving nsu_i back. If so, only move nsu_i back.
                     // nsu_i will need to be rechecked against all walls.
                     if !nsu_i.initial_overlaps_ro_movable(&nsu_j) {
-                        while Self::move_back(&mut nsu_i) && nsu_i.overlaps_ro_movable(&nsu_j) {}
+                        while Self::move_back(&mut nsu_i) && nsu_i.overlaps_ro_movable(&nsu_j) {
+                            iterations += 1;
+                            assert!(iterations < iterations_max);
+                        }
                         i_override = Some(i);
                         break;
                     }
 
                     // check if this collision can be solved just by moving nsu_j back. If so, only move nsu_j back.
                     if !nsu_j.initial_overlaps_ro_movable(&nsu_i) {
-                        while Self::move_back(&mut nsu_j) && nsu_i.overlaps_ro_movable(&nsu_j) {}
+                        while Self::move_back(&mut nsu_j) && nsu_i.overlaps_ro_movable(&nsu_j) {
+                            iterations += 1;
+                            assert!(iterations < iterations_max);
+                        }
                         i_override = Some(j);
                         break;
                     }
@@ -326,10 +343,16 @@ impl RofizState {
                     // Otherwise, move both of them back. Note that we can't just move nsu_i back to its original location,
                     // because even though nsu_i's original location intersects with nsu_j's current temp location, one
                     // of nsu_i's intermediate fallback locations might not intersect with nsu_j.
-                    while Self::move_back(&mut nsu_i) && nsu_i.overlaps_ro_movable(&nsu_j) {}
+                    while Self::move_back(&mut nsu_i) && nsu_i.overlaps_ro_movable(&nsu_j) {
+                        iterations += 1;
+                        assert!(iterations < iterations_max);
+                    }
 
                     if nsu_i.overlaps_ro_movable(&nsu_j) {
-                        while Self::move_back(&mut nsu_j) && nsu_i.overlaps_ro_movable(&nsu_j) {}
+                        while Self::move_back(&mut nsu_j) && nsu_i.overlaps_ro_movable(&nsu_j) {
+                            iterations += 1;
+                            assert!(iterations < iterations_max);
+                        }
                         // nsus[0..j] are still valid, but nsus[j..i] aren't necessarily, because j was moved.
                         i_override = Some(j);
                         break;
@@ -348,6 +371,7 @@ impl RofizState {
                 None => i + 1,
             }
         }
+        log::trace!("Rofiz moafc4 iterations={}", iterations);
     }
 
     #[inline(never)]
