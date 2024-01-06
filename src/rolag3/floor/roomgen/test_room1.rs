@@ -1,6 +1,6 @@
 use std::{rc::Rc, cell::RefCell};
 
-use crate::{rolag3::floor::{floorgen::run::{GenFloorRoomContext, GenFloorRoomResponse}, room_object::{room_object_def::{RoomObjectId, NewRoomObjectContext, RoomObjectCollection}, cosmetic::ground1::{GroundTheme, new_ground1}, wall::basic_wall::{WallTheme, BasicWall}, unit::{enemy1::new_enemy1, enemy2::new_enemy2, enemy3::new_enemy3, enemy::{square::{blue::new_square_blue, blue_circle::new_square_blue_circle, blue_diamond::new_square_blue_diamond, green::new_square_green, red::new_square_red, red_square::new_square_red_square}, regular_tri::{red_tri::new_regtri_red_tri, red::new_regtri_red, green::new_regtri_green}, circular_turret::bluntstar3::new_circular_turret_bluntstar3, rotating_laser::laser::new_rotating_laser, hexagon::{red_hexagon::new_hexagon_red_hexagon, green_hexagon::new_hexagon_green_hexagon, blue_hexagon::new_hexagon_blue_hexagon}}, enemy4::new_enemy4, enemy5::new_enemy5, boss1::new_boss1}, damage::DamageColor, tiles::{black_hole::new_black_hole, accel_tile::new_accel_tile, ice_tile::new_ice_tile, damage_tile::new_damage_tile}}, rofiz::{rofiz_state::RofizState, rofiz_object::Transformation}, room::RoomCtorArgs}, util::rng::Rng};
+use crate::{rolag3::floor::{floorgen::run::{GenFloorRoomContext, GenFloorRoomResponse}, room_object::{room_object_def::{RoomObjectId, NewRoomObjectContext, RoomObjectCollection}, cosmetic::ground1::{GroundTheme, new_ground1}, wall::basic_wall::{WallTheme, BasicWall}, unit::{enemy1::new_enemy1, enemy2::new_enemy2, enemy3::new_enemy3, enemy::{square::{blue::new_square_blue, blue_circle::new_square_blue_circle, blue_diamond::new_square_blue_diamond, green::new_square_green, red::new_square_red, red_square::new_square_red_square}, regular_tri::{red_tri::new_regtri_red_tri, red::new_regtri_red, green::new_regtri_green}, circular_turret::bluntstar3::new_circular_turret_bluntstar3, rotating_laser::laser::new_rotating_laser, hexagon::{red_hexagon::new_hexagon_red_hexagon, green_hexagon::new_hexagon_green_hexagon, blue_hexagon::new_hexagon_blue_hexagon}}, enemy4::new_enemy4, enemy5::new_enemy5, boss1::new_boss1}, damage::DamageColor, tiles::{black_hole::new_black_hole, accel_tile::new_accel_tile, ice_tile::new_ice_tile, damage_tile::new_damage_tile, key_tile::new_key_tile}}, rofiz::{rofiz_state::RofizState, rofiz_object::Transformation}, room::RoomCtorArgs}, util::rng::Rng};
 
 use super::util::connection_candidates::all_borders_as_connection_candidates;
 
@@ -120,6 +120,9 @@ fn make_test_room1(
 
     let ice_tile = new_ice_tile(&mut new_floor_object_ctx, 10, 15);
     room_objects.add(Rc::new(RefCell::new(ice_tile)));
+
+    let key_tile = new_key_tile(&mut new_floor_object_ctx, 10, 18);
+    room_objects.add(Rc::new(RefCell::new(key_tile)));
 
     GenFloorRoomResponse {
         room_ctor_args: RoomCtorArgs {

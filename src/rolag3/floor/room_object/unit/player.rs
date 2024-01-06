@@ -41,6 +41,7 @@ impl RoomObject for Player {
                     let budeb = Budeb::TractionMult(BudebTractionMult::new(mult, BudebExpiry::OneTick));
                     self.su_common.as_mut().unwrap().apply_budeb(&budeb);
                 },
+                HcTileEffect::ChargeKey {} => {}, // nop
             }
         });
 
@@ -215,6 +216,7 @@ impl RoomObject for Player {
 
     fn handle_collision_tile(&mut self, ctx: &HcTileContext) -> HcTileResponse {
         self.hc_tile_effects.push(ctx.tile_effect);
+        // the player is affected by all tiles.
         HcTileResponse { unit_affected: true }
     }
 

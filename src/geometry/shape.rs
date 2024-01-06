@@ -306,7 +306,7 @@ pub struct Circle {
 }
 
 impl Circle {
-    fn new(center: Point, r: f32) -> Self {
+    pub const fn new(center: Point, r: f32) -> Self {
         Self {center, r}
     }
 }

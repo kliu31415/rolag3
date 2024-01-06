@@ -756,7 +756,7 @@ impl<'a> HandleCollisionContext<'a> {
         self.room_time
     }
 
-    pub fn _get_tick_length(&self) -> f64 {
+    pub fn get_tick_length(&self) -> f64 {
         self._tick_length
     }
 
@@ -856,6 +856,7 @@ pub enum HcTileEffect {
     Accelerate {force: f64, theta: f64},
     DealDamage {damage: f64},
     TractionMult {mult: f64},
+    ChargeKey {},
 }
 
 pub struct HcTileResponse {
