@@ -1,11 +1,12 @@
 use std::any::Any;
 
-use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, RoomObject, RoomObjectMetadata, Act1Context, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse, RoomObjectType, RoQueryUnitInfoContext, RoQueryUnitInfoResponse, RoomObjApplyOperationContext, RoomObjOperation, HcStandardUnitContext, HcStandardUnitResponse}, damage::DamageColor}, draw::DrawContext, rofiz::{rofiz_object::{Transformation, Hitbox}, rofiz_state::RofizObjectRef}}, geometry::shape::Shape};
+use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, RoomObject, RoomObjectMetadata, Act1Context, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse, RoomObjectType, RoQueryUnitInfoContext, RoQueryUnitInfoResponse, RoomObjApplyOperationContext, RoomObjOperation, HcStandardUnitContext, HcStandardUnitResponse}, damage::DamageColor}, draw::DrawContext, rofiz::{rofiz_object::{Transformation, Hitbox}, rofiz_state::RofizObjectRef}}, geometry::shape::Shape, gfx::renderer::DrawOp};
 
 use super::{Unit, standard_unit_common::StandardUnitCommon};
 
 type Act1FnT = dyn Fn(&mut SuAct1Context) -> Act1Response;
 type DrawFnT = dyn Fn(&mut SuDrawContext);
+type CustomDrawFnT = dyn Fn(&mut SuDrawContext) -> Option<DrawOp>;
 type HandleCollisionFnT = dyn Fn(&mut SuHandleCollisionContext) -> HandleCollisionResponse;
 type HcProjectileFnT = dyn Fn(&mut SuHcProjectileContext) -> HcProjectileResponse;
 
@@ -27,6 +28,8 @@ pub struct Su1Data {
 pub struct Su1Logic {
     act1_fn: Box<Act1FnT>,
     draw_fn: Box<DrawFnT>,
+    custom_draw_fn: Box<CustomDrawFnT>,
+
     handle_collision_fn: Box<HandleCollisionFnT>,
     hc_projectile_fn: Box<HcProjectileFnT>,
 }
@@ -132,6 +135,17 @@ impl Unit for StandardUnit1 {
 
 }
 
+impl StandardUnit1 {
+    pub fn custom_draw_fn(&mut self, ctx: &mut DrawContext) -> Option<DrawOp> {
+        let mut su_ctx= self.data.get_su_ctx();
+        let mut su_draw_ctx = SuDrawContext {
+            su_ctx: &mut su_ctx,
+            draw_ctx: ctx,
+        };
+        (self.logic.custom_draw_fn)(&mut su_draw_ctx)
+    }
+}
+
 impl Su1Data {
     fn get_su_ctx(&mut self) -> SuContext {
         SuContext {
@@ -163,15 +177,18 @@ pub struct StandardUnit1Builder {
     us_data: Box<dyn Any>,
     act1_fn: Box<Act1FnT>,
     draw_fn: Box<DrawFnT>,
+    custom_draw_fn: Box<CustomDrawFnT>,
     handle_collision_logic: HandleCollisionLogic,
     hc_projectile_logic: HcProjectileLogic,
     hitbox: Option<(Transformation, Shape)>,
+    rofiz_obj_type: RofizObjType,
     damageable: bool,
     secondary_hitboxes: Vec<(Transformation, Shape, RofizObjType)>,
 }
 
 pub enum RofizObjType {
-    _NonspectralUnit,
+    NonspectralUnit,
+    SpectralUnit,
     BasicProjectile,
 }
 
@@ -198,9 +215,11 @@ impl StandardUnit1Builder {
             us_data: Box::new(UsDataDummy{}),
             act1_fn: Box::new(act1_nop),
             draw_fn: Box::new(draw_nop),
+            custom_draw_fn: Box::new(custom_draw_panic),
             handle_collision_logic: HandleCollisionLogic::Nop,
             hc_projectile_logic: HcProjectileLogic::Default_,
             hitbox: None,
+            rofiz_obj_type: RofizObjType::NonspectralUnit,
             damageable: true,
             secondary_hitboxes: Vec::new(),
         }
@@ -232,6 +251,11 @@ impl StandardUnit1Builder {
         self
     }
 
+    pub fn custom_draw_fn(mut self, custom_draw_fn: Box<CustomDrawFnT>) -> Self {
+        self.custom_draw_fn = custom_draw_fn;
+        self
+    }
+
     pub fn handle_collision_logic(mut self, hc_logic: HandleCollisionLogic) -> Self {
         self.handle_collision_logic = hc_logic;
         self
@@ -239,6 +263,11 @@ impl StandardUnit1Builder {
 
     pub fn hitbox(mut self, xform: Transformation, shape: Shape) -> Self {
         self.hitbox = Some((xform, shape));
+        self
+    }
+
+    pub fn rofiz_obj_type(mut self, rofiz_obj_type: RofizObjType) -> Self {
+        self.rofiz_obj_type = rofiz_obj_type;
         self
     }
 
@@ -259,7 +288,11 @@ impl StandardUnit1Builder {
         };
         let md = RoomObjectMetadata::new(ctx, RoomObjectType::Unit);
         let hitbox = Hitbox::new(xform, shape);
-        let ro_ref = ctx.add_nonspectral_unit(md.get_ref(), hitbox);
+        let ro_ref = match self.rofiz_obj_type {
+            RofizObjType::NonspectralUnit => ctx.add_nonspectral_unit(md.get_ref(), hitbox),
+            RofizObjType::SpectralUnit => ctx.add_spectral_unit(md.get_ref(), hitbox),
+            RofizObjType::BasicProjectile => ctx.add_basic_projectile(md.get_ref(), hitbox),
+        };
         let su_common = StandardUnitCommon::new(
             ro_ref, 
             self.damageable,
@@ -277,7 +310,8 @@ impl StandardUnit1Builder {
         for (xform, shape, typ) in self.secondary_hitboxes {
             let hitbox = Hitbox::new(xform, shape);
             let ro_ref = match typ {
-                RofizObjType::_NonspectralUnit => ctx.add_nonspectral_unit(md.get_ref(), hitbox),
+                RofizObjType::NonspectralUnit => ctx.add_nonspectral_unit(md.get_ref(), hitbox),
+                RofizObjType::SpectralUnit => ctx.add_spectral_unit(md.get_ref(), hitbox),
                 RofizObjType::BasicProjectile => ctx.add_basic_projectile(md.get_ref(), hitbox),
             };
             secondary_hitboxes.push(ro_ref);
@@ -306,6 +340,7 @@ impl StandardUnit1Builder {
             logic: Su1Logic {
                 act1_fn: self.act1_fn,
                 draw_fn: self.draw_fn,
+                custom_draw_fn: self.custom_draw_fn,
                 handle_collision_fn,
                 hc_projectile_fn,
             },
@@ -338,6 +373,10 @@ pub struct SuDrawContext<'a, 'b> {
 
 fn draw_nop(_ctx: &mut SuDrawContext) {
 
+}
+
+fn custom_draw_panic(ctx: &mut SuDrawContext) -> Option<DrawOp> {
+    unimplemented!("custom_draw_fn not implemented and not expected to be called for StandardUnit1, id={:?}", ctx.su_ctx.md.get_ref())
 }
 
 pub struct SuHandleCollisionContext<'a, 'b> {

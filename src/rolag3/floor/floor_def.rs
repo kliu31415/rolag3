@@ -2,7 +2,7 @@ use std::{collections::HashMap, cell::RefCell, rc::Rc};
 
 use crate::{gfx::renderer::Renderer, rolag3::floor::{roomgen::empty1::get_gen_room_fn_empty1, floorgen::run::GenFloorRoomFn, room_object::{cosmetic::ground1::GroundTheme, wall::basic_wall::WallTheme}, draw::Color}, util::rng::Rng};
 
-use super::{room::{Room, RoomConnectionInfo}, room_object::{unit::player::{Player, MoveRooms}, room_object_def::{FloorCoordinate, RoomObjectId}, tiles::room_connection::Direction}, roomgen::{boss_room1::get_gen_room_fn_boss1, test_room1::get_gen_room_fn_test_room1, test_room2::get_gen_room_fn_test_room2, maze1::get_gen_room_fn_maze1}, floorgen::run::{gen_floor, GenFloorArgs, GenFloorRoomContext}};
+use super::{room::{Room, RoomConnectionInfo}, room_object::{unit::player::{Player, MoveRooms}, room_object_def::{FloorCoordinate, RoomObjectId}, tiles::room_connection::Direction}, roomgen::{boss_room1::get_gen_room_fn_boss1, test_room1::get_gen_room_fn_test_room1, test_room2::get_gen_room_fn_test_room2, maze1::get_gen_room_fn_maze1, boss::circle_mage1::get_gen_room_fn_boss_circle_mage1}, floorgen::run::{gen_floor, GenFloorArgs, GenFloorRoomContext}};
 
 pub struct Floor {
     pub rooms: HashMap<RoomId, Room>,
@@ -130,6 +130,37 @@ impl Floor {
             room_object_id_counter,
             floor_w: gf_result.floor_w,
             floor_h: gf_result.floor_h,
+        }
+    }
+
+    pub fn new_test3(renderer: &mut dyn Renderer, rng: &mut Rng) -> Self {
+        let mut room_object_id_counter = Self::ROOM_OBJECT_ID_COUNTER_BEGIN;
+        let player = Rc::new(RefCell::new(Player::new_test1()));
+        let ground_theme = GroundTheme::Monocolor(Color::new(0.02, 0.0, 0.0, 1.0));
+        let mut gfr_ctx = GenFloorRoomContext {
+            rng,
+            room_object_id_counter: &mut room_object_id_counter,
+            ground_theme,
+            wall_theme: WallTheme::Monocolor(Color::new(0.1, 0.2, 0.3, 1.0)),
+        };
+        let mut room1 = (get_gen_room_fn_boss_circle_mage1())(&mut gfr_ctx).room_ctor_args.to_room();
+        room1.upper_left_x = 0;
+        room1.upper_left_y = 0;
+        room1.finalize_with_connections(renderer, Vec::new(), rng, &mut room_object_id_counter, ground_theme);
+
+        player.borrow_mut().move_rooms(&mut room1.rofiz, MoveRooms::Teleport { x: 3.0, y: 3.0 });
+        room1.room_objects.add(player.clone());
+        let mut rooms = HashMap::new();
+        rooms.insert(1, room1);
+        
+        Self {
+            rooms,
+            player,
+            player_room_id: 1,
+            floor_time: 0.0,
+            room_object_id_counter,
+            floor_w: 200,
+            floor_h: 200,
         }
     }
 
