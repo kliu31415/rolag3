@@ -606,6 +606,10 @@ impl<'a> Act1Context<'a> {
         Rc::downgrade(&self.self_as_rc.clone().unwrap())
     }
 
+    pub fn get_rng(&mut self) -> &mut Prng {
+        self.rng
+    }
+
     // in the range [0, 1)
     pub fn get_randf64(&mut self) -> f64 {
         self.rng.gen_f64()

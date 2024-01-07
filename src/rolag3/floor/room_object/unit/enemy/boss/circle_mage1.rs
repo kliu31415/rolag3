@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::{Rc, Weak}, any::Any};
 
-use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Act1Response, Team, Act1QueryArgs, Act1QueryResult}, damage::DamageColor, unit::{standard_unit1::{StandardUnit1Builder, StandardUnit1BuilderReq, SuAct1Context, SuDrawContext, StandardUnit1, RofizObjType, Su1Data}, standard_unit_common::TranslateMove}}, rofiz::{rofiz_object::Transformation, rofiz_state::RofizObjectRef}, draw::{Color, DrawContext}}, geometry::shape::{Shape, Point, Vector}, util::rng::Prng};
+use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Act1Response, Team, Act1QueryArgs, Act1QueryResult}, damage::DamageColor, unit::{standard_unit1::{StandardUnit1Builder, StandardUnit1BuilderReq, SuAct1Context, SuDrawContext, StandardUnit1, RofizObjType, Su1Data}, standard_unit_common::TranslateMove}}, rofiz::{rofiz_object::Transformation, rofiz_state::RofizObjectRef}, draw::{Color, DrawContext}}, geometry::shape::{Shape, Point, Vector}, util::{rng::Prng, lerp::lerp_f64}};
 
 /* BossCircleMage1 a green circle that initially starts in the center of the room. It periodically teleports to another
    position in the room. It's surrounded by 6 orbs that block projectiles. A laser exists between any pair of orbs.
@@ -15,6 +15,7 @@ const PROJ_RADIUS: f32 = 0.2;
 
 const ORB_OFFSET: f64 = 7.0;
 const LIGHTNING_THICKNESS: f32 = 0.3;
+const LIGHTNING_CBB_PER_SEC: f64 = 12.0;
 
 pub struct CircleMage1 {
     query_result: Option<Rc<RefCell<Act1QueryResult>>>,
@@ -125,6 +126,7 @@ fn boss_draw(ctx: &mut SuDrawContext) {
 
     let mut orb_centers: [Point; 6] = std::array::from_fn(|_| Point::default());
     let mut dops = vec![cc_dop, inner_dop];
+    let mut orb_dops = Vec::new();
     for (i, orb_weak) in us_data.orbs.iter().enumerate() {
         let orb_rc = orb_weak.upgrade().unwrap();
         let mut orb = orb_rc.as_ref().borrow_mut();
@@ -135,7 +137,7 @@ fn boss_draw(ctx: &mut SuDrawContext) {
         orb_centers[i] = Point::new(orb_xform.dx as f32, orb_xform.dy as f32);
         let center = Point::new(orb_xform.dx as f32, orb_xform.dy as f32);
         let cc_dop = ctx.draw_ctx.do_concentric_circle(ORB_INNER_COLOR, ORB_BORDER_COLOR, center, ORB_INNER_RADIUS, ORB_BORDER_RADIUS);
-        dops.push(cc_dop);
+        orb_dops.push(cc_dop);
     }
 
     for i in 0..6 {
@@ -151,6 +153,8 @@ fn boss_draw(ctx: &mut SuDrawContext) {
             }
         }
     }
+
+    dops.append(&mut orb_dops);
     
     ctx.draw_ctx.add_draw_op(DrawContext::Z_UNIT, ctx.draw_ctx.dop_group(dops.into()));
 }
@@ -219,13 +223,25 @@ fn new_lightning(ctx: &mut NewRoomObjectContext, lightning: Lightning, damage_co
         hp: 1.0, // dummy
         engine_power: 0.0, // dummy
         tire_traction: 0.0, // dummy
-    })
+    }).act1_fn(Box::new(lightning_act1))
         .add_custom_fn(Box::new(lightning_custom_get_cbb))
         .hitbox(xform, shape)
         .rofiz_obj_type(RofizObjType::SpectralUnit)
         .us_data(Box::new(lightning))
         .damageable(false)
         .build(ctx)
+}
+
+fn lightning_act1(ctx: &mut SuAct1Context) -> Act1Response {
+    let us_data = ctx.su_ctx.us_data.downcast_mut::<Lightning>().unwrap();
+    let tick_len = ctx.act1_ctx.get_tick_length();
+    us_data.lerp_t += tick_len * LIGHTNING_CBB_PER_SEC;
+    if us_data.lerp_t >= 1.0 {
+        std::mem::swap(&mut us_data.bridge1, &mut us_data.bridge2);
+        us_data.bridge2 = ChunkedBrownianBridge::new(ctx.act1_ctx.get_rng(), 10, 2.0, 1.0);
+        us_data.lerp_t -= 1.0;
+    }
+    Act1Response::new()
 }
 
 fn lightning_custom_get_cbb(data: &mut Su1Data, _input: &dyn Any, output: &mut dyn Any) {
@@ -267,12 +283,16 @@ impl ChunkedBrownianBridge {
         // convert distances between consecutive xs into prefix sums
         for i in 1..num_chunks {
             x[i] += x[i-1];
+            x[i] = f64::min(1.0, x[i]); // the sum can go slightly over 1.0 due to floating point error
         }
     
         let ysum = y[num_chunks-1];
         for i in 0..num_chunks {
             y[i] -= x[i] * ysum;
         }
+
+        assert!(x.len() > 0);
+        assert!(x.len() == y.len());
         
         // x and y are always the same length.
         // It always holds that y[num_chunks-1] = 0, which represents the end of the brownian bridge.
@@ -283,7 +303,7 @@ impl ChunkedBrownianBridge {
         }
     }
 
-    fn lerp(a: &ChunkedBrownianBridge, b: &ChunkedBrownianBridge, _t: f64) -> Self {
+    fn lerp(a: &ChunkedBrownianBridge, b: &ChunkedBrownianBridge, lerp_t: f64) -> Self {
         let mut a_idx = 0;
         let mut b_idx = 0;
         let mut lerped_x = Vec::new();
@@ -293,11 +313,35 @@ impl ChunkedBrownianBridge {
         while a_idx < a.x.len() || b_idx < b.x.len() {
             if b_idx == b.x.len() || (a_idx < a.x.len() && a.x[a_idx] < b.x[b_idx]) {
                 lerped_x.push(a.x[a_idx]);
-                lerped_y.push(a.y[a_idx]); // TODO: run the lerp algo properly
+                let b1_x = if b_idx > 0 {b.x[b_idx - 1]} else {0.0};
+                let b1_y = if b_idx > 0 {b.y[b_idx - 1]} else {0.0};
+                let b2_x = if b_idx < b.x.len() {b.x[b_idx]} else {1.0};
+                let b2_y = if b_idx < b.x.len() {b.y[b_idx]} else {0.0};
+                assert!(b1_x <= b2_x, "expected {} <= {}", b1_x, b2_x);
+                assert!(b1_x <= a.x[a_idx], "expected {} <= {}", b1_x, a.x[a_idx]);
+                assert!(a.x[a_idx] <= b2_x, "expected {} <= {}", a.x[a_idx], b2_x);
+                if b1_x == b2_x {
+                    lerped_y.push(a.y[a_idx]);
+                } else {
+                    let b_y = lerp_f64(b1_y, b2_y, (a.x[a_idx] - b1_x) / (b2_x - b1_x));
+                    lerped_y.push(lerp_f64(a.y[a_idx], b_y, lerp_t));
+                }
                 a_idx += 1;
             } else {
                 lerped_x.push(b.x[b_idx]);
-                lerped_y.push(b.y[b_idx]); // TODO: run the lerp algo properly
+                let a1_x = if a_idx > 0 {a.x[a_idx - 1]} else {0.0};
+                let a1_y = if a_idx > 0 {a.y[a_idx - 1]} else {0.0};
+                let a2_x = if a_idx < a.x.len() {a.x[a_idx]} else {1.0};
+                let a2_y = if a_idx < a.x.len() {a.y[a_idx]} else {0.0};
+                assert!(a1_x <= a2_x, "expected {} <= {}", a1_x, a2_x);
+                assert!(a1_x <= b.x[b_idx], "expected {} <= {}", a1_x, b.x[b_idx]);
+                assert!(b.x[b_idx] <= a2_x, "expected {} <= {}", b.x[b_idx], a2_x);
+                if a1_x == a2_x {
+                    lerped_y.push(b.y[b_idx]);
+                } else {
+                    let a_y = lerp_f64(a1_y, a2_y, (b.x[b_idx] - a1_x) / (a2_x - a1_x));
+                    lerped_y.push(lerp_f64(b.y[b_idx], a_y, 1.0 - lerp_t));
+                }
                 b_idx += 1;
             }
         }
