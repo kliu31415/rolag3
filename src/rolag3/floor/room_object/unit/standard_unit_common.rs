@@ -168,6 +168,10 @@ impl StandardUnitCommon {
         self.velocity_y
     }
 
+    pub fn get_ro_ref_opt(&self) -> Option<&RofizObjectRef> {
+        self.ro_ref.as_ref()
+    }
+
     pub fn get_ro_ref(&self) -> &RofizObjectRef {
         self.ro_ref.as_ref().unwrap()
     }

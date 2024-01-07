@@ -61,7 +61,7 @@ pub trait RoomObject {
         // nop by default
     }
 
-    fn handle_query_unit_info(&self, _ctx: &RoQueryUnitInfoContext) -> RoQueryUnitInfoResponse {
+    fn handle_query_unit_info(&self, _ctx: &RoQueryUnitInfoContext) -> Option<RoQueryUnitInfoResponse> {
         unimplemented!("handle_query_unit_info() can only be called for units. Called for {:?}", self.get_metadata().get_ref());
     }
 }
@@ -355,6 +355,7 @@ impl RoomObjectCollection {
                             };
                             v.as_ref().borrow().handle_query_unit_info(&rqui_ctx)
                         })
+                        .filter_map(|x| x)
                         .filter(|x| team_filter.is_none() || team_filter.unwrap() == x.team)
                         .min_by(|a, b| {
                             let dist_a = f64::powi(a.x - x, 2) + f64::powi(a.y - y, 2);

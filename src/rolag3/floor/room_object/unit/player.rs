@@ -231,14 +231,14 @@ impl RoomObject for Player {
         }
     }
 
-    fn handle_query_unit_info(&self, ctx: &RoQueryUnitInfoContext) -> RoQueryUnitInfoResponse {
+    fn handle_query_unit_info(&self, ctx: &RoQueryUnitInfoContext) -> Option<RoQueryUnitInfoResponse> {
         let xform = ctx.get_rofiz().get_movable_object_xform(self.su_common.as_ref().unwrap().get_ro_ref());
-        RoQueryUnitInfoResponse { 
+        Some(RoQueryUnitInfoResponse { 
             unit: ctx.get_self_as_weak(),
             team: Team::Player, 
             x: xform.dx, 
             y: xform.dy,
-        }
+        })
     }
 }
 
@@ -255,7 +255,7 @@ impl Player {
             md,
             su_common: None,
             change_rooms: None,
-            weapons: vec![new_weapon1(), new_weapon2(), new_weapon3()],
+            weapons: vec![new_weapon3(), new_weapon1(), new_weapon2()],
             weapon_idx: 0,
             active_items: vec![new_active_item_slow_enemy_time(), new_active_item_clear_projectiles()],
             hc_tile_effects: Vec::new(),

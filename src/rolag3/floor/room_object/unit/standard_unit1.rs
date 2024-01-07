@@ -7,6 +7,7 @@ use super::{Unit, standard_unit_common::StandardUnitCommon};
 type Act1FnT = dyn Fn(&mut SuAct1Context) -> Act1Response;
 type DrawFnT = dyn Fn(&mut SuDrawContext);
 type CustomFnT = dyn Fn(&mut Su1Data, &dyn Any, &mut dyn Any);
+type CustomAct1FnT = dyn Fn(&mut SuAct1Context, &mut Act1Response, &dyn Any, &mut dyn Any);
 type HandleCollisionFnT = dyn Fn(&mut SuHandleCollisionContext) -> HandleCollisionResponse;
 type HcProjectileFnT = dyn Fn(&mut SuHcProjectileContext) -> HcProjectileResponse;
 
@@ -17,20 +18,25 @@ pub struct StandardUnit1 {
 
 pub struct Su1Data {
     pub us_data: Box<dyn Any>,
-    pub md: RoomObjectMetadata,
-    pub team: Team,
-    pub damage_color: DamageColor,
-    pub su_common: StandardUnitCommon,
-    pub blocks_room_clear: bool,
+    md: RoomObjectMetadata,
+    team: Team,
+    damage_color: DamageColor,
+    su_common: StandardUnitCommon,
+    blocks_room_clear: bool,
 }
 
 pub struct Su1Logic {
-    act1_fn: Box<Act1FnT>,
+    act1_fn: Act1Fn,
     draw_fn: Box<DrawFnT>,
     custom_fns: Box<[Box<CustomFnT>]>,
 
     handle_collision_fn: Box<HandleCollisionFnT>,
     hc_projectile_fn: Box<HcProjectileFnT>,
+}
+
+pub enum Act1Fn {
+    Standard(Box<Act1FnT>),
+    Custom(Box<CustomAct1FnT>),
 }
 
 impl RoomObject for StandardUnit1 {
@@ -39,6 +45,8 @@ impl RoomObject for StandardUnit1 {
     }
 
     fn act1<'a>(&'a mut self, ctx: &'a mut Act1Context) -> Act1Response {
+        let Act1Fn::Standard(ref f) = self.logic.act1_fn else {return Act1Response::new();};
+
         let room_tick_len = ctx.get_tick_length();
         self.data.su_common.start_act1(room_tick_len);
         let mut su_ctx= self.data.get_su_ctx();
@@ -46,7 +54,7 @@ impl RoomObject for StandardUnit1 {
             su_ctx: &mut su_ctx,
             act1_ctx: ctx,
         };
-        let resp = (self.logic.act1_fn)(&mut su_act1_ctx);
+        let resp = (f)(&mut su_act1_ctx);
         self.data.su_common.end_act1(ctx.get_rofiz());
         resp
     }
@@ -119,14 +127,22 @@ impl RoomObject for StandardUnit1 {
         }
     }
 
-    fn handle_query_unit_info(&self, ctx: &RoQueryUnitInfoContext) -> RoQueryUnitInfoResponse {
-        let xform = ctx.get_rofiz().get_movable_object_xform(self.data.su_common.get_ro_ref());
-        RoQueryUnitInfoResponse { 
-            unit: ctx.get_self_as_weak(),
-            team: self.data.team, 
-            x: xform.dx, 
-            y: xform.dy,
+    fn handle_query_unit_info(&self, ctx: &RoQueryUnitInfoContext) -> Option<RoQueryUnitInfoResponse> {
+        match self.data.su_common.get_ro_ref_opt() {
+            Some(ro_ref) => {
+                let xform = ctx.get_rofiz().get_movable_object_xform(ro_ref);
+                Some(RoQueryUnitInfoResponse { 
+                    unit: ctx.get_self_as_weak(),
+                    team: self.data.team, 
+                    x: xform.dx, 
+                    y: xform.dy,
+                })
+            }
+            None => {
+                None
+            }
         }
+
     }
 }
 
@@ -137,6 +153,25 @@ impl Unit for StandardUnit1 {
 impl StandardUnit1 {
     pub fn custom_fn(&mut self, idx: usize, input: &dyn Any, output: &mut dyn Any) {
         (self.logic.custom_fns[idx])(&mut self.data, input, output)
+    }
+
+    pub fn custom_act1_fn(&mut self, ctx: &mut Act1Context, resp: &mut Act1Response, input: &dyn Any, output: &mut dyn Any) {
+        let Act1Fn::Custom(ref f) = self.logic.act1_fn else {
+            panic!("no StandardUnit1::custom_act1_fn() found, room_object_id={:?}", self.get_metadata().get_ref());
+        };
+        let room_tick_len = ctx.get_tick_length();
+        self.data.su_common.start_act1(room_tick_len);
+        let mut su_ctx= self.data.get_su_ctx();
+        let mut su_act1_ctx = SuAct1Context {
+            su_ctx: &mut su_ctx,
+            act1_ctx: ctx,
+        };
+        (f)(&mut su_act1_ctx, resp, input, output);
+        self.data.su_common.end_act1(ctx.get_rofiz());
+    }
+
+    pub fn get_us_data(&self) -> &dyn Any {
+        self.data.us_data.as_ref()
     }
 }
 
@@ -168,7 +203,7 @@ pub struct StandardUnit1Builder {
     angular_traction: f64,
 
     us_data: Box<dyn Any>,
-    act1_fn: Box<Act1FnT>,
+    act1_fn: Act1Fn,
     draw_fn: Box<DrawFnT>,
     custom_fns: Vec<Box<CustomFnT>>,
     handle_collision_logic: HandleCollisionLogic,
@@ -207,7 +242,7 @@ impl StandardUnit1Builder {
             angular_power: 0.0,
             angular_traction: 0.0,
             us_data: Box::new(UsDataDummy{}),
-            act1_fn: Box::new(act1_nop),
+            act1_fn: Act1Fn::Standard(Box::new(act1_nop)),
             draw_fn: Box::new(draw_nop),
             custom_fns: Vec::new(),
             handle_collision_logic: HandleCollisionLogic::Nop,
@@ -244,7 +279,12 @@ impl StandardUnit1Builder {
     }
 
     pub fn act1_fn(mut self, act1_fn: Box<Act1FnT>) -> Self {
-        self.act1_fn = act1_fn;
+        self.act1_fn = Act1Fn::Standard(act1_fn);
+        self
+    }
+
+    pub fn custom_act1_fn(mut self, f: Box<CustomAct1FnT>) -> Self {
+        self.act1_fn = Act1Fn::Custom(f);
         self
     }
 
@@ -285,18 +325,20 @@ impl StandardUnit1Builder {
 
     pub fn build(mut self, ctx: &mut NewRoomObjectContext) -> StandardUnit1 {
         self.get_room_obj_metadata(ctx);
-        let (xform, shape) = match self.hitbox {
-            Some(x) => x,
-            None => todo!("all standard units must have hitboxes right now (may be changed in the future)"),
-        };
-        let hitbox = Hitbox::new(xform, shape);
-        let ro_ref = match self.rofiz_obj_type {
-            RofizObjType::NonspectralUnit => ctx.add_nonspectral_unit(self.room_obj_md.as_ref().unwrap().get_ref(), hitbox),
-            RofizObjType::SpectralUnit => ctx.add_spectral_unit(self.room_obj_md.as_ref().unwrap().get_ref(), hitbox),
-            RofizObjType::BasicProjectile => ctx.add_basic_projectile(self.room_obj_md.as_ref().unwrap().get_ref(), hitbox),
+        let ro_ref = match self.hitbox {
+            Some((xform, shape)) => {
+                let hitbox = Hitbox::new(xform, shape);
+                let ro_ref = match self.rofiz_obj_type {
+                    RofizObjType::NonspectralUnit => ctx.add_nonspectral_unit(self.room_obj_md.as_ref().unwrap().get_ref(), hitbox),
+                    RofizObjType::SpectralUnit => ctx.add_spectral_unit(self.room_obj_md.as_ref().unwrap().get_ref(), hitbox),
+                    RofizObjType::BasicProjectile => ctx.add_basic_projectile(self.room_obj_md.as_ref().unwrap().get_ref(), hitbox),
+                };
+                Some(ro_ref)
+            },
+            None => None,
         };
         let su_common = StandardUnitCommon::new(
-            Some(ro_ref), 
+            ro_ref, 
             self.damageable,
             self.req.collision_damage,
             self.req.hp, 
