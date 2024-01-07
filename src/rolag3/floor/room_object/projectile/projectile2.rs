@@ -96,7 +96,7 @@ impl Projectile2Builder {
 fn act1(ctx: &mut SpAct1Context) -> Act1Response {
     let ps_data = ctx.sp_ctx.ps_data.downcast_mut::<Projectile2Data>().unwrap();
     if ps_data.remove_me_next_tick {
-        return Act1Response::new().remove_me();
+        return Act1Response::new().remove_room_obj(ctx.sp_ctx.md.get_ref());
     }
     let mut response = Act1Response::new();
     let tick_len = ctx.act1_ctx.get_tick_length(); 

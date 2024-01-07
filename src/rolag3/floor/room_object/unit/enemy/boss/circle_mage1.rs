@@ -15,7 +15,9 @@ const PROJ_RADIUS: f32 = 0.2;
 
 const ORB_OFFSET: f64 = 7.0;
 const LIGHTNING_THICKNESS: f32 = 0.3;
-const LIGHTNING_CBB_PER_SEC: f64 = 12.0;
+const LIGHTNING_CBB_PER_SEC_MEAN: f64 = 12.0;
+const LIGHTNING_CBB_PER_SEC_SD: f64 = 3.0;
+const LIGHTNING_CBB_PER_SEC_MIN: f64 = 2.0;
 
 pub struct CircleMage1 {
     query_result: Option<Rc<RefCell<Act1QueryResult>>>,
@@ -53,7 +55,8 @@ pub fn new_boss_circle_mage1(ctx: &mut NewRoomObjectContext, x: f64, y: f64) -> 
                 _ro_refs: Vec::new(),
                 bridge1: ChunkedBrownianBridge::new(ctx.get_rng(), 5, 2.0, 1.0),
                 bridge2: ChunkedBrownianBridge::new(ctx.get_rng(), 5, 2.0, 1.0),
-                lerp_t: 0.0,
+                lerp_t: 1.0,
+                cbb_per_s: LIGHTNING_CBB_PER_SEC_MEAN
             };
             let damage_color = damage_colors[color_counter % 3];
             color_counter += 1;
@@ -211,6 +214,7 @@ struct Lightning {
     bridge1: ChunkedBrownianBridge,
     bridge2: ChunkedBrownianBridge,
     lerp_t: f64,
+    cbb_per_s: f64,
 }
 
 fn new_lightning(ctx: &mut NewRoomObjectContext, lightning: Lightning, damage_color: DamageColor) -> StandardUnit1 {
@@ -235,11 +239,13 @@ fn new_lightning(ctx: &mut NewRoomObjectContext, lightning: Lightning, damage_co
 fn lightning_act1(ctx: &mut SuAct1Context) -> Act1Response {
     let us_data = ctx.su_ctx.us_data.downcast_mut::<Lightning>().unwrap();
     let tick_len = ctx.act1_ctx.get_tick_length();
-    us_data.lerp_t += tick_len * LIGHTNING_CBB_PER_SEC;
+    us_data.lerp_t += tick_len * us_data.cbb_per_s;
     if us_data.lerp_t >= 1.0 {
         std::mem::swap(&mut us_data.bridge1, &mut us_data.bridge2);
         us_data.bridge2 = ChunkedBrownianBridge::new(ctx.act1_ctx.get_rng(), 10, 2.0, 1.0);
-        us_data.lerp_t -= 1.0;
+        us_data.lerp_t = 0.0;
+        us_data.cbb_per_s = ctx.act1_ctx.get_rng().gen_normal(LIGHTNING_CBB_PER_SEC_MEAN, LIGHTNING_CBB_PER_SEC_SD);
+        us_data.cbb_per_s = f64::max(LIGHTNING_CBB_PER_SEC_MIN, us_data.cbb_per_s);
     }
     Act1Response::new()
 }

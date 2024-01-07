@@ -58,7 +58,7 @@ impl RoomObject for StandardProjectile1 {
             if let Some(_owner) = self.data.owner.upgrade() {
                 // notify owner?
             }
-            return Act1Response::new().remove_me();
+            return Act1Response::new().remove_room_obj(self.get_metadata().get_ref());
         }
 
         let mut sp_ctx = self.data.get_sp_ctx();

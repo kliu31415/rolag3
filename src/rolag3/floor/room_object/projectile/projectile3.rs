@@ -51,7 +51,7 @@ impl NewProjectile3Args {
 fn act1(ctx: &mut SpAct1Context) -> Act1Response {
     let ps_data = ctx.sp_ctx.ps_data.downcast_mut::<Projectile3Data>().unwrap();
     if ps_data.remove_me_next_tick {
-        return Act1Response::new().remove_me();
+        return Act1Response::new().remove_room_obj(ctx.sp_ctx.md.get_ref());
     }
     let room_time = ctx.act1_ctx.get_room_time();
     let mut hitbox = ctx.act1_ctx.get_rofiz().steal_movable_object_hitbox(&ctx.sp_ctx.ro_ref);

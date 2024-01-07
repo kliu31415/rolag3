@@ -178,7 +178,7 @@ fn range_all_of_type(t: RoomObjectType) -> Range<RoomObjectRef> {
 }
 
 impl RoomObjectsByType {
-    fn object_count(&self) -> usize {
+    fn _object_count(&self) -> usize {
         self.room_objects.len()
     }
 
@@ -196,6 +196,13 @@ impl RoomObjectsByType {
         }
         let ref_ = obj.as_ref().borrow().get_metadata().get_ref();
         self.room_objects.insert(ref_, obj);
+    }
+
+    fn remove(&mut self, r: &RoomObjectRef) {
+        let removed = self.room_objects.remove(r);
+        if removed.is_none() {
+            panic!("unable to remove room object with id={:?}", r);
+        }
     }
 
     fn remove_wall_at(&mut self, x: u32, y: u32, expected: Range<usize>) {
@@ -235,6 +242,7 @@ impl RoomObjectsByType {
 struct RoomObjectCollectionCachedMem {
     act1_responses: Vec<Act1Response>,
     room_objs_to_add: Vec<Rc<RefCell<dyn RoomObject>>>,
+    room_objs_to_remove: Vec<RoomObjectRef>,
     operations: Vec<RoomObjOperation>,
     queries: Vec<(Act1QueryArgs, Rc<RefCell<Act1QueryResult>>)>,
 }
@@ -244,6 +252,7 @@ impl RoomObjectCollectionCachedMem {
         Self {
             act1_responses: Vec::new(),
             room_objs_to_add: Vec::new(),
+            room_objs_to_remove: Vec::new(),
             operations: Vec::new(),
             queries: Vec::new(),
         }
@@ -252,6 +261,7 @@ impl RoomObjectCollectionCachedMem {
     fn reset(&mut self) {
         self.act1_responses.clear();
         self.room_objs_to_add.clear();
+        self.room_objs_to_remove.clear();
         self.operations.clear();
         self.queries.clear();
     }
@@ -306,14 +316,13 @@ impl RoomObjectCollection {
             self.cached_mem.act1_responses.push(room_obj.borrow_mut().act1(ctx));
         }
 
-        let should_remove: Vec<bool> = self.cached_mem.act1_responses.iter().map(|x| x.get_remove_me()).collect();
-        self.remove_all_using_bool_array(should_remove.as_slice());
-
         for r in self.cached_mem.act1_responses.iter_mut() {
             r.steal_room_objs_to_add(&mut self.cached_mem.room_objs_to_add);
+            r.steal_room_objs_to_remove(&mut self.cached_mem.room_objs_to_remove);
             r.steal_operations(&mut self.cached_mem.operations);
             r.steal_queries(&mut self.cached_mem.queries);
         }
+        self.cached_mem.room_objs_to_remove.drain(..).for_each(|x| self.room_objects_by_type.remove(&x));
         self.cached_mem.room_objs_to_add.drain(..).for_each(|x| self.room_objects_by_type.add(x));
 
         for op in self.cached_mem.operations.drain(..) {
@@ -411,8 +420,8 @@ impl RoomObjectCollection {
         self.room_already_cleared
     }
 
-    pub fn remove_all_using_bool_array(&mut self, should_remove: &[bool]) {
-        let obj_count = self.room_objects_by_type.object_count();
+    pub fn _remove_all_using_bool_array(&mut self, should_remove: &[bool]) {
+        let obj_count = self.room_objects_by_type._object_count();
         if should_remove.len() != obj_count {
             panic!("should_remove.len() != obj_count. Values: {} != {}", should_remove.len(), obj_count)
         }
@@ -656,7 +665,7 @@ pub struct UnitInfo {
 }
 
 pub struct Act1Response {
-    should_remove_me: bool,
+    objects_to_remove: Vec<RoomObjectRef>,
     objects_to_add: Vec<Rc<RefCell<dyn RoomObject>>>,
     act1_queries: Vec<(Act1QueryArgs, Rc<RefCell<Act1QueryResult>>)>,
     operations: Vec<RoomObjOperation>,
@@ -665,20 +674,20 @@ pub struct Act1Response {
 impl Act1Response {
     pub fn new() -> Self {
         Self {
-            should_remove_me: false,
+            objects_to_remove: Vec::new(),
             objects_to_add: Vec::new(),
             act1_queries: Vec::new(),
             operations: Vec::new(),
         }
     }
 
-    pub fn remove_me(mut self) -> Self {
-        self.should_remove_me = true;
+    pub fn remove_room_obj(mut self, r: RoomObjectRef) -> Self {
+        self.objects_to_remove.push(r);
         self
     }
 
-    pub fn get_remove_me(&self) -> bool {
-        self.should_remove_me
+    pub fn steal_room_objs_to_remove(&mut self, v: &mut Vec<RoomObjectRef>) {
+        v.append(&mut self.objects_to_remove);
     }
 
     pub fn add_room_obj(&mut self, obj: Rc<RefCell<dyn RoomObject>>) {
