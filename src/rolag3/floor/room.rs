@@ -1,6 +1,6 @@
 use std::{rc::Rc, cell::RefCell, collections::HashSet};
 
-use crate::{gfx::renderer::{TmdRef, Renderer}, rolag3::floor::room_object::wall::invisible_wall::InvisibleWall, util::rng::Rng};
+use crate::{gfx::renderer::{TmdRef, Renderer}, rolag3::floor::room_object::wall::invisible_wall::InvisibleWall, util::rng::Prng};
 
 use super::{room_object::{room_object_def::{NewRoomObjectContext, RoomObjectCollection, RoomObjectId}, tiles::room_connection::{RoomConnection, Direction}, cosmetic::ground1::{new_ground1, GroundTheme}}, rofiz::rofiz_state::RofizState, floor_def::RoomId};
 
@@ -45,7 +45,7 @@ impl Room {
         &mut self, 
         renderer: &mut dyn Renderer, 
         connections: Vec<RoomConnectionInfo>, 
-        rng: &mut Rng, 
+        rng: &mut Prng, 
         room_object_id_counter: &mut RoomObjectId,
         ground_theme: GroundTheme,
     ) {

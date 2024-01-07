@@ -1,6 +1,6 @@
 use std::{rc::Rc, cell::RefCell, ops::Range};
 
-use crate::{rolag3::floor::{room_object::{room_object_def::{RoomObjectId, NewRoomObjectContext, RoomObjectCollection}, wall::basic_wall::{BasicWall, WallTheme}, cosmetic::ground1::{new_ground1, GroundTheme}}, room::RoomCtorArgs, rofiz::rofiz_state::RofizState, floorgen::run::{GenFloorRoomContext, GenFloorRoomResponse}}, util::rng::Rng};
+use crate::{rolag3::floor::{room_object::{room_object_def::{RoomObjectId, NewRoomObjectContext, RoomObjectCollection}, wall::basic_wall::{BasicWall, WallTheme}, cosmetic::ground1::{new_ground1, GroundTheme}}, room::RoomCtorArgs, rofiz::rofiz_state::RofizState, floorgen::run::{GenFloorRoomContext, GenFloorRoomResponse}}, util::rng::Prng};
 
 use super::util::connection_candidates::all_borders_as_connection_candidates;
 
@@ -24,7 +24,7 @@ pub fn get_gen_room_fn_empty1(
 }
 
 fn make_room_empty1(
-    rng: &mut Rng, 
+    rng: &mut Prng, 
     room_object_id_counter: &mut RoomObjectId, 
     ground_theme: GroundTheme,
     wall_theme: WallTheme,

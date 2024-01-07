@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use crate::{rolag3::floor::room_object::unit::player::MoveRooms, util::{lerp::lerp_f64, rng::Rng}};
+use crate::{rolag3::floor::room_object::unit::player::MoveRooms, util::{lerp::lerp_f64, rng::Prng}};
 
 use super::{room_object::room_object_def::{Act1Context, HandleCollisionContext, RoomObjectRef}, floor_def::Floor, room::Room};
 
@@ -11,7 +11,7 @@ pub struct RunFloorContext<'a> {
     pub player_input: PlayerInput,
     pub prev_mouse_x: f64,
     pub prev_mouse_y: f64,
-    pub rng: &'a mut Rng,
+    pub rng: &'a mut Prng,
     pub run_validation: bool,
 }
 
@@ -65,7 +65,7 @@ struct RunFloorTickContext<'a> {
     pub floor: &'a mut Floor,
     pub player_input: &'a PlayerInput,
     pub tick_length: f64,
-    pub rng: &'a mut Rng,
+    pub rng: &'a mut Prng,
     pub run_validation: bool,
 }
 
@@ -114,7 +114,7 @@ fn run_floor_tick(ctx: RunFloorTickContext) {
 }
 
 #[inline(never)]
-fn detect_and_handle_collisions(room: &mut Room, rng: &mut Rng, tick_len: f64) {
+fn detect_and_handle_collisions(room: &mut Room, rng: &mut Prng, tick_len: f64) {
     let collisions = room.rofiz.move_objects_and_find_collisions();
     let mut removed = HashSet::<RoomObjectRef>::new();
     for collision in collisions.iter() {

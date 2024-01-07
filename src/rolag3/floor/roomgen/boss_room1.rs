@@ -1,6 +1,6 @@
 use std::{rc::Rc, cell::RefCell};
 
-use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, RoomObjectCollection, RoomObjectId}, wall::basic_wall::{BasicWall, WallTheme}, cosmetic::ground1::{new_ground1, GroundTheme}, unit::boss1::new_boss1}, rofiz::rofiz_state::RofizState, room::RoomCtorArgs, floorgen::run::{GenFloorRoomContext, GenFloorRoomResponse}}, util::rng::Rng};
+use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, RoomObjectCollection, RoomObjectId}, wall::basic_wall::{BasicWall, WallTheme}, cosmetic::ground1::{new_ground1, GroundTheme}, unit::boss1::new_boss1}, rofiz::rofiz_state::RofizState, room::RoomCtorArgs, floorgen::run::{GenFloorRoomContext, GenFloorRoomResponse}}, util::rng::Prng};
 
 pub fn get_gen_room_fn_boss1() -> Box<dyn Fn(&mut GenFloorRoomContext) -> GenFloorRoomResponse> {
     Box::new(move |ctx: &mut GenFloorRoomContext| {
@@ -14,7 +14,7 @@ pub fn get_gen_room_fn_boss1() -> Box<dyn Fn(&mut GenFloorRoomContext) -> GenFlo
 }
 
 fn make_boss_room1(
-    rng: &mut Rng, 
+    rng: &mut Prng, 
     room_object_id_counter: &mut RoomObjectId,
     ground_theme: GroundTheme,
     wall_theme: WallTheme,

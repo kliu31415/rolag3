@@ -1,6 +1,6 @@
 use std::{rc::{Rc, Weak}, cell::RefCell, collections::{HashSet, HashMap, BTreeMap}, ops::Range};
 
-use crate::{rolag3::floor::{draw::DrawContext, run::PlayerInput, rofiz::{rofiz_state::{RofizState, RofizObjectRef}, rofiz_object::Hitbox}, room::{RoomConnectionInfo, RoomTile}, floor_def::Floor}, util::rng::Rng};
+use crate::{rolag3::floor::{draw::DrawContext, run::PlayerInput, rofiz::{rofiz_state::{RofizState, RofizObjectRef}, rofiz_object::Hitbox}, room::{RoomConnectionInfo, RoomTile}, floor_def::Floor}, util::rng::Prng};
 
 use super::{damage::DamageColor, unit::standard_unit_common::{Budeb, StandardUnitCommon}};
 
@@ -467,11 +467,11 @@ pub struct NewRoomObjectContext<'a> {
     rofiz: &'a mut RofizState,
     room_object_id_counter: &'a mut RoomObjectId,
     room_time: f64,
-    rng: &'a mut Rng,
+    rng: &'a mut Prng,
 }
 
 impl<'a> NewRoomObjectContext<'a> {
-    pub fn new(rofiz: &'a mut RofizState, room_object_id_counter: &'a mut RoomObjectId, room_time: f64, rng: &'a mut Rng) -> Self {
+    pub fn new(rofiz: &'a mut RofizState, room_object_id_counter: &'a mut RoomObjectId, room_time: f64, rng: &'a mut Prng) -> Self {
         Self {
             rofiz,
             room_object_id_counter,
@@ -488,7 +488,7 @@ impl<'a> NewRoomObjectContext<'a> {
             rng: act1_ctx.rng,
         }
     }
-    
+
     pub fn get_and_inc_next_room_object_id(&mut self) -> RoomObjectId {
         *self.room_object_id_counter += 1;
         *self.room_object_id_counter
@@ -498,7 +498,7 @@ impl<'a> NewRoomObjectContext<'a> {
         self.room_time
     }
 
-    pub fn get_rng(&mut self) -> &mut Rng {
+    pub fn get_rng(&mut self) -> &mut Prng {
         self.rng
     }
 
@@ -551,7 +551,7 @@ pub struct Act1Context<'a> {
     self_as_rc: Option<Rc<RefCell<dyn RoomObject>>>,
     tick_length: f64,
     room_time: f64,
-    rng: &'a mut Rng,
+    rng: &'a mut Prng,
     room_cleared_at_time: Option<f64>,
     _room_width: u32,
     _room_height: u32,
@@ -565,7 +565,7 @@ impl<'a> Act1Context<'a> {
         room_object_id_counter: &'a mut RoomObjectId, 
         tick_length: f64, 
         room_time: f64,
-        rng: &'a mut Rng,
+        rng: &'a mut Prng,
         room_cleared_at_time: Option<f64>,
         room_width: u32,
         room_height: u32,
@@ -717,14 +717,14 @@ impl<'a> HandleRoomJustClearedContext<'a> {
 pub struct HandleCollisionContext<'a> {
     other: Rc<RefCell<dyn RoomObject>>,
     other_is_spectral: bool,
-    rng: &'a mut Rng,
+    rng: &'a mut Prng,
     room_time: f64,
     _tick_length: f64,
     _rofiz: &'a RofizState,
 }
 
 impl<'a> HandleCollisionContext<'a> {
-    pub fn new(other: Rc<RefCell<dyn RoomObject>>, other_is_spectral: bool, rng: &'a mut Rng, room_time: f64, tick_length: f64, rofiz: &'a RofizState) -> Self {
+    pub fn new(other: Rc<RefCell<dyn RoomObject>>, other_is_spectral: bool, rng: &'a mut Prng, room_time: f64, tick_length: f64, rofiz: &'a RofizState) -> Self {
         Self { 
             other,
             other_is_spectral,

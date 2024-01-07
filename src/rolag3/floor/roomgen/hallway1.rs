@@ -1,6 +1,6 @@
 use std::{rc::Rc, cell::RefCell};
 
-use crate::{rolag3::floor::{room::Room, room_object::{room_object_def::{RoomObjectId, RoomObjectCollection, NewRoomObjectContext}, wall::basic_wall::{BasicWall, WallTheme}, cosmetic::ground1::{new_ground1, GroundTheme}}, rofiz::rofiz_state::RofizState, floorgen::run::BoundingBoxUsize}, util::rng::Rng};
+use crate::{rolag3::floor::{room::Room, room_object::{room_object_def::{RoomObjectId, RoomObjectCollection, NewRoomObjectContext}, wall::basic_wall::{BasicWall, WallTheme}, cosmetic::ground1::{new_ground1, GroundTheme}}, rofiz::rofiz_state::RofizState, floorgen::run::BoundingBoxUsize}, util::rng::Prng};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum HallwayGridCell {
@@ -15,7 +15,7 @@ pub fn make_hallway1(
     hid_grid: &Vec<Vec<Option<usize>>>,
     hid: usize,
     bb: &BoundingBoxUsize,
-    rng: &mut Rng, 
+    rng: &mut Prng, 
     room_object_id_counter: &mut RoomObjectId,
     ground_theme: GroundTheme,
     wall_theme: WallTheme,

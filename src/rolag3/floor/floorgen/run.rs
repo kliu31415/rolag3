@@ -9,7 +9,7 @@ use crate::rolag3::floor::room_object::room_object_def::RoomObjectId;
 use crate::rolag3::floor::room_object::wall::basic_wall::WallTheme;
 use crate::rolag3::floor::roomgen::hallway1::{HallwayGridCell, make_hallway1};
 use crate::rolag3::floor::{floor_def::RoomId, room::Room};
-use crate::util::rng::Rng;
+use crate::util::rng::Prng;
 
 pub struct GenFloorArgs<'a> {
     pub grid_w: u32,
@@ -24,7 +24,7 @@ pub struct GenFloorArgs<'a> {
     pub gen_initial_room_fn: GenFloorRoomFn,
     pub gen_normal_room_fns: Vec<GenFloorRoomFn>,
 
-    pub rng: &'a mut Rng,
+    pub rng: &'a mut Prng,
     pub room_object_id_counter: &'a mut RoomObjectId,
 
     pub save_debug_data: bool,
@@ -40,7 +40,7 @@ pub struct GenFloorRoomFn {
 }
 
 pub struct GenFloorRoomContext<'a> {
-    pub rng: &'a mut Rng,
+    pub rng: &'a mut Prng,
     pub room_object_id_counter: &'a mut RoomObjectId,
     pub ground_theme: GroundTheme,
     pub wall_theme: WallTheme,
@@ -638,7 +638,7 @@ fn compute_hallway_rooms(
     grid_w: u32, 
     grid_h: u32, 
     sshg: &Vec<Vec<HallwayGridCell>>,
-    rng: &mut Rng,
+    rng: &mut Prng,
     room_object_id_counter: &mut RoomObjectId,
     room_count: usize,
     ground_theme: GroundTheme,

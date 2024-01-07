@@ -1,6 +1,6 @@
 use std::{rc::Rc, cell::RefCell};
 
-use crate::{rolag3::floor::{floorgen::run::{GenFloorRoomContext, GenFloorRoomResponse}, room_object::{room_object_def::{RoomObjectId, NewRoomObjectContext, RoomObjectCollection}, wall::basic_wall::{WallTheme, BasicWall}, cosmetic::ground1::{GroundTheme, new_ground1}, unit::enemy2::new_enemy2}, rofiz::rofiz_state::RofizState, room::RoomCtorArgs}, util::rng::Rng};
+use crate::{rolag3::floor::{floorgen::run::{GenFloorRoomContext, GenFloorRoomResponse}, room_object::{room_object_def::{RoomObjectId, NewRoomObjectContext, RoomObjectCollection}, wall::basic_wall::{WallTheme, BasicWall}, cosmetic::ground1::{GroundTheme, new_ground1}, unit::enemy2::new_enemy2}, rofiz::rofiz_state::RofizState, room::RoomCtorArgs}, util::rng::Prng};
 
 use super::util::connection_candidates::all_borders_as_connection_candidates;
 
@@ -15,7 +15,7 @@ pub fn get_gen_room_fn_test_room2() -> Box<dyn Fn(&mut GenFloorRoomContext) -> G
 }
 
 fn make_test_room2(
-    rng: &mut Rng, 
+    rng: &mut Prng, 
     room_object_id_counter: &mut RoomObjectId,
     ground_theme: GroundTheme,
     wall_theme: WallTheme,

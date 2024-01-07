@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc, collections::VecDeque};
 
-use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, RoomObjectCollection, RoomObjectId}, wall::basic_wall::{BasicWall, WallTheme}, cosmetic::ground1::{new_ground1, GroundTheme}, tiles::damage_tile::new_damage_tile}, rofiz::rofiz_state::RofizState, room::RoomCtorArgs, floorgen::run::{GenFloorRoomResponse, GenFloorRoomContext}}, util::{disjoint_set_union::DisjointSetUnion, rng::Rng}};
+use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, RoomObjectCollection, RoomObjectId}, wall::basic_wall::{BasicWall, WallTheme}, cosmetic::ground1::{new_ground1, GroundTheme}, tiles::damage_tile::new_damage_tile}, rofiz::rofiz_state::RofizState, room::RoomCtorArgs, floorgen::run::{GenFloorRoomResponse, GenFloorRoomContext}}, util::{disjoint_set_union::DisjointSetUnion, rng::Prng}};
 
 pub fn get_gen_room_fn_maze1(
     w: usize, 
@@ -19,7 +19,7 @@ pub fn get_gen_room_fn_maze1(
 }
 
 fn make_room_maze1(
-    rng: &mut Rng, 
+    rng: &mut Prng, 
     room_object_id_counter: &mut RoomObjectId, 
     ground_theme: GroundTheme,
     wall_theme: WallTheme,
@@ -77,7 +77,7 @@ fn make_room_maze1(
 // TODO: maybe make this algorithm assign random weights to graph edges and run kruskal's on the graph, selecting the 
 // next-least-weight edge every step.
 // Right now, this algorithm randomly selects an edge every step. The complexity of this is hard to analyze.
-fn make_rectangular_maze(rng: &mut Rng, w: usize, h: usize, additional_edges: u32) -> RectangularGraph {
+fn make_rectangular_maze(rng: &mut Prng, w: usize, h: usize, additional_edges: u32) -> RectangularGraph {
     let num_cells = w * h;
     if num_cells > 10000 {
         log::warn!("generating unusually large maze (w={}, h={})", w, h);

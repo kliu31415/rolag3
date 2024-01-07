@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::{Rc, Weak}, any::Any};
 
-use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Act1Response, Team, Act1QueryArgs, Act1QueryResult}, damage::DamageColor, unit::{standard_unit1::{StandardUnit1Builder, StandardUnit1BuilderReq, SuAct1Context, SuDrawContext, StandardUnit1, RofizObjType, Su1Data}, standard_unit_common::TranslateMove}}, rofiz::{rofiz_object::Transformation, rofiz_state::RofizObjectRef}, draw::{Color, DrawContext}}, geometry::shape::{Shape, Point, Vector}, util::rng::Rng};
+use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Act1Response, Team, Act1QueryArgs, Act1QueryResult}, damage::DamageColor, unit::{standard_unit1::{StandardUnit1Builder, StandardUnit1BuilderReq, SuAct1Context, SuDrawContext, StandardUnit1, RofizObjType, Su1Data}, standard_unit_common::TranslateMove}}, rofiz::{rofiz_object::Transformation, rofiz_state::RofizObjectRef}, draw::{Color, DrawContext}}, geometry::shape::{Shape, Point, Vector}, util::rng::Prng};
 
 /* BossCircleMage1 a green circle that initially starts in the center of the room. It periodically teleports to another
    position in the room. It's surrounded by 6 orbs that block projectiles. A laser exists between any pair of orbs.
@@ -242,7 +242,7 @@ struct ChunkedBrownianBridge {
 }
 
 impl ChunkedBrownianBridge {
-    fn new(rng: &mut Rng, num_chunks: usize, len_max_ratio: f64, y_sd: f64) -> Self {
+    fn new(rng: &mut Prng, num_chunks: usize, len_max_ratio: f64, y_sd: f64) -> Self {
         assert!(len_max_ratio >= 1.0);
         assert!(num_chunks > 0);
     
@@ -260,10 +260,11 @@ impl ChunkedBrownianBridge {
         for i in 0..num_chunks {
             let prev = if i > 0 {y[i-1]} else {0.0};
             // TODO: sample from a real gaussian
-            let diff = 2.0 * (rng.gen_f64() - 0.5) * y_sd * f64::sqrt(x[i]);
+            let diff = rng.gen_normal(0.0, y_sd * f64::sqrt(x[i]));
             y[i] = prev + diff;
         }
 
+        // convert distances between consecutive xs into prefix sums
         for i in 1..num_chunks {
             x[i] += x[i-1];
         }
