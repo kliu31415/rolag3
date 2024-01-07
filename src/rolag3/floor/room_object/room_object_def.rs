@@ -138,7 +138,7 @@ pub type RoomObjectId = usize;
 impl RoomObjectMetadata {
     pub fn new(ctx: &mut NewRoomObjectContext, typ: RoomObjectType) -> Self {
         Self { 
-            ref_: RoomObjectRef {id: ctx.get_next_floor_object_id(), typ },
+            ref_: RoomObjectRef {id: ctx.get_and_inc_next_room_object_id(), typ },
         }
     }
 
@@ -488,8 +488,8 @@ impl<'a> NewRoomObjectContext<'a> {
             rng: act1_ctx.rng,
         }
     }
-
-    pub fn get_next_floor_object_id(&mut self) -> RoomObjectId {
+    
+    pub fn get_and_inc_next_room_object_id(&mut self) -> RoomObjectId {
         *self.room_object_id_counter += 1;
         *self.room_object_id_counter
     }
@@ -497,7 +497,11 @@ impl<'a> NewRoomObjectContext<'a> {
     pub fn get_room_time(&mut self) -> f64 {
         self.room_time
     }
-    
+
+    pub fn get_rng(&mut self) -> &mut Rng {
+        self.rng
+    }
+
     // in the range [0, 1)
     pub fn get_randf64(&mut self) -> f64 {
         self.rng.gen_f64()

@@ -54,7 +54,7 @@ pub struct BudebTimeSpeedMult {
 const COLLISION_DAMAGE_INSTANT_MULT: f64 = 0.25;
 
 pub struct StandardUnitCommon {
-    ro_ref: RofizObjectRef,
+    ro_ref: Option<RofizObjectRef>,
     engine_power: f64, // intuitively, equal to the max speed in tiles/s
     tire_traction: f64, // intuitively, proportional to how quickly the unit reaches its max speed
     angular_power: f64,
@@ -114,7 +114,7 @@ impl StandardUnitCommon {
     const EPSILON: f64 = 1e-20;
 
     pub fn new(
-        ro_ref: RofizObjectRef, 
+        ro_ref: Option<RofizObjectRef>, 
         damageable: bool, 
         collision_damage: f64,
         hp: f64, 
@@ -169,7 +169,7 @@ impl StandardUnitCommon {
     }
 
     pub fn get_ro_ref(&self) -> &RofizObjectRef {
-        &self.ro_ref
+        self.ro_ref.as_ref().unwrap()
     }
 
     fn decelerate_xy(&mut self, tick_length: f64, force: f64) {
@@ -253,11 +253,13 @@ impl StandardUnitCommon {
 
     pub fn set_rotate_move(&mut self, rotate: RotateMove) {
         assert!(self.act1_started, "cannot call standard_unit_common::set_rotate_move() before act1 starts");
+        assert!(self.ro_ref.is_some());
         self.rotate = rotate;
     }
 
     pub fn add_external_forces(&mut self, mut f: Vec<PolarForce>) {
         assert!(self.act1_started, "cannot call standard_unit_common::add_external_forces() before act1 starts");
+        assert!(self.ro_ref.is_some());
         self.external_forces.append(&mut f);
     }
 
@@ -328,6 +330,14 @@ impl StandardUnitCommon {
         let speed_mult = max_speed_mult * min_speed_mult;
         let traction_mult = max_traction_mult * min_traction_mult;
 
+        if self.ro_ref.is_some() {
+            self.move_primary_ro_ref(rofiz, tick_length, traction_mult, speed_mult);
+        }
+
+        self.act1_started = false;
+    }
+
+    fn move_primary_ro_ref(&mut self, rofiz: &mut RofizState, tick_length: f64, traction_mult: f64, speed_mult: f64) {
         let tire_traction = self.tire_traction * traction_mult;
         let min_velocity = self.min_effective_velocity;
         let min_angular_velocity = self.min_effective_angular_velocity;
@@ -394,7 +404,7 @@ impl StandardUnitCommon {
             self.velocity_y += ay;
         }
 
-        let position = rofiz.get_movable_object_xform(&self.ro_ref);
+        let position = rofiz.get_movable_object_xform(&self.ro_ref.as_ref().unwrap());
 
         if let Some(prev_position) = self.prev_position {
             let prev_desired_movement = self.prev_desired_movement.unwrap();
@@ -449,12 +459,11 @@ impl StandardUnitCommon {
         self.prev_position = Some(position);
         self.prev_desired_movement = Some(Transformation::new(dx, dy, dtheta));
 
-        self.act1_started = false;
         self.translate = TranslateMove::Nop;
         self.rotate = RotateMove::Nop;
         self.external_forces.clear();
 
-        rofiz.move_object(&self.ro_ref, movement);
+        rofiz.move_object(&self.ro_ref.as_ref().unwrap(), movement);
     }
 
     pub fn apply_budeb(&mut self, budeb: &Budeb) {

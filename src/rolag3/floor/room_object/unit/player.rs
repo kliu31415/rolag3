@@ -285,7 +285,7 @@ impl Player {
         // Rofiz will automatically clean up the old su_common.rofiz_object, because it'll detect that no RoomObjects
         // hold a reference to it anymore.
         self.su_common = Some(StandardUnitCommon::new(
-            ro_ref, 
+            Some(ro_ref), 
             true, 
             10.0, /* keep this a nonzero value for now to make visually verifying the unit-unit collision stack works properly easier */
             1e3, 
@@ -295,7 +295,8 @@ impl Player {
             0.0, 
             150.0, 
             10.0,
-            0.0 /* nop */));
+            0.0 /* nop */,
+        ));
     }
 
     pub fn get_center_point(&self, rofiz: &RofizState) -> FloorCoordinate {
