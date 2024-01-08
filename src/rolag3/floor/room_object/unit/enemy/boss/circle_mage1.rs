@@ -26,6 +26,7 @@ pub struct CircleMage1 {
     query_result: Option<Rc<RefCell<Act1QueryResult>>>,
     orbs: [Weak<RefCell<StandardUnit1>>; 6],
     lightnings: [Vec<Weak<RefCell<StandardUnit1>>>; 6],
+    cbb_quad_cache: Vec<[Point; 4]>,
 
     orb_offset_activity: OrbOffsetActivity,
     orb_rotate_activity: OrbRotateActivity,
@@ -78,6 +79,7 @@ pub fn new_boss_circle_mage1(ctx: &mut NewRoomObjectContext, x: f64, y: f64) -> 
             let lightning = Lightning {
                 draw_color: draw_colors[color_idx],
                 ro_refs: Vec::new(),
+                cbb_quad_cache: Vec::new(),
                 bridge1,
                 bridge2,
                 lerped_bridge, 
@@ -98,6 +100,7 @@ pub fn new_boss_circle_mage1(ctx: &mut NewRoomObjectContext, x: f64, y: f64) -> 
         query_result: None,
         orbs: orbs_weak,
         lightnings: lightnings_weak,
+        cbb_quad_cache: Vec::new(),
         orb_offset_activity: OrbOffsetActivity::Constant{cur_offset: ORB_OFFSET_MIN},
         orb_rotate_activity: OrbRotateActivity::Constant { angular_velocity: 0.0 },
         orb_angle_start: 0.0,
@@ -264,8 +267,8 @@ fn boss_draw(ctx: &mut SuDrawContext) {
             let mut output: (Option<ChunkedBrownianBridge>, Option<Color>) = (None, None);
             let input = Empty {};
             lightning.custom_fn(0, &input, &mut output);
-            let quads = output.0.unwrap().to_quads(LIGHTNING_THICKNESS, orb_centers[i], orb_centers[j]);
-            for q in quads {
+            output.0.unwrap().to_quads(&mut us_data.cbb_quad_cache, LIGHTNING_THICKNESS, orb_centers[i], orb_centers[j]);
+            for q in us_data.cbb_quad_cache.drain(..) {
                 dops.push(ctx.draw_ctx.do_quad_fan(output.1.unwrap(), q));
             }
         }
@@ -324,6 +327,7 @@ fn orb_custom_act1(ctx: &mut SuAct1Context, _: &mut Act1Response, input: &dyn An
 struct Lightning {
     draw_color: Color,
     ro_refs: Vec<RofizObjectRef>,
+    cbb_quad_cache: Vec<[Point; 4]>,
     bridge1: ChunkedBrownianBridge,
     bridge2: ChunkedBrownianBridge,
     lerped_bridge: ChunkedBrownianBridge,
@@ -368,19 +372,25 @@ fn lightning_custom_act1(ctx: &mut SuAct1Context, _: &mut Act1Response, input: &
         us_data.cbb_per_s = f64::max(LIGHTNING_CBB_PER_SEC_MIN, us_data.cbb_per_s);
     }
     us_data.lerped_bridge = ChunkedBrownianBridge::lerp(&us_data.bridge1, &us_data.bridge2, us_data.lerp_t);
-    let quads = us_data.lerped_bridge.to_quads(LIGHTNING_THICKNESS, start, end);
-    for (i, q) in quads.into_iter().enumerate() {
+    us_data.lerped_bridge.to_quads(&mut us_data.cbb_quad_cache, LIGHTNING_THICKNESS, start, end);
+    if us_data.ro_refs.len() > us_data.cbb_quad_cache.len() {
+        us_data.ro_refs.truncate(us_data.cbb_quad_cache.len());
+    }
+    for (i, q) in us_data.cbb_quad_cache.drain(..).enumerate() {
         // shift the quad so that its non-transformed hitbox is around the origin. This isn't useful now but may be
         // later if code is added that assumes all hitboxes are around the origin, and the xform represents the
         // rough coordinates of the hitbox
         let shifted_q = q.map(|p| Point::new(p.x - q[0].x, p.y - q[0].y));
         let xform = Transformation::new(q[0].x as f64, q[0].y as f64, 0.0);
         // TODO: optimize this allocation
-        let shape = Shape::of_polygon(Box::new(shifted_q));
         if i < us_data.ro_refs.len() {
-            let movement = RofizObjectMovement::NewHitbox(Hitbox::new(xform, shape));
+            let mut stolen_hitbox = ctx.act1_ctx.get_rofiz().steal_movable_object_hitbox(&us_data.ro_refs[i]);
+            stolen_hitbox.transformation = xform;
+            stolen_hitbox.shape.replace_with_polygon(&shifted_q);
+            let movement = RofizObjectMovement::NewHitbox(stolen_hitbox);
             ctx.act1_ctx.get_rofiz().move_object(&us_data.ro_refs[i], movement);
         } else {
+            let shape = Shape::of_polygon(Box::new(shifted_q));
             us_data.ro_refs.push(ctx.act1_ctx.get_rofiz().add_basic_projectile(ctx.su_ctx.md.get_ref(), Hitbox::new(xform, shape)));
         }
     }
@@ -494,8 +504,7 @@ impl ChunkedBrownianBridge {
         }
     }
 
-    fn to_quads(&self, thickness: f32, start: Point, end: Point) -> Vec<[Point; 4]> {
-        let mut quads = Vec::new();
+    fn to_quads(&self, dst: &mut Vec<[Point; 4]>, thickness: f32, start: Point, end: Point) {
         let mut prev = Point::new(0.0, 0.0);
         let dir = end - start;
         let dir_r = dir.norm();
@@ -511,9 +520,8 @@ impl ChunkedBrownianBridge {
                 Point::new(x * dir_r, y - thickness / 2.0),
             ];
             quad.iter_mut().for_each(|p| *p = p.rotated(dir_theta).translated(start_xlate));
-            quads.push(quad);
+            dst.push(quad);
             prev = Point::new(x, y);
         }
-        quads
     }
 }
