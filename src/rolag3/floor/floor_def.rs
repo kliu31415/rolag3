@@ -2,7 +2,7 @@ use std::{collections::HashMap, cell::RefCell, rc::Rc};
 
 use crate::{gfx::renderer::Renderer, rolag3::floor::{roomgen::empty1::get_gen_room_fn_empty1, floorgen::run::GenFloorRoomFn, room_object::{cosmetic::ground1::GroundTheme, wall::basic_wall::WallTheme}, draw::Color}, util::rng::Prng};
 
-use super::{room::{Room, RoomConnectionInfo}, room_object::{unit::player::{Player, MoveRooms}, room_object_def::{FloorCoordinate, RoomObjectId}, tiles::room_connection::Direction}, roomgen::{boss_room1::get_gen_room_fn_boss1, test_room1::get_gen_room_fn_test_room1, test_room2::get_gen_room_fn_test_room2, maze1::get_gen_room_fn_maze1, boss::circle_mage1::get_gen_room_fn_boss_circle_mage1}, floorgen::run::{gen_floor, GenFloorArgs, GenFloorRoomContext}};
+use super::{room::{Room, RoomConnectionInfo}, room_object::{unit::player::{Player, MoveRooms}, room_object_def::{FloorCoordinate, RoomObjectId, RoomObjectRef, RoomObjectType}, tiles::room_connection::Direction}, roomgen::{boss_room1::get_gen_room_fn_boss1, test_room1::get_gen_room_fn_test_room1, test_room2::get_gen_room_fn_test_room2, maze1::get_gen_room_fn_maze1, boss::circle_mage1::get_gen_room_fn_boss_circle_mage1}, floorgen::run::{gen_floor, GenFloorArgs, GenFloorRoomContext}};
 
 pub struct Floor {
     pub rooms: HashMap<RoomId, Room>,
@@ -23,7 +23,7 @@ pub type RoomId = usize;
 impl Floor {
     // ids [0..100] are reserved for now
     pub const ROOM_OBJECT_ID_COUNTER_BEGIN: RoomObjectId = 100;
-    pub const PLAYER_ROOM_OBJECT_ID: RoomObjectId = 1;
+    pub const PLAYER_ROOM_OBJECT_REF: RoomObjectRef = RoomObjectRef {id: 1, typ: RoomObjectType::Unit };
 
     pub fn new_test1(renderer: &mut dyn Renderer, rng: &mut Prng) -> Self {
         let mut room_object_id_counter = Self::ROOM_OBJECT_ID_COUNTER_BEGIN;

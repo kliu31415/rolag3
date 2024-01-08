@@ -144,7 +144,7 @@ impl RoomObjectMetadata {
 
     pub fn new_for_player() ->Self {
         Self {
-            ref_: RoomObjectRef {id: Floor::PLAYER_ROOM_OBJECT_ID, typ: RoomObjectType::Unit },
+            ref_: Floor::PLAYER_ROOM_OBJECT_REF,
         }
     }
 
@@ -161,7 +161,6 @@ pub struct RoomObjectCollection {
 }
 
 struct RoomObjectsByType {
-    player: Option<Rc<RefCell<dyn RoomObject>>>,
     room_objects: BTreeMap<RoomObjectRef, Rc<RefCell<dyn RoomObject>>>,
 }
 
@@ -182,20 +181,10 @@ impl RoomObjectsByType {
         self.room_objects.len()
     }
 
-    fn remove_player(&mut self) {
-        assert!(self.player.is_some(), "remove_player() called when player is not present");
-        let r = self.room_objects.remove(&self.player.as_ref().unwrap().as_ref().borrow().get_metadata().get_ref());
-        assert!(r.is_some(), "unable to remove player from RoomObjects map");
-        self.player = None;
-    }
-
     fn add(&mut self, obj: Rc<RefCell<dyn RoomObject>>) {
-        if obj.as_ref().borrow().is_player() {
-            assert!(self.player.is_none(), "cannot add player to room when player is already in room");
-            self.player = Some(obj.clone());
-        }
         let ref_ = obj.as_ref().borrow().get_metadata().get_ref();
-        self.room_objects.insert(ref_, obj);
+        let old = self.room_objects.insert(ref_, obj);
+        assert!(old.is_none(), "tried to add RoomObject (id={:?}) to RoomObjectsByType when a RoomObject with the same id already exists", ref_);
     }
 
     fn remove(&mut self, r: &RoomObjectRef) {
@@ -271,7 +260,6 @@ impl RoomObjectCollection {
     pub fn new() -> Self {
         Self {
             room_objects_by_type: RoomObjectsByType {
-                player: None,
                 room_objects: BTreeMap::new(),
             },
             room_already_cleared: false,
@@ -280,7 +268,7 @@ impl RoomObjectCollection {
     }
 
     pub fn remove_player(&mut self) {
-        self.room_objects_by_type.remove_player();
+        self.room_objects_by_type.remove(&Floor::PLAYER_ROOM_OBJECT_REF);
     }
 
     pub fn add(&mut self, obj: Rc<RefCell<dyn RoomObject>>) {
@@ -464,7 +452,7 @@ impl RoomObjectCollection {
             let ref_count = Rc::strong_count(v);
             if v.borrow().is_player() {
                 if ref_count != 3 {
-                    panic!("RoomObject Player Rc::strong_count()={}. Expected 3. Id={:?}", ref_count, v.borrow().get_metadata().get_ref());
+                    panic!("RoomObject Player Rc::strong_count()={}. Expected 2. Id={:?}", ref_count, v.borrow().get_metadata().get_ref());
                 }
             } else if ref_count != 1 {
                 panic!("RoomObject Rc::strong_count()={}. Expected 1. Id={:?}", ref_count, v.borrow().get_metadata().get_ref());
