@@ -4,3 +4,4 @@ pub mod hexagon;
 pub mod circular_turret;
 pub mod rotating_laser;
 pub mod boss;
+pub mod lightning;
