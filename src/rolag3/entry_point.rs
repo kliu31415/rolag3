@@ -239,7 +239,7 @@ impl Rolag3EventHandler {
                     text: text.clone(), 
                     color: ColorRGBA32f::new(0.0, 0.2, 0.2, 1.0),
                     x: 0.0,
-                    y: (i * 45) as f32,
+                    y: 150.0 + (i * 45) as f32,
                     font_size: 40.0, 
                     position: DrawTextPosition::TopLeft,
             })});

@@ -14,6 +14,7 @@ pub struct Player {
     max_mana: f64,
     mana_regen: f64,
     damage_color: DamageColor,
+    starcash: f64,
 }
 
 impl RoomObject for Player {
@@ -263,6 +264,7 @@ impl Player {
             max_mana: 20.0,
             mana_regen: 0.5,
             damage_color: DamageColor::NotSet,
+            starcash: 0.0,
         }
     }
 
@@ -308,6 +310,10 @@ impl Player {
         let ret = self.change_rooms;
         self.change_rooms = None;
         ret
+    }
+
+    pub fn get_starcash(&self) -> f64 {
+        self.starcash
     }
 
     pub fn get_cur_hp(&self) -> f64 {

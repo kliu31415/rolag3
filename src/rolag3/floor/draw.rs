@@ -1,4 +1,4 @@
-use crate::{gfx::{renderer::{ColorRGBA32f, ViewSpaceCoordinate, DrawOpWithMetadata, DrawOpTriFan, DrawOp, ColoredTriVertex, DrawOpCCS, DrawOpGroup, Rect, DrawOpText, DrawTextPosition, DrawOpTexture2, DrawOpQuadFan, DrawOpTri}, draw_op_util::draw_op_rect}, geometry::shape::Point};
+use crate::{gfx::{renderer::{ColorRGBA32f, ViewSpaceCoordinate, DrawOpWithMetadata, DrawOpTriFan, DrawOp, ColoredTriVertex, DrawOpCCS, DrawOpGroup, Rect, DrawOpText, DrawTextPosition, DrawOpTexture2, DrawOpQuadFan, DrawOpTri}, draw_op_util::{draw_op_rect, draw_thick_border}}, geometry::{shape::{Point, Vector}, star::get_star_shape, util::get_inner_polygon}};
 
 use super::{rofiz::rofiz_state::RofizState, floor_def::Floor, room_object::unit::player::Player, room::RoomTile};
 
@@ -131,7 +131,49 @@ fn get_draw_hud_ops(ctx: DrawHudContext) -> DrawOp {
     // Weapons
     ops.push(ctx.player.get_weapon_hud_draw_op(0.87 * ctx.window_width, 0.11 * ctx.window_height, 0.03 * ctx.window_height, 0.11 * ctx.window_width));
 
+    // StarCash
+    ops.push(get_starcash_dops(ctx.player, ctx.window_width, ctx.window_height));
+
     DrawOp::Group(DrawOpGroup { ops: ops.into_boxed_slice() })
+}
+
+fn get_starcash_dops(player: &Player, _window_width: f32, window_height: f32) -> DrawOp {
+    let scr_height = 0.04 * window_height;
+    let star_inner_radius = 0.25 * scr_height;
+    let star_outer_radius = 0.45 * scr_height;
+    let border_thickness = 0.06 * scr_height;
+    let mut star_border = get_star_shape(5, star_inner_radius, star_outer_radius, -0.1 * std::f32::consts::PI);
+    let mut star_inner = get_inner_polygon(border_thickness, &star_border);
+    let star_center_vsc = ViewSpaceCoordinate::new(0.5 * scr_height, 0.5 * scr_height);
+    let star_center_vec = Vector::new(0.5 * scr_height, 0.5 * scr_height);
+    star_border.iter_mut().for_each(|p| *p = &*p + star_center_vec);
+    star_inner.iter_mut().for_each(|p| *p = &*p + star_center_vec);
+    let mut star_dops = Vec::new();
+    draw_thick_border(&mut star_dops, ColorRGBA32f::new(10.0, 10.0, 10.0, 0.01), &star_border, &star_inner);
+    let star_inner_color = ColorRGBA32f::new(10.0, 10.0, 0.0, 0.05);
+    for (v1, v2) in star_inner.iter().zip(star_inner[1..].iter().chain(star_inner[..1].iter())) {
+        let vertexes = [
+            ColoredTriVertex { color: star_inner_color, vertex: star_center_vsc },
+            ColoredTriVertex { color: star_inner_color, vertex: ViewSpaceCoordinate::new(v1.x, v1.y) },
+            ColoredTriVertex { color: star_inner_color, vertex: ViewSpaceCoordinate::new(v2.x, v2.y) },
+        ];
+        star_dops.push(DrawOp::Tri(DrawOpTri { vertexes }));
+    }
+
+    assert!(player.get_starcash() >= 0.0);
+    let starcash_text = format!("{}", player.get_starcash() as i64);
+    for color in [ColorRGBA32f::new(0.0, 0.0, 0.0, 0.3), ColorRGBA32f::new(10.0, 10.0, 0.0, 0.05)] {
+        let dop = DrawOp::Text(DrawOpText { 
+            text: starcash_text.clone(),
+            color, 
+            x: scr_height, 
+            y: 0.0, 
+            font_size: scr_height, 
+            position: DrawTextPosition::TopLeft,
+        });
+        star_dops.push(dop);
+    }
+    DrawOp::Group(DrawOpGroup {ops: star_dops.into()})
 }
 
 #[derive(Debug)]
