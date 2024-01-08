@@ -24,6 +24,19 @@ pub fn draw_op_circle(color: ColorRGBA32f, center: (f32, f32), r: f32) -> DrawOp
     })
 }
 
+pub fn draw_op_concentric_circles(inner_color: ColorRGBA32f, outer_color: ColorRGBA32f, center: (f32, f32), inner_radius: f32, outer_radius: f32) -> DrawOp {
+    DrawOp::ConcentricCircleSector(DrawOpCCS {
+        x: center.0,
+        y: center.1,
+        inner_radius,
+        outer_radius,
+        viewport: None,
+        inner_color,
+        outer_color,
+        angle_range: None,
+    })
+}
+
 pub fn draw_thick_border(dst: &mut Vec<DrawOp>, color: ColorRGBA32f, border: &[Point], inner: &[Point]) {
     let o1 = border.iter();
     let o2: std::iter::Chain<std::slice::Iter<'_, Point>, _> = border[1..].iter().chain(border[..1].iter());

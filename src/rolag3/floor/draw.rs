@@ -1,4 +1,4 @@
-use crate::{gfx::{renderer::{ColorRGBA32f, ViewSpaceCoordinate, DrawOpWithMetadata, DrawOpTriFan, DrawOp, ColoredTriVertex, DrawOpCCS, DrawOpGroup, Rect, DrawOpText, DrawTextPosition, DrawOpTexture2, DrawOpQuadFan, DrawOpTri}, draw_op_util::{draw_op_rect, draw_thick_border}}, geometry::{shape::{Point, Vector}, star::get_star_shape, util::get_inner_polygon}};
+use crate::{gfx::{renderer::{ColorRGBA32f, ViewSpaceCoordinate, DrawOpWithMetadata, DrawOpTriFan, DrawOp, ColoredTriVertex, DrawOpCCS, DrawOpGroup, Rect, DrawOpText, DrawTextPosition, DrawOpTexture2, DrawOpQuadFan, DrawOpTri}, draw_op_util::{draw_op_rect, draw_thick_border, draw_op_concentric_circles}}, geometry::{shape::{Point, Vector}, star::get_star_shape, util::get_inner_polygon}};
 
 use super::{rofiz::rofiz_state::RofizState, floor_def::Floor, room_object::unit::player::Player, room::RoomTile};
 
@@ -36,6 +36,7 @@ pub fn get_draw_floor_ops(ctx: DrawFloorContext) {
             window_width: ctx.window_width as f32,
             window_height: ctx.window_height as f32,
             player: &player.borrow(),
+            floor_time_left: ctx.floor.floor_time_left,
         };
         extra_draw_ops.push(DrawOpWithMetadata::new(DrawContext::Z_HUD, get_draw_hud_ops(draw_hud_context)));
     }
@@ -92,6 +93,7 @@ fn get_draw_tab_overlay_ops(ctx: DrawTabOverlayContext) -> DrawOp {
 struct DrawHudContext<'a> {
     window_width: f32,
     window_height: f32,
+    floor_time_left: f64,
     player: &'a Player,
 }
 
@@ -131,23 +133,26 @@ fn get_draw_hud_ops(ctx: DrawHudContext) -> DrawOp {
     // Weapons
     ops.push(ctx.player.get_weapon_hud_draw_op(0.87 * ctx.window_width, 0.11 * ctx.window_height, 0.03 * ctx.window_height, 0.11 * ctx.window_width));
 
+    // Floor Time Left
+    let top_left_row_width = 0.04 * ctx.window_height;
+    ops.push(get_floor_time_left_dops(ctx.floor_time_left, 0.0, 0.0, top_left_row_width));
+
     // StarCash
-    ops.push(get_starcash_dops(ctx.player, ctx.window_width, ctx.window_height));
+    ops.push(get_starcash_dops(ctx.player, 0.0, top_left_row_width, top_left_row_width));
 
     DrawOp::Group(DrawOpGroup { ops: ops.into_boxed_slice() })
 }
 
-fn get_starcash_dops(player: &Player, _window_width: f32, window_height: f32) -> DrawOp {
-    let scr_height = 0.04 * window_height;
-    let star_inner_radius = 0.25 * scr_height;
-    let star_outer_radius = 0.45 * scr_height;
-    let border_thickness = 0.06 * scr_height;
+fn get_starcash_dops(player: &Player, x: f32, y: f32, row_width: f32) -> DrawOp {
+    let star_inner_radius = 0.25 * row_width;
+    let star_outer_radius = 0.45 * row_width;
+    let border_thickness = 0.06 * row_width;
     let mut star_border = get_star_shape(5, star_inner_radius, star_outer_radius, -0.1 * std::f32::consts::PI);
     let mut star_inner = get_inner_polygon(border_thickness, &star_border);
-    let star_center_vsc = ViewSpaceCoordinate::new(0.5 * scr_height, 0.5 * scr_height);
-    let star_center_vec = Vector::new(0.5 * scr_height, 0.5 * scr_height);
-    star_border.iter_mut().for_each(|p| *p = &*p + star_center_vec);
-    star_inner.iter_mut().for_each(|p| *p = &*p + star_center_vec);
+    let star_center_vsc = ViewSpaceCoordinate::new(x + 0.5 * row_width, y + 0.5 * row_width);
+    let star_center_vec = Vector::new(0.5 * row_width, 0.5 * row_width);
+    star_border.iter_mut().for_each(|p| *p = *p + star_center_vec + Vector::new(x, y));
+    star_inner.iter_mut().for_each(|p| *p = *p + star_center_vec + Vector::new(x, y));
     let mut star_dops = Vec::new();
     draw_thick_border(&mut star_dops, ColorRGBA32f::new(10.0, 10.0, 10.0, 0.01), &star_border, &star_inner);
     let star_inner_color = ColorRGBA32f::new(10.0, 10.0, 0.0, 0.05);
@@ -162,18 +167,45 @@ fn get_starcash_dops(player: &Player, _window_width: f32, window_height: f32) ->
 
     assert!(player.get_starcash() >= 0.0);
     let starcash_text = format!("{}", player.get_starcash() as i64);
+    let text_offset = 1.0 * row_width;
     for color in [ColorRGBA32f::new(0.0, 0.0, 0.0, 0.3), ColorRGBA32f::new(10.0, 10.0, 0.0, 0.05)] {
         let dop = DrawOp::Text(DrawOpText { 
             text: starcash_text.clone(),
             color, 
-            x: scr_height, 
-            y: 0.0, 
-            font_size: scr_height, 
+            x: x + text_offset,
+            y: y, 
+            font_size: row_width, 
             position: DrawTextPosition::TopLeft,
         });
         star_dops.push(dop);
     }
     DrawOp::Group(DrawOpGroup {ops: star_dops.into()})
+}
+
+fn get_floor_time_left_dops(time_left: f64, x: f32, y: f32, row_width: f32) -> DrawOp {
+    let mut dops = Vec::new();
+    dops.push(draw_op_concentric_circles(
+        ColorRGBA32f::new(10.0, 10.0, 10.0, 0.02), 
+        ColorRGBA32f::new(0.0, 0.0, 0.0, 0.2), 
+        (x + 0.5 * row_width, y + 0.5 * row_width), 
+        0.37 * row_width,
+        0.45 * row_width,
+    ));
+    let time_left = f64::max(time_left.ceil(), 0.0) as i64;
+    let time_text = format!("{}:{:0>2}", time_left / 60, time_left % 60);
+    let text_offset = 1.0 * row_width;
+    for color in [ColorRGBA32f::new(0.0, 0.0, 0.0, 0.3), ColorRGBA32f::new(10.0, 10.0, 10.0, 0.03)] {
+        let dop = DrawOp::Text(DrawOpText { 
+            text: time_text.clone(),
+            color, 
+            x: x + text_offset,
+            y: y, 
+            font_size: row_width, 
+            position: DrawTextPosition::TopLeft,
+        });
+        dops.push(dop);
+    }
+    DrawOp::Group(DrawOpGroup {ops: dops.into()})
 }
 
 #[derive(Debug)]

@@ -111,6 +111,8 @@ fn run_floor_tick(ctx: RunFloorTickContext) {
         player.borrow_mut().move_rooms(rofiz, MoveRooms::Connection(rci));
         ctx.floor.rooms.get_mut(&rci.connects_to_room_id).expect(&err_msg).room_objects.add(player);
     }
+
+    ctx.floor.floor_time_left -= ctx.tick_length;
 }
 
 #[inline(never)]

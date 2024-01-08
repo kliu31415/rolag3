@@ -8,7 +8,7 @@ pub struct Floor {
     pub rooms: HashMap<RoomId, Room>,
     pub player: Rc<RefCell<Player>>,
     pub player_room_id: RoomId,
-    pub floor_time: f64,
+    pub floor_time_left: f64,
     // all room objects within a floor share the same ID counter. The reason is that some objects can move between rooms
     // on a floor. To ensure all objects in a room have a unique ID, they must be constructed with the same counter.
     // This has caused bugs when the player (id=1) and the first wall constructed in a room (id=1) collide.
@@ -85,7 +85,7 @@ impl Floor {
             rooms,
             player,
             player_room_id: 1,
-            floor_time: 0.0,
+            floor_time_left: 600.0,
             room_object_id_counter,
             floor_w: 200,
             floor_h: 200,
@@ -126,7 +126,7 @@ impl Floor {
             rooms,
             player,
             player_room_id: 0,
-            floor_time: 0.0,
+            floor_time_left: 600.0,
             room_object_id_counter,
             floor_w: gf_result.floor_w,
             floor_h: gf_result.floor_h,
@@ -157,7 +157,7 @@ impl Floor {
             rooms,
             player,
             player_room_id: 1,
-            floor_time: 0.0,
+            floor_time_left: 600.0,
             room_object_id_counter,
             floor_w: 200,
             floor_h: 200,

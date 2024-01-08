@@ -169,6 +169,14 @@ impl std::ops::Add<Vector> for &Point {
     }
 }
 
+impl std::ops::Add<Vector> for Point {
+    type Output = Point;
+
+    fn add(self, rhs: Vector) -> Point {
+        Point::new(self.x + rhs.x, self.y + rhs.y)
+    }
+}
+
 #[derive(Debug, Copy, Clone)]
 pub struct Vector {
     pub x: f32,
