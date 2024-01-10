@@ -73,7 +73,7 @@ fn lightning_custom_act1(ctx: &mut SuAct1Context, _: &mut Act1Response, input: &
     if us_data.lerp_t >= 1.0 {
         std::mem::swap(&mut us_data.bridge1, &mut us_data.bridge2);
         let dist = (end - start).norm();
-        let num_chunks = usize::clamp((dist / 2.0) as usize, 0, 20);
+        let num_chunks = usize::clamp((dist / 2.0) as usize, 1, 20);
         us_data.bridge2 = ChunkedBrownianBridge::new(ctx.act1_ctx.get_rng(), num_chunks, 3.0, *y_sd);
         us_data.lerp_t = 0.0;
         us_data.cur_cbb_per_s = ctx.act1_ctx.get_rng().gen_normal(us_data.cbb_per_s_mean, us_data.cbb_per_s_sd);

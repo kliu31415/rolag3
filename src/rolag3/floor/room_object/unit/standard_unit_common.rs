@@ -212,7 +212,7 @@ impl StandardUnitCommon {
         if f64::abs(decel) > f64::abs(self.velocity_theta) {
             self.velocity_theta = 0.0;
         } else {
-            self.velocity_theta -= decel;
+            self.velocity_theta -= decel * f64::signum(self.velocity_theta);
         }
     }
 
@@ -381,7 +381,7 @@ impl StandardUnitCommon {
                 if f64::abs(atheta) < Self::EPSILON {
                     return;
                 }
-                let f_angular = self.angular_traction * self.angular_power / f64::max(self.velocity_theta, min_angular_velocity);
+                let f_angular = f64::signum(atheta) * self.angular_traction * self.angular_power / f64::max(f64::abs(self.velocity_theta), min_angular_velocity);
                 let accel = tick_length * f_angular / Self::MASS;
                 self.velocity_theta += accel;
             })(),
@@ -390,7 +390,6 @@ impl StandardUnitCommon {
                     self.velocity_theta = 0.0;
                     return;
                 }
-        
                 let f_angular = self.angular_traction * self.angular_power / f64::max(self.velocity_theta, min_angular_velocity);
                 self.decelerate_theta(tick_length, f_angular);
             })(),

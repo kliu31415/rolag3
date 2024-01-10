@@ -23,6 +23,8 @@ pub struct Su1Data {
     damage_color: DamageColor,
     su_common: StandardUnitCommon,
     blocks_room_clear: bool,
+    is_dead: bool,
+    remove_immediately_on_death: bool,
 }
 
 pub struct Su1Logic {
@@ -69,6 +71,9 @@ impl RoomObject for StandardUnit1 {
     }
 
     fn handle_collision(&mut self, ctx: &mut HandleCollisionContext) -> HandleCollisionResponse {
+        if self.data.is_dead {
+            return HandleCollisionResponse::new();
+        }
         let hcsu_ctx = &mut HcStandardUnitContext {
             suc: &mut self.data.su_common,
             team: self.data.team,
@@ -96,6 +101,9 @@ impl RoomObject for StandardUnit1 {
     }
 
     fn handle_collision_standard_unit<'a>(&mut self, ctx: &mut HcStandardUnitContext<'a>) -> HcStandardUnitResponse {
+        if self.data.is_dead {
+            return HcStandardUnitResponse {room_objects_to_delete: Vec::new()};
+        }
         if ctx.team == self.data.team {
             return HcStandardUnitResponse {
                 room_objects_to_delete: Vec::new(),
@@ -105,7 +113,11 @@ impl RoomObject for StandardUnit1 {
         let td_resp = self.data.su_common.take_collision_damage_from(self.data.md.get_ref(), damage_mult, ctx.suc);
         let mut room_objects_to_delete = Vec::new();
         if td_resp.dead {
-            room_objects_to_delete.push(self.data.md.get_ref());
+            if self.data.remove_immediately_on_death {
+                room_objects_to_delete.push(self.data.md.get_ref());
+            } else {
+                self.data.is_dead = true;
+            }
         }
         HcStandardUnitResponse {
             room_objects_to_delete,
@@ -183,6 +195,8 @@ impl Su1Data {
             team: self.team,
             damage_color: self.damage_color,
             su_common: &mut self.su_common,
+            is_dead: &mut self.is_dead,
+            remove_immediately_on_death: self.remove_immediately_on_death,
         }
     }
 }
@@ -213,6 +227,7 @@ pub struct StandardUnit1Builder {
     damageable: bool,
     secondary_hitboxes: Vec<(Transformation, Shape, RofizObjType)>,
     room_obj_md: Option<RoomObjectMetadata>,
+    remove_immediately_on_death: bool,
 }
 
 pub enum RofizObjType {
@@ -252,6 +267,7 @@ impl StandardUnit1Builder {
             damageable: true,
             secondary_hitboxes: Vec::new(),
             room_obj_md: None,
+            remove_immediately_on_death: true,
         }
     }
 
@@ -323,6 +339,11 @@ impl StandardUnit1Builder {
         self
     }
 
+    pub fn remove_immediately_on_death(mut self, v: bool) -> Self {
+        self.remove_immediately_on_death = v;
+        self
+    }
+
     pub fn build(mut self, ctx: &mut NewRoomObjectContext) -> StandardUnit1 {
         self.get_room_obj_metadata(ctx);
         let ro_ref = match self.hitbox {
@@ -380,6 +401,8 @@ impl StandardUnit1Builder {
                 damage_color: self.req.damage_color,
                 su_common, 
                 blocks_room_clear: self.damageable,
+                is_dead: false,
+                remove_immediately_on_death: self.remove_immediately_on_death,
             },
             logic: Su1Logic {
                 act1_fn: self.act1_fn,
@@ -398,6 +421,8 @@ pub struct SuContext<'a> {
     pub team: Team,
     pub damage_color: DamageColor,
     pub su_common: &'a mut StandardUnitCommon,
+    pub is_dead: &'a mut bool,
+    pub remove_immediately_on_death: bool,
 }
 
 pub struct SuAct1Context<'a, 'b> {
@@ -433,6 +458,9 @@ struct SuHcProjectileContext<'a> {
 }
 
 fn hc_projectile_default(ctx: &mut SuHcProjectileContext) -> HcProjectileResponse {
+    if *ctx.su_ctx.is_dead {
+        return HcProjectileResponse::nop();
+    }
     let unit_team = ctx.su_ctx.team;
     let projectile_team = ctx.hcp_ctx.team;
     if unit_team == projectile_team {
@@ -442,7 +470,11 @@ fn hc_projectile_default(ctx: &mut SuHcProjectileContext) -> HcProjectileRespons
     let td_response = ctx.su_ctx.su_common.take_damage(ctx.hcp_ctx.damage * damage_mult);
     let mut room_objects_to_delete = Vec::new();
     if td_response.dead {
-        room_objects_to_delete.push(ctx.su_ctx.md.get_ref());
+        if ctx.su_ctx.remove_immediately_on_death {
+            room_objects_to_delete.push(ctx.su_ctx.md.get_ref());
+        } else {
+            *ctx.su_ctx.is_dead = true;
+        }
     }
     HcProjectileResponse { 
         projectile_consumed: true,

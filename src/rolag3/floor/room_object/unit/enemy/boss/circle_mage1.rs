@@ -54,7 +54,7 @@ pub fn new_boss_circle_mage1(ctx: &mut NewRoomObjectContext, x: f64, y: f64) -> 
         (x + dx, y + dy)
     });
 
-    let mut color_idxs: [DamageColor; 15] = std::array::from_fn(|i| {
+    let mut color_idxs: [_; 15] = std::array::from_fn(|i| {
         if i < 5 {
             DamageColor::Red
         } else if i < 10 {
@@ -62,7 +62,7 @@ pub fn new_boss_circle_mage1(ctx: &mut NewRoomObjectContext, x: f64, y: f64) -> 
         } else {
             DamageColor::Blue
         }
-    });
+    }).map(|x| Some(x));
     ctx.get_rng().shuffle(&mut color_idxs);
 
     let (lo_group, lo_group_others) = new_lightning_orb_group(

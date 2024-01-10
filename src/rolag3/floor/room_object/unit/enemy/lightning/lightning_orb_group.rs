@@ -7,7 +7,7 @@ use super::{orb::{new_orb, Orb}, lightning::new_lightning, chunked_brownian_brid
 pub struct LightningOrbGroup {
     md: RoomObjectMetadata,
     orbs: Vec<Weak<RefCell<StandardUnit1>>>,
-    lightnings: Vec<Vec<Weak<RefCell<StandardUnit1>>>>,
+    lightnings: Vec<Vec<Option<Weak<RefCell<StandardUnit1>>>>>,
     lightning_thickness: f32,
 
     orbs_dop_cache: Vec<DrawOp>,
@@ -52,7 +52,8 @@ impl LightningOrbGroup {
     
         for i in 0..self.lightnings.len() {
             for j in 0..i {
-                let lightning_rc = self.lightnings[i][j].upgrade().unwrap();
+                let Some(ref lightning_weak) = self.lightnings[i][j] else {continue;};
+                let lightning_rc = lightning_weak.upgrade().unwrap();
                 let mut lightning = lightning_rc.borrow_mut();
     
                 let orb1_rc = self.orbs[i].upgrade().unwrap();
@@ -92,9 +93,11 @@ impl LightningOrbGroup {
             self.orbs_dop_cache.push(cc_dop);
         }
     
-        for i in 0..6 {
+        let num_orbs = self.orb_centers_cache.len();
+        for i in 0..num_orbs {
             for j in 0..i {
-                let lightning_rc = self.lightnings[i][j].upgrade().unwrap();
+                let Some(ref lightning_weak) = self.lightnings[i][j] else {continue;};
+                let lightning_rc = lightning_weak.upgrade().unwrap();
                 let mut lightning = lightning_rc.as_ref().borrow_mut();
                 let mut output: (Option<ChunkedBrownianBridge>, Option<Color>) = (None, None);
                 let input = Empty {};
@@ -112,8 +115,8 @@ impl LightningOrbGroup {
 pub fn new_lightning_orb_group(
     ctx: &mut NewRoomObjectContext,
     num_orbs: usize,
-    damage_colors: &[DamageColor],
-    orb_xy: &[(f64, f64)],
+    damage_colors: &[Option<DamageColor>],
+    orb_xy: &[(f64, f64)] /* the initial position. Only matters for the first tick, so mostly a nop.*/,
     orb_radius: f32,
     lightning_cbb_per_s_mean: f64,
     lightning_cbb_per_s_sd: f64,
@@ -133,7 +136,8 @@ pub fn new_lightning_orb_group(
     let mut color_idxs = damage_colors.iter();
     let lightnings = (0..num_orbs).map(|i| {
         (0..i).map(|_j| {
-            let damage_color = *color_idxs.next().unwrap();
+            let damage_color_opt = *color_idxs.next().unwrap();
+            let Some(damage_color) = damage_color_opt else {return None;};
             let draw_color = match damage_color {
                 DamageColor::Red => Color::new(5.0, 0.1, 0.1, 1.0),
                 DamageColor::Green => Color::new(0.1, 1.6, 0.1, 1.0),
@@ -141,7 +145,7 @@ pub fn new_lightning_orb_group(
                 DamageColor::NotSet => panic!("lightning damage color of {:?} isn't supported", damage_color),
                 DamageColor::Silver => panic!("lightning damage color of {:?} isn't supported", damage_color),
             };
-            Rc::new(RefCell::new(new_lightning(
+            Some(Rc::new(RefCell::new(new_lightning(
                 ctx, 
                 damage_color,
                 draw_color,
@@ -149,13 +153,13 @@ pub fn new_lightning_orb_group(
                 lightning_cbb_per_s_sd,
                 lightning_cbb_per_s_min,
                 lightning_thickness,
-            )))
+            ))))
         }).collect::<Vec<_>>()
     }).collect::<Vec<_>>();
 
     let lightnings_weak = lightnings.iter()
         .map(|x| 
-            x.iter().map(|y| Rc::downgrade(&y)).collect::<Vec<_>>())
+            x.iter().map(|y| y.as_ref().and_then(|z| Some(Rc::downgrade(z)))).collect::<Vec<_>>())
         .collect::<Vec<_>>();
     
     let orb_group = Rc::new(RefCell::new(LightningOrbGroup {
@@ -170,6 +174,6 @@ pub fn new_lightning_orb_group(
 
     (orb_group, 
         orbs.into_iter().map(|x| x as _)
-        .chain(lightnings.into_iter().flatten().map(|x| x as _))
+        .chain(lightnings.into_iter().flatten().filter_map(|x| x).map(|x| x as _))
         .collect())
 }
