@@ -6,3 +6,4 @@ pub mod util;
 pub mod test_room1;
 pub mod test_room2;
 pub mod boss;
+pub mod common;

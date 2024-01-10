@@ -1,6 +1,6 @@
 use std::{collections::HashMap, cell::RefCell, rc::Rc};
 
-use crate::{gfx::renderer::Renderer, rolag3::floor::{roomgen::empty1::get_gen_room_fn_empty1, floorgen::run::GenFloorRoomFn, room_object::{cosmetic::ground1::GroundTheme, wall::basic_wall::WallTheme}, draw::Color}, util::rng::Prng};
+use crate::{gfx::renderer::Renderer, rolag3::floor::{roomgen::{empty1::get_gen_room_fn_empty1, common::_1000::_1000::get_gen_room_fn_common1000}, floorgen::run::GenFloorRoomFn, room_object::{cosmetic::ground1::GroundTheme, wall::basic_wall::WallTheme}, draw::Color}, util::rng::Prng};
 
 use super::{room::{Room, RoomConnectionInfo}, room_object::{unit::player::{Player, MoveRooms}, room_object_def::{FloorCoordinate, RoomObjectId, RoomObjectRef, RoomObjectType}, tiles::room_connection::Direction}, roomgen::{boss_room1::get_gen_room_fn_boss1, test_room1::get_gen_room_fn_test_room1, test_room2::get_gen_room_fn_test_room2, maze1::get_gen_room_fn_maze1, boss::circle_mage1::get_gen_room_fn_boss_circle_mage1}, floorgen::run::{gen_floor, GenFloorArgs, GenFloorRoomContext}};
 
@@ -161,6 +161,50 @@ impl Floor {
             room_object_id_counter,
             floor_w: 200,
             floor_h: 200,
+        }
+    }
+
+    pub fn new_test4(renderer: &mut dyn Renderer, rng: &mut Prng) -> Self {
+        let mut room_object_id_counter = Self::ROOM_OBJECT_ID_COUNTER_BEGIN;
+        let player = Rc::new(RefCell::new(Player::new_test1()));
+        let gen_initial_room_fn = GenFloorRoomFn {weight: 1.0, func: get_gen_room_fn_empty1(20, 20, 20, 20)};
+        let gen_normal_room_fns = vec![
+            GenFloorRoomFn {weight: 1.0, func: get_gen_room_fn_empty1(20, 50, 20, 50)},
+            GenFloorRoomFn {weight: 2.0, func: get_gen_room_fn_common1000(30)},
+        ];
+        let ground_theme = GroundTheme::Monocolor(Color::new(0.02, 0.0, 0.0, 1.0));
+        let wall_theme = WallTheme::Monocolor(Color::new(0.1, 0.2, 0.3, 1.0));
+        let gf_args = GenFloorArgs {
+            grid_w: 256,
+            grid_h: 256,
+            ground_theme,
+            wall_theme,
+            ttc_min: 50.0,
+            ttc_max: 53.0,
+            gen_initial_room_fn,
+            gen_normal_room_fns,
+            rng,
+            room_object_id_counter: &mut room_object_id_counter,
+            save_debug_data: true,
+        };
+        let mut gf_result = gen_floor(gf_args);
+        //gf_result.rooms.iter_mut().for_each(|room| room.finalize_with_connections(renderer, vec![], rng, &mut room_object_id_counter));
+        let mut rooms = gf_result.rooms.drain(..).enumerate().collect::<HashMap<_, _>>();
+        assert!(rooms.len() >= 1);
+        player.borrow_mut().move_rooms(&mut rooms.get_mut(&0).unwrap().rofiz, MoveRooms::Teleport { x: 3.0, y: 3.0 });
+        rooms.get_mut(&0).unwrap().room_objects.add(player.clone());
+        gf_result.connections.drain(..).enumerate().for_each(|(rid, rci)| {
+            rooms.get_mut(&rid).unwrap().finalize_with_connections(renderer, rci, rng, &mut room_object_id_counter, ground_theme);
+        });
+
+        Self {
+            rooms,
+            player,
+            player_room_id: 0,
+            floor_time_left: 600.0,
+            room_object_id_counter,
+            floor_w: gf_result.floor_w,
+            floor_h: gf_result.floor_h,
         }
     }
 

@@ -109,12 +109,14 @@ impl Rolag3EventHandler {
         let mut rng = Prng::new_seed_u64(123);
 
         let floor = if true {
-            Floor::new_test1(renderer, &mut rng)
+            Floor::new_test4(renderer, &mut rng)
         } else {
             // dummy block to prevent the linter from marking functions as unused
+            let _ = Floor::new_test1(renderer, &mut rng);
             let _ = Floor::new_test2(renderer, &mut rng);
             let _ = Floor::new_test3(renderer, &mut rng);
-            Floor::new_test1(renderer, &mut rng)
+            let _ = Floor::new_test4(renderer, &mut rng);
+            panic!("");
         };
 
         Rolag3EventHandler { 

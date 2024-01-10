@@ -18,6 +18,7 @@ pub struct LorbgFixedPath {
     md: RoomObjectMetadata,
     lo_group: Weak<RefCell<LightningOrbGroup>>,
     age: f64,
+    orb_age_offsets: Box<[f64]>,
     path_segments: Box<[LogwcPathSegment]>,
     total_path_time_to_traverse: f64,
     orb_speeds: Box<[f64]>,
@@ -59,24 +60,9 @@ impl RoomObject for LorbgFixedPath {
         let mut response = Act1Response::new();
         self.age += ctx.get_tick_length();
         let lo_group_rc = self.lo_group.upgrade().unwrap();
-        for (i, orb_speed) in self.orb_speeds.iter().enumerate() {
-            let mut effective_age = self.age * orb_speed;
-            effective_age %= self.total_path_time_to_traverse;
-            if effective_age < 0.0 {
-                effective_age += self.total_path_time_to_traverse;
-            }
-            let mut position = (0.0, 0.0); // dummy default
-            for (j, path) in self.path_segments.iter().enumerate() {
-                if j+1 == self.path_segments.len() || effective_age <= path.time_to_traverse {
-                    // if j+1 == len(), then effective_age can be slightly greater than path.time_to_traverse
-                    // due to accumulated floating point errors. Clamp effective_age to fix this.
-                    effective_age = f64::min(effective_age, path.time_to_traverse);
-                    position = (path.path_fn)(effective_age);
-                    break;
-                }
-                effective_age -= path.time_to_traverse;
-            }
-            self.cached_orb_centers[i] = position;
+        for (i, (orb_speed, orb_age_offset)) in self.orb_speeds.iter().zip(self.orb_age_offsets.iter()).enumerate() {
+            let effective_age = self.age * orb_speed + orb_age_offset;
+            self.cached_orb_centers[i] = get_orb_position(effective_age, self.total_path_time_to_traverse, &self.path_segments);
         };
         lo_group_rc.borrow_mut().slave_act1(ctx, &mut response, 0.5, &self.cached_orb_centers);
         response
@@ -95,32 +81,53 @@ impl RoomObject for LorbgFixedPath {
     }
 }
 
+fn get_orb_position(mut effective_age: f64, total_path_time: f64, path_segments: &[LogwcPathSegment]) -> (f64, f64) {
+    effective_age %= total_path_time;
+    if effective_age < 0.0 {
+        effective_age += total_path_time;
+    }
+    for (j, path) in path_segments.iter().enumerate() {
+        if j+1 == path_segments.len() || effective_age <= path.time_to_traverse {
+            // if j+1 == len(), then effective_age can be slightly greater than path.time_to_traverse
+            // due to accumulated floating point errors. Clamp effective_age to fix this.
+            effective_age = f64::min(effective_age, path.time_to_traverse);
+            return (path.path_fn)(effective_age);
+        }
+        effective_age -= path.time_to_traverse;
+    }
+    panic!("unexpectedly reached end of function");
+}
+
 pub fn new_lorbg_fixed_path(
     ctx: &mut NewRoomObjectContext,
     path_segments: Box<[LogwcPathSegment]>,
-    orb_xy: &[(f64, f64)],
+    orb_age_offsets: &[f64],
     orb_speeds: &[f64],
     lightning_colors: &[Option<DamageColor>],
 ) -> Box<[Rc<RefCell<dyn RoomObject>>]> {
-    assert!(orb_xy.len() == lightning_colors.len());
-    assert!(orb_xy.len() == orb_speeds.len());
-    let num_orbs = orb_xy.len();
+    assert!(orb_age_offsets.len() == lightning_colors.len());
+    assert!(orb_age_offsets.len() == orb_speeds.len());
+    let num_orbs = orb_age_offsets.len();
+    let total_path_time_to_traverse = path_segments.iter().map(|x| x.time_to_traverse).sum();
+    let orb_xy = orb_age_offsets.iter()
+        .map(|x| get_orb_position(*x, total_path_time_to_traverse, &path_segments))
+        .collect::<Box<_>>();
     let (lo_group, lo_group_others) = new_lightning_orb_group(
         ctx, 
         num_orbs, 
         &lightning_colors, 
-        orb_xy, 
+        &orb_xy, 
         ORB_BORDER_RADIUS, 
         LIGHTNING_CBB_PER_SEC_MEAN, 
         LIGHTNING_CBB_PER_SEC_SD, 
         LIGHTNING_CBB_PER_SEC_MIN, 
         LIGHTNING_THICKNESS,
     );
-    let total_path_time_to_traverse = path_segments.iter().map(|x| x.time_to_traverse).sum();
     let logfp = LorbgFixedPath {
         md: RoomObjectMetadata::new(ctx, RoomObjectType::Other),
         lo_group: Rc::downgrade(&lo_group),
         age: 0.0,
+        orb_age_offsets: orb_age_offsets.into(),
         path_segments,
         total_path_time_to_traverse,
         orb_speeds: orb_speeds.into(),

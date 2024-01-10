@@ -123,12 +123,12 @@ fn make_test_room1(ctx: &mut GenFloorRoomContext) -> GenFloorRoomResponse {
     let path_segments = make_logwc_path_polygon(1.0,
         &[(0.5, 0.5), (29.5, 0.5), (29.5, 29.5), (0.5, 29.5)], 
     );
-    let orb_xy = [(0.5, 0.5); 3];
+    let orb_age_offset = [0.0, 0.0, 0.0];
     let orb_speeds = [-10.0, 5.0, 20.0];
     let lightning_colors = [DamageColor::Red, DamageColor::Green, DamageColor::Blue].map(|x| Some(x));
     let logfp = new_lorbg_fixed_path(&mut new_floor_object_ctx,
         path_segments, 
-        &orb_xy, 
+        &orb_age_offset, 
         &orb_speeds, 
         &lightning_colors,
     );
