@@ -2,9 +2,10 @@ use std::{cell::RefCell, rc::Rc};
 
 use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Act1Response, Team, Act1QueryArgs, Act1QueryResult}, damage::DamageColor, unit::{standard_unit1::{StandardUnit1Builder, StandardUnit1BuilderReq, SuAct1Context, SuDrawContext, StandardUnit1}, standard_unit_common::{TranslateMove, RotateMove}}, projectile::projectile2::{Projectile2Builder, Projectile2BuilderReq, Proj2Shape}}, rofiz::rofiz_object::Transformation, draw::{Color, DrawContext}}, geometry::{shape::{Shape, Point}, util::{get_inner_polygon, rotate_polygon}, star::get_star_shape}};
 
-/* Fatstar4Green slowly moves in the directly of the player. It releases a wave of 8 projectiles upon death.
+/* Fatstar4Green slowly moves in the directly of the player. It releases a wave of 4 projectiles upon death.
 */
 
+pub const RADIUS: f64 = 1.0;
 const BORDER_COLOR: Color = Color::new(0.2, 0.2, 0.2, 1.0);
 const INNER_COLOR: Color = Color::new(0.05, 0.8, 0.05, 1.0);
 const PROJ_COLOR: Color = Color::new(0.05, 0.8, 0.05, 1.0);
@@ -16,7 +17,7 @@ pub struct FatStar4Green {
 }
 
 pub fn new_fatstar4_green(ctx: &mut NewRoomObjectContext, x: f64, y: f64) -> StandardUnit1 {
-    let mut border_vertexes: [Point; 8] = get_star_shape(4, 0.5, 1.0, std::f32::consts::FRAC_PI_4)[..].try_into().unwrap();
+    let mut border_vertexes: [Point; 8] = get_star_shape(4, 0.5, RADIUS as f32, std::f32::consts::FRAC_PI_4)[..].try_into().unwrap();
     rotate_polygon(std::f32::consts::FRAC_PI_4, &mut border_vertexes);
     let inner_vertexes: [Point; 8] = get_inner_polygon(0.1, &border_vertexes)[..].try_into().unwrap();
     let xform = Transformation::new(x, y, 0.0);
@@ -54,6 +55,8 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
         for i in 0..4 {
             let angle = xform.dtheta + i as f64 * std::f64::consts::FRAC_PI_2;
             let proj_speed = 13.0;
+            // TODO: the projectile visually looks like a diamond. However, I intended for it to be a triangle.
+            // Why is it a diamond?
             let vertex1 = us_data.inner_vertexes[i*2+1];
             let vertex2 = us_data.inner_vertexes[(i*2+2) % 8];
             let vertex3 = us_data.inner_vertexes[(i*2+3) % 8];

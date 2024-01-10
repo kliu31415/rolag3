@@ -2,8 +2,10 @@ use std::{cell::RefCell, rc::Rc};
 
 use crate::{rolag3::floor::{draw::{Color, DrawContext}, room_object::{room_object_def::{NewRoomObjectContext, Team, Act1Response, HandleCollisionResponse}, unit::{standard_unit1::{StandardUnit1, StandardUnit1BuilderReq, StandardUnit1Builder, HandleCollisionLogic, SuAct1Context, SuDrawContext, SuHandleCollisionContext}, standard_unit_common::TranslateMove}, damage::DamageColor, projectile::projectile2::{Proj2Shape, Projectile2BuilderReq, Projectile2Builder}}, rofiz::rofiz_object::Transformation}, geometry::{shape::{Shape, Point}, util::{rotate_polygon, regular_polygon, get_inner_polygon}}};
 
-/* SquareBlueDiamond randomly translates. It occasionally spits a projectile in the player's direction.
+/* SquareBlueDiamond randomly translates. It occasionally spits 4 projectiles in the semicardinal directions.
 */
+
+pub const RADIUS: f64 = 1.0;
 
 const BORDER_COLOR: Color = Color::new(0.2, 0.2, 0.2, 1.0);
 const OUTER_COLOR: Color = Color::new(0.0, 0.0, 1.0, 1.0);
@@ -25,7 +27,7 @@ struct SpitProjectileInfo {
 }
 
 pub fn new_square_blue_diamond(ctx: &mut NewRoomObjectContext, x: f64, y: f64) -> StandardUnit1 {
-    let mut border_vertexes: [Point; 4] = regular_polygon(4, 1.0)[..].try_into().unwrap();
+    let mut border_vertexes: [Point; 4] = regular_polygon(4, RADIUS as f32)[..].try_into().unwrap();
     rotate_polygon(std::f32::consts::FRAC_PI_4, &mut border_vertexes);
     let outer_vertexes: [Point; 4] = get_inner_polygon(0.1, &border_vertexes)[..].try_into().unwrap();
     let proj_vertexes: [Point; 4] = regular_polygon(4, 0.35)[..].try_into().unwrap();
@@ -82,7 +84,7 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
                             damage_color: DamageColor::Blue,
                             damage: 3.0,
                             owner: self_as_weak,
-                            lifespan: 5.0,
+                            lifespan: 8.0,
                             velocity_x: proj_velocity * f64::cos(angle),
                             velocity_y: proj_velocity * f64::sin(angle),
                             xform,

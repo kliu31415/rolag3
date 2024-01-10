@@ -1,10 +1,10 @@
-/* RedSquareRed is a red square that randomly translates in cardinal directions and periodically shoots a 
-   wave of 4 projectiles in the cardinal directions. It changes directions upon colliding with a nonspectral object.
-*/
-
 use std::{cell::RefCell, rc::Rc};
 
 use crate::{rolag3::floor::{draw::{Color, DrawContext}, room_object::{room_object_def::{NewRoomObjectContext, Team, Act1Response, HandleCollisionResponse}, unit::{standard_unit1::{StandardUnit1, StandardUnit1Builder, StandardUnit1BuilderReq, HandleCollisionLogic, SuAct1Context, SuDrawContext, SuHandleCollisionContext}, standard_unit_common::TranslateMove}, damage::DamageColor, projectile::projectile2::{Proj2Shape, Projectile2BuilderReq, Projectile2Builder}}, rofiz::rofiz_object::Transformation}, geometry::{shape::{Shape, Point}, util::{regular_polygon, get_inner_polygon}}};
+
+/* HexagonBlueHexagon randomly translates in one of 6 directions.
+   It randomly spews a wave of circle of projectiles that rotates, and then moves in a random direction.
+*/
 
 const BORDER_COLOR: Color = Color::new(0.2, 0.2, 0.2, 1.0);
 const OUTER_COLOR: Color = Color::new(0.0, 0.0, 0.2, 1.0);

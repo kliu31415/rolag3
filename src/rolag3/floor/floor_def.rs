@@ -1,6 +1,6 @@
 use std::{collections::HashMap, cell::RefCell, rc::Rc};
 
-use crate::{gfx::renderer::Renderer, rolag3::floor::{roomgen::{empty1::get_gen_room_fn_empty1, common::_1000::_1000::get_gen_room_fn_common1000}, floorgen::run::GenFloorRoomFn, room_object::{cosmetic::ground1::GroundTheme, wall::basic_wall::WallTheme}, draw::Color}, util::rng::Prng};
+use crate::{gfx::renderer::Renderer, rolag3::floor::{roomgen::{empty1::get_gen_room_fn_empty1, common::_1000::{_1000::get_gen_room_fn_common1000, _1001::get_gen_room_fn_common1001}}, floorgen::run::GenFloorRoomFn, room_object::{cosmetic::ground1::GroundTheme, wall::basic_wall::WallTheme}, draw::Color}, util::rng::Prng};
 
 use super::{room::{Room, RoomConnectionInfo}, room_object::{unit::player::{Player, MoveRooms}, room_object_def::{FloorCoordinate, RoomObjectId, RoomObjectRef, RoomObjectType}, tiles::room_connection::Direction}, roomgen::{boss_room1::get_gen_room_fn_boss1, test_room1::get_gen_room_fn_test_room1, test_room2::get_gen_room_fn_test_room2, maze1::get_gen_room_fn_maze1, boss::circle_mage1::get_gen_room_fn_boss_circle_mage1}, floorgen::run::{gen_floor, GenFloorArgs, GenFloorRoomContext}};
 
@@ -171,16 +171,17 @@ impl Floor {
         let gen_normal_room_fns = vec![
             GenFloorRoomFn {weight: 1.0, func: get_gen_room_fn_empty1(20, 50, 20, 50)},
             GenFloorRoomFn {weight: 2.0, func: get_gen_room_fn_common1000(30)},
+            GenFloorRoomFn {weight: 2.0, func: get_gen_room_fn_common1001(4, 20, 20, 8, 10)},
         ];
         let ground_theme = GroundTheme::Monocolor(Color::new(0.02, 0.0, 0.0, 1.0));
         let wall_theme = WallTheme::Monocolor(Color::new(0.1, 0.2, 0.3, 1.0));
         let gf_args = GenFloorArgs {
-            grid_w: 256,
-            grid_h: 256,
+            grid_w: 400,
+            grid_h: 400,
             ground_theme,
             wall_theme,
-            ttc_min: 50.0,
-            ttc_max: 53.0,
+            ttc_min: 200.0,
+            ttc_max: 250.0,
             gen_initial_room_fn,
             gen_normal_room_fns,
             rng,

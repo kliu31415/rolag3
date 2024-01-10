@@ -2,7 +2,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use crate::{rolag3::floor::{draw::{Color, DrawContext}, room_object::{room_object_def::{Act1QueryResult, NewRoomObjectContext, Team, Act1Response, Act1QueryArgs, HandleCollisionResponse}, unit::{standard_unit1::{StandardUnit1, StandardUnit1BuilderReq, StandardUnit1Builder, HandleCollisionLogic, SuAct1Context, SuDrawContext, SuHandleCollisionContext}, standard_unit_common::TranslateMove}, damage::DamageColor, projectile::projectile2::{Proj2Shape, Projectile2BuilderReq, Projectile2Builder}}, rofiz::rofiz_object::Transformation}, geometry::{shape::{Shape, Point}, util::{rotate_polygon, regular_polygon, get_inner_polygon}}};
 
-/* SquareBlueDiamond randomly translates. Enemy1 occasionally spits a projectile in the player's direction.
+/* SquareBlueCircle randomly translates. It occasionally spits a projectile in the player's direction.
 */
 
 const BORDER_COLOR: Color = Color::new(0.2, 0.2, 0.2, 1.0);

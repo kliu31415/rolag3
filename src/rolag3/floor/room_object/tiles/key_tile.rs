@@ -21,7 +21,7 @@ const KEY_TOOTH_1_SHAPE: [Point; 4] = [Point::new(1.07, 1.2), Point::new(1.3, 1.
 const KEY_TOOTH_2_SHAPE: [Point; 4] = [Point::new(1.07, 1.4), Point::new(1.3, 1.4), Point::new(1.3, 1.5), Point::new(1.07, 1.5)];
 const KEY_UNCHARGED_COLOR: Color = Color::new(0.1, 0.1, 0.0, 0.8);
 const KEY_SEMI_CHARGED_COLOR: Color = Color::new(1.7, 1.7, 0.0, 0.8);
-const KEY_FULLY_CHARGED_COLOR: Color = Color::new(1.6, 1.6, 1.6, 0.8);
+const KEY_FULLY_CHARGED_COLOR: Color = Color::new(1.7, 1.7, 1.7, 0.8);
 
 const MAX_CHARGE: f64 = 0.8;
 
