@@ -1,34 +1,22 @@
 use std::{cell::RefCell, rc::Rc, collections::VecDeque};
 
-use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, RoomObjectCollection, RoomObjectId}, wall::basic_wall::{BasicWall, WallTheme}, cosmetic::ground1::{new_ground1, GroundTheme}, tiles::damage_tile::new_damage_tile}, rofiz::rofiz_state::RofizState, room::RoomCtorArgs, floorgen::run::{GenFloorRoomResponse, GenFloorRoomContext}}, util::{disjoint_set_union::DisjointSetUnion, rng::Prng}};
+use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, RoomObjectCollection}, wall::basic_wall::BasicWall, cosmetic::ground1::new_ground1, tiles::damage_tile::new_damage_tile}, rofiz::rofiz_state::RofizState, room::RoomCtorArgs, floorgen::run::{GenFloorRoomResponse, GenFloorRoomContext}}, util::{disjoint_set_union::DisjointSetUnion, rng::Prng}};
 
 pub fn get_gen_room_fn_maze1(
     w: usize, 
     h: usize,
 ) -> Box<dyn Fn(&mut GenFloorRoomContext) -> GenFloorRoomResponse> {
     Box::new(move |ctx: &mut GenFloorRoomContext| {
-        make_room_maze1(
-            ctx.rng, 
-            ctx.room_object_id_counter, 
-            ctx.ground_theme,
-            ctx.wall_theme,
-            w,
-            h,
-        )
+        make_room_maze1(ctx, w, h)
     })
 }
 
-fn make_room_maze1(
-    rng: &mut Prng, 
-    room_object_id_counter: &mut RoomObjectId, 
-    ground_theme: GroundTheme,
-    wall_theme: WallTheme,
-    maze_w: usize,
-    maze_h: usize,
-) -> GenFloorRoomResponse {
-    let maze = make_rectangular_maze(rng, maze_w, maze_h, 10);
+fn make_room_maze1(ctx: &mut GenFloorRoomContext, maze_w: usize, maze_h: usize) -> GenFloorRoomResponse {
+    let maze = make_rectangular_maze(ctx.rng, maze_w, maze_h, 10);
+    let wall_theme = ctx.wall_theme;
+    let ground_theme = ctx.ground_theme;
     let mut rofiz = RofizState::new();
-    let mut new_floor_object_ctx = NewRoomObjectContext::new(&mut rofiz, room_object_id_counter, 0.0, rng);
+    let mut new_floor_object_ctx = NewRoomObjectContext::from_gfr_ctx(&mut rofiz, ctx);
     let mut room_objects = RoomObjectCollection::new();
 
     let room_w = 5 * maze_w + 1;

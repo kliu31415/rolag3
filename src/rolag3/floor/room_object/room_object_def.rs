@@ -1,6 +1,6 @@
 use std::{rc::{Rc, Weak}, cell::RefCell, collections::{HashSet, HashMap, BTreeMap}, ops::Range};
 
-use crate::{rolag3::floor::{draw::DrawContext, run::PlayerInput, rofiz::{rofiz_state::{RofizState, RofizObjectRef}, rofiz_object::Hitbox}, room::{RoomConnectionInfo, RoomTile}, floor_def::Floor}, util::rng::Prng};
+use crate::{rolag3::floor::{draw::DrawContext, run::PlayerInput, rofiz::{rofiz_state::{RofizState, RofizObjectRef}, rofiz_object::Hitbox}, room::{RoomConnectionInfo, RoomTile}, floor_def::Floor, floorgen::run::GenFloorRoomContext}, util::rng::Prng};
 
 use super::{damage::DamageColor, unit::standard_unit_common::{Budeb, StandardUnitCommon}};
 
@@ -475,6 +475,15 @@ impl<'a> NewRoomObjectContext<'a> {
             room_object_id_counter,
             room_time,
             rng,
+        }
+    }
+
+    pub fn from_gfr_ctx(rofiz: &'a mut RofizState, gfr_ctx: &'a mut GenFloorRoomContext) -> Self {
+        Self {
+            rofiz,
+            room_object_id_counter: gfr_ctx.room_object_id_counter,
+            room_time: 0.0,
+            rng: gfr_ctx.rng,
         }
     }
 

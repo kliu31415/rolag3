@@ -1,6 +1,6 @@
 use std::{rc::Rc, cell::RefCell, ops::Range};
 
-use crate::{rolag3::floor::{room_object::{room_object_def::{RoomObjectId, NewRoomObjectContext, RoomObjectCollection}, wall::basic_wall::{BasicWall, WallTheme}, cosmetic::ground1::{new_ground1, GroundTheme}}, room::RoomCtorArgs, rofiz::rofiz_state::RofizState, floorgen::run::{GenFloorRoomContext, GenFloorRoomResponse}}, util::rng::Prng};
+use crate::rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, RoomObjectCollection}, wall::basic_wall::BasicWall, cosmetic::ground1::new_ground1}, room::RoomCtorArgs, rofiz::rofiz_state::RofizState, floorgen::run::{GenFloorRoomContext, GenFloorRoomResponse}};
 
 use super::util::connection_candidates::all_borders_as_connection_candidates;
 
@@ -13,30 +13,19 @@ pub fn get_gen_room_fn_empty1(
     assert!(w_min <= w_max);
     assert!(h_min <= h_max);
     Box::new(move |ctx: &mut GenFloorRoomContext| {
-        make_room_empty1(
-            ctx.rng, 
-            ctx.room_object_id_counter, 
-            ctx.ground_theme,
-            ctx.wall_theme,
-            w_min..w_max+1, 
-            h_min..h_max+1)
+        make_room_empty1(ctx, w_min..w_max+1, h_min..h_max+1)
     })
 }
 
-fn make_room_empty1(
-    rng: &mut Prng, 
-    room_object_id_counter: &mut RoomObjectId, 
-    ground_theme: GroundTheme,
-    wall_theme: WallTheme,
-    widths: Range<u32>, 
-    heights: Range<u32>,
-) -> GenFloorRoomResponse {
-    let width = rng.gen_u32_range(widths);
-    let height = rng.gen_u32_range(heights);
+fn make_room_empty1(ctx: &mut GenFloorRoomContext, widths: Range<u32>, heights: Range<u32>) -> GenFloorRoomResponse {
+    let width = ctx.rng.gen_u32_range(widths);
+    let height = ctx.rng.gen_u32_range(heights);
     let ttc = 0.1 * f64::sqrt((width * height) as f64);
 
+    let wall_theme = ctx.wall_theme;
+    let ground_theme = ctx.ground_theme;
     let mut rofiz = RofizState::new();
-    let mut new_floor_object_ctx = NewRoomObjectContext::new(&mut rofiz, room_object_id_counter, 0.0, rng);
+    let mut new_floor_object_ctx = NewRoomObjectContext::from_gfr_ctx(&mut rofiz, ctx);
     let mut room_objects = RoomObjectCollection::new();
 
     for x in 0..width {
