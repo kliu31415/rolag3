@@ -255,6 +255,11 @@ impl StandardUnitCommon {
         self.translate = translate;
     }
 
+    pub fn set_angular_power(&mut self, angular_power: f64) {
+        assert!(angular_power > 0.0);
+        self.angular_power = angular_power;
+    }
+
     pub fn set_rotate_move(&mut self, rotate: RotateMove) {
         assert!(self.act1_started, "cannot call standard_unit_common::set_rotate_move() before act1 starts");
         assert!(self.ro_ref.is_some());

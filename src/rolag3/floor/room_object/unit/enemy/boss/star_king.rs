@@ -2,6 +2,10 @@ use std::{cell::RefCell, rc::Rc, ops::Range};
 
 use crate::{rolag3::floor::{room_object::{unit::standard_unit1::{StandardUnit1Builder, StandardUnit1BuilderReq, StandardUnit1, SuAct1Context, SuDrawContext}, room_object_def::{NewRoomObjectContext, Team, Act1Response}, damage::DamageColor, projectile::projectile2::{Projectile2Builder, Projectile2BuilderReq, Proj2Shape}}, rofiz::{rofiz_object::{Transformation, Hitbox, RofizObjectMovement}, rofiz_state::RofizObjectRef}, draw::{Color, DrawContext}}, geometry::shape::{Shape, Point}, util::lerp::lerp_f32};
 
+/* StarKing sits in the center of the room and has 4 attack patterns. It has 3 stages. At each stage, it attacks faster
+   and the attacks become harder to dodge (e.g. projectiles move faster)
+ */
+
 const STAGE_0_RADIUS: f32 = 2.0;
 const STAGE_1_RADIUS: f32 = 5.0;
 const STAGE_2_RADIUS: f32 = 0.8;
@@ -73,21 +77,22 @@ pub enum AttackAction {
     },
 }
 
-pub fn new_boss_star_emperor(ctx: &mut NewRoomObjectContext, x: f64, y: f64) -> StandardUnit1 {
+pub fn new_boss_star_king(ctx: &mut NewRoomObjectContext, x: f64, y: f64) -> StandardUnit1 {
     let mut builder = StandardUnit1Builder::new(StandardUnit1BuilderReq {
         team: Team::Enemy,
         damage_color: DamageColor::Silver,
         collision_damage: 10.0,
         hp: MAX_HP,
-        engine_power: 3.0,
-        tire_traction: 25.0,
+        engine_power: 0.0,
+        tire_traction: 0.0,
     });
 
     let xform = Transformation::new(x, y, 0.0);
     let shape = Shape::of_circle(Point::new(0.0, 0.0), STAGE_0_RADIUS);
     let hitbox = Hitbox::new(xform, shape);
     let room_obj_ref = builder.get_room_obj_metadata(ctx).get_ref();
-    let ro_ref = ctx.add_nonspectral_unit(room_obj_ref, hitbox);
+    // StarKing increases in size from stage 0 to 1, so it needs to be spectral or else NSU collisions will bug out
+    let ro_ref = ctx.add_spectral_unit(room_obj_ref, hitbox);
     let us_data = StarEmperor {
         ro_ref,
         stage: 0,
