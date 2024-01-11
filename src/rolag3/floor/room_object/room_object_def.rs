@@ -522,20 +522,20 @@ impl<'a> NewRoomObjectContext<'a> {
         self.rng.gen_i64_range(r)
     }
 
-    pub fn add_basic_wall(&mut self, floor_object_id: RoomObjectRef, x: u32, y: u32) -> RofizObjectRef {
-        self.rofiz.add_basic_wall(floor_object_id, x, y)
+    pub fn add_basic_wall(&mut self, room_obj_ref: RoomObjectRef, x: u32, y: u32) -> RofizObjectRef {
+        self.rofiz.add_basic_wall(room_obj_ref, x, y)
     }
 
-    pub fn add_nonspectral_unit(&mut self, floor_object_id: RoomObjectRef, hitbox: Hitbox) -> RofizObjectRef {
-        self.rofiz.add_nonspectral_unit(floor_object_id, hitbox)
+    pub fn add_nonspectral_unit(&mut self, room_obj_ref: RoomObjectRef, hitbox: Hitbox) -> RofizObjectRef {
+        self.rofiz.add_nonspectral_unit(room_obj_ref, hitbox)
     }
 
-    pub fn add_spectral_unit(&mut self, floor_object_id: RoomObjectRef, hitbox: Hitbox) -> RofizObjectRef {
-        self.rofiz.add_spectral_unit(floor_object_id, hitbox)
+    pub fn add_spectral_unit(&mut self, room_obj_ref: RoomObjectRef, hitbox: Hitbox) -> RofizObjectRef {
+        self.rofiz.add_spectral_unit(room_obj_ref, hitbox)
     }
 
-    pub fn add_basic_projectile(&mut self, floor_object_id: RoomObjectRef, hitbox: Hitbox) -> RofizObjectRef {
-        self.rofiz.add_basic_projectile(floor_object_id, hitbox)
+    pub fn add_basic_projectile(&mut self, room_obj_ref: RoomObjectRef, hitbox: Hitbox) -> RofizObjectRef {
+        self.rofiz.add_basic_projectile(room_obj_ref, hitbox)
     }
 }
 

@@ -6,16 +6,36 @@ use super::rofiz_object::{RofizObjBasicWall, RofizObjMovable};
 
 use rayon::prelude::*;
 
+/* The object pool uses a data structure similar to a probing hash table. 
+   -When the hash table array is resized, no objects are moved. We could move objects, but we'd then have to refactor
+   the object pool to use opaque indexes, which involves making the hash table array fields private, which would involve
+   some refactoring to satisfy the borrow checker.
+   -When an object is inserted, a random index in the less loaded half of the hash table array is selected, 
+   and probing begins from there. The object is inserted into the first free location is used. The index of this
+   location is a non-opaque identifier for the object.
+   -Empirically, it takes <50 tries to insert a new object with a load factor of 0.7. Inserting into the less loaded
+   half of the hash table helps. When a random index across the whole hash table is picked, the number of tries often
+   reaches 1000+ because the more loaded half of the hash table is disproportionately heavily populated.
+   -As more explanation, note that when the hash table is resized, the first half of the hash table has a load factor
+   of MAX_LOAD_FACTOR, but the second half has a load factor of 0. Naturally, we should try to insert into the second
+   half at this point.
+   -Sometimes, when multiple RofizObjects are deleted, the second half becomes the more loaded half
+ */
 const INITIAL_POOL_SIZE: usize = 16;
 const MAX_LOAD_FACTOR: f64 = 0.7;
 
 pub struct RofizObjPool {
     pub basic_walls: Vec<Option<RofizObjBasicWall>>,
     pub movable: Vec<Option<RofizObjMovable>>,
-    pub bw_occupancy: usize,
-    pub mo_occupancy: usize,
 
-    pub timings: VecDeque<f64>,
+    bw_half1_occupancy: usize,
+    bw_half2_occupancy: usize,
+    bw_occupancy: usize,
+    mo_half1_occupancy: usize,
+    mo_half2_occupancy: usize,
+    mo_occupancy: usize,
+
+    timings: VecDeque<f64>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -40,7 +60,11 @@ impl RofizObjPool {
             basic_walls,
             movable,
             timings: VecDeque::new(),
+            bw_half1_occupancy: 0,
+            bw_half2_occupancy: 0,
             bw_occupancy: 0,
+            mo_half1_occupancy: 0,
+            mo_half2_occupancy: 0,
             mo_occupancy: 0,
         }
     }
@@ -87,19 +111,34 @@ impl RofizObjPool {
             while self.basic_walls.len() < new_size {
                 self.basic_walls.push(None);
             }
+            self.bw_half1_occupancy = self.bw_occupancy;
+            self.bw_half2_occupancy = 0;
         }
 
+        let offset = if self.bw_half1_occupancy < self.bw_half2_occupancy {
+            self.bw_half1_occupancy += 1;
+            0
+        } else {
+            self.bw_half2_occupancy += 1;
+            self.basic_walls.len() / 2
+        };
+        let mut cur = offset + hsh(bw.id) % (self.basic_walls.len() / 2);
+
         let mut tries = 0;
-        let mut cur = bw.id;
         loop {
             tries += 1;
-            if tries == 1000 {
-                log::warn!("unable to add basic wall to rofiz pool after 1000 tries");
+            if tries == 100 {
+                log::warn!("unable to add basic wall to rofiz pool after 100 tries");
             }
             if cur >= self.basic_walls.len() {
-                cur %= self.basic_walls.len();
+                cur -= self.basic_walls.len();
             }
             if self.basic_walls[cur].is_none() {
+                if cur < self.basic_walls.len() / 2 {
+                    self.bw_half1_occupancy += 1;
+                } else {
+                    self.bw_half2_occupancy += 1;
+                }
                 self.basic_walls[cur] = Some(bw);
                 return RofizObjPoolRef { idx: cur as u16, is_bw: true };
             }
@@ -115,19 +154,33 @@ impl RofizObjPool {
             while self.movable.len() < new_size {
                 self.movable.push(None);
             }
+            self.mo_half1_occupancy = self.mo_occupancy;
+            self.mo_half2_occupancy = 0;
         }
 
+        let offset = if self.mo_half1_occupancy < self.mo_half2_occupancy {
+            0
+        } else {
+            self.movable.len() / 2
+        };
+        let mut cur = offset + hsh(mo.id) % (self.movable.len() / 2);
+        let orig_cur = cur % self.movable.len();
+
         let mut tries = 0;
-        let mut cur = mo.id;
         loop {
             tries += 1;
-            if tries == 1000 {
-                log::warn!("unable to add movable to rofiz pool after 1000 tries");
+            if tries == 100 {
+                log::warn!("unable to add movable to rofiz pool after 100 tries. id={}, Orig_cur={}, Mo Occupancy={}, Movable len={}", mo.id, orig_cur, self.mo_occupancy, self.movable.len());
             }
             if cur >= self.movable.len() {
-                cur %= self.movable.len();
+                cur -= self.movable.len();
             }
             if self.movable[cur].is_none() {
+                if cur < self.movable.len() / 2 {
+                    self.mo_half1_occupancy += 1;
+                } else {
+                    self.mo_half2_occupancy += 1;
+                }
                 self.movable[cur] = Some(mo);
                 return RofizObjPoolRef { idx: cur as u16, is_bw: false };
             }
@@ -139,12 +192,22 @@ impl RofizObjPool {
         assert!(!a.is_bw);
         self.mo_occupancy -= 1;
         self.movable[a.idx as usize] = None;
+        if (a.idx as usize) < self.movable.len() / 2 {
+            self.mo_half1_occupancy -= 1;
+        } else {
+            self.mo_half2_occupancy -= 1;
+        }
     }
 
     pub fn del_bw(&mut self, a: &RofizObjPoolRef) {
         assert!(a.is_bw);
         self.bw_occupancy -= 1;
         self.basic_walls[a.idx as usize] = None;
+        if (a.idx as usize) < self.basic_walls.len() / 2 {
+            self.bw_half1_occupancy -= 1;
+        } else {
+            self.bw_half2_occupancy -= 1;
+        }
     }
     
     pub fn start_moafc(&mut self) {
@@ -165,4 +228,9 @@ impl RofizObjPool {
             log::warn!("start_moafc_time={}", numerator / 100.0);
         }*/
     }
+}
+
+fn hsh(v: usize) -> usize {
+    // 373 is prime
+    v * 373
 }

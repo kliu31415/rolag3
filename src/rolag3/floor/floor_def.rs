@@ -1,8 +1,8 @@
 use std::{collections::HashMap, cell::RefCell, rc::Rc};
 
-use crate::{gfx::renderer::Renderer, rolag3::floor::{roomgen::{empty1::get_gen_room_fn_empty1, common::_1000::{_1000::get_gen_room_fn_common1000, _1001::get_gen_room_fn_common1001}}, floorgen::run::GenFloorRoomFn, room_object::{cosmetic::ground1::GroundTheme, wall::basic_wall::WallTheme}, draw::Color}, util::rng::Prng};
+use crate::{gfx::renderer::Renderer, rolag3::floor::{roomgen::{empty1::get_gen_room_fn_empty1, common::_1000::{_1000::get_gen_room_fn_common1000, _1001::get_gen_room_fn_common1001}}, floorgen::run::GenFloorRoomFn, room_object::{cosmetic::ground1::GroundTheme, wall::basic_wall::WallTheme}, draw::Color, rofiz::rofiz_state::RofizState}, util::rng::Prng};
 
-use super::{room::{Room, RoomConnectionInfo}, room_object::{unit::player::{Player, MoveRooms}, room_object_def::{FloorCoordinate, RoomObjectId, RoomObjectRef, RoomObjectType}, tiles::room_connection::Direction}, roomgen::{boss_room1::get_gen_room_fn_boss1, test_room1::get_gen_room_fn_test_room1, test_room2::get_gen_room_fn_test_room2, maze1::get_gen_room_fn_maze1, boss::circle_mage1::get_gen_room_fn_boss_circle_mage1}, floorgen::run::{gen_floor, GenFloorArgs, GenFloorRoomContext}};
+use super::{room::{Room, RoomConnectionInfo}, room_object::{unit::{player::{Player, MoveRooms}, enemy::boss::{star_emperor::new_boss_star_emperor, circle_mage1::new_boss_circle_mage1}}, room_object_def::{FloorCoordinate, RoomObjectId, RoomObjectRef, RoomObjectType, NewRoomObjectContext, RoomObject}, tiles::room_connection::Direction}, roomgen::{boss_room1::get_gen_room_fn_boss1, test_room1::get_gen_room_fn_test_room1, test_room2::get_gen_room_fn_test_room2, maze1::get_gen_room_fn_maze1, boss::generic_rect::get_gen_room_fn_boss_generic_rect}, floorgen::run::{gen_floor, GenFloorArgs, GenFloorRoomContext}};
 
 pub struct Floor {
     pub rooms: HashMap<RoomId, Room>,
@@ -143,7 +143,18 @@ impl Floor {
             ground_theme,
             wall_theme: WallTheme::Monocolor(Color::new(0.1, 0.2, 0.3, 1.0)),
         };
-        let mut room1 = (get_gen_room_fn_boss_circle_mage1())(&mut gfr_ctx).room_ctor_args.to_room();
+        let make_boss_fn = if true {
+            Box::new(|ctx: &mut NewRoomObjectContext| 
+                vec![Rc::new(RefCell::new(new_boss_star_emperor(ctx, 25.0, 25.0))) 
+                     as Rc<RefCell<dyn RoomObject>>].into_boxed_slice())
+        } else {
+            // prevent cargo linter from warning about unused functions
+            let rofiz = &mut RofizState::new();
+            let ctx = &mut NewRoomObjectContext::from_gfr_ctx(rofiz, &mut gfr_ctx);
+            new_boss_circle_mage1(ctx, 0.0, 0.0);
+            panic!()
+        };
+        let mut room1 = (get_gen_room_fn_boss_generic_rect(50, 50, make_boss_fn))(&mut gfr_ctx).room_ctor_args.to_room();
         room1.upper_left_x = 0;
         room1.upper_left_y = 0;
         room1.finalize_with_connections(renderer, Vec::new(), rng, &mut room_object_id_counter, ground_theme);
@@ -171,7 +182,7 @@ impl Floor {
         let gen_normal_room_fns = vec![
             GenFloorRoomFn {weight: 1.0, func: get_gen_room_fn_empty1(20, 50, 20, 50)},
             GenFloorRoomFn {weight: 2.0, func: get_gen_room_fn_common1000(30)},
-            GenFloorRoomFn {weight: 2.0, func: get_gen_room_fn_common1001(4, 20, 20, 8, 10)},
+            GenFloorRoomFn {weight: 2.0, func: get_gen_room_fn_common1001(4, 16, 16, 5, 20)},
         ];
         let ground_theme = GroundTheme::Monocolor(Color::new(0.02, 0.0, 0.0, 1.0));
         let wall_theme = WallTheme::Monocolor(Color::new(0.1, 0.2, 0.3, 1.0));

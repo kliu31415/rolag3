@@ -17,7 +17,7 @@ pub struct FatStar4Green {
 }
 
 pub fn new_fatstar4_green(ctx: &mut NewRoomObjectContext, x: f64, y: f64) -> StandardUnit1 {
-    let mut border_vertexes: [Point; 8] = get_star_shape(4, 0.5, RADIUS as f32, std::f32::consts::FRAC_PI_4)[..].try_into().unwrap();
+    let mut border_vertexes: [Point; 8] = get_star_shape(4, 0.5, RADIUS as f32, -std::f32::consts::FRAC_PI_4)[..].try_into().unwrap();
     rotate_polygon(std::f32::consts::FRAC_PI_4, &mut border_vertexes);
     let inner_vertexes: [Point; 8] = get_inner_polygon(0.1, &border_vertexes)[..].try_into().unwrap();
     let xform = Transformation::new(x, y, 0.0);
@@ -55,11 +55,12 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
         for i in 0..4 {
             let angle = xform.dtheta + i as f64 * std::f64::consts::FRAC_PI_2;
             let proj_speed = 13.0;
-            // TODO: the projectile visually looks like a diamond. However, I intended for it to be a triangle.
-            // Why is it a diamond?
-            let vertex1 = us_data.inner_vertexes[i*2+1];
-            let vertex2 = us_data.inner_vertexes[(i*2+2) % 8];
-            let vertex3 = us_data.inner_vertexes[(i*2+3) % 8];
+            let vertex1 = us_data.inner_vertexes[(i*2+8-1) % 8];
+            let vertex2 = us_data.inner_vertexes[i*2];
+            let vertex3 = us_data.inner_vertexes[i*2+1 % 8];
+            // Use a point in the middle of the projectile as the center. We want the center to be the middle of
+            // a projectile because many things, e.g. black hole force. assume the center is around the middle.
+            let center = Point::lerp(Point::lerp(vertex1, vertex2, 0.5), vertex3, 1.0 / 3.0);
             let proj = Projectile2Builder::new(
             Projectile2BuilderReq {
                 team: Team::Enemy,
@@ -70,7 +71,7 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
                 velocity_x: proj_speed * f64::cos(angle),
                 velocity_y: proj_speed * f64::sin(angle),
                 xform,
-                shape: Proj2Shape::TriFan { center: vertex1, vertexes: Box::new([vertex1, vertex2, vertex3]) },
+                shape: Proj2Shape::TriFan { center, vertexes: Box::new([vertex1, vertex2, vertex3]) },
                 color: PROJ_COLOR,
             }
             ).build(&mut nfo_ctx);

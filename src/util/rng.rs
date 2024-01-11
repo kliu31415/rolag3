@@ -2,7 +2,7 @@ use std::ops::Range;
 
 use rand::{SeedableRng, Rng, seq::SliceRandom};
 
-use rand_distr::Distribution;
+use rand_distr::{Distribution, Poisson};
 
 pub struct Prng {
     state: rand_chacha::ChaCha8Rng,
@@ -52,6 +52,10 @@ impl Prng {
     pub fn gen_normal(&mut self, mean: f64, sd: f64) -> f64 {
         let normal = rand_distr::Normal::new(mean, sd).unwrap();
         normal.sample(&mut self.state)
+    }
+
+    pub fn gen_poisson(&mut self, param: f64) -> f64 {
+        Poisson::new(param).unwrap().sample(&mut self.state)
     }
 
     pub fn shuffle<T>(&mut self, vals: &mut [T]) {

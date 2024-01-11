@@ -18,7 +18,7 @@ pub struct SquareBlueDiamond {
     proj_vertexes: [Point; 4],
     accel_xy_angle: f64,
     spit_projectile_start: Option<SpitProjectileInfo>,
-    should_reset_velocity: bool,
+    should_reset_movement: bool,
 }
 
 struct SpitProjectileInfo {
@@ -39,7 +39,7 @@ pub fn new_square_blue_diamond(ctx: &mut NewRoomObjectContext, x: f64, y: f64) -
         proj_vertexes,
         accel_xy_angle: 2.0 * std::f64::consts::PI * ctx.get_randf64(),
         spit_projectile_start: None,
-        should_reset_velocity: false,
+        should_reset_movement: false,
     };
 
     StandardUnit1Builder::new(StandardUnit1BuilderReq {
@@ -106,10 +106,9 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
         }
     };
 
-    if us_data.should_reset_velocity {
-        ctx.su_ctx.su_common.set_translate_move(TranslateMove::ResetVelocity);
+    if us_data.should_reset_movement {
         us_data.accel_xy_angle = 2.0 * std::f64::consts::PI * ctx.act1_ctx.get_randf64();
-        us_data.should_reset_velocity = false;
+        us_data.should_reset_movement = false;
     } else {
         match us_data.spit_projectile_start {
             Some(_) => {
@@ -151,7 +150,7 @@ fn draw(ctx: &mut SuDrawContext) {
 fn handle_collision(ctx: &mut SuHandleCollisionContext) -> HandleCollisionResponse {
     let us_data = ctx.su_ctx.us_data.downcast_mut::<SquareBlueDiamond>().unwrap();
     if !ctx.hc_ctx.is_other_spectral() {
-        us_data.should_reset_velocity = true;
+        us_data.should_reset_movement = true;
     }
     HandleCollisionResponse::new()
 }

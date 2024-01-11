@@ -2,13 +2,13 @@ use std::{rc::Rc, cell::RefCell};
 
 use crate::rolag3::floor::{floorgen::run::{GenFloorRoomContext, GenFloorRoomResponse}, room_object::{wall::basic_wall::BasicWall, cosmetic::ground1::new_ground1, room_object_def::{NewRoomObjectContext, RoomObjectCollection}, unit::enemy::boss::circle_mage1::new_boss_circle_mage1}, rofiz::rofiz_state::RofizState, room::RoomCtorArgs};
 
-pub fn get_gen_room_fn_boss_circle_mage1() -> Box<dyn Fn(&mut GenFloorRoomContext) -> GenFloorRoomResponse> {
+pub fn _get_gen_room_fn_boss_circle_mage1() -> Box<dyn Fn(&mut GenFloorRoomContext) -> GenFloorRoomResponse> {
     Box::new(move |ctx: &mut GenFloorRoomContext| {
-        make_room(ctx)
+        _make_room(ctx)
     })
 }
 
-fn make_room(ctx: &mut GenFloorRoomContext) -> GenFloorRoomResponse {
+fn _make_room(ctx: &mut GenFloorRoomContext) -> GenFloorRoomResponse {
     let wall_theme = ctx.wall_theme;
     let ground_theme = ctx.ground_theme;
     let mut rofiz = RofizState::new();

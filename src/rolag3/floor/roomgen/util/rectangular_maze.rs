@@ -2,21 +2,25 @@ use std::collections::VecDeque;
 
 use crate::util::{disjoint_set_union::DisjointSetUnion, rng::Prng};
 
-// TODO: maybe make this algorithm assign random weights to graph edges and run kruskal's on the graph, selecting the 
-// next-least-weight edge every step.
-// Right now, this algorithm randomly selects an edge every step. The complexity of this is hard to analyze.
+// Uses a variation of Kruskal's algorithm
 pub fn make_rectangular_maze(rng: &mut Prng, w: usize, h: usize, additional_edges: u32) -> RectangularGraph {
     let num_cells = w * h;
     if num_cells > 10000 {
         log::warn!("generating unusually large maze (w={}, h={})", w, h);
     }
     let mut dsu = DisjointSetUnion::new(num_cells);
-    let mut unions_to_go = num_cells - 1;
     let mut graph = RectangularGraph::new(w, h);
-    while unions_to_go > 0 {
-        let x1 = rng.gen_usize_range(0..w) as i32;
-        let y1 = rng.gen_usize_range(0..h) as i32;
-        let direction = RectGraphDir::from_idx(rng.gen_usize_range(0..4));
+    let mut weighted_edges = Vec::new();
+    weighted_edges.reserve_exact(w * h * 2);
+    for x in 0..(w as i32) {
+        for y in 0..(h as i32) {
+            weighted_edges.push((x, y, RectGraphDir::Right));
+            weighted_edges.push((x, y, RectGraphDir::Down));
+        }
+    }
+    rng.shuffle(weighted_edges.as_mut_slice());
+    let mut unions_to_go = num_cells - 1;
+    for (x1, y1, direction) in weighted_edges {
         let dxy = direction.to_dxy();
         let x2 = x1 + dxy.0;
         let y2 = y1 + dxy.1;
@@ -30,6 +34,7 @@ pub fn make_rectangular_maze(rng: &mut Prng, w: usize, h: usize, additional_edge
             unions_to_go -= 1;
         }
     }
+    assert!(unions_to_go == 0, "unions_to_go={}, expected 0. Num_cells={}", unions_to_go, num_cells);
 
     for _ in 0..additional_edges {
         let mut candidates = Vec::new();

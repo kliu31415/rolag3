@@ -70,7 +70,12 @@ impl RoomObject for KeyTile {
             unfilled_range
         );
         
-        let key_nonbow_color = if fill_frac == 1.0 {filled_color} else {unfilled_color};
+        let key_nonbow_color = if fill_frac == 1.0 {
+            let lerp_t = f64::min(1.0, 2.0 * (ctx.get_room_time() - self.key_charged_time.unwrap())) as f32;
+            Color::lerp(unfilled_color, filled_color, lerp_t)
+        } else {
+            unfilled_color
+        };
         
         let key_shaft = ctx.do_quad_fan(key_nonbow_color, KEY_SHAFT_SHAPE.map(|p| &p + translate));
         let key_tooth_1 = ctx.do_quad_fan(key_nonbow_color, KEY_TOOTH_1_SHAPE.map(|p| &p + translate));

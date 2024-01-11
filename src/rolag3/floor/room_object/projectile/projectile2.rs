@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::{Weak, Rc}};
 
-use crate::{rolag3::floor::{room_object::{room_object_def::{RoomObject, NewRoomObjectContext, Act1Response, HandleCollisionResponse, HcProjectileContext, Team, RoomObjOperation, Act1QueryResult, Act1QueryArgs}, damage::DamageColor}, draw::{DrawContext, Color}, rofiz::rofiz_object::{Transformation, RofizObjectMovement}}, geometry::shape::{Shape, Point}};
+use crate::{rolag3::floor::{room_object::{room_object_def::{RoomObject, NewRoomObjectContext, Act1Response, HandleCollisionResponse, HcProjectileContext, Team, RoomObjOperation, Act1QueryResult, Act1QueryArgs}, damage::DamageColor}, draw::{DrawContext, Color}, rofiz::rofiz_object::{Transformation, RofizObjectMovement}}, geometry::shape::{Shape, Point, Vector}};
 
 use super::standard_projectile1::{Sp1Builder, Sp1BuilderReq, StandardProjectile1, SpAct1Context, SpDrawContext, SpHandleCollisionContext, SpApplyOperationContext};
 
@@ -147,7 +147,7 @@ fn draw(ctx: &mut SpDrawContext) {
     match ctx.draw_ctx.get_rofiz().get_movable_object_xformed_shape(ctx.sp_ctx.ro_ref) {
         Shape::Polygon(p) => {
             if let Proj2Shape::TriFan{center, ..} = ps_data.shape {
-                let xformed_center = Point::new(center.x + xform.dx as f32, center.y + xform.dy as f32);
+                let xformed_center = center.rotated(xform.dtheta as f32).translated(Vector::new(xform.dx as f32, xform.dy as f32));
                 let vertexes = std::iter::once(xformed_center)
                     .chain(p.vertexes.iter().map(|v| Point::new(v.x, v.y)))
                     .chain(std::iter::once(Point::new(p.vertexes[0].x, p.vertexes[0].y)))

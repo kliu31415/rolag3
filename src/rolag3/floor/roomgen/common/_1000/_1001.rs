@@ -26,7 +26,7 @@ fn make_room(ctx: &mut GenFloorRoomContext,
     num_enemies: usize,
 ) -> GenFloorRoomResponse {
     assert!(num_key_tiles <= 20, "num_key_tiles of {} is too many. It looks bad.", num_key_tiles);
-    assert!(num_enemies <= 20, "num_enemies of {} is too many", num_enemies);
+    assert!(num_enemies <= 30, "num_enemies of {} is too many", num_enemies);
     assert!(corridor_w >= 2, "corridor_w of {} is too small for player to fit through", corridor_w);
     assert!(corridor_w <= 10, "corridor_w of {} is too big and looks bad", corridor_w);
     assert!(maze_w >= 5, "maze_w of {} is too small and looks bad", maze_w);
@@ -77,8 +77,13 @@ fn make_room(ctx: &mut GenFloorRoomContext,
         room_objects.add(Rc::new(RefCell::new(key_tile)));
     }
     
+    // don't spawn enemies too close to each other or too close to a wall. 
+    // Reason: The player will enter the room by a wall. The player shouldn't overlap with an enemy. Additionally, it's
+    // frustrating if the player can't dodge enemies
     let max_enemy_radius = 1.1 * f64::max(square::blue_diamond::RADIUS, fatstar4::green::RADIUS);
-    let buffer = max_enemy_radius;
+    let buffer = 5.0;
+    assert!(buffer * 2.0 < room_w as f64, "buffer covers entire maze. Unable to place enemies");
+    assert!(buffer * 2.0 < room_h as f64, "buffer covers entire maze. Unable to place enemies");
     let mut enemy_positions = Vec::new();
     let mut tries = 0;
     while enemy_positions.len() < num_enemies {
