@@ -2,7 +2,7 @@ use std::{collections::HashMap, cell::RefCell, rc::Rc};
 
 use crate::{gfx::renderer::Renderer, rolag3::floor::{roomgen::{empty1::get_gen_room_fn_empty1, common::_1000::{_1000::get_gen_room_fn_common1000, _1001::get_gen_room_fn_common1001}}, floorgen::run::GenFloorRoomFn, room_object::{cosmetic::ground1::GroundTheme, wall::basic_wall::WallTheme}, draw::Color, rofiz::rofiz_state::RofizState}, util::rng::Prng};
 
-use super::{room::{Room, RoomConnectionInfo}, room_object::{unit::{player::{Player, MoveRooms}, enemy::boss::{star_emperor::new_boss_star_emperor, circle_mage1::new_boss_circle_mage1}}, room_object_def::{FloorCoordinate, RoomObjectId, RoomObjectRef, RoomObjectType, NewRoomObjectContext, RoomObject}, tiles::room_connection::Direction}, roomgen::{boss_room1::get_gen_room_fn_boss1, test_room1::get_gen_room_fn_test_room1, test_room2::get_gen_room_fn_test_room2, maze1::get_gen_room_fn_maze1, boss::generic_rect::get_gen_room_fn_boss_generic_rect}, floorgen::run::{gen_floor, GenFloorArgs, GenFloorRoomContext}};
+use super::{room::{Room, RoomConnectionInfo}, room_object::{unit::{player::{Player, MoveRooms}, enemy::boss::{star_king::new_boss_star_emperor, circle_mage1::new_boss_circle_mage1}}, room_object_def::{FloorCoordinate, RoomObjectId, RoomObjectRef, RoomObjectType, NewRoomObjectContext, RoomObject}, tiles::room_connection::Direction}, roomgen::{boss_room1::get_gen_room_fn_boss1, test_room1::get_gen_room_fn_test_room1, test_room2::get_gen_room_fn_test_room2, maze1::get_gen_room_fn_maze1, boss::generic_rect::get_gen_room_fn_boss_generic_rect}, floorgen::run::{gen_floor, GenFloorArgs, GenFloorRoomContext}};
 
 pub struct Floor {
     pub rooms: HashMap<RoomId, Room>,

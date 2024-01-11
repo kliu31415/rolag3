@@ -1,2 +1,2 @@
 pub mod circle_mage1;
-pub mod star_emperor;
+pub mod star_king;

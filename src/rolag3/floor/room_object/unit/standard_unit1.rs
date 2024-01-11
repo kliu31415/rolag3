@@ -193,7 +193,7 @@ impl Su1Data {
             us_data: self.us_data.as_mut(),
             md: &self.md,
             team: self.team,
-            damage_color: self.damage_color,
+            damage_color: &mut self.damage_color,
             su_common: &mut self.su_common,
             is_dead: &mut self.is_dead,
             remove_immediately_on_death: self.remove_immediately_on_death,
@@ -419,7 +419,7 @@ pub struct SuContext<'a> {
     pub us_data: &'a mut dyn Any,
     pub md: &'a RoomObjectMetadata,
     pub team: Team,
-    pub damage_color: DamageColor,
+    pub damage_color: &'a mut DamageColor,
     pub su_common: &'a mut StandardUnitCommon,
     pub is_dead: &'a mut bool,
     pub remove_immediately_on_death: bool,
@@ -466,7 +466,7 @@ fn hc_projectile_default(ctx: &mut SuHcProjectileContext) -> HcProjectileRespons
     if unit_team == projectile_team {
         return HcProjectileResponse::nop();
     }
-    let damage_mult = DamageColor::get_damage_mult(ctx.hcp_ctx.damage_color, ctx.su_ctx.damage_color);
+    let damage_mult = DamageColor::get_damage_mult(ctx.hcp_ctx.damage_color, *ctx.su_ctx.damage_color);
     let td_response = ctx.su_ctx.su_common.take_damage(ctx.hcp_ctx.damage * damage_mult);
     let mut room_objects_to_delete = Vec::new();
     if td_response.dead {

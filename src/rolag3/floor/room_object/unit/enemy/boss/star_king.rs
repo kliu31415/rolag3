@@ -8,9 +8,10 @@ const STAGE_2_RADIUS: f32 = 0.8;
 const STAGE_0_1_TRANSITION_TIME: f64 = 1.0;
 const STAGE_1_2_TRANSITION_TIME: f64 = 3.0;
 const PLANETARY_NEBULA_PROJ_PER_S: f64 = 200.0;
+const COSMIC_RAY_PROJ_PER_S: f64 = 1.0;
 
 const STAGE_0_COLOR: Color = Color::new(2.0, 2.0, 2.0, 1.0);
-const STAGE_1_COLOR: Color = Color::new(5.0, 0.5, 0.05, 1.0);
+const STAGE_1_COLOR: Color = Color::new(5.0, 0.1, 0.02, 1.0);
 const STAGE_2_COLOR: Color = Color::new(2.5, 2.5, 2.5, 1.0);
 
 const MAX_HP: f64 = 700.0;
@@ -106,11 +107,13 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
     let star_emperor = ctx.su_ctx.us_data.downcast_mut::<StarEmperor>().unwrap();
     let unit_age = ctx.su_ctx.su_common.get_unit_time();
     if ctx.su_ctx.su_common.get_cur_hp() <= STAGE_1_HP_THRESHOLD && star_emperor.stage == 0 {
+        *ctx.su_ctx.damage_color = DamageColor::Red;
         star_emperor.stage = 1;
         star_emperor.stage_start_unit_age[1] = Some(unit_age);
     }
     if ctx.su_ctx.su_common.get_cur_hp() <= STAGE_2_HP_THRESHOLD && star_emperor.stage == 1 && 
        unit_age - star_emperor.stage_start_unit_age[1].unwrap() >= STAGE_0_1_TRANSITION_TIME {
+        *ctx.su_ctx.damage_color = DamageColor::Silver;
         star_emperor.stage = 2;
         star_emperor.stage_start_unit_age[2] = Some(unit_age);
     }
@@ -137,46 +140,18 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
     let movement = RofizObjectMovement::NewHitbox(Hitbox::new(xform, shape));
     ctx.act1_ctx.get_rofiz().move_object(&star_emperor.ro_ref, movement);
 
+    let poisson_lambda = COSMIC_RAY_PROJ_PER_S
+                         * ctx.su_ctx.su_common.get_unit_tick_len()
+                         * (1.0 + star_emperor.stage as f64);
+    let mut num_straggler_proj = ctx.act1_ctx.get_rng().gen_poisson(poisson_lambda) as i32;
     // simulate planetary nebula during transition from stage 1 to 2
     let planetary_nebula = star_emperor.stage==2 
                                  && unit_age - star_emperor.stage_start_unit_age[2].unwrap() < STAGE_1_2_TRANSITION_TIME;
     if planetary_nebula {
         // don't attack concurrently while a planetary nebula is happening, because it's too hard to dodge
         star_emperor.attack_action = None;
-
         let poisson_lambda = PLANETARY_NEBULA_PROJ_PER_S * ctx.su_ctx.su_common.get_unit_tick_len();
-        for _ in 0..(ctx.act1_ctx.get_rng().gen_poisson(poisson_lambda) as i32) {
-            let angle = ctx.act1_ctx.get_rng().gen_f64() * 2.0 * std::f64::consts::PI;
-            let color_idx = ctx.act1_ctx.get_rng().gen_usize_range(0..3);
-            let proj_speed = 7.0 + 10.0 * ctx.act1_ctx.get_rng().gen_f64();
-            let self_as_weak = ctx.act1_ctx.get_self_as_weak();
-            let mut nro_ctx = NewRoomObjectContext::from_act1_ctx(ctx.act1_ctx);
-            let proj_xform = Transformation::new(
-                xform.dx + se_radius as f64 * f64::cos(angle),
-                xform.dy + se_radius as f64 * f64::sin(angle),
-                0.0,
-            );
-            let shape = Proj2Shape::Circle {
-                x: 0.0,
-                y: 0.0, 
-                r: PROJ_RADIUS,
-            };
-            let proj = Projectile2Builder::new(
-                Projectile2BuilderReq{
-                    team: Team::Enemy,
-                    damage_color: PROJ_DAMAGE_COLORS[color_idx],
-                    damage: 3.0,
-                    owner: self_as_weak,
-                    lifespan: 8.0,
-                    velocity_x: proj_speed * f64::cos(angle),
-                    velocity_y: proj_speed * f64::sin(angle),
-                    xform: proj_xform,
-                    shape,
-                    color: PROJ_DRAW_COLORS[color_idx],
-                }
-            ).build(&mut nro_ctx);
-            response.add_room_obj(Rc::new(RefCell::new(proj)));
-        }
+        num_straggler_proj += ctx.act1_ctx.get_rng().gen_poisson(poisson_lambda) as i32;
     } else if star_emperor.attack_action.is_none() {
         let between_actions = BETWEEN_ACTIONS_BASE / (1.0 + star_emperor.stage as f64);
         if ctx.act1_ctx.get_randf64() < ctx.su_ctx.su_common.get_unit_tick_len() 
@@ -442,6 +417,39 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
         }
     }
 
+    for _ in 0..num_straggler_proj {
+        let angle = ctx.act1_ctx.get_rng().gen_f64() * 2.0 * std::f64::consts::PI;
+        let color_idx = ctx.act1_ctx.get_rng().gen_usize_range(0..3);
+        let proj_speed = 7.0 + 10.0 * ctx.act1_ctx.get_rng().gen_f64();
+        let self_as_weak = ctx.act1_ctx.get_self_as_weak();
+        let mut nro_ctx = NewRoomObjectContext::from_act1_ctx(ctx.act1_ctx);
+        let proj_xform = Transformation::new(
+            xform.dx + se_radius as f64 * f64::cos(angle),
+            xform.dy + se_radius as f64 * f64::sin(angle),
+            0.0,
+        );
+        let shape = Proj2Shape::Circle {
+            x: 0.0,
+            y: 0.0, 
+            r: PROJ_RADIUS,
+        };
+        let proj = Projectile2Builder::new(
+            Projectile2BuilderReq{
+                team: Team::Enemy,
+                damage_color: PROJ_DAMAGE_COLORS[color_idx],
+                damage: 3.0,
+                owner: self_as_weak,
+                lifespan: 8.0,
+                velocity_x: proj_speed * f64::cos(angle),
+                velocity_y: proj_speed * f64::sin(angle),
+                xform: proj_xform,
+                shape,
+                color: PROJ_DRAW_COLORS[color_idx],
+            }
+        ).build(&mut nro_ctx);
+        response.add_room_obj(Rc::new(RefCell::new(proj)));
+    }
+
     response
 }
 
@@ -465,6 +473,7 @@ fn draw(ctx: &mut SuDrawContext) {
         },
         _ => panic!("unexpected star_emperor.stage={}", star_emperor.stage),
     };
+    let color = ctx.su_ctx.su_common.get_draw_color(ctx.draw_ctx.get_room_time(), color);
     let dop = ctx.draw_ctx.do_circle(color, Point::new(xform.dx as f32, xform.dy as f32), radius);
     ctx.draw_ctx.add_draw_op(DrawContext::Z_UNIT, dop);
 }
