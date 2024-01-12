@@ -25,9 +25,8 @@ impl Floor {
     pub const ROOM_OBJECT_ID_COUNTER_BEGIN: RoomObjectId = 100;
     pub const PLAYER_ROOM_OBJECT_REF: RoomObjectRef = RoomObjectRef {id: 1, typ: RoomObjectType::Unit };
 
-    pub fn new_test1(renderer: &mut dyn Renderer, rng: &mut Prng) -> Self {
+    pub fn new_test1(renderer: &mut dyn Renderer, rng: &mut Prng, player: Rc<RefCell<Player>>) -> Self {
         let mut room_object_id_counter = Self::ROOM_OBJECT_ID_COUNTER_BEGIN;
-        let player = Rc::new(RefCell::new(Player::new_test1()));
         let ground_theme = GroundTheme::Monocolor(Color::new(0.02, 0.0, 0.0, 1.0));
         let mut gfr_ctx = GenFloorRoomContext {
             rng,
@@ -92,9 +91,8 @@ impl Floor {
         }
     }
 
-    pub fn new_test2(renderer: &mut dyn Renderer, rng: &mut Prng) -> Self {
+    pub fn new_test2(renderer: &mut dyn Renderer, rng: &mut Prng, player: Rc<RefCell<Player>>) -> Self {
         let mut room_object_id_counter = Self::ROOM_OBJECT_ID_COUNTER_BEGIN;
-        let player = Rc::new(RefCell::new(Player::new_test1()));
         let gen_initial_room_fn = GenFloorRoomFn {weight: 1.0, func: get_gen_room_fn_empty1(20, 20, 20, 20)};
         let gen_normal_room_fns = vec![GenFloorRoomFn {weight: 1.0, func: get_gen_room_fn_empty1(20, 50, 20, 50)}];
         let ground_theme = GroundTheme::Monocolor(Color::new(0.02, 0.0, 0.0, 1.0));
@@ -133,9 +131,8 @@ impl Floor {
         }
     }
 
-    pub fn new_test3(renderer: &mut dyn Renderer, rng: &mut Prng) -> Self {
+    pub fn new_test3(renderer: &mut dyn Renderer, rng: &mut Prng, player: Rc<RefCell<Player>>) -> Self {
         let mut room_object_id_counter = Self::ROOM_OBJECT_ID_COUNTER_BEGIN;
-        let player = Rc::new(RefCell::new(Player::new_test1()));
         let ground_theme = GroundTheme::Monocolor(Color::new(0.02, 0.0, 0.0, 1.0));
         let mut gfr_ctx = GenFloorRoomContext {
             rng,
@@ -177,9 +174,8 @@ impl Floor {
         }
     }
 
-    pub fn new_test4(renderer: &mut dyn Renderer, rng: &mut Prng) -> Self {
+    pub fn new_test4(renderer: &mut dyn Renderer, rng: &mut Prng, player: Rc<RefCell<Player>>) -> Self {
         let mut room_object_id_counter = Self::ROOM_OBJECT_ID_COUNTER_BEGIN;
-        let player = Rc::new(RefCell::new(Player::new_test1()));
         let gen_initial_room_fn = GenFloorRoomFn {weight: 1.0, func: get_gen_room_fn_empty1(20, 20, 20, 20)};
         let gen_normal_room_fns = vec![
             GenFloorRoomFn {weight: 1.0, func: get_gen_room_fn_empty1(20, 50, 20, 50)},

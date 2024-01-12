@@ -15,11 +15,18 @@ pub struct RunFloorContext<'a> {
     pub run_validation: bool,
 }
 
-pub fn run_floor_frame(mut ctx: RunFloorContext) {
+pub struct RunFloorResponse {
+    pub floor_finished: bool,
+}
+
+pub fn run_floor_frame(mut ctx: RunFloorContext) -> RunFloorResponse {
     let tick_length = ctx.frame_length / (ctx.ticks_per_frame as f64);
     assert!(tick_length < 0.002, "tick_length({}) is too large, which may cause issues with Rofiz", tick_length);
     let next_mouse_x = ctx.player_input.mouse_x;
     let next_mouse_y = ctx.player_input.mouse_y;
+    let mut response = RunFloorResponse {
+        floor_finished: false,
+    };
     for i in 0 .. ctx.ticks_per_frame {
         ctx.player_input.mouse_x = lerp_f64(ctx.prev_mouse_x, next_mouse_x, i as f64 / (ctx.ticks_per_frame as f64 - 1.0));
         ctx.player_input.mouse_y = lerp_f64(ctx.prev_mouse_y, next_mouse_y, i as f64 / (ctx.ticks_per_frame as f64 - 1.0));
@@ -30,9 +37,13 @@ pub fn run_floor_frame(mut ctx: RunFloorContext) {
             rng: ctx.rng,
             run_validation: ctx.run_validation,
         };
-        run_floor_tick(tick_ctx);
+        let rft_response = run_floor_tick(tick_ctx);
+        response.floor_finished |= rft_response.floor_finished;
+
         ctx.player_input.mouse_wheel_line_deltas = Box::new([]);
     }
+
+    response
 }
 
 pub enum PlayerHorizontalMoveInput {
@@ -69,9 +80,14 @@ struct RunFloorTickContext<'a> {
     pub run_validation: bool,
 }
 
+struct RunFloorTickResponse {
+    floor_finished: bool,
+}
+
 #[inline(never)]
-fn run_floor_tick(ctx: RunFloorTickContext) {
+fn run_floor_tick(ctx: RunFloorTickContext) -> RunFloorTickResponse {
     let (player, room, id_counter) = ctx.floor.get_player_and_current_room_and_id_counter();
+    let mut floor_finished = false;
 
     {
         room.room_time += ctx.tick_length;
@@ -88,7 +104,8 @@ fn run_floor_tick(ctx: RunFloorTickContext) {
             room.height,
             &room.tiles,
         );
-        room.room_objects.act1(&mut act1_context);
+        let roca_response = room.room_objects.act1(&mut act1_context);
+        floor_finished |= roca_response.floor_finished;
         detect_and_handle_collisions(room, ctx.rng, ctx.tick_length);
 
         room.room_objects.handle_if_room_just_cleared(&mut room.rofiz, room.room_time);
@@ -113,6 +130,10 @@ fn run_floor_tick(ctx: RunFloorTickContext) {
     }
 
     ctx.floor.floor_time_left -= ctx.tick_length;
+
+    RunFloorTickResponse {
+        floor_finished,
+    }
 }
 
 #[inline(never)]

@@ -1,3 +1,5 @@
+use std::cell::RefCell;
+use std::rc::Rc;
 use std::{collections::VecDeque, time::SystemTime};
 use std::io::Write;
 
@@ -8,7 +10,9 @@ use winit::{event::{Event, WindowEvent, KeyEvent, ElementState, MouseButton}, ev
 use crate::util::rng::Prng;
 use crate::{gfx::{self, window::{Window, EventHandler}, renderer::{ColorRGBA32f, DrawTextPosition, DrawOpCCS, DrawOpText, DrawOpWithMetadata, DrawOp, Renderer}, input::PollableInput}, util::{time::now_unix, config::Config}};
 
+use super::floor::room_object::unit::player::Player;
 use super::floor::{draw::{DrawFloorContext, get_draw_floor_ops}, run::{RunFloorContext, run_floor_frame, PlayerInput, PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, floor_def::Floor};
+use super::r3run::R3Run;
 
 pub fn run() {
     std::env::set_var("RUST_BACKTRACE", "full");
@@ -46,7 +50,7 @@ pub fn run() {
 
 struct Rolag3EventHandler {
     frame_timestamps: VecDeque<f64>,
-    floor: Floor,
+    r3run: R3Run,
     rng: Prng,
     prev_mouse_xy: Option<(f64, f64)>,
     cached_mem_draw_ops: Vec<DrawOpWithMetadata>,
@@ -107,21 +111,26 @@ const PLAYER_TAB_OVERLAY: PhysicalKey = PhysicalKey::Code(KeyCode::Tab);
 impl Rolag3EventHandler {
     fn new_test1(renderer: &mut dyn Renderer) -> Rolag3EventHandler {
         let mut rng = Prng::new_seed_u64(123);
+        let player = Rc::new(RefCell::new(Player::new_test1()));
 
         let floor = if true {
-            Floor::new_test3(renderer, &mut rng)
+            Floor::new_test3(renderer, &mut rng, player.clone())
         } else {
             // dummy block to prevent the linter from marking functions as unused
-            let _ = Floor::new_test1(renderer, &mut rng);
-            let _ = Floor::new_test2(renderer, &mut rng);
-            let _ = Floor::new_test3(renderer, &mut rng);
-            let _ = Floor::new_test4(renderer, &mut rng);
+            let _ = Floor::new_test1(renderer, &mut rng, player.clone());
+            let _ = Floor::new_test2(renderer, &mut rng, player.clone());
+            let _ = Floor::new_test3(renderer, &mut rng, player.clone());
+            let _ = Floor::new_test4(renderer, &mut rng, player.clone());
             panic!("");
         };
 
         Rolag3EventHandler { 
             frame_timestamps: VecDeque::new(),
-            floor,
+            r3run: R3Run {
+                player,
+                cur_floor: floor,
+                cur_floor_num: 0,
+            },
             rng,
             prev_mouse_xy: None,
             cached_mem_draw_ops: Vec::new(),
@@ -165,7 +174,7 @@ impl Rolag3EventHandler {
             frame_length = f64::min(frame_length, 0.018);
         }
 
-        let player_position = self.floor.get_player_center();
+        let player_position = self.r3run.cur_floor.get_player_center();
         let pixels_per_tile = 40.0;
         let camera_x = player_position.x - window_width / 2.0 / pixels_per_tile;
         let camera_y = player_position.y - window_height / 2.0 / pixels_per_tile;
@@ -188,7 +197,7 @@ impl Rolag3EventHandler {
         let run_floor_ctx = RunFloorContext {
             ticks_per_frame: 10,
             frame_length,
-            floor: &mut self.floor,
+            floor: &mut self.r3run.cur_floor,
             player_input: PlayerInput {
                 horizontal_move,
                 vertical_move,
@@ -206,12 +215,12 @@ impl Rolag3EventHandler {
             rng: &mut self.rng,
             run_validation: self.config.get_opt_bool("run_validation_override").or(Some(true)).unwrap(),
         };
-        run_floor_frame(run_floor_ctx);
+        let rff_response = run_floor_frame(run_floor_ctx);
         self.prev_mouse_xy = Some((mouse_x, mouse_y));
 
         let show_tab_overlay = input_state.is_key_down(&PLAYER_TAB_OVERLAY);
         let draw_floor_ctx = DrawFloorContext {
-            floor: &mut self.floor,
+            floor: &mut self.r3run.cur_floor,
             window_width,
             window_height,
             pixels_per_tile,
@@ -233,7 +242,7 @@ impl Rolag3EventHandler {
                 outer_color: ColorRGBA32f::new(0.0, 1.0, 0.0, 1.0),
                 angle_range: Some((3.4, 4.7)),
         })});
-        let rofiz_stats = self.floor.get_current_room().rofiz.get_stats();
+        let rofiz_stats = self.r3run.cur_floor.get_current_room().rofiz.get_stats();
         let text = [
             format!("fps={}", window.get_renderer().get_fps()),
             format!("num_projectiles={}", rofiz_stats.num_projectiles),
@@ -255,5 +264,13 @@ impl Rolag3EventHandler {
         }
         let res = window.get_renderer().present(ColorRGBA32f{r: 0.0, g: 0.0, b: 0.0, a: 1.0});
         if let Err(e) = res { log::error!("error when calling renderer.present(): {}", e) }
+
+        if rff_response.floor_finished {
+            log::warn!("finished floor. Generating new one");
+            self.r3run.cur_floor_num += 1;
+            self.r3run.cur_floor = Floor::new_test3(window.get_renderer(), &mut self.rng, self.r3run.player.clone());
+            // passing the player into the fn Floor::new_test...() should automatically move the player to the new
+            // floor. No manual work is required.
+        }
     }
 }

@@ -255,6 +255,10 @@ impl RoomObjectCollectionCachedMem {
     }
 }
 
+pub struct RocAct1Response {
+    pub floor_finished: bool,
+}
+
 impl RoomObjectCollection {
     pub fn new() -> Self {
         Self {
@@ -295,7 +299,7 @@ impl RoomObjectCollection {
     }
 
     #[inline(never)]
-    pub fn act1(&mut self, ctx: &mut Act1Context) {
+    pub fn act1(&mut self, ctx: &mut Act1Context) -> RocAct1Response {
         self.cached_mem.reset();
 
         for room_obj in self.room_objects_by_type.room_objects.values() {
@@ -303,11 +307,13 @@ impl RoomObjectCollection {
             self.cached_mem.act1_responses.push(room_obj.borrow_mut().act1(ctx));
         }
 
+        let mut floor_finished = false;
         for r in self.cached_mem.act1_responses.iter_mut() {
             r.steal_room_objs_to_add(&mut self.cached_mem.room_objs_to_add);
             r.steal_room_objs_to_remove(&mut self.cached_mem.room_objs_to_remove);
             r.steal_operations(&mut self.cached_mem.operations);
             r.steal_queries(&mut self.cached_mem.queries);
+            floor_finished |= r.get_is_floor_finished();
         }
         self.cached_mem.room_objs_to_remove.drain(..).for_each(|x| self.room_objects_by_type.remove(&x));
         self.cached_mem.room_objs_to_add.drain(..).for_each(|x| self.room_objects_by_type.add(x));
@@ -363,6 +369,9 @@ impl RoomObjectCollection {
                     };
                 }
             }
+        }
+        RocAct1Response {
+            floor_finished,
         }
     }
 
@@ -450,9 +459,14 @@ impl RoomObjectCollection {
     pub fn validate_end_tick(&self) {
         for v in self.room_objects_by_type.room_objects.values() {
             let ref_count = Rc::strong_count(v);
+            // Player Rc strongs:
+            // -One as field in r3run
+            // -One as field in the current floor
+            // -One in the RoomObjectsByType map of the room the player is in
+            // -One as a local field in the calling function (run_floor_tick())
             if v.borrow().is_player() {
-                if ref_count != 3 {
-                    panic!("RoomObject Player Rc::strong_count()={}. Expected 2. Id={:?}", ref_count, v.borrow().get_metadata().get_ref());
+                if ref_count != 4 {
+                    panic!("RoomObject Player Rc::strong_count()={}. Expected 4. Id={:?}", ref_count, v.borrow().get_metadata().get_ref());
                 }
             } else if ref_count != 1 {
                 panic!("RoomObject Rc::strong_count()={}. Expected 1. Id={:?}", ref_count, v.borrow().get_metadata().get_ref());
@@ -667,6 +681,7 @@ pub struct Act1Response {
     objects_to_add: Vec<Rc<RefCell<dyn RoomObject>>>,
     act1_queries: Vec<(Act1QueryArgs, Rc<RefCell<Act1QueryResult>>)>,
     operations: Vec<RoomObjOperation>,
+    floor_finished: bool,
 }
 
 impl Act1Response {
@@ -676,6 +691,7 @@ impl Act1Response {
             objects_to_add: Vec::new(),
             act1_queries: Vec::new(),
             operations: Vec::new(),
+            floor_finished: false,
         }
     }
 
@@ -712,6 +728,14 @@ impl Act1Response {
 
     pub fn steal_operations(&mut self, v: &mut Vec<RoomObjOperation>) {
         v.append(&mut self.operations);
+    }
+
+    pub fn finish_floor(&mut self) {
+        self.floor_finished = true;
+    }
+
+    pub fn get_is_floor_finished(&self) -> bool {
+        self.floor_finished
     }
 }
 

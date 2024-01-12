@@ -35,12 +35,14 @@ impl RoomObject for NextFloorTile {
             self.charge_amount += ctx.get_tick_length() * charge_delta_mult;
             self.charge_amount = f64::clamp(self.charge_amount, 0.0, MAX_CHARGE);
         }
+        let mut response = Act1Response::new();
         let fill_frac = (self.charge_amount / MAX_CHARGE) as f32;
         if fill_frac == 1.0 && self.fully_charged_at.is_none() {
+            response.finish_floor();
             self.fully_charged_at = Some(ctx.get_room_time());
         }
         self.stepped_on_last_tick = false;
-        Act1Response::new()
+        response
     }
 
     fn draw(&mut self, ctx: &mut DrawContext) {
