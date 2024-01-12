@@ -114,7 +114,7 @@ impl Rolag3EventHandler {
         let player = Rc::new(RefCell::new(Player::new_test1()));
 
         let floor = if true {
-            Floor::new_test3(renderer, &mut rng, player.clone())
+            Floor::new_test2(renderer, &mut rng, player.clone())
         } else {
             // dummy block to prevent the linter from marking functions as unused
             let _ = Floor::new_test1(renderer, &mut rng, player.clone());
@@ -268,7 +268,7 @@ impl Rolag3EventHandler {
         if rff_response.floor_finished {
             log::warn!("finished floor. Generating new one");
             self.r3run.cur_floor_num += 1;
-            self.r3run.cur_floor = Floor::new_test3(window.get_renderer(), &mut self.rng, self.r3run.player.clone());
+            self.r3run.cur_floor = Floor::new_test2(window.get_renderer(), &mut self.rng, self.r3run.player.clone());
             // passing the player into the fn Floor::new_test...() should automatically move the player to the new
             // floor. No manual work is required.
         }

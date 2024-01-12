@@ -1,6 +1,6 @@
 use std::{collections::HashMap, cell::RefCell, rc::Rc};
 
-use crate::{gfx::renderer::Renderer, rolag3::floor::{roomgen::{empty1::get_gen_room_fn_empty1, common::_1000::{_1000::get_gen_room_fn_common1000, _1001::get_gen_room_fn_common1001}}, floorgen::run::GenFloorRoomFn, room_object::{cosmetic::ground1::GroundTheme, wall::basic_wall::WallTheme}, draw::Color, rofiz::rofiz_state::RofizState}, util::rng::Prng};
+use crate::{gfx::renderer::Renderer, rolag3::floor::{roomgen::{empty1::get_gen_room_fn_empty1, common::_1000::{_1000::get_gen_room_fn_common1000, _1001::get_gen_room_fn_common1001}}, floorgen::run::{GenFloorRoomFn, GenFloorRoomReqInfo}, room_object::{cosmetic::ground1::GroundTheme, wall::basic_wall::WallTheme}, draw::Color, rofiz::rofiz_state::RofizState}, util::rng::Prng};
 
 use super::{room::{Room, RoomConnectionInfo}, room_object::{unit::{player::{Player, MoveRooms}, enemy::boss::{star_king::new_boss_star_king, circle_mage1::new_boss_circle_mage1, star_soldier::new_boss_star_soldier}}, room_object_def::{FloorCoordinate, RoomObjectId, RoomObjectRef, RoomObjectType, NewRoomObjectContext, RoomObject}, tiles::room_connection::Direction}, roomgen::{boss_room1::get_gen_room_fn_boss1, test_room1::get_gen_room_fn_test_room1, test_room2::get_gen_room_fn_test_room2, maze1::get_gen_room_fn_maze1, boss::generic_rect::get_gen_room_fn_boss_generic_rect}, floorgen::run::{gen_floor, GenFloorArgs, GenFloorRoomContext}};
 
@@ -95,6 +95,18 @@ impl Floor {
         let mut room_object_id_counter = Self::ROOM_OBJECT_ID_COUNTER_BEGIN;
         let gen_initial_room_fn = GenFloorRoomFn {weight: 1.0, func: get_gen_room_fn_empty1(20, 20, 20, 20)};
         let gen_normal_room_fns = vec![GenFloorRoomFn {weight: 1.0, func: get_gen_room_fn_empty1(20, 50, 20, 50)}];
+        let gen_req_room_info = vec![
+            GenFloorRoomReqInfo { 
+                num_req: 1..2, 
+                funcs: vec![GenFloorRoomFn {
+                    weight: 1.0, 
+                    func: Box::new(|ctx: &mut GenFloorRoomContext| (get_gen_room_fn_boss_generic_rect(50, 50, 
+                        Box::new(|ctx: &mut NewRoomObjectContext| 
+                            vec![Rc::new(RefCell::new(new_boss_star_soldier(ctx, 25.0, 25.0))) 
+                                 as Rc<RefCell<dyn RoomObject>>].into_boxed_slice())))(ctx)),
+                },]
+            },
+        ];
         let ground_theme = GroundTheme::Monocolor(Color::new(0.02, 0.0, 0.0, 1.0));
         let wall_theme = WallTheme::Monocolor(Color::new(0.1, 0.2, 0.3, 1.0));
         let gf_args = GenFloorArgs {
@@ -106,6 +118,7 @@ impl Floor {
             ttc_max: 53.0,
             gen_initial_room_fn,
             gen_normal_room_fns,
+            gen_req_room_info,
             rng,
             room_object_id_counter: &mut room_object_id_counter,
             save_debug_data: true,
@@ -193,6 +206,7 @@ impl Floor {
             ttc_max: 250.0,
             gen_initial_room_fn,
             gen_normal_room_fns,
+            gen_req_room_info: Vec::new(),
             rng,
             room_object_id_counter: &mut room_object_id_counter,
             save_debug_data: true,

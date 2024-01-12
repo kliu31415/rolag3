@@ -1,6 +1,6 @@
 use std::{rc::Rc, cell::RefCell};
 
-use crate::rolag3::floor::{floorgen::run::{GenFloorRoomContext, GenFloorRoomResponse}, room_object::{wall::basic_wall::BasicWall, cosmetic::ground1::new_ground1, room_object_def::{NewRoomObjectContext, RoomObjectCollection, RoomObject}, tiles::next_floor_tile::{new_next_floor_tile, NEXT_FLOOR_TILE_SIDE_LEN}}, rofiz::rofiz_state::RofizState, room::RoomCtorArgs};
+use crate::rolag3::floor::{floorgen::run::{GenFloorRoomContext, GenFloorRoomResponse}, room_object::{wall::basic_wall::BasicWall, cosmetic::ground1::new_ground1, room_object_def::{NewRoomObjectContext, RoomObjectCollection, RoomObject}, tiles::next_floor_tile::{new_next_floor_tile, NEXT_FLOOR_TILE_SIDE_LEN}}, rofiz::rofiz_state::RofizState, room::RoomCtorArgs, roomgen::util::connection_candidates::all_borders_as_connection_candidates};
 
 pub fn get_gen_room_fn_boss_generic_rect(
     width: u32, 
@@ -56,7 +56,7 @@ fn make_room(
             room_objects,
             rofiz,
             ttc: 50.0,
-            connection_candidates: Vec::new(),
+            connection_candidates: all_borders_as_connection_candidates(width, height),
             is_hallway: false,
         }
     }

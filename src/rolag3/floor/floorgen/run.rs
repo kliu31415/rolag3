@@ -1,4 +1,5 @@
 use std::collections::{VecDeque, HashSet, HashMap};
+use std::ops::Range;
 
 use image::ImageBuffer;
 
@@ -23,6 +24,7 @@ pub struct GenFloorArgs<'a> {
 
     pub gen_initial_room_fn: GenFloorRoomFn,
     pub gen_normal_room_fns: Vec<GenFloorRoomFn>,
+    pub gen_req_room_info: Vec<GenFloorRoomReqInfo>,
 
     pub rng: &'a mut Prng,
     pub room_object_id_counter: &'a mut RoomObjectId,
@@ -30,8 +32,9 @@ pub struct GenFloorArgs<'a> {
     pub save_debug_data: bool,
 }
 
-impl<'a> GenFloorArgs<'a> {
-
+pub struct GenFloorRoomReqInfo {
+    pub num_req: Range<usize>,
+    pub funcs: Vec<GenFloorRoomFn>,
 }
 
 pub struct GenFloorRoomFn {
@@ -100,9 +103,10 @@ pub fn gen_floor(mut args: GenFloorArgs) -> GenFloorResult {
         None
     };
 
-    let (starting_room, normal_room_candidates) = gen_room_candidates(&mut args);
+    let (starting_room, normal_room_candidates, req_room_candidates) = gen_room_candidates(&mut args);
 
-    let mut rooms = pick_rooms(&mut args, starting_room, normal_room_candidates);
+    let grrnr = args.gen_req_room_info.iter().map(|x| x.num_req.clone()).collect::<Box<_>>();
+    let mut rooms = pick_rooms(&mut args, starting_room, normal_room_candidates, req_room_candidates, &grrnr);
 
     let mut grid = place_rooms(&mut args, &mut rooms);
 
@@ -243,7 +247,7 @@ pub fn gen_floor(mut args: GenFloorArgs) -> GenFloorResult {
 }
 
 #[inline(never)]
-fn gen_room_candidates(args: &mut GenFloorArgs) -> (Room, Vec<Room>) {
+fn gen_room_candidates(args: &mut GenFloorArgs) -> (Room, Vec<Room>, Vec<Vec<Room>>) {
     let mut gen_room_ctx = GenFloorRoomContext {
         rng: args.rng,
         room_object_id_counter: args.room_object_id_counter,
@@ -263,24 +267,71 @@ fn gen_room_candidates(args: &mut GenFloorArgs) -> (Room, Vec<Room>) {
             ground_theme: args.ground_theme,
             wall_theme: args.wall_theme,
         };
-        let f = &mut args.gen_normal_room_fns[idx];
+        let f = &args.gen_normal_room_fns[idx];
         normal_room_candidates.push((f.func)(&mut gen_room_ctx).room_ctor_args.to_room());
     }
-    (starting_room, normal_room_candidates)
+
+    let mut req_room_candidates = Vec::new();
+    for gfrri in args.gen_req_room_info.iter() {
+        let weights = gfrri.funcs.iter().map(|x| x.weight).collect::<Box<_>>();
+        let mut i_candidates = Vec::new();
+        let num_i_candidates = gfrri.num_req.end * 2; // arbitrary *2
+        while i_candidates.len () < num_i_candidates {
+            let idx = args.rng.sample_weighted_iter_f64(&weights);
+            let mut gen_room_ctx = GenFloorRoomContext {
+                rng: args.rng,
+                room_object_id_counter: args.room_object_id_counter,
+                ground_theme: args.ground_theme,
+                wall_theme: args.wall_theme,
+            };
+            let f = &gfrri.funcs[idx];
+            i_candidates.push((f.func)(&mut gen_room_ctx).room_ctor_args.to_room());
+        }
+        req_room_candidates.push(i_candidates);
+    }
+
+    (starting_room, normal_room_candidates, req_room_candidates)
 }
 
 #[inline(never)]
-fn pick_rooms(args: &mut GenFloorArgs, starting_room: Room, normal_room_candidates: Vec<Room>) -> Vec<Room> {
+fn pick_rooms(
+    args: &mut GenFloorArgs, 
+    starting_room: Room, 
+    normal_room_candidates: Vec<Room>,
+    req_room_candidates: Vec<Vec<Room>>,
+    grrnr: &[Range<usize>],
+) -> Vec<Room> {
+    assert_eq!(grrnr.len(), req_room_candidates.len());
+
     let mut tries1 = 0;
     loop {
         tries1 += 1;
         assert!(tries1 < 10000);
-        let mut chosen_nrcs = HashSet::new();
         let mut ttc = starting_room.ttc;
-        let mut tries2 = 0;
+
+        let mut chosen_rrcs = Vec::new();
+        for (a, b) in grrnr.iter().zip(req_room_candidates.iter()) {
+            let desired = args.rng.gen_usize_range(a.clone());
+            assert!(desired <= b.len(), "trying to pick {} req rooms, but only {} candidates available", desired, b.len());
+            let mut i_chosen_rrcs = HashSet::new();
+            let mut tries2 = 0;
+            while i_chosen_rrcs.len() < desired {
+                tries2 += 1;
+                assert!(tries2 < 10000);
+                let rrc_idx = args.rng.gen_usize_range(0..b.len());
+                if !i_chosen_rrcs.contains(&rrc_idx) {
+                    i_chosen_rrcs.insert(rrc_idx);
+                    ttc += b[rrc_idx].ttc;
+                }
+            }
+            chosen_rrcs.push(i_chosen_rrcs);
+        }
+
+        let mut chosen_nrcs = HashSet::new();
+        let mut tries3 = 0;
         while ttc < args.ttc_min {
-            tries2 += 1;
-            assert!(tries2 < 10000);
+            tries3 += 1;
+            assert!(tries3 < 10000);
             let nrc_idx = args.rng.gen_usize_range(0..normal_room_candidates.len());
             if !chosen_nrcs.contains(&nrc_idx) {
                 chosen_nrcs.insert(nrc_idx);
@@ -290,13 +341,18 @@ fn pick_rooms(args: &mut GenFloorArgs, starting_room: Room, normal_room_candidat
         
         if ttc <= args.ttc_max {
             let mut rooms = Vec::new();
+            
             rooms.push(starting_room);
-            let mut r_cnt = 0;
-            normal_room_candidates.into_iter().filter(|_| {
-                let res = chosen_nrcs.contains(&r_cnt);
-                r_cnt += 1;
-                res
-            }).for_each(|r| rooms.push(r));
+
+            normal_room_candidates.into_iter().enumerate().filter(|(i, _)| {
+                chosen_nrcs.contains(&i)
+            }).for_each(|(_, r)| rooms.push(r));
+
+            req_room_candidates.into_iter()
+                .zip(chosen_rrcs.into_iter())
+                .flat_map(|(rs, chosen)| {
+                    rs.into_iter().enumerate().filter(move |(j, _)| chosen.contains(j))
+                }).for_each(|(_, r)| rooms.push(r));
             return rooms;
         }
     }
