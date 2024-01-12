@@ -4,7 +4,7 @@ pub struct KeyTile {
     md: RoomObjectMetadata,
     ro_ref: RofizObjectRef,
     charge_amount: f64,
-    key_charged_time: Option<f64>,
+    key_fully_charged_at: Option<f64>,
 }
 
 pub const KEY_TILE_SIDE_LEN: u32 = 2;
@@ -30,7 +30,11 @@ impl RoomObject for KeyTile {
         &self.md
     }
 
-    fn act1(&mut self, _ctx: &mut Act1Context) -> Act1Response {
+    fn act1(&mut self, ctx: &mut Act1Context) -> Act1Response {
+        let fill_frac = (self.charge_amount / MAX_CHARGE) as f32;
+        if fill_frac == 1.0 && self.key_fully_charged_at.is_none() {
+            self.key_fully_charged_at = Some(ctx.get_room_time());
+        }
         Act1Response::new()
     }
 
@@ -43,14 +47,11 @@ impl RoomObject for KeyTile {
         let tile_border_dop = ctx.do_thick_border(BORDER_COLOR, &tile_border_outer, &tile_border_inner);
 
         let fill_frac = (self.charge_amount / MAX_CHARGE) as f32;
-        if fill_frac == 1.0 && self.key_charged_time.is_none() {
-            self.key_charged_time = Some(ctx.get_room_time());
-        }
         let bow_fill_rad = 2.0 * std::f32::consts::PI * fill_frac;
         let filled_range = (0.0, bow_fill_rad);
         let unfilled_range = (bow_fill_rad, 2.0 * std::f32::consts::PI);
         let (filled_color, unfilled_color) = if fill_frac == 1.0 {
-            let lerp_t = f64::min(1.0, 2.0 * (ctx.get_room_time() - self.key_charged_time.unwrap())) as f32;
+            let lerp_t = f64::min(1.0, 2.0 * (ctx.get_room_time() - self.key_fully_charged_at.unwrap())) as f32;
             (Color::lerp(KEY_SEMI_CHARGED_COLOR, KEY_FULLY_CHARGED_COLOR, lerp_t), KEY_UNCHARGED_COLOR)
         } else {
             (KEY_SEMI_CHARGED_COLOR, KEY_UNCHARGED_COLOR)
@@ -60,18 +61,18 @@ impl RoomObject for KeyTile {
             &KEY_BOW_CENTER + translate, 
             KEY_BOW_INNER_R, 
             KEY_BOW_OUTER_R, 
-            filled_range
+            Some(filled_range)
         );
         let key_bow_unfilled = ctx.do_annular_sector(
             unfilled_color, 
             &KEY_BOW_CENTER + translate, 
             KEY_BOW_INNER_R, 
             KEY_BOW_OUTER_R, 
-            unfilled_range
+            Some(unfilled_range)
         );
         
         let key_nonbow_color = if fill_frac == 1.0 {
-            let lerp_t = f64::min(1.0, 2.0 * (ctx.get_room_time() - self.key_charged_time.unwrap())) as f32;
+            let lerp_t = f64::min(1.0, 2.0 * (ctx.get_room_time() - self.key_fully_charged_at.unwrap())) as f32;
             Color::lerp(unfilled_color, filled_color, lerp_t)
         } else {
             unfilled_color
@@ -87,7 +88,7 @@ impl RoomObject for KeyTile {
 
     fn handle_collision(&mut self, ctx: &mut HandleCollisionContext) -> HandleCollisionResponse {
         let hct_ctx = HcTileContext {
-            tile_effect: HcTileEffect::ChargeKey {  },
+            tile_effect: HcTileEffect::ChargeTile {  },
         };
         let hct_resp = ctx.get_other().borrow_mut().handle_collision_tile(&hct_ctx);
         if hct_resp.unit_affected {
@@ -113,6 +114,6 @@ pub fn new_key_tile(ctx: &mut NewRoomObjectContext, x: u32, y: u32) -> KeyTile {
         md, 
         ro_ref, 
         charge_amount: 0.0,
-        key_charged_time: None,
+        key_fully_charged_at: None,
     }
 }

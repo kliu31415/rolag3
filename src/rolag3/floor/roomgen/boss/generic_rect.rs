@@ -1,6 +1,6 @@
 use std::{rc::Rc, cell::RefCell};
 
-use crate::rolag3::floor::{floorgen::run::{GenFloorRoomContext, GenFloorRoomResponse}, room_object::{wall::basic_wall::BasicWall, cosmetic::ground1::new_ground1, room_object_def::{NewRoomObjectContext, RoomObjectCollection, RoomObject}}, rofiz::rofiz_state::RofizState, room::RoomCtorArgs};
+use crate::rolag3::floor::{floorgen::run::{GenFloorRoomContext, GenFloorRoomResponse}, room_object::{wall::basic_wall::BasicWall, cosmetic::ground1::new_ground1, room_object_def::{NewRoomObjectContext, RoomObjectCollection, RoomObject}, tiles::next_floor_tile::{new_next_floor_tile, NEXT_FLOOR_TILE_SIDE_LEN}}, rofiz::rofiz_state::RofizState, room::RoomCtorArgs};
 
 pub fn get_gen_room_fn_boss_generic_rect(
     width: u32, 
@@ -40,6 +40,11 @@ fn make_room(
 
     let ground = new_ground1(&mut new_floor_object_ctx, ground_theme, 1, 1, width-2, height-2);
     room_objects.add(Rc::new(RefCell::new(ground)));
+
+    let next_floor_tile = new_next_floor_tile(&mut new_floor_object_ctx, 
+        (width-NEXT_FLOOR_TILE_SIDE_LEN)/2,
+        (height-NEXT_FLOOR_TILE_SIDE_LEN)/2);
+    room_objects.add(Rc::new(RefCell::new(next_floor_tile)));
 
     let enemies = (make_enemy_fn)(&mut new_floor_object_ctx);
     enemies.into_vec().into_iter().for_each(|x| room_objects.add(x));

@@ -11,8 +11,7 @@ pub trait RoomObject {
     fn get_metadata(&self) -> &RoomObjectMetadata;
     fn act1(&mut self, ctx: &mut Act1Context) -> Act1Response;
     fn draw(&mut self, ctx: &mut DrawContext);
-    fn handle_room_just_cleared(&self, _ctx: &mut HandleRoomJustClearedContext) {
-        // I don't think any subclass uses this function right now
+    fn handle_room_just_cleared(&mut self, _ctx: &mut HandleRoomJustClearedContext) {
         // nop
     }
 
@@ -384,7 +383,7 @@ impl RoomObjectCollection {
     }
 
     #[inline(never)]
-    pub fn handle_if_room_just_cleared(&mut self, rofiz: &mut RofizState) {
+    pub fn handle_if_room_just_cleared(&mut self, rofiz: &mut RofizState, room_time: f64) {
         if self.room_already_cleared {
             return;
         }
@@ -399,6 +398,7 @@ impl RoomObjectCollection {
 
         let mut ctx = HandleRoomJustClearedContext {
             _rofiz: rofiz,
+            room_time,
         };
         for fo in self.room_objects_by_type.room_objects.values() {
             fo.borrow_mut().handle_room_just_cleared(&mut ctx);
@@ -717,11 +717,16 @@ impl Act1Response {
 
 pub struct HandleRoomJustClearedContext<'a> {
     _rofiz: &'a mut RofizState,
+    room_time: f64,
 }
 
 impl<'a> HandleRoomJustClearedContext<'a> {
     pub fn _get_rofiz(&mut self) -> &mut RofizState {
         self._rofiz
+    }
+
+    pub fn get_room_time(&self) -> f64 {
+        self.room_time
     }
 }
 
@@ -871,7 +876,7 @@ pub enum HcTileEffect {
     Accelerate {force: f64, theta: f64},
     DealDamage {damage: f64},
     TractionMult {mult: f64},
-    ChargeKey {},
+    ChargeTile {},
 }
 
 pub struct HcTileResponse {

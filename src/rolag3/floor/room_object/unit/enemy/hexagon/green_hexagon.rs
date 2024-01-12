@@ -1,5 +1,5 @@
-/* RedSquareRed is a red square that randomly translates in cardinal directions and periodically shoots a 
-   wave of 4 projectiles in the cardinal directions. It changes directions upon colliding with a nonspectral object.
+/* RedHexGreenHex randomly translates in one of 6 directions and periodically shoots a wave of 6 projectiles that
+   mildly home towards the player.
 */
 
 use std::{cell::RefCell, rc::Rc};

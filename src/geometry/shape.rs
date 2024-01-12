@@ -115,10 +115,6 @@ impl Shape {
     }
 }
 
-pub fn f32pairs_to_points(vertexes: Box<[(f32, f32)]>) -> Box<[Point]> {
-    vertexes.iter().map(|v| Point::new(v.0, v.1)).collect()
-}
-
 #[derive(Debug, Copy, Clone)]
 pub struct Point {
     pub x: f32,

@@ -2,8 +2,8 @@ use std::{cell::RefCell, rc::Rc};
 
 use crate::{rolag3::floor::{draw::{Color, DrawContext}, room_object::{room_object_def::{NewRoomObjectContext, Team, Act1Response, HandleCollisionResponse}, unit::{standard_unit1::{StandardUnit1, StandardUnit1Builder, StandardUnit1BuilderReq, HandleCollisionLogic, SuAct1Context, SuDrawContext, SuHandleCollisionContext}, standard_unit_common::TranslateMove}, damage::DamageColor, projectile::projectile2::{Proj2Shape, Projectile2BuilderReq, Projectile2Builder}}, rofiz::rofiz_object::Transformation}, geometry::{shape::{Shape, Point}, util::{regular_polygon, get_inner_polygon}}};
 
-/* HexagonBlueHexagon randomly translates in one of 6 directions.
-   It randomly spews a wave of circle of projectiles that rotates, and then moves in a random direction.
+/* BlueHexBlueHex randomly translates in one of 6 directions and periodically shoots a wave of 6 projectiles rotate
+   in a circle and move in a random direction
 */
 
 const BORDER_COLOR: Color = Color::new(0.2, 0.2, 0.2, 1.0);

@@ -42,7 +42,7 @@ impl RoomObject for Player {
                     let budeb = Budeb::TractionMult(BudebTractionMult::new(mult, BudebExpiry::OneTick));
                     self.su_common.as_mut().unwrap().apply_budeb(&budeb);
                 },
-                HcTileEffect::ChargeKey {} => {}, // nop
+                HcTileEffect::ChargeTile {} => {}, // nop
             }
         });
 

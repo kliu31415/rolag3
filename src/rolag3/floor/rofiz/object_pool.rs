@@ -22,7 +22,7 @@ use rayon::prelude::*;
    -Sometimes, when multiple RofizObjects are deleted, the second half becomes the more loaded half
  */
 const INITIAL_POOL_SIZE: usize = 16;
-const MAX_LOAD_FACTOR: f64 = 0.7;
+const MAX_LOAD_FACTOR: f64 = 0.47;
 
 pub struct RofizObjPool {
     pub basic_walls: Vec<Option<RofizObjBasicWall>>,

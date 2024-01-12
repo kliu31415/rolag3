@@ -91,7 +91,7 @@ fn run_floor_tick(ctx: RunFloorTickContext) {
         room.room_objects.act1(&mut act1_context);
         detect_and_handle_collisions(room, ctx.rng, ctx.tick_length);
 
-        room.room_objects.handle_if_room_just_cleared(&mut room.rofiz);
+        room.room_objects.handle_if_room_just_cleared(&mut room.rofiz, room.room_time);
         if room.room_cleared_at_time.is_none() && room.room_objects.is_room_cleared() {
             room.room_cleared_at_time = Some(room.room_time)
         }
