@@ -83,6 +83,7 @@ pub struct StandardUnitCommon {
     max_hp: f64,
     hp: f64,
     last_damaged_time: f64,
+    floor_take_damage_mult: f64, /* 1 for all units except the player */
 
     budebs: Vec<Budeb>,
 }
@@ -155,6 +156,7 @@ impl StandardUnitCommon {
             max_hp: hp,
             hp,
             last_damaged_time: -100.0,
+            floor_take_damage_mult: 1.0,
 
             budebs: Vec::new(),
         }
@@ -478,10 +480,14 @@ impl StandardUnitCommon {
         self.budebs.push(*budeb);
     }
 
+    pub fn set_floor_take_damage_mult(&mut self, mult: f64) {
+        self.floor_take_damage_mult = mult;
+    }
+
     pub fn take_collision_damage_from(
         &mut self, 
         self_id: RoomObjectRef, 
-        damage_mult: f64, 
+        color_damage_mult: f64, 
         other: &mut StandardUnitCommon,
     ) -> TakeDamageResponse {
         if !other.collision_damage_token_buckets.contains_key(&self_id) {
@@ -491,7 +497,8 @@ impl StandardUnitCommon {
         let tb = other.collision_damage_token_buckets.get_mut(&self_id).unwrap();
         // note that the rate of collision damage is dependent on the OTHER's time speed, not SELF's time speed. This
         // means that if OTHER has its time speed doubled and SELF has no time multiplier, SELF takes 2x collision dmg.
-        let damage = tb.take_all(other.unit_age) * damage_mult;
+        // No need to multiply by self.floor_take_damage_mult because take_damage() already does that.
+        let damage = tb.take_all(other.unit_age) * color_damage_mult;
         self.take_damage(damage)
     }
 
@@ -506,7 +513,8 @@ impl StandardUnitCommon {
                 damage_taken: 0.0,
             };
         }
-
+        
+        let damage = damage * self.floor_take_damage_mult;
         let damage_taken: f64;
         if self.hp < damage {
             damage_taken = self.hp;

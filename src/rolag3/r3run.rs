@@ -5,6 +5,6 @@ use super::floor::{floor_def::Floor, room_object::unit::player::Player};
 pub struct R3Run {
     pub player: Rc<RefCell<Player>>,
     pub cur_floor: Floor,
-    pub cur_floor_num: i32,
+    pub cur_floor_num: i32, // starts at 0
 }
 

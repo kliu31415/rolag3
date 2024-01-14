@@ -241,7 +241,6 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
                             damage_color: PROJ_DAMAGE_COLORS[*color_idx],
                             damage: 3.0,
                             owner: self_as_weak,
-                            lifespan: 8.0,
                             velocity_x: *proj_speed * f64::cos(angle),
                             velocity_y: *proj_speed * f64::sin(angle),
                             xform: proj_xform,
@@ -298,14 +297,14 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
                                 damage_color: PROJ_DAMAGE_COLORS[*color_idx],
                                 damage,
                                 owner: self_as_weak,
-                                lifespan: 3.0,
                                 velocity_x: LASER_PROJ_SPEED * f64::cos(angle),
                                 velocity_y: LASER_PROJ_SPEED * f64::sin(angle),
                                 xform: proj_xform,
                                 shape,
                                 color: draw_color,
                             }
-                        ).build(&mut nro_ctx);
+                        ).lifespan(3.0)
+                            .build(&mut nro_ctx);
                         response.add_room_obj(Rc::new(RefCell::new(proj)));
                     }
                 }
@@ -344,7 +343,6 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
                             damage_color: PROJ_DAMAGE_COLORS[color_idx],
                             damage: 3.0,
                             owner: self_as_weak,
-                            lifespan: 8.0,
                             velocity_x: proj_speed * f64::cos(angle),
                             velocity_y: proj_speed * f64::sin(angle),
                             xform: proj_xform,
@@ -403,14 +401,14 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
                             damage_color: PROJ_DAMAGE_COLORS[color_idx],
                             damage,
                             owner: self_as_weak,
-                            lifespan: 3.0,
                             velocity_x: LASER_PROJ_SPEED * f64::cos(angle),
                             velocity_y: LASER_PROJ_SPEED * f64::sin(angle),
                             xform: proj_xform,
                             shape,
                             color: draw_color,
                         }
-                    ).build(&mut nro_ctx);
+                    ).lifespan(3.0)
+                        .build(&mut nro_ctx);
                     response.add_room_obj(Rc::new(RefCell::new(proj)));
                 }
 
@@ -444,7 +442,6 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
                 damage_color: PROJ_DAMAGE_COLORS[color_idx],
                 damage: 3.0,
                 owner: self_as_weak,
-                lifespan: 8.0,
                 velocity_x: proj_speed * f64::cos(angle),
                 velocity_y: proj_speed * f64::sin(angle),
                 xform: proj_xform,

@@ -117,7 +117,6 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
                     damage_color: us_data.damage_color,
                     damage: 3.0,
                     owner: self_as_weak.clone(),
-                    lifespan: 8.0,
                     velocity_x: proj_speed * f64::cos(angle),
                     velocity_y: proj_speed * f64::sin(angle),
                     xform: proj_xform,

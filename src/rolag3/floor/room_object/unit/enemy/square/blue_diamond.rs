@@ -84,7 +84,6 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
                             damage_color: DamageColor::Blue,
                             damage: 3.0,
                             owner: self_as_weak,
-                            lifespan: 8.0,
                             velocity_x: proj_velocity * f64::cos(angle),
                             velocity_y: proj_velocity * f64::sin(angle),
                             xform,

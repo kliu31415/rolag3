@@ -26,8 +26,7 @@ pub struct Projectile2BuilderReq {
     pub team: Team, 
     pub damage_color: DamageColor,
     pub damage: f64,
-    pub owner: Weak<RefCell<dyn RoomObject>>, 
-    pub lifespan: f64,
+    pub owner: Weak<RefCell<dyn RoomObject>>,
     pub velocity_x: f64,
     pub velocity_y: f64,
     pub xform: Transformation,
@@ -37,6 +36,7 @@ pub struct Projectile2BuilderReq {
 
 pub struct Projectile2Builder {
     req: Projectile2BuilderReq,
+    lifespan: f64,
     homing_to_enemies_power: Option<f64>,
     adjust_velocity_fn: Option<AdjustVelocityFn>,
 }
@@ -45,9 +45,15 @@ impl Projectile2Builder {
     pub fn new(req: Projectile2BuilderReq) -> Self {
         Self {
             req,
+            lifespan: 8.0, /* good default for most projectiles */
             homing_to_enemies_power: None,
             adjust_velocity_fn: None,
         }
+    }
+
+    pub fn lifespan(mut self, lifespan: f64) -> Self {
+        self.lifespan = lifespan;
+        self
     }
 
     pub fn homing_to_enemies_power(mut self, power: f64) -> Self {
@@ -80,7 +86,7 @@ impl Projectile2Builder {
             team: self.req.team,
             damage_color: self.req.damage_color,
             damage: self.req.damage,
-            lifespan: self.req.lifespan,
+            lifespan: self.lifespan,
             xform: self.req.xform,
             shape,
         }).ps_data(Box::new(ps_data))

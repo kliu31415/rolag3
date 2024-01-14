@@ -643,7 +643,7 @@ impl<'a> Act1Context<'a> {
     pub fn get_room_cleared_at_time(&self) -> Option<f64> {
         self.room_cleared_at_time
     }
-
+    
     pub fn _get_room_width(&self) -> u32 {
         self._room_width
     }

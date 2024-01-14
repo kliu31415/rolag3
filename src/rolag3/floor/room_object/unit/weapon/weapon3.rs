@@ -50,7 +50,6 @@ fn handle_tick_fn(ctx: &mut WeaponHandleTickContext) -> WeaponHandleTickResponse
                 damage_color: DamageColor::Red,
                 damage: 3.0,
                 owner: ctx.owner.clone(),
-                lifespan: 2.0,
                 velocity_x,
                 velocity_y,
                 xform: ctx.owner_xform,

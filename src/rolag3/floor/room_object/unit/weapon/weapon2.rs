@@ -79,7 +79,6 @@ fn spawn_projectile(ctx: &mut WeaponHandleTickContext, angle_adjust: f64) -> Rc<
             damage_color: DamageColor::Blue,
             damage: 7.0,
             owner: ctx.owner.clone(),
-            lifespan: 2.0,
             velocity_x,
             velocity_y,
             xform: ctx.owner_xform,

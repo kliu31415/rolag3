@@ -50,14 +50,14 @@ fn handle_tick_fn(ctx: &mut WeaponHandleTickContext) -> WeaponHandleTickResponse
             damage_color: DamageColor::Green,
             damage: 2.0,
             owner: ctx.owner.clone(),
-            lifespan: 2.0,
             velocity_x,
             velocity_y,
             xform: ctx.owner_xform,
             shape,
             color: PROJ_COLOR,
         }
-    ).build(ctx.nro_ctx);
+    ).lifespan(3.0)
+        .build(ctx.nro_ctx);
     
     response.new_room_objs.push(Rc::new(RefCell::new(proj)));
     response

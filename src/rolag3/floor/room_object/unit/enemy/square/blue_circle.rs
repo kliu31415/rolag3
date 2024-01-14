@@ -104,7 +104,6 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
                     damage_color: DamageColor::Blue,
                     damage: 3.0,
                     owner: self_as_weak,
-                    lifespan: 5.0,
                     velocity_x: sps.proj_dx,
                     velocity_y: sps.proj_dy,
                     xform,

@@ -379,6 +379,10 @@ impl Player {
         }
         DrawOp::Group(DrawOpGroup { ops: ops.into_boxed_slice() })
     }
+
+    pub fn set_floor_take_damage_mult(&mut self, mult: f64) {
+        self.su_common.as_mut().unwrap().set_floor_take_damage_mult(mult);
+    }
 }
 
 pub enum MoveRooms {

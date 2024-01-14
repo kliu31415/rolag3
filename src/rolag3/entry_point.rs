@@ -269,6 +269,8 @@ impl Rolag3EventHandler {
             log::warn!("finished floor. Generating new one");
             self.r3run.cur_floor_num += 1;
             self.r3run.cur_floor = Floor::new_test2(window.get_renderer(), &mut self.rng, self.r3run.player.clone());
+            let damage_mult = (3.0 + self.r3run.cur_floor_num as f64) / 3.0;
+            self.r3run.player.borrow_mut().set_floor_take_damage_mult(damage_mult)
             // passing the player into the fn Floor::new_test...() should automatically move the player to the new
             // floor. No manual work is required.
         }
