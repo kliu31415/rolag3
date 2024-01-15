@@ -47,7 +47,7 @@ impl LightningOrbGroup {
             let orb_rc = orb_weak.upgrade().unwrap();
             let input = orb_centers[i];
             let mut output = Empty {};
-            orb_rc.borrow_mut().custom_act1_fn(ctx, response, &input, &mut output);
+            orb_rc.borrow_mut().slave_act1_fn(ctx, response, &input, &mut output);
         }
     
         for i in 0..self.lightnings.len() {
@@ -67,7 +67,7 @@ impl LightningOrbGroup {
                 let orb2_pos = ctx.get_rofiz().get_movable_object_xform(&orb2.ro_ref);
     
                 let mut output = Empty {};
-                lightning.custom_act1_fn(ctx, response, &(orb1_pos, orb2_pos, y_sd), &mut output);
+                lightning.slave_act1_fn(ctx, response, &(orb1_pos, orb2_pos, y_sd), &mut output);
             }
         }
     }

@@ -24,7 +24,7 @@ pub fn new_orb(ctx: &mut NewRoomObjectContext, x: f64, y: f64, radius: f32) -> S
         ro_ref,
     };
 
-    builder.custom_act1_fn(Box::new(orb_custom_act1))
+    builder.slave_act1_fn(Box::new(orb_custom_act1))
         .rofiz_obj_type(RofizObjType::SpectralUnit)
         .us_data(Box::new(us_data))
         .damageable(false)

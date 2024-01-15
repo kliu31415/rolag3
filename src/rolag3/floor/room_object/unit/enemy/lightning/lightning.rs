@@ -55,7 +55,7 @@ pub fn new_lightning(
         hp: 1.0, // dummy
         engine_power: 0.0, // dummy
         tire_traction: 0.0, // dummy
-    }).custom_act1_fn(Box::new(lightning_custom_act1))
+    }).slave_act1_fn(Box::new(lightning_custom_act1))
         .add_custom_fn(Box::new(lightning_custom_get_cbb))
         .rofiz_obj_type(RofizObjType::SpectralUnit)
         .us_data(Box::new(lightning))

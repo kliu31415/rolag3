@@ -7,7 +7,7 @@ use super::{Unit, standard_unit_common::StandardUnitCommon};
 type Act1FnT = dyn Fn(&mut SuAct1Context) -> Act1Response;
 type DrawFnT = dyn Fn(&mut SuDrawContext);
 type CustomFnT = dyn Fn(&mut Su1Data, &dyn Any, &mut dyn Any);
-type CustomAct1FnT = dyn Fn(&mut SuAct1Context, &mut Act1Response, &dyn Any, &mut dyn Any);
+type SlaveAct1FnT = dyn Fn(&mut SuAct1Context, &mut Act1Response, &dyn Any /*input*/, &mut dyn Any /*output*/);
 type HandleCollisionFnT = dyn Fn(&mut SuHandleCollisionContext) -> HandleCollisionResponse;
 type HcProjectileFnT = dyn Fn(&mut SuHcProjectileContext) -> HcProjectileResponse;
 
@@ -38,7 +38,7 @@ pub struct Su1Logic {
 
 pub enum Act1Fn {
     Standard(Box<Act1FnT>),
-    Custom(Box<CustomAct1FnT>),
+    Slave(Box<SlaveAct1FnT>),
 }
 
 impl RoomObject for StandardUnit1 {
@@ -167,9 +167,9 @@ impl StandardUnit1 {
         (self.logic.custom_fns[idx])(&mut self.data, input, output)
     }
 
-    pub fn custom_act1_fn(&mut self, ctx: &mut Act1Context, resp: &mut Act1Response, input: &dyn Any, output: &mut dyn Any) {
-        let Act1Fn::Custom(ref f) = self.logic.act1_fn else {
-            panic!("no StandardUnit1::custom_act1_fn() found, room_object_id={:?}", self.get_metadata().get_ref());
+    pub fn slave_act1_fn(&mut self, ctx: &mut Act1Context, resp: &mut Act1Response, input: &dyn Any, output: &mut dyn Any) {
+        let Act1Fn::Slave(ref f) = self.logic.act1_fn else {
+            panic!("no StandardUnit1::slave_act1_fn() found, room_object_id={:?}", self.get_metadata().get_ref());
         };
         let room_tick_len = ctx.get_tick_length();
         self.data.su_common.start_act1(room_tick_len);
@@ -299,8 +299,8 @@ impl StandardUnit1Builder {
         self
     }
 
-    pub fn custom_act1_fn(mut self, f: Box<CustomAct1FnT>) -> Self {
-        self.act1_fn = Act1Fn::Custom(f);
+    pub fn slave_act1_fn(mut self, f: Box<SlaveAct1FnT>) -> Self {
+        self.act1_fn = Act1Fn::Slave(f);
         self
     }
 
