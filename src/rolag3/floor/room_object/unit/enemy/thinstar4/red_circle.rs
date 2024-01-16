@@ -1,19 +1,36 @@
 use std::{cell::RefCell, rc::{Rc, Weak}, any::Any};
 
-use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Act1Response, Team, Act1QueryArgs, Act1QueryResult, RoomObject, RoomObjectMetadata, Act1Context, HandleCollisionContext, HandleCollisionResponse, RoomObjectType}, damage::DamageColor, unit::standard_unit1::{StandardUnit1Builder, StandardUnit1BuilderReq, SuAct1Context, SuDrawContext, StandardUnit1}}, rofiz::{rofiz_object::{Transformation, Hitbox, RofizObjectMovement}, rofiz_state::RofizObjectRef}, draw::{Color, DrawContext}}, geometry::{shape::{Shape, Point}, util::get_inner_polygon, star::get_star_shape}, util::lerp::lerp_f64};
+use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Act1Response, Team, Act1QueryArgs, Act1QueryResult, RoomObject, RoomObjectMetadata, Act1Context, HandleCollisionContext, HandleCollisionResponse, RoomObjectType}, damage::DamageColor, unit::standard_unit1::{StandardUnit1Builder, StandardUnit1BuilderReq, SuAct1Context, SuDrawContext, StandardUnit1}, projectile::projectile2::{Projectile2Builder, Projectile2BuilderReq, Proj2Shape}}, rofiz::{rofiz_object::{Transformation, Hitbox, RofizObjectMovement}, rofiz_state::RofizObjectRef}, draw::{Color, DrawContext}}, geometry::{shape::{Shape, Point}, util::get_inner_polygon, star::get_star_shape}, util::lerp::lerp_f64};
 
-/* Thinstar4Red is a spectral unit that rotates around in groups and slowly follows the player
+/* Thinstar4Red is a spectral unit that rotates around in groups and slowly follows the player. It periodically fires
+   lasers towards the player after a small prelude warning.
 */
 
 const RADIUS: f64 = 0.9;
 const MAX_HP: f64 = 20.0;
 const BORDER_COLOR: Color = Color::new(0.5, 0.5, 0.5, 1.0);
-const INNER_COLOR: Color = Color::new(0.5, 0.02, 0.02, 1.0);
+const OUTER_COLOR: Color = Color::new(0.5, 0.02, 0.02, 1.0);
 
-pub struct ThinStar4Red {
+const PROJ_FIRE_INTERVAL: f64 = 0.002;
+const PROJ_SPEED: f64 = 150.0;
+const PROJ_COLOR: Color = Color::new(6.0, 0.02, 0.02, 1.0);
+const PROJ_RADIUS: f32 = 0.2;
+
+struct ThinStar4Red {
     border_vertexes: [Point; 8],
     inner_vertexes: [Point; 8],
     ro_ref: RofizObjectRef,
+
+    fli_query_result: Option<Rc<RefCell<Act1QueryResult>>>,
+    fire_laser_info: Option<FireLaserInfo>,
+}
+
+struct FireLaserInfo {
+    start_time: f64,
+    prelude_duration: f64,
+    duration: f64,
+    angle: f64,
+    num_proj_fired: i32,
 }
 
 fn new_thinstar4_red(ctx: &mut NewRoomObjectContext, x: f64, y: f64) -> StandardUnit1 {
@@ -39,6 +56,8 @@ fn new_thinstar4_red(ctx: &mut NewRoomObjectContext, x: f64, y: f64) -> Standard
         border_vertexes,
         inner_vertexes,
         ro_ref,
+        fli_query_result: None,
+        fire_laser_info: None,
     };
 
     builder.slave_act1_fn(Box::new(slave_act1))
@@ -49,7 +68,7 @@ fn new_thinstar4_red(ctx: &mut NewRoomObjectContext, x: f64, y: f64) -> Standard
 
 fn slave_act1(
     ctx: &mut SuAct1Context, 
-    _response: &mut Act1Response, 
+    response: &mut Act1Response, 
     input: &dyn Any /*input*/, 
     _: &mut dyn Any /*output*/,
 ) {
@@ -59,12 +78,75 @@ fn slave_act1(
     let tick_len = ctx.act1_ctx.get_tick_length();
     let new_xform = Transformation::new(input_data.0, input_data.1, old_xform.dtheta + 1.5 * tick_len);
     ctx.act1_ctx.get_rofiz().move_object(&us_data.ro_ref, RofizObjectMovement::SetXform(new_xform));
+
+    if let Some(fliqr) = us_data.fli_query_result.take() {
+        assert!(us_data.fire_laser_info.is_none());
+        match &*fliqr.borrow() {
+            Act1QueryResult::ClosestUnit(cu_opt) => {
+                if let Some(cu) = cu_opt {
+                    us_data.fire_laser_info = Some(FireLaserInfo {
+                        start_time: ctx.su_ctx.su_common.get_unit_time(),
+                        prelude_duration: 1.0,
+                        duration: 1.0,
+                        angle: f64::atan2(cu.y - new_xform.dy, cu.x - new_xform.dx),
+                        num_proj_fired: 0,
+                    });
+                }
+            },
+            Act1QueryResult::NotSet => panic!("found fliqr=NotSet"),
+        };
+    }
+
+    match us_data.fire_laser_info {
+        Some(ref mut fli) => {
+            let since_start = ctx.su_ctx.su_common.get_unit_time() - fli.start_time;
+            if since_start < fli.prelude_duration + fli.duration {
+                let desired_npf = (since_start / PROJ_FIRE_INTERVAL) as i32;
+                while fli.num_proj_fired < desired_npf {
+                    let since_fired = since_start - fli.num_proj_fired as f64 * PROJ_FIRE_INTERVAL;
+                    let self_as_weak = ctx.act1_ctx.get_self_as_weak();
+                    let (damage, color) = if since_start < fli.prelude_duration {
+                        let mut color = PROJ_COLOR;
+                        color.a = 0.01;
+                        (0.0, color)
+                    } else {
+                        (10.0 * PROJ_FIRE_INTERVAL, PROJ_COLOR)
+                    };
+                    let proj = Projectile2Builder::new(Projectile2BuilderReq {
+                        team: Team::Enemy,
+                        damage_color: DamageColor::Red,
+                        damage,
+                        owner: self_as_weak,
+                        velocity_x: PROJ_SPEED * f64::cos(fli.angle),
+                        velocity_y: PROJ_SPEED * f64::sin(fli.angle),
+                        xform: Transformation::new(new_xform.dx + since_fired * PROJ_SPEED * f64::cos(fli.angle), 
+                            new_xform.dy + since_fired * PROJ_SPEED * f64::sin(fli.angle), 
+                            0.0),
+                        shape: Proj2Shape::Circle { x: 0.0, y: 0.0, r: PROJ_RADIUS },
+                        color,
+                    }).lifespan(2.0)
+                        .build(&mut NewRoomObjectContext::from_act1_ctx(ctx.act1_ctx));
+                    response.add_room_obj(Rc::new(RefCell::new(proj)));
+                    fli.num_proj_fired += 1;
+                }
+            } else {
+                us_data.fire_laser_info = None;
+            }
+        },
+        None => {
+            if ctx.act1_ctx.get_randf64() < 3.0 * ctx.su_ctx.su_common.get_unit_tick_len() {
+                let query = Act1QueryArgs::ClosestUnit { x: new_xform.dx, y: new_xform.dy, team_filter: Some(Team::Player) };
+                us_data.fli_query_result = Some(response.add_query(query));
+            }
+        }
+    }
+
 }
 
 fn draw(ctx: &mut SuDrawContext) {
     let us_data = ctx.su_ctx.us_data.downcast_mut::<ThinStar4Red>().unwrap();
     let border_color = ctx.su_ctx.su_common.get_draw_color(ctx.draw_ctx.get_room_time(), BORDER_COLOR);
-    let inner_color = ctx.su_ctx.su_common.get_draw_color(ctx.draw_ctx.get_room_time(), INNER_COLOR);
+    let outer_color = ctx.su_ctx.su_common.get_draw_color(ctx.draw_ctx.get_room_time(), OUTER_COLOR);
     let xform = ctx.draw_ctx.get_rofiz().get_movable_object_xform(&us_data.ro_ref);
     let border_vertexes = us_data.border_vertexes
         .map(|v| v.rotated(xform.dtheta as f32))
@@ -78,8 +160,9 @@ fn draw(ctx: &mut SuDrawContext) {
         .chain(inner_vertexes.iter().cloned())
         .chain(inner_vertexes[..1].iter().cloned())
         .collect::<Box<_>>();
-    let inner_dop = ctx.draw_ctx.do_tri_fan(inner_color, &tri_fan_vertexes);
-    ctx.draw_ctx.add_draw_op(DrawContext::Z_UNIT, ctx.draw_ctx.dop_group(Box::new([border_dop, inner_dop])));
+    let outer_dop = ctx.draw_ctx.do_tri_fan(outer_color, &tri_fan_vertexes);
+    let inner_dop = ctx.draw_ctx.do_circle(PROJ_COLOR, center, PROJ_RADIUS);
+    ctx.draw_ctx.add_draw_op(DrawContext::Z_UNIT, ctx.draw_ctx.dop_group(Box::new([border_dop, outer_dop, inner_dop])));
 }
 
 struct Group {
@@ -117,7 +200,7 @@ impl RoomObject for Group {
                             (0.0, 0.0)
                         } else {
                             let angle = f64::atan2(closest.y - self.y, closest.x - self.x);
-                            let ms = 5.0 * ctx.get_tick_length();
+                            let ms = 3.0 * ctx.get_tick_length();
                             (ms * f64::cos(angle), ms * f64::sin(angle))
                         }
                     } else {
