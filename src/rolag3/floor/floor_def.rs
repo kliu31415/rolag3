@@ -102,7 +102,7 @@ impl Floor {
                     weight: 1.0, 
                     func: Box::new(|ctx: &mut GenFloorRoomContext| (get_gen_room_fn_boss_generic_rect(50, 50, 
                         Box::new(|ctx: &mut NewRoomObjectContext| {
-                            let colors = (0..20).map(|_| {
+                            let colors = (0..25).map(|_| {
                                 let randv = ctx.get_randf64();
                                 if randv < 1.0 / 3.0 {
                                     DamageColor::Red

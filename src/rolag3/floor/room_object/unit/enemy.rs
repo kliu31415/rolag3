@@ -6,5 +6,6 @@ pub mod rotating_laser;
 pub mod boss;
 pub mod lightning;
 pub mod fatstar4;
-pub mod thinstar5;
+pub mod thinstar3;
 pub mod thinstar4;
+pub mod thinstar5;

@@ -4,6 +4,11 @@ use crate::{rolag3::floor::{draw::DrawContext, run::PlayerInput, rofiz::{rofiz_s
 
 use super::{damage::DamageColor, unit::standard_unit_common::{Budeb, StandardUnitCommon}};
 
+/* Rules:
+   -act1() must be called at least once before any draw() calls. This allows initialization steps to be performed in
+    act1(). 
+*/
+
 pub trait RoomObject {
     fn is_player(&self) -> bool {
         false
@@ -642,6 +647,51 @@ impl<'a> Act1Context<'a> {
 
     pub fn get_room_cleared_at_time(&self) -> Option<f64> {
         self.room_cleared_at_time
+    }
+
+    pub fn is_in_room(&self, x: f64, y: f64) -> bool {
+        x >= 0.0 && y >= 0.0 && x + 1.0 < self._room_width as f64 && y + 1.0 < self._room_height as f64
+    }
+
+    pub fn sample_wall_xy(&mut self, buffer: f64) -> (f64, f64) {
+        let mut tries = 0;
+        loop {
+            tries += 1;
+            assert!(tries < 100);
+            let mut walk_len = self.rng.gen_f64() * (2.0 * (self._room_width + self._room_height) as f64);
+            let (x, y) = (|| {
+                if walk_len < self._room_width as f64 {
+                    return (walk_len, -buffer);
+                }
+                walk_len -= self._room_width as f64;
+                if walk_len < self._room_height as f64  {
+                    return (self._room_width as f64 + buffer, walk_len);
+                }
+                walk_len -= self._room_height as f64;
+                if walk_len < self._room_width as f64 {
+                    return (walk_len, self._room_height as f64 + buffer);
+                }
+                walk_len -= self._room_width as f64;
+                return (-buffer, walk_len);
+            })();
+            let xmin = i32::max(0, (x - buffer) as i32);
+            let xmax = i32::min((self._room_width - 1).try_into().unwrap(), (x + buffer) as i32);
+            let ymin = i32::max(0, (y - buffer) as i32);
+            let ymax = i32::min((self._room_height - 1).try_into().unwrap(), (y + buffer) as i32);
+
+            let mut works = true;
+            'outer: for x in xmin..=xmax {
+                for y in ymin..=ymax {
+                    if self._room_tiles[x as usize][y as usize] == RoomTile::Connection {
+                        works = false;
+                        break 'outer;
+                    }
+                }
+            }
+            if works {
+                return (x, y);
+            }
+        }
     }
     
     pub fn _get_room_width(&self) -> u32 {

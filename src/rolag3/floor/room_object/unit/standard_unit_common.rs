@@ -99,6 +99,7 @@ pub enum TranslateMove {
     Accelerate{ax: f64, ay: f64}, // ax and ay will be normalized to engine power and traction
     Decelerate,
     ResetVelocity,
+    SetXY{x: f64, y: f64},
 }
 
 #[derive(Debug)]
@@ -254,6 +255,7 @@ impl StandardUnitCommon {
 
     pub fn set_translate_move(&mut self, translate: TranslateMove) {
         assert!(self.act1_started, "cannot call standard_unit_common::set_translate_move() before act1 starts");
+        assert!(self.ro_ref.is_some());
         self.translate = translate;
     }
 
@@ -380,6 +382,7 @@ impl StandardUnitCommon {
                 self.velocity_x = 0.0;
                 self.velocity_y = 0.0;
             }
+            TranslateMove::SetXY { .. } => {} // nop
         }
 
         match self.rotate {
@@ -452,23 +455,29 @@ impl StandardUnitCommon {
         let dy = self.velocity_y * tick_length * speed_mult;
         let dtheta = self.velocity_theta * tick_length * speed_mult;
 
-        let mut movement_and_fallbacks = vec![Transformation::new(dx, dy, dtheta)];
+        let movement = if let TranslateMove::SetXY{x, y} = self.translate {
+            self.prev_desired_movement = Some(Transformation::new(x - position.dx, y - position.dy, dtheta));
+            RofizObjectMovement::SetXform(Transformation::new(x, y, position.dtheta + dtheta))
+        } else {
+            let mut movement_and_fallbacks = vec![Transformation::new(dx, dy, dtheta)];
 
-        let dxy_r = f64::hypot(dx, dy);
-        let dxy_theta = f64::atan2(dy, dx);
-        for i in 1..3 {
-            for j in [-1, 1] {
-                let angle = (j * i) as f64 / 3.0 * std::f64::consts::PI / 2.0;
-                let mag_adj = f64::cos(angle);
-                let new_dx = mag_adj * dxy_r * f64::cos(dxy_theta + angle);
-                let new_dy = mag_adj * dxy_r * f64::sin(dxy_theta + angle);
-                movement_and_fallbacks.push(Transformation::new(new_dx, new_dy, f64::abs(i as f64) / 3.0 * dtheta));
+            let dxy_r = f64::hypot(dx, dy);
+            let dxy_theta = f64::atan2(dy, dx);
+            for i in 1..3 {
+                for j in [-1, 1] {
+                    let angle = (j * i) as f64 / 3.0 * std::f64::consts::PI / 2.0;
+                    let mag_adj = f64::cos(angle);
+                    let new_dx = mag_adj * dxy_r * f64::cos(dxy_theta + angle);
+                    let new_dy = mag_adj * dxy_r * f64::sin(dxy_theta + angle);
+                    movement_and_fallbacks.push(Transformation::new(new_dx, new_dy, f64::abs(i as f64) / 3.0 * dtheta));
+                }
             }
-        }
-        let movement = RofizObjectMovement::MoveWithFallbacks(movement_and_fallbacks.clone());
-        self.prev_position = Some(position);
-        self.prev_desired_movement = Some(Transformation::new(dx, dy, dtheta));
+            self.prev_desired_movement = Some(Transformation::new(dx, dy, dtheta));
+            RofizObjectMovement::MoveWithFallbacks(movement_and_fallbacks)
+        };
 
+
+        self.prev_position = Some(position);
         self.translate = TranslateMove::Nop;
         self.rotate = RotateMove::Nop;
         self.external_forces.clear();

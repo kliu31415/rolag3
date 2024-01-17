@@ -5,7 +5,7 @@ use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext
 /* Thinstar4Circle is a spectral unit that rotates around in groups and slowly follows the player. It comes in multiple
    colors. The color determines the attack behavior:
    -Red: periodically fires a laser towards the player after a brief warning
-   -Green: periodically fires a wave of 3 projectiles towards the player
+   -Green: periodically fires a wave of 5 projectiles towards the player
    -Blue: periodically fires 8 projectiles in all cardinal and semicardinal directions
 */
 
@@ -31,7 +31,7 @@ const BLUE_PROJ_SPEED: f64 = 12.0;
 const BLUE_PROJ_COLOR: Color = Color::new(0.1, 0.1, 16.0, 1.0);
 const BLUE_PROJ_RADIUS: f32 = 0.2;
 
-struct ThinStar4Red {
+struct ThinStar4RgbCircle {
     border_color: Color,
     outer_color: Color,
     border_vertexes: [Point; 8],
@@ -63,7 +63,7 @@ struct FireRadialProjWaveInfo {
 
 }
 
-fn new_thinstar4(ctx: &mut NewRoomObjectContext, damage_color: DamageColor, x: f64, y: f64) -> StandardUnit1 {
+fn new_thinstar4_circle(ctx: &mut NewRoomObjectContext, damage_color: DamageColor, x: f64, y: f64) -> StandardUnit1 {
     let border_vertexes: [Point; 8] = get_star_shape(4, 0.35, RADIUS as f32, -0.1 * std::f32::consts::PI)[..].try_into().unwrap();
     let inner_vertexes: [Point; 8] = get_inner_polygon(0.1, &border_vertexes)[..].try_into().unwrap();
     let xform = Transformation::new(x, y, 0.0);
@@ -90,7 +90,7 @@ fn new_thinstar4(ctx: &mut NewRoomObjectContext, damage_color: DamageColor, x: f
         DamageColor::Silver => panic!("unexpected damage_color of {:?}", damage_color),
     };
 
-    let us_data = ThinStar4Red { 
+    let us_data = ThinStar4RgbCircle { 
         border_color,
         outer_color,
         border_vertexes,
@@ -112,7 +112,7 @@ fn slave_act1(
     _: &mut dyn Any /*output*/,
 ) {
     let input_data = input.downcast_ref::<(f64, f64)>().unwrap();
-    let us_data = ctx.su_ctx.us_data.downcast_mut::<ThinStar4Red>().unwrap();
+    let us_data = ctx.su_ctx.us_data.downcast_mut::<ThinStar4RgbCircle>().unwrap();
     let old_xform = ctx.act1_ctx.get_rofiz().get_movable_object_xform(&us_data.ro_ref);
     let tick_len = ctx.act1_ctx.get_tick_length();
     let new_xform = Transformation::new(input_data.0, input_data.1, old_xform.dtheta + 1.5 * tick_len);
@@ -175,7 +175,7 @@ fn slave_act1(
                     }
                 },
                 None => {
-                    if ctx.act1_ctx.get_randf64() < 3.5 * ctx.su_ctx.su_common.get_unit_tick_len() {
+                    if ctx.act1_ctx.get_randf64() < 0.35 * ctx.su_ctx.su_common.get_unit_tick_len() {
                         let query = Act1QueryArgs::ClosestUnit { x: new_xform.dx, y: new_xform.dy, team_filter: Some(Team::Player) };
                         *query_result = Some(response.add_query(query));
                     }
@@ -189,7 +189,7 @@ fn slave_act1(
                     Act1QueryResult::ClosestUnit(cu_opt) => {
                         if let Some(cu) = cu_opt {
                             *info = Some(FireDirectedProjWaveInfo {
-                                angle: f64::atan2(cu.y - new_xform.dy, cu.x - new_xform.dx) + ctx.act1_ctx.get_rng().gen_normal(0.0, 0.5),
+                                angle: f64::atan2(cu.y - new_xform.dy, cu.x - new_xform.dx) + ctx.act1_ctx.get_rng().gen_normal(0.0, 0.7),
                             });
                         }
                     },
@@ -199,7 +199,7 @@ fn slave_act1(
 
             match info.take() {
                 Some(dpwi) => {
-                    for i in -1..=1 {
+                    for i in -2..=2 {
                         let d_angle = i as f64 * 0.1 * std::f64::consts::PI;
                         let self_as_weak = ctx.act1_ctx.get_self_as_weak();
                         let proj = Projectile2Builder::new(Projectile2BuilderReq {
@@ -217,7 +217,7 @@ fn slave_act1(
                     }
                 }
                 None => {
-                    if ctx.act1_ctx.get_randf64() < 2.5 * ctx.su_ctx.su_common.get_unit_tick_len() {
+                    if ctx.act1_ctx.get_randf64() < 0.5 * ctx.su_ctx.su_common.get_unit_tick_len() {
                         let query = Act1QueryArgs::ClosestUnit { x: new_xform.dx, y: new_xform.dy, team_filter: Some(Team::Player) };
                         *query_result = Some(response.add_query(query));
                     }
@@ -246,7 +246,7 @@ fn slave_act1(
                     }
                 }
                 None => {
-                    if ctx.act1_ctx.get_randf64() < 2.0 * ctx.su_ctx.su_common.get_unit_tick_len() {
+                    if ctx.act1_ctx.get_randf64() < 0.5 * ctx.su_ctx.su_common.get_unit_tick_len() {
                         *info = Some(FireRadialProjWaveInfo {});
                     }
                 }
@@ -257,7 +257,7 @@ fn slave_act1(
 }
 
 fn draw(ctx: &mut SuDrawContext) {
-    let us_data = ctx.su_ctx.us_data.downcast_mut::<ThinStar4Red>().unwrap();
+    let us_data = ctx.su_ctx.us_data.downcast_mut::<ThinStar4RgbCircle>().unwrap();
     let border_color = ctx.su_ctx.su_common.get_draw_color(ctx.draw_ctx.get_room_time(), us_data.border_color);
     let outer_color = ctx.su_ctx.su_common.get_draw_color(ctx.draw_ctx.get_room_time(), us_data.outer_color);
     let xform = ctx.draw_ctx.get_rofiz().get_movable_object_xform(&us_data.ro_ref);
@@ -437,7 +437,7 @@ pub fn new_thinstar4_group(
         let angle = i as f64 / (count as f64) * 2.0 * std::f64::consts::PI;
         let x_offset = radius * f64::cos(angle);
         let y_offset = radius * f64::sin(angle);
-        Rc::new(RefCell::new(new_thinstar4(ctx, *color, x + x_offset, y + y_offset)))
+        Rc::new(RefCell::new(new_thinstar4_circle(ctx, *color, x + x_offset, y + y_offset)))
     }).collect::<Box<_>>();
     let group = Group {
         md,
