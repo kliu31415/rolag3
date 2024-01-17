@@ -1,1 +1,1 @@
-pub mod red_circle;
+pub mod rgb_circle;

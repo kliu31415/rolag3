@@ -1,6 +1,6 @@
 use std::{collections::HashMap, cell::RefCell, rc::Rc};
 
-use crate::{gfx::renderer::Renderer, rolag3::floor::{roomgen::{empty1::get_gen_room_fn_empty1, common::_1000::{_1000::get_gen_room_fn_common1000, _1001::get_gen_room_fn_common1001}}, floorgen::run::{GenFloorRoomFn, GenFloorRoomReqInfo}, room_object::{cosmetic::ground1::GroundTheme, wall::basic_wall::WallTheme, unit::enemy::thinstar4::red_circle::new_thinstar4_red_group}, draw::Color, rofiz::rofiz_state::RofizState}, util::rng::Prng};
+use crate::{gfx::renderer::Renderer, rolag3::floor::{roomgen::{empty1::get_gen_room_fn_empty1, common::_1000::{_1000::get_gen_room_fn_common1000, _1001::get_gen_room_fn_common1001}}, floorgen::run::{GenFloorRoomFn, GenFloorRoomReqInfo}, room_object::{cosmetic::ground1::GroundTheme, wall::basic_wall::WallTheme, unit::enemy::thinstar4::rgb_circle::new_thinstar4_group, damage::DamageColor}, draw::Color, rofiz::rofiz_state::RofizState}, util::rng::Prng};
 
 use super::{room::{Room, RoomConnectionInfo}, room_object::{unit::{player::{Player, MoveRooms}, enemy::boss::{star_king::new_boss_star_king, circle_mage1::new_boss_circle_mage1, star_soldier::new_boss_star_soldier}}, room_object_def::{FloorCoordinate, RoomObjectId, RoomObjectRef, RoomObjectType, NewRoomObjectContext, RoomObject}, tiles::room_connection::Direction}, roomgen::{boss_room1::get_gen_room_fn_boss1, test_room1::get_gen_room_fn_test_room1, test_room2::get_gen_room_fn_test_room2, maze1::get_gen_room_fn_maze1, boss::generic_rect::get_gen_room_fn_boss_generic_rect}, floorgen::run::{gen_floor, GenFloorArgs, GenFloorRoomContext}};
 
@@ -101,8 +101,19 @@ impl Floor {
                 funcs: vec![GenFloorRoomFn {
                     weight: 1.0, 
                     func: Box::new(|ctx: &mut GenFloorRoomContext| (get_gen_room_fn_boss_generic_rect(50, 50, 
-                        Box::new(|ctx: &mut NewRoomObjectContext| 
-                            new_thinstar4_red_group(ctx, 20, 25.0, 25.0)))(ctx))),
+                        Box::new(|ctx: &mut NewRoomObjectContext| {
+                            let colors = (0..20).map(|_| {
+                                let randv = ctx.get_randf64();
+                                if randv < 1.0 / 3.0 {
+                                    DamageColor::Red
+                                } else if randv < 2.0 / 3.0 {
+                                    DamageColor::Green
+                                } else {
+                                    DamageColor::Blue
+                                }
+                            }).collect::<Box<_>>();
+                            new_thinstar4_group(ctx, &colors, 25.0, 25.0)
+                        }))(ctx))),
                 },]
             },
         ];
