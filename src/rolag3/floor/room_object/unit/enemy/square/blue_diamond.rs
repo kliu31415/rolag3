@@ -7,7 +7,6 @@ use crate::{rolag3::floor::{draw::{Color, DrawContext}, room_object::{room_objec
 
 pub const RADIUS: f64 = 1.0;
 
-const BORDER_COLOR: Color = Color::new(0.2, 0.2, 0.2, 1.0);
 const OUTER_COLOR: Color = Color::new(0.0, 0.0, 1.0, 1.0);
 const INNER_COLOR: Color = Color::new(0.1, 0.1, 2.0, 1.0);
 const PROJ_COLOR: Color = Color::new(0.2, 0.2, 13.0, 1.0);
@@ -125,7 +124,7 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
 
 fn draw(ctx: &mut SuDrawContext) {
     let us_data = ctx.su_ctx.us_data.downcast_mut::<SquareBlueDiamond>().unwrap();
-    let border_color = ctx.su_ctx.su_common.get_draw_color(ctx.draw_ctx.get_room_time(), BORDER_COLOR);
+    let border_color = ctx.su_ctx.su_common.get_draw_color(ctx.draw_ctx.get_room_time(), DrawContext::COLOR_NSU_BORDER);
     let outer_color = ctx.su_ctx.su_common.get_draw_color(ctx.draw_ctx.get_room_time(), OUTER_COLOR);
     let inner_color = match us_data.spit_projectile_start {
         Some(ref x) => {

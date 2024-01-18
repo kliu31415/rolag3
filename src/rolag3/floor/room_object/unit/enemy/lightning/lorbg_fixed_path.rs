@@ -4,7 +4,6 @@ use crate::rolag3::floor::{draw::{Color, DrawContext}, room_object::{room_object
 
 use super::lightning_orb_group::{LightningOrbGroup, new_lightning_orb_group};
 
-const ORB_BORDER_COLOR: Color = Color::new(0.2, 0.2, 0.2, 1.0);
 const ORB_INNER_COLOR: Color = Color::new(0.8, 0.8, 0.8, 1.0);
 const ORB_BORDER_RADIUS: f32 = 0.4;
 const ORB_INNER_RADIUS: f32 = 0.3;
@@ -71,7 +70,7 @@ impl RoomObject for LorbgFixedPath {
     fn draw(&mut self, ctx: &mut DrawContext) {
         let mut dops = Vec::new();
         let lo_group_rc = self.lo_group.upgrade().unwrap();
-        lo_group_rc.borrow_mut().slave_draw(&mut dops, ctx, ORB_INNER_COLOR, ORB_BORDER_COLOR, ORB_INNER_RADIUS, ORB_BORDER_RADIUS);
+        lo_group_rc.borrow_mut().slave_draw(&mut dops, ctx, ORB_INNER_COLOR, DrawContext::COLOR_NSU_BORDER, ORB_INNER_RADIUS, ORB_BORDER_RADIUS);
         ctx.add_draw_op(DrawContext::Z_UNIT, ctx.dop_group(dops.into()));
     }
 

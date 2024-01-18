@@ -2,7 +2,6 @@ use std::{cell::RefCell, rc::Rc};
 
 use crate::{rolag3::floor::{room_object::{room_object_def::{Act1QueryResult, NewRoomObjectContext, Team, Act1Response, Act1QueryArgs}, unit::{standard_unit1::{StandardUnit1, StandardUnit1Builder, StandardUnit1BuilderReq, SuAct1Context, SuDrawContext}, standard_unit_common::TranslateMove}, damage::DamageColor}, rofiz::rofiz_object::Transformation, draw::{Color, DrawContext}}, geometry::{shape::{Shape, Point}, util::{rotate_polygon, regular_polygon, get_inner_polygon}}};
 
-const BORDER_COLOR: Color = Color::new(0.2, 0.2, 0.2, 1.0);
 const INNER_COLOR_INACTIVE: Color = Color::new(2.0, 0.0, 0.0, 1.0);
 const INNER_COLOR_ACTIVE: Color = Color::new(5.0, 0.1, 0.1, 1.0);
 
@@ -110,7 +109,7 @@ fn draw(ctx: &mut SuDrawContext) {
         None => INNER_COLOR_INACTIVE,
     };
     let us_data = ctx.su_ctx.us_data.downcast_mut::<SquareRed>().unwrap();
-    let border_color = ctx.su_ctx.su_common.get_draw_color(ctx.draw_ctx.get_room_time(), BORDER_COLOR);
+    let border_color = ctx.su_ctx.su_common.get_draw_color(ctx.draw_ctx.get_room_time(), DrawContext::COLOR_NSU_BORDER);
     let inner_color = ctx.su_ctx.su_common.get_draw_color(ctx.draw_ctx.get_room_time(), inner_color);
     let xform = ctx.draw_ctx.get_rofiz().get_movable_object_xform(ctx.su_ctx.su_common.get_ro_ref());
     let border_vertexes = us_data.border_vertexes.map(|v| Point::new(xform.dx as f32 + v.x, xform.dy as f32 + v.y));

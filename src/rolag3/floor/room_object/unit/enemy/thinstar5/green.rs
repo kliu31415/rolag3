@@ -8,7 +8,6 @@ use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext
 
 const RADIUS: f64 = 1.1;
 const MAX_HP: f64 = 20.0;
-const BORDER_COLOR: Color = Color::new(0.2, 0.2, 0.2, 1.0);
 const INNER_COLOR_INACTIVE: Color = Color::new(0.02, 0.2, 0.02, 1.0);
 const INNER_COLOR_ACTIVE: Color = Color::new(0.02, 1.5, 0.02, 1.0);
 const PROJ_COLOR: Color = Color::new(0.02, 1.5, 0.02, 1.0);
@@ -101,7 +100,7 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
 
 fn draw(ctx: &mut SuDrawContext) {
     let us_data = ctx.su_ctx.us_data.downcast_mut::<ThinStar5Green>().unwrap();
-    let border_color = ctx.su_ctx.su_common.get_draw_color(ctx.draw_ctx.get_room_time(), BORDER_COLOR);
+    let border_color = ctx.su_ctx.su_common.get_draw_color(ctx.draw_ctx.get_room_time(), DrawContext::COLOR_NSU_BORDER);
     let inner_color = if ctx.su_ctx.su_common.get_cur_hp() < MAX_HP {
         INNER_COLOR_ACTIVE
     } else {

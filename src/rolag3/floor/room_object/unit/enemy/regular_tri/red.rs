@@ -4,7 +4,6 @@ use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext
    faster temporarily.
 */
 
-const BORDER_COLOR: Color = Color::new(0.2, 0.2, 0.2, 1.0);
 const INNER_COLOR: Color = Color::new(0.5, 0.0, 0.0, 1.0);
 const EXCITED_COLOR: Color = Color::new(5.0, 0.1, 0.1, 1.0);
 
@@ -91,7 +90,7 @@ fn draw(ctx: &mut SuDrawContext) {
     assert!(us_data.inner.vertexes.len() == 3);
     let inner_color_t = us_data.excitement / (1.0 + us_data.excitement);
     let inner_color = Color::lerp(INNER_COLOR, EXCITED_COLOR, inner_color_t as f32);
-    let border_color = ctx.su_ctx.su_common.get_draw_color(ctx.draw_ctx.get_room_time(), BORDER_COLOR);
+    let border_color = ctx.su_ctx.su_common.get_draw_color(ctx.draw_ctx.get_room_time(), DrawContext::COLOR_NSU_BORDER);
     let inner_color = ctx.su_ctx.su_common.get_draw_color(ctx.draw_ctx.get_room_time(), inner_color);
     let xform = ctx.draw_ctx.get_rofiz().get_movable_object_xform(ctx.su_ctx.su_common.get_ro_ref());
     let border = xform.get_transformed_polygon(&us_data.border).vertexes;

@@ -12,20 +12,17 @@ use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext
 const RADIUS: f64 = 0.9;
 const MAX_HP: f64 = 20.0;
 
-const RED_BORDER_COLOR: Color = Color::new(0.5, 0.5, 0.5, 1.0);
 const RED_OUTER_COLOR: Color = Color::new(0.5, 0.02, 0.02, 1.0);
 const RED_PROJ_FIRE_INTERVAL: f64 = 0.002;
 const RED_PROJ_SPEED: f64 = 150.0;
 const RED_PROJ_COLOR: Color = Color::new(6.0, 0.02, 0.02, 1.0);
 const RED_PROJ_RADIUS: f32 = 0.2;
 
-const GREEN_BORDER_COLOR: Color = Color::new(0.5, 0.5, 0.5, 1.0);
 const GREEN_OUTER_COLOR: Color = Color::new(0.02, 0.5, 0.02, 1.0);
 const GREEN_PROJ_SPEED: f64 = 10.0;
 const GREEN_PROJ_COLOR: Color = Color::new(0.02, 1.6, 0.02, 1.0);
 const GREEN_PROJ_RADIUS: f32 = 0.2;
 
-const BLUE_BORDER_COLOR: Color = Color::new(0.5, 0.5, 0.5, 1.0);
 const BLUE_OUTER_COLOR: Color = Color::new(0.02, 0.02, 0.5, 1.0);
 const BLUE_PROJ_SPEED: f64 = 12.0;
 const BLUE_PROJ_COLOR: Color = Color::new(0.1, 0.1, 16.0, 1.0);
@@ -83,9 +80,9 @@ fn new_thinstar4_circle(ctx: &mut NewRoomObjectContext, damage_color: DamageColo
     let ro_ref = ctx.add_spectral_unit(room_obj_ref, hitbox);
 
     let (border_color, outer_color, attack_style) = match damage_color {
-        DamageColor::Red => (RED_BORDER_COLOR, RED_OUTER_COLOR, AttackStyle::Laser {query_result: None, info: None}),
-        DamageColor::Green => (GREEN_BORDER_COLOR, GREEN_OUTER_COLOR, AttackStyle::DirectedProjWave {query_result: None, info: None}),
-        DamageColor::Blue => (BLUE_BORDER_COLOR, BLUE_OUTER_COLOR, AttackStyle::RadialProjWave { info: None }),
+        DamageColor::Red => (DrawContext::COLOR_SU_BORDER, RED_OUTER_COLOR, AttackStyle::Laser {query_result: None, info: None}),
+        DamageColor::Green => (DrawContext::COLOR_SU_BORDER, GREEN_OUTER_COLOR, AttackStyle::DirectedProjWave {query_result: None, info: None}),
+        DamageColor::Blue => (DrawContext::COLOR_SU_BORDER, BLUE_OUTER_COLOR, AttackStyle::RadialProjWave { info: None }),
         DamageColor::NotSet => panic!("unexpected damage_color of {:?}", damage_color),
         DamageColor::Silver => panic!("unexpected damage_color of {:?}", damage_color),
     };

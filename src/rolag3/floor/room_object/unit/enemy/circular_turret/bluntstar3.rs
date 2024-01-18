@@ -5,9 +5,6 @@ use std::{rc::Rc, cell::RefCell};
 
 use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Team, Act1Response}, unit::{standard_unit1::{StandardUnit1, StandardUnit1Builder, StandardUnit1BuilderReq, SuAct1Context, SuDrawContext}, standard_unit_common::RotateMove}, damage::DamageColor, projectile::projectile2::{Proj2Shape, Projectile2BuilderReq, Projectile2Builder}}, draw::{Color, DrawContext}, rofiz::rofiz_object::Transformation}, geometry::{shape::{Point, Shape, Vector}, star::get_blunt_star, util::get_inner_polygon}};
 
-const CIRCLE_BORDER_COLOR: Color = Color::new(0.5, 0.5, 0.5, 1.0);
-const TURRET_BORDER_COLOR: Color = Color::new(0.5, 0.5, 0.5, 1.0);
-
 const CIRCLE_BORDER_RADIUS: f32 = 1.5;
 const CIRCLE_INNER_RADIUS: f32 = 1.4;
 const TURRET_INNER_RADIUS: f32 = 0.5;
@@ -136,7 +133,7 @@ fn draw(ctx: &mut SuDrawContext) {
     let xform = ctx.draw_ctx.get_rofiz().get_movable_object_xform(ctx.su_ctx.su_common.get_ro_ref());
     let circles_dop = ctx.draw_ctx.do_concentric_circle(
         us_data.circle_inner_color,
-        CIRCLE_BORDER_COLOR, 
+        DrawContext::COLOR_NSU_BORDER, 
         Point::new(xform.dx as f32, xform.dy as f32), 
         CIRCLE_INNER_RADIUS, 
         CIRCLE_BORDER_RADIUS);
@@ -145,7 +142,7 @@ fn draw(ctx: &mut SuDrawContext) {
     let Shape::Polygon(ref turret_border_xformed) = us_data.turret_border_xformed_cache else {panic!()};
     let Shape::Polygon(ref turret_inner_xformed) = us_data.turret_inner_xformed_cache else {panic!()};
     let turret_border_dop = ctx.draw_ctx.do_thick_border(
-        TURRET_BORDER_COLOR, 
+        DrawContext::COLOR_NSU_BORDER, 
         &turret_border_xformed.vertexes, 
         &turret_inner_xformed.vertexes);
     let turret_inner_dop = ctx.draw_ctx.do_tri_fan(us_data.turret_inner_color, &turret_inner_xformed.vertexes);

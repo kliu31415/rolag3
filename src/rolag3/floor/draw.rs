@@ -314,6 +314,9 @@ impl DrawContext<'_> {
     pub const Z_HUD: f64 = 200.0;
     pub const Z_TAB_OVERLAY: f64 = 210.0;
 
+    pub const COLOR_NSU_BORDER: Color = Color::new(0.2, 0.2, 0.2, 1.0);
+    pub const COLOR_SU_BORDER: Color = Color::new(0.5, 0.5, 0.5, 1.0);
+
     pub fn add_draw_op(&mut self, z: f64, op: DrawOp) {
         self.draw_ops.push(DrawOpWithMetadata::new(z, op));
     }

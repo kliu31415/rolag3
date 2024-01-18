@@ -6,7 +6,6 @@ use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext
    position in the room. It's surrounded by 6 orbs that block projectiles. A laser exists between any pair of orbs.
 */
 
-const BORDER_COLOR: Color = Color::new(0.2, 0.2, 0.2, 1.0);
 const OUTER_COLOR: Color = Color::new(0.01, 0.3, 0.01, 1.0);
 const PROJ_COLOR: Color = Color::new(0.01, 1.5, 0.01, 1.0);
 const BORDER_RADIUS: f32 = 2.0;
@@ -17,7 +16,6 @@ const ORB_OFFSET_MIN: f64 = 5.0;
 const ORB_OFFSET_MAX: f64 = 40.0;
 const ORB_MAX_ROTATE_SPEED: f64 = 0.8;
 
-const ORB_BORDER_COLOR: Color = Color::new(0.2, 0.2, 0.2, 1.0);
 const ORB_INNER_COLOR: Color = Color::new(0.8, 0.8, 0.8, 1.0);
 const ORB_BORDER_RADIUS: f32 = 0.4;
 const ORB_INNER_RADIUS: f32 = 0.3;
@@ -200,7 +198,7 @@ fn boss_act1(ctx: &mut SuAct1Context) -> Act1Response {
 
 fn boss_draw(ctx: &mut SuDrawContext) {
     let us_data = ctx.su_ctx.us_data.downcast_mut::<CircleMage1>().unwrap();
-    let border_color = ctx.su_ctx.su_common.get_draw_color(ctx.draw_ctx.get_room_time(), BORDER_COLOR);
+    let border_color = ctx.su_ctx.su_common.get_draw_color(ctx.draw_ctx.get_room_time(), DrawContext::COLOR_NSU_BORDER);
     let inner_color = ctx.su_ctx.su_common.get_draw_color(ctx.draw_ctx.get_room_time(), OUTER_COLOR);
     let xform = ctx.draw_ctx.get_rofiz().get_movable_object_xform(ctx.su_ctx.su_common.get_ro_ref());
     let center = Point::new(xform.dx as f32, xform.dy as f32);
@@ -211,7 +209,7 @@ fn boss_draw(ctx: &mut SuDrawContext) {
         &mut dops, 
         &ctx.draw_ctx, 
         ORB_INNER_COLOR, 
-        ORB_BORDER_COLOR, 
+        DrawContext::COLOR_NSU_BORDER, 
         ORB_INNER_RADIUS, 
         ORB_BORDER_RADIUS,
     );
