@@ -508,26 +508,27 @@ impl Renderer for WgpuRenderer {
 
             // convert DrawOps into GPU shader inputs
             let mut ordered_ops = bumpalo::collections::Vec::new_in(&self.per_frame_allocator);
+            let mut group_ops = bumpalo::collections::Vec::new_in(&self.per_frame_allocator);
             for opz1 in ops_per_z.into_iter() {
-                let mut groups = bumpalo::collections::Vec::new_in(&self.per_frame_allocator);
+                // Group ops are flattened by conceptually visiting the "nodes" in the group's "tree" in the same order
+                // as an in-order DFS. A vector is used to simulate the DFS. The end of the vector represents the node
+                // that will be visited next. A vector is used instead of a deque because vectors are faster. Bumpalo
+                // doesn't support deques, but a non-bumpalo Deque that's allocated once per frame is likely fast
+                // enough.
                 for opz2 in opz1.into_iter() {
                     match opz2 {
-                        DrawOp::Group(ref g) => groups.push(g),
+                        DrawOp::Group(ref g) => {
+                            group_ops.clear();
+                            g.ops.iter().rev().for_each(|x| group_ops.push(x));
+                            while let Some(last) = group_ops.pop() {
+                                match last {
+                                    DrawOp::Group(g2) => g2.ops.iter().rev().for_each(|x| group_ops.push(x)),
+                                    _ => ordered_ops.push(last),
+                                }
+                            }
+                        },
                         _ => ordered_ops.push(opz2),
                     }
-                }
-
-                while !groups.is_empty() {
-                    let mut next_groups = bumpalo::collections::Vec::new_in(&self.per_frame_allocator);
-                    for g in groups.drain(..) {
-                        for op in g.ops.iter() {
-                            match op {
-                                DrawOp::Group(ref g) => next_groups.push(g),
-                                _ => ordered_ops.push(op),
-                            }
-                        }
-                    }
-                    std::mem::swap(&mut groups, &mut next_groups);
                 }
             }
             let mut ordered_ops_iter = ordered_ops.drain(..).peekable();
