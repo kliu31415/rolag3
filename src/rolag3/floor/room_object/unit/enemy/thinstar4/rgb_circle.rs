@@ -97,9 +97,9 @@ fn new_thinstar4_circle(ctx: &mut NewRoomObjectContext, damage_color: DamageColo
     };
 
     builder.slave_act1_fn(Box::new(slave_act1))
-    .draw_fn(Box::new(draw))
-    .us_data(Box::new(us_data))
-    .build(ctx)
+        .draw_fn(Box::new(draw))
+        .us_data(Box::new(us_data))
+        .build(ctx)
 }
 
 fn slave_act1(
@@ -284,7 +284,7 @@ fn draw(ctx: &mut SuDrawContext) {
         DamageColor::NotSet => panic!("unexpected DamageColor of {:?}", ctx.su_ctx.damage_color),
         DamageColor::Silver => panic!("unexpected DamageColor of {:?}", ctx.su_ctx.damage_color),
     };
-    ctx.draw_ctx.add_draw_op(DrawContext::Z_UNIT, ctx.draw_ctx.dop_group(Box::new([border_dop, outer_dop, inner_dop])));
+    ctx.draw_ctx.add_draw_op(DrawContext::Z_UNIT_FLYING, ctx.draw_ctx.dop_group(Box::new([border_dop, outer_dop, inner_dop])));
 }
 
 struct Group {

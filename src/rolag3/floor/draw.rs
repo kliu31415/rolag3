@@ -309,6 +309,7 @@ impl DrawContext<'_> {
     pub const Z_UNIT_PLAYER: f64 = 28.0;
     pub const Z_UNIT_PLAYER_WEAPON: f64 = 29.0;
     pub const Z_UNIT: f64 = 30.0;
+    pub const Z_UNIT_FLYING: f64 = 31.0;
     pub const Z_PROJECTILE: f64 = 40.0;
     pub const Z_BLACK_HOLE: f64 = 50.0;
     pub const Z_HUD: f64 = 200.0;

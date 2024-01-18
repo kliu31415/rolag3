@@ -154,5 +154,5 @@ fn draw(ctx: &mut SuDrawContext) {
     let lerp_t = f64::min(1.0, 4.0 * f64::min(us_data.shoot_proj_counter, SHOOT_PROJ_INTERVAL - us_data.shoot_proj_counter)) as f32;
     let inner_color = Color::lerp(PROJ_COLOR, INNER_COLOR, lerp_t);
     let inner_dop = ctx.draw_ctx.do_circle(inner_color, Point::new(xform.dx as f32, xform.dy as f32), PROJ_RADIUS);
-    ctx.draw_ctx.add_draw_op(DrawContext::Z_UNIT, ctx.draw_ctx.dop_group(Box::new([border_dop, outer_dop, inner_dop])));
+    ctx.draw_ctx.add_draw_op(DrawContext::Z_UNIT_FLYING, ctx.draw_ctx.dop_group(Box::new([border_dop, outer_dop, inner_dop])));
 }
