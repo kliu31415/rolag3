@@ -4,9 +4,10 @@ use std::{rc::Rc, cell::RefCell};
 
 use crate::{geometry::{shape::{Shape, Point}, star::get_star_shape, util::{get_inner_polygon, rotate_polygon, regular_polygon}}, rolag3::floor::{draw::{Color, DrawContext}, rofiz::rofiz_object::Transformation, room_object::{unit::{standard_unit1::{StandardUnit1Builder, StandardUnit1BuilderReq, SuDrawContext, SuAct1Context, StandardUnit1}, standard_unit_common::TranslateMove}, room_object_def::{Team, Act1Response, NewRoomObjectContext, Act1QueryResult, Act1QueryArgs}, damage::DamageColor, projectile::projectile2::{Proj2Shape, Projectile2Builder, Projectile2BuilderReq}}}, util::rng::Prng};
 
-/* SquareRgbStar8 translates towards the player. It moves in the 4 cardinal directions. It periodically stops
-   and attacks. It can be one of the RGB colors. The attack depends on its color. can either be:
-   -Red: Shoot a laser in one of the 4 cardinal directions
+/* SquareRgbStar4or8 translates towards the player. It moves in the 4 cardinal directions. It periodically stops
+   and attacks. It can be one of the RGB colors. The movement and attack depends on its color and the number of
+   points in its internal star. It can either be:
+   -Red: Shoot a laser in one of the 4 cardinal directions. (8-star: fires a set of 3 lasers)
    -Green: Shoot a radial wave of 16 projectiles
    -Blue: Shoot a sequence of ~10 bullets. The bullet angles are perturbed by a gaussian with SD 0.3
 
@@ -36,10 +37,10 @@ const RADIAL_BULLET_PROJ_SPEED: f64 = 15.0;
 
 const SEQ_BULLET_PROJ_SPEED: f64 = 17.0;
 
-pub struct SquareRgbStar8 {
+pub struct SquareRgbStar4or8 {
     border_vertexes: [Point; 4],
     outer_vertexes: [Point; 4],
-    inner_vertexes: [Point; 16],
+    inner_vertexes: Box<[Point]>,
 
     outer_color: Color,
     inner_color: Color,
@@ -61,6 +62,7 @@ enum Action {
         start_age: f64, 
         end_prelude_age: f64, 
         end_age: f64,
+        num_lasers: u32,
         num_proj_fired: i32,
         query_result: Option<Rc<RefCell<Act1QueryResult>>>,
         angle: Option<f64>,
@@ -68,6 +70,7 @@ enum Action {
     AttackRadialBulletWave {
         _start_age: f64,
         fire_bullets_age: f64,
+        num_bullets: u32,
         has_fired_bullets: bool,
         end_age: f64,
     },
@@ -76,6 +79,7 @@ enum Action {
         start_fire_age: f64,
         end_age: f64,
         fire_interval: f64,
+        angle_sd: f64,
         num_bullets_fired: i32,
         query_result: Option<Rc<RefCell<Act1QueryResult>>>,
         angle: Option<f64>,
@@ -83,16 +87,16 @@ enum Action {
 }
 
 enum AttackStyle {
-    Laser,
-    RadialBulletWave,
-    BulletSequence,
+    Laser{num_lasers: u32},
+    RadialBulletWave{num_bullets: u32},
+    BulletSequence {fire_interval: f64, angle_sd: f64},
 }
 
-pub fn new_square_rgb_star8(ctx: &mut NewRoomObjectContext, damage_color: DamageColor, x: f64, y: f64) -> StandardUnit1 {
+pub fn new_square_rgb_star4(ctx: &mut NewRoomObjectContext, damage_color: DamageColor, x: f64, y: f64) -> StandardUnit1 {
     let mut border_vertexes: [Point; 4] = regular_polygon(4, 1.2)[..].try_into().unwrap();
     rotate_polygon(std::f32::consts::FRAC_PI_4, &mut border_vertexes);
     let outer_vertexes: [Point; 4] = get_inner_polygon(0.1, &border_vertexes)[..].try_into().unwrap();
-    let inner_vertexes: [Point; 16] = get_star_shape(8, PROJ_RADIUS, 0.5, 0.0)[..].try_into().unwrap();
+    let inner_vertexes = get_star_shape(4, PROJ_RADIUS, 0.6, 0.0);
     let xform = Transformation::new(x, y, 0.0);
     let shape = Shape::of_polygon(Box::new(border_vertexes));
 
@@ -104,9 +108,9 @@ pub fn new_square_rgb_star8(ctx: &mut NewRoomObjectContext, damage_color: Damage
     };
 
     let attack_style = match damage_color {
-        DamageColor::Red => AttackStyle::Laser,
-        DamageColor::Green => AttackStyle::RadialBulletWave,
-        DamageColor::Blue => AttackStyle::BulletSequence,
+        DamageColor::Red => AttackStyle::Laser{num_lasers: 1},
+        DamageColor::Green => AttackStyle::RadialBulletWave{num_bullets: 16},
+        DamageColor::Blue => AttackStyle::BulletSequence{fire_interval: 0.1, angle_sd: 0.3},
         _ => panic!("unexpected damage_color={:?}", damage_color),
     };
 
@@ -117,7 +121,63 @@ pub fn new_square_rgb_star8(ctx: &mut NewRoomObjectContext, damage_color: Damage
         _ => panic!("unexpected damage_color={:?}", damage_color),
     };
 
-    let us_data = SquareRgbStar8 {
+    let us_data = SquareRgbStar4or8 {
+        border_vertexes,
+        outer_vertexes,
+        inner_vertexes,
+
+        outer_color,
+        inner_color,
+        proj_color,
+
+        move_in_longer_axis_dir,
+        attack_style,
+        action: Action::Move{xlate_xy: None, force_end_age: 0.5 /*first 0.5s idle*/, xlate_query_result: None, early_stop_qr: None,},
+    };
+
+    StandardUnit1Builder::new(StandardUnit1BuilderReq {
+        team: Team::Enemy,
+        damage_color,
+        hp: 15.0,
+        engine_power: 6.0,
+        tire_traction: 50.0,
+    }).act1_fn(Box::new(act1))
+        .draw_fn(Box::new(draw))
+        .hitbox(xform, shape)
+        .us_data(Box::new(us_data))
+        .build(ctx)
+}
+
+pub fn new_square_rgb_star8(ctx: &mut NewRoomObjectContext, damage_color: DamageColor, x: f64, y: f64) -> StandardUnit1 {
+    let mut border_vertexes: [Point; 4] = regular_polygon(4, 1.2)[..].try_into().unwrap();
+    rotate_polygon(std::f32::consts::FRAC_PI_4, &mut border_vertexes);
+    let outer_vertexes: [Point; 4] = get_inner_polygon(0.1, &border_vertexes)[..].try_into().unwrap();
+    let inner_vertexes = get_star_shape(8, PROJ_RADIUS, 0.6, 0.0);
+    let xform = Transformation::new(x, y, 0.0);
+    let shape = Shape::of_polygon(Box::new(border_vertexes));
+
+    let (outer_color, inner_color, proj_color) = match damage_color {
+        DamageColor::Red => (R_OUTER_COLOR, R_INNER_COLOR, R_PROJ_COLOR),
+        DamageColor::Green => (G_OUTER_COLOR, G_INNER_COLOR, G_PROJ_COLOR),
+        DamageColor::Blue => (B_OUTER_COLOR, B_INNER_COLOR, B_PROJ_COLOR),
+        _ => panic!("unexpected damage_color={:?}", damage_color),
+    };
+
+    let attack_style = match damage_color {
+        DamageColor::Red => AttackStyle::Laser{num_lasers: 3},
+        DamageColor::Green => AttackStyle::RadialBulletWave{num_bullets: 32},
+        DamageColor::Blue => AttackStyle::BulletSequence {fire_interval: 0.05, angle_sd: 0.5},
+        _ => panic!("unexpected damage_color={:?}", damage_color),
+    };
+
+    let move_in_longer_axis_dir = match damage_color {
+        DamageColor::Red => Box::new(|_: &mut Prng| false) as _,
+        DamageColor::Green => Box::new(|_: &mut Prng| true) as _,
+        DamageColor::Blue => Box::new(|r: &mut Prng| r.gen_fair_bool()) as _,
+        _ => panic!("unexpected damage_color={:?}", damage_color),
+    };
+
+    let us_data = SquareRgbStar4or8 {
         border_vertexes,
         outer_vertexes,
         inner_vertexes,
@@ -135,7 +195,7 @@ pub fn new_square_rgb_star8(ctx: &mut NewRoomObjectContext, damage_color: Damage
         team: Team::Enemy,
         damage_color,
         hp: 20.0,
-        engine_power: 6.0,
+        engine_power: 7.0,
         tire_traction: 50.0,
     }).act1_fn(Box::new(act1))
         .draw_fn(Box::new(draw))
@@ -145,7 +205,7 @@ pub fn new_square_rgb_star8(ctx: &mut NewRoomObjectContext, damage_color: Damage
 }
 
 fn act1(ctx: &mut SuAct1Context) -> Act1Response {
-    let us_data = ctx.su_ctx.us_data.downcast_mut::<SquareRgbStar8>().unwrap();
+    let us_data = ctx.su_ctx.us_data.downcast_mut::<SquareRgbStar4or8>().unwrap();
 
     let mut response = Act1Response::new();
     let unit_age = ctx.su_ctx.su_common.get_unit_time();
@@ -192,32 +252,35 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
 
             if early_stop || unit_age > *force_end_age {
                 match us_data.attack_style {
-                    AttackStyle::Laser => {
+                    AttackStyle::Laser{num_lasers} => {
                         let query = Act1QueryArgs::ClosestUnit { x: xform.dx, y: xform.dy, team_filter: Some(Team::Player) };
                         us_data.action = Action::AttackLaser { 
                             start_age: unit_age,
                             end_prelude_age: unit_age + 1.0, 
                             end_age: unit_age + 2.0, 
+                            num_lasers,
                             num_proj_fired: 0, 
                             query_result: Some(response.add_query(query)),
                             angle: None,
                         };
                     }
-                    AttackStyle::RadialBulletWave => {
+                    AttackStyle::RadialBulletWave{num_bullets} => {
                         us_data.action = Action::AttackRadialBulletWave {
                             _start_age: unit_age,
                             fire_bullets_age: unit_age + 0.5,
+                            num_bullets,
                             has_fired_bullets: false,
                             end_age: unit_age + 1.0,
                         };
                     }
-                    AttackStyle::BulletSequence => {
+                    AttackStyle::BulletSequence{fire_interval, angle_sd}  => {
                         let query = Act1QueryArgs::ClosestUnit { x: xform.dx, y: xform.dy, team_filter: Some(Team::Player) };
                         us_data.action = Action::AttackBulletSequence {
                             _start_age: unit_age,
                             start_fire_age: unit_age + 0.5,
                             end_age: unit_age + 1.5,
-                            fire_interval: 0.1,
+                            fire_interval,
+                            angle_sd,
                             num_bullets_fired: 0,
                             query_result: Some(response.add_query(query)),
                             angle: None,
@@ -226,7 +289,7 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
                 }
             }
         }
-        Action::AttackLaser { start_age, end_prelude_age, end_age, num_proj_fired, angle, query_result } => {
+        Action::AttackLaser { start_age, end_prelude_age, end_age, num_lasers, num_proj_fired, angle, query_result } => {
             if let Some(qr) = query_result.take() {
                 let Act1QueryResult::ClosestUnit(cu_opt) = &*qr.borrow() else {panic!("unexpected qr={:?}", &*qr.borrow())};
                 if let Some(cu) = cu_opt {
@@ -248,21 +311,25 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
                     } else {
                         (10.0 * LASER_PROJ_FIRE_INTERVAL, us_data.proj_color)
                     };
-                    let proj = Projectile2Builder::new(Projectile2BuilderReq {
-                        team: Team::Enemy,
-                        damage_color: *ctx.su_ctx.damage_color,
-                        damage,
-                        owner: self_as_weak,
-                        velocity_x: LASER_PROJ_SPEED * f64::cos(*angle),
-                        velocity_y: LASER_PROJ_SPEED * f64::sin(*angle),
-                        xform: Transformation::new(xform.dx + since_fired * LASER_PROJ_SPEED * f64::cos(*angle), 
-                            xform.dy + since_fired * LASER_PROJ_FIRE_INTERVAL * f64::sin(*angle), 
-                            0.0),
-                        shape: Proj2Shape::Circle { x: 0.0, y: 0.0, r: PROJ_RADIUS },
-                        color,
-                    }).lifespan(2.0)
-                        .build(&mut NewRoomObjectContext::from_act1_ctx(ctx.act1_ctx));
-                    response.add_room_obj(Rc::new(RefCell::new(proj)));
+                    let spread = 0.1 * std::f64::consts::PI;
+                    for i in 0..*num_lasers {
+                        let proj_angle = *angle - spread * (0.5 * (*num_lasers-1) as f64) + spread * (i as f64);
+                        let proj = Projectile2Builder::new(Projectile2BuilderReq {
+                            team: Team::Enemy,
+                            damage_color: *ctx.su_ctx.damage_color,
+                            damage,
+                            owner: self_as_weak.clone(),
+                            velocity_x: LASER_PROJ_SPEED * f64::cos(proj_angle),
+                            velocity_y: LASER_PROJ_SPEED * f64::sin(proj_angle),
+                            xform: Transformation::new(xform.dx + since_fired * LASER_PROJ_SPEED * f64::cos(proj_angle), 
+                                xform.dy + since_fired * LASER_PROJ_SPEED * f64::sin(proj_angle), 
+                                0.0),
+                            shape: Proj2Shape::Circle { x: 0.0, y: 0.0, r: PROJ_RADIUS },
+                            color,
+                        }).lifespan(2.0)
+                            .build(&mut NewRoomObjectContext::from_act1_ctx(ctx.act1_ctx));
+                        response.add_room_obj(Rc::new(RefCell::new(proj)));
+                    }
                     *num_proj_fired += 1;
                 }
             }
@@ -271,12 +338,11 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
                 set_action_to_move = true;
             }
         }
-        Action::AttackRadialBulletWave { _start_age: _, fire_bullets_age, has_fired_bullets, end_age } => {
+        Action::AttackRadialBulletWave { _start_age: _, fire_bullets_age, num_bullets, has_fired_bullets, end_age } => {
             if !*has_fired_bullets && unit_age > *fire_bullets_age {
                 *has_fired_bullets = true;
-                let num_bullets = 16;
-                for i in 0..num_bullets {
-                    let angle = i as f64 / num_bullets as f64 * 2.0 * std::f64::consts::PI;
+                for i in 0..*num_bullets {
+                    let angle = i as f64 / *num_bullets as f64 * 2.0 * std::f64::consts::PI;
                     let self_as_weak = ctx.act1_ctx.get_self_as_weak();
                     let proj = Projectile2Builder::new(Projectile2BuilderReq {
                         team: Team::Enemy,
@@ -297,7 +363,7 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
                 set_action_to_move = true;
             }
         }
-        Action::AttackBulletSequence { _start_age, start_fire_age, end_age, fire_interval, num_bullets_fired, query_result, angle } => {
+        Action::AttackBulletSequence { _start_age, start_fire_age, end_age, angle_sd, fire_interval, num_bullets_fired, query_result, angle } => {
             if let Some(qr) = query_result.take() {
                 let Act1QueryResult::ClosestUnit(cu_opt) = &*qr.borrow() else {panic!("unexpected qr={:?}", &*qr.borrow())};
                 if let Some(cu) = cu_opt {
@@ -312,7 +378,7 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
                     let desired_npf = (since_start_fire / *fire_interval) as i32;
                     while *num_bullets_fired < desired_npf {
                         let self_as_weak = ctx.act1_ctx.get_self_as_weak();
-                        let proj_angle = *a2p + ctx.act1_ctx.get_rng().gen_normal(0.0, 0.3);
+                        let proj_angle = *a2p + ctx.act1_ctx.get_rng().gen_normal(0.0, *angle_sd);
                         let proj = Projectile2Builder::new(Projectile2BuilderReq {
                             team: Team::Enemy,
                             damage_color: *ctx.su_ctx.damage_color,
@@ -367,7 +433,7 @@ fn closest_cardinal_angle(angle: f64) -> f64 {
 }
 
 fn draw(ctx: &mut SuDrawContext) {
-    let us_data = ctx.su_ctx.us_data.downcast_mut::<SquareRgbStar8>().unwrap();
+    let us_data = ctx.su_ctx.us_data.downcast_mut::<SquareRgbStar4or8>().unwrap();
     let border_color = ctx.su_ctx.su_common.get_draw_color(ctx.draw_ctx.get_room_time(), DrawContext::COLOR_NSU_BORDER);
     let outer_color = ctx.su_ctx.su_common.get_draw_color(ctx.draw_ctx.get_room_time(), us_data.outer_color);
     let inner_color = match us_data.action {

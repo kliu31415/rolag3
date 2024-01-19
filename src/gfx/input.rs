@@ -1,6 +1,5 @@
 use std::collections::VecDeque;
 
-pub use winit::dpi::PhysicalPosition as MousePos;
 use winit::{event::{ElementState, MouseButton, KeyEvent, Event, WindowEvent, MouseScrollDelta}, keyboard::{PhysicalKey, PhysicalKey::{*}}, dpi::PhysicalPosition, window::WindowId};
 
 use crate::util::time::now_unix;
