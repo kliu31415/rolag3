@@ -204,7 +204,6 @@ impl Su1Data {
 pub struct StandardUnit1BuilderReq {
     pub team: Team,
     pub damage_color: DamageColor,
-    pub collision_damage: f64,
     pub hp: f64,
     pub engine_power: f64,
     pub tire_traction: f64,
@@ -212,6 +211,8 @@ pub struct StandardUnit1BuilderReq {
 
 pub struct StandardUnit1Builder {
     req: StandardUnit1BuilderReq,
+
+    collision_damage: f64,
 
     angular_power: f64,
     angular_traction: f64,
@@ -254,6 +255,7 @@ impl StandardUnit1Builder {
     pub fn new(req: StandardUnit1BuilderReq) -> Self {
         Self {
             req,
+            collision_damage: 8.0, /* good default for most enemies */
             angular_power: 0.0,
             angular_traction: 0.0,
             us_data: Box::new(UsDataDummy{}),
@@ -361,7 +363,7 @@ impl StandardUnit1Builder {
         let su_common = StandardUnitCommon::new(
             ro_ref, 
             self.damageable,
-            self.req.collision_damage,
+            self.collision_damage,
             self.req.hp, 
             self.req.engine_power, 
             self.req.tire_traction, 

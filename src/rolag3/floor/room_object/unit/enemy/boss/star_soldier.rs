@@ -69,7 +69,6 @@ pub fn new_boss_star_soldier(ctx: &mut NewRoomObjectContext, x: f64, y: f64) -> 
     StandardUnit1Builder::new(StandardUnit1BuilderReq {
         team: Team::Enemy,
         damage_color: DamageColor::Red,
-        collision_damage: 10.0,
         hp: MAX_HP,
         engine_power: 0.0,
         tire_traction: 0.0,

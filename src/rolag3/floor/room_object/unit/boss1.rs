@@ -27,7 +27,6 @@ pub fn new_boss1(ctx: &mut NewRoomObjectContext, x: f64, y: f64) -> StandardUnit
     StandardUnit1Builder::new(StandardUnit1BuilderReq {
         team: Team::Enemy,
         damage_color: DamageColor::Red,
-        collision_damage: 10.0,
         hp: 200.0,
         engine_power: 10.0,
         tire_traction: 20.0,

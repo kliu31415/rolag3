@@ -1,1 +1,1 @@
-pub mod blue;
+pub mod rgb;

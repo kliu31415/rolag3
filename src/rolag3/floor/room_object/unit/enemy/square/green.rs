@@ -28,7 +28,6 @@ pub fn new_square_green(ctx: &mut NewRoomObjectContext, x: f64, y: f64) -> Stand
     StandardUnit1Builder::new(StandardUnit1BuilderReq {
         team: Team::Enemy,
         damage_color: DamageColor::Green,
-        collision_damage: 10.0,
         hp: 30.0,
         engine_power: 10.0,
         tire_traction: 50.0,

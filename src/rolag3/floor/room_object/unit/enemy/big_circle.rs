@@ -1,1 +1,1 @@
-pub mod blue_diamond;
+pub mod rgb_diamond;

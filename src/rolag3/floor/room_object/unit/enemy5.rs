@@ -44,7 +44,6 @@ pub fn new_enemy5(ctx: &mut NewRoomObjectContext, x: f64, y: f64) -> StandardUni
     StandardUnit1Builder::new(StandardUnit1BuilderReq {
         team: Team::Enemy,
         damage_color: DamageColor::Red,
-        collision_damage: 10.0,
         hp: 30.0,
         engine_power: 12.0,
         tire_traction: 50.0,

@@ -70,7 +70,6 @@ fn new_thinstar4_circle(ctx: &mut NewRoomObjectContext, damage_color: DamageColo
     let mut builder = StandardUnit1Builder::new(StandardUnit1BuilderReq {
         team: Team::Enemy,
         damage_color,
-        collision_damage: 10.0,
         hp: MAX_HP,
         engine_power: 15.0,
         tire_traction: 10.0,

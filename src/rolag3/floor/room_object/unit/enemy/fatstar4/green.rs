@@ -30,7 +30,6 @@ pub fn new_fatstar4_green(ctx: &mut NewRoomObjectContext, x: f64, y: f64) -> Sta
     StandardUnit1Builder::new(StandardUnit1BuilderReq {
         team: Team::Enemy,
         damage_color: DamageColor::Green,
-        collision_damage: 10.0,
         hp: 20.0,
         engine_power: 5.0,
         tire_traction: 5.0,

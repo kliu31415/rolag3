@@ -44,7 +44,6 @@ pub fn new_thinstar3_red_circle(ctx: &mut NewRoomObjectContext) -> StandardUnit1
     StandardUnit1Builder::new(StandardUnit1BuilderReq {
         team: Team::Enemy,
         damage_color: DamageColor::Green,
-        collision_damage: 10.0,
         hp: MAX_HP,
         engine_power: 15.0,
         tire_traction: 10.0,

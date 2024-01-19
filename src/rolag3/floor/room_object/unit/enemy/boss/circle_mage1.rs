@@ -87,7 +87,6 @@ pub fn new_boss_circle_mage1(ctx: &mut NewRoomObjectContext, x: f64, y: f64) -> 
     let boss = StandardUnit1Builder::new(StandardUnit1BuilderReq {
         team: Team::Enemy,
         damage_color: DamageColor::Green,
-        collision_damage: 10.0,
         hp: 250.0,
         engine_power: 3.0,
         tire_traction: 25.0,

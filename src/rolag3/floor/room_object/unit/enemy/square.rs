@@ -4,3 +4,4 @@ pub mod blue;
 pub mod green;
 pub mod red;
 pub mod red_square;
+pub mod red_star8;
