@@ -49,6 +49,10 @@ impl Prng {
         self.state.gen_range(0.0..1.0)
     }
 
+    pub fn gen_fair_bool(&mut self) -> bool {
+        self.state.gen_bool(0.5)
+    }
+
     pub fn gen_normal(&mut self, mean: f64, sd: f64) -> f64 {
         let normal = rand_distr::Normal::new(mean, sd).unwrap();
         normal.sample(&mut self.state)
