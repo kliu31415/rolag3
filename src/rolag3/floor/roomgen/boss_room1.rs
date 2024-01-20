@@ -1,6 +1,6 @@
 use std::{rc::Rc, cell::RefCell};
 
-use crate::rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, RoomObjectCollection}, wall::basic_wall::BasicWall, cosmetic::ground1::new_ground1, unit::boss1::new_boss1}, rofiz::rofiz_state::RofizState, room::RoomCtorArgs, floorgen::run::{GenFloorRoomContext, GenFloorRoomResponse}};
+use crate::rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, RoomObjectCollection}, wall::basic_wall::BasicWall, cosmetic::ground1::new_ground1, unit::boss1::new_boss1}, rofiz::rofiz_state::RofizState, room::{RoomBuilderReq, RoomBuilder}, floorgen::run::{GenFloorRoomContext, GenFloorRoomResponse}};
 
 pub fn get_gen_room_fn_boss1() -> Box<dyn Fn(&mut GenFloorRoomContext) -> GenFloorRoomResponse> {
     Box::new(move |ctx: &mut GenFloorRoomContext| {
@@ -39,14 +39,15 @@ fn make_boss_room1(ctx: &mut GenFloorRoomContext,) -> GenFloorRoomResponse {
     room_objects.add(Rc::new(RefCell::new(enemy)));
 
     GenFloorRoomResponse {
-        room_ctor_args: RoomCtorArgs {
-            width,
-            height,
-            room_objects,
-            rofiz,
-            ttc: 50.0,
-            connection_candidates: Vec::new(),
-            is_hallway: false,
-        }
+        room_builder: RoomBuilder::new(
+            RoomBuilderReq {
+                width,
+                height,
+                room_objects,
+                rofiz,
+                ttc: 50.0,
+                connection_candidates: Vec::new(),
+            }
+        ),
     }
 }

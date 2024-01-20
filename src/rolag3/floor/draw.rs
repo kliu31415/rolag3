@@ -1,6 +1,8 @@
+use std::{rc::Weak, cell::RefCell};
+
 use crate::{gfx::{renderer::{ColorRGBA32f, ViewSpaceCoordinate, DrawOpWithMetadata, DrawOpTriFan, DrawOp, ColoredTriVertex, DrawOpCCS, DrawOpGroup, Rect, DrawOpText, DrawTextPosition, DrawOpTexture2, DrawOpQuadFan, DrawOpTri}, draw_op_util::{draw_op_rect, draw_thick_border, draw_op_concentric_circles}}, geometry::{shape::{Point, Vector}, star::get_star_shape, util::get_inner_polygon}};
 
-use super::{rofiz::rofiz_state::RofizState, floor_def::Floor, room_object::unit::player::Player, room::RoomTile};
+use super::{rofiz::rofiz_state::RofizState, floor_def::Floor, room_object::{unit::player::Player, room_object_def::{RoomObject, BossHp}}, room::RoomTile};
 
 pub struct DrawFloorContext<'a> {
     pub floor: &'a mut Floor,
@@ -32,11 +34,13 @@ pub fn get_draw_floor_ops(ctx: DrawFloorContext) {
         room.room_objects.draw(&mut draw_context);
         extra_draw_ops.append(&mut draw_context.draw_ops);
 
+        let boss = room.boss.clone();
         let draw_hud_context = DrawHudContext {
             window_width: ctx.window_width as f32,
             window_height: ctx.window_height as f32,
             player: &player.borrow(),
             floor_time_left: ctx.floor.floor_time_left,
+            boss,
         };
         extra_draw_ops.push(DrawOpWithMetadata::new(DrawContext::Z_HUD, get_draw_hud_ops(draw_hud_context)));
     }
@@ -95,6 +99,7 @@ struct DrawHudContext<'a> {
     window_height: f32,
     floor_time_left: f64,
     player: &'a Player,
+    boss: Option<Weak<RefCell<dyn RoomObject>>>,
 }
 
 fn get_draw_hud_ops(ctx: DrawHudContext) -> DrawOp {
@@ -129,6 +134,31 @@ fn get_draw_hud_ops(ctx: DrawHudContext) -> DrawOp {
         unfilled_part_color: ColorRGBA32f::new(0.0, 0.0, 0.0, 0.9),
         text_color: Some(ColorRGBA32f::new(1.0, 1.0, 0.0, 0.9)),
     }));
+
+    // draw the boss hp bar in boss rooms
+    if let Some(boss_weak) = ctx.boss {
+        let (cur, max) = if let Some(boss) = boss_weak.upgrade() {
+            match boss.borrow_mut().get_as_boss_hp() {
+                BossHp::Basic { cur_hp, max_hp } => (cur_hp, max_hp),
+            }
+        } else {
+            (0.0, 1.0) // TODO: don't use 1.0 as the max when no boss is found
+        };
+
+        ops.push(get_draw_fillable_bar_ops(DrawFillableBarArgs { 
+            x: 0.4 * ctx.window_width, 
+            y: 0.9 * ctx.window_height, 
+            w: 0.2 * ctx.window_width, 
+            h: 0.05 * ctx.window_height, 
+            border_px: 0.002 * f32::sqrt(ctx.window_width * ctx.window_height), 
+            bar_cur_amount: cur,
+            bar_max_amount: max, 
+            border_color: ColorRGBA32f::new(0.1, 0.1, 0.1, 0.8),
+            filled_part_color: ColorRGBA32f::new(0.5, 0.01, 0.5, 0.8), 
+            unfilled_part_color: ColorRGBA32f::new(0.0, 0.0, 0.0, 0.8),
+            text_color: Some(ColorRGBA32f::new(0.0, 0.5, 0.0, 0.9)),
+        }));
+    }
 
     // Weapons
     ops.push(ctx.player.get_weapon_hud_draw_op(0.87 * ctx.window_width, 0.11 * ctx.window_height, 0.03 * ctx.window_height, 0.11 * ctx.window_width));
@@ -228,13 +258,26 @@ fn get_draw_fillable_bar_ops(args: DrawFillableBarArgs) -> DrawOp {
     assert!(args.border_px * 2.0 <= args.h, "bar border consumes more than entire bar, args={:?}", args);
     let mut ops = Vec::new();
 
-    let outline = draw_op_rect(args.border_color, args.x, args.y, args.w, args.h);
-    ops.push(outline);
-
+    let border_vert = [
+        Point::new(args.x, args.y),
+        Point::new(args.x + args.w, args.y),
+        Point::new(args.x + args.w, args.y + args.h),
+        Point::new(args.x, args.y + args.h),
+    ];
     let inner_x = args.x + args.border_px;
     let inner_y = args.y + args.border_px;
     let inner_w = args.w - 2.0 * args.border_px;
     let inner_h = args.h - 2.0 * args.border_px;
+    let inner_vert = [
+        Point::new(inner_x, inner_y),
+        Point::new(inner_x + inner_w, inner_y),
+        Point::new(inner_x + inner_w, inner_y + inner_h),
+        Point::new(inner_x, inner_y + inner_h),
+    ];
+
+    draw_thick_border(&mut ops, args.border_color, &border_vert, &inner_vert);
+    let outline = draw_op_rect(args.border_color, args.x, args.y, args.w, args.h);
+    ops.push(outline);
 
     let fill_len = inner_w * (args.bar_cur_amount / args.bar_max_amount) as f32;
 

@@ -1,8 +1,8 @@
-use std::{rc::Rc, cell::RefCell, collections::HashSet};
+use std::{rc::{Rc, Weak}, cell::RefCell, collections::HashSet};
 
 use crate::{gfx::renderer::{TmdRef, Renderer}, rolag3::floor::room_object::wall::invisible_wall::InvisibleWall, util::rng::Prng};
 
-use super::{room_object::{room_object_def::{NewRoomObjectContext, RoomObjectCollection, RoomObjectId}, tiles::room_connection::{RoomConnection, Direction}, cosmetic::ground1::{new_ground1, GroundTheme}}, rofiz::rofiz_state::RofizState, floor_def::RoomId};
+use super::{room_object::{room_object_def::{NewRoomObjectContext, RoomObjectCollection, RoomObjectId, RoomObject}, tiles::room_connection::{RoomConnection, Direction}, cosmetic::ground1::{new_ground1, GroundTheme}}, rofiz::rofiz_state::RofizState, floor_def::RoomId};
 
 pub struct Room {
     pub upper_left_x: u32,
@@ -16,6 +16,7 @@ pub struct Room {
     pub room_cleared_at_time: Option<f64>,
     pub minimap_texture: Option<TmdRef>,
     pub connection_candidates: Vec<(u32, u32, Direction)>,
+    pub boss: Option<Weak<RefCell<dyn RoomObject>>>,
 
     pub ttc: f64,
     pub is_hallway: bool,
@@ -124,31 +125,55 @@ impl Room {
     }
 }
 
-pub struct RoomCtorArgs {
+pub struct RoomBuilderReq {
     pub width: u32,
     pub height: u32,
     pub room_objects: RoomObjectCollection,
     pub rofiz: RofizState,
     pub connection_candidates: Vec<(u32, u32, Direction)>,
     pub ttc: f64,
-    pub is_hallway: bool,
 }
 
-impl RoomCtorArgs {
-    pub fn to_room(self) -> Room {
+pub struct RoomBuilder {
+    req: RoomBuilderReq,
+    boss: Option<Weak<RefCell<dyn RoomObject>>>,
+    is_hallway: bool,
+}
+
+impl RoomBuilder {
+    pub fn new(req: RoomBuilderReq) -> Self {
+        Self {
+            req,
+            is_hallway: false,
+            boss: None,
+        }
+    }
+
+    pub fn _is_hallway(mut self, is_hallway: bool) -> Self {
+        self.is_hallway = is_hallway;
+        self
+    }
+
+    pub fn boss(mut self, boss: Weak<RefCell<dyn RoomObject>>) -> Self {
+        self.boss = Some(boss);
+        self
+    }
+
+    pub fn build(self) -> Room {
         Room {
             upper_left_x: 0,
             upper_left_y: 0,
-            width: self.width,
-            height: self.height,
+            width: self.req.width,
+            height: self.req.height,
             tiles: Vec::new(),
-            room_objects: self.room_objects,
-            rofiz: self.rofiz,
+            room_objects: self.req.room_objects,
+            rofiz: self.req.rofiz,
             room_time: 0.0,
             room_cleared_at_time: None,
             minimap_texture: None,
-            ttc: self.ttc,
-            connection_candidates: self.connection_candidates,
+            ttc: self.req.ttc,
+            connection_candidates: self.req.connection_candidates,
+            boss: self.boss,
             is_hallway: self.is_hallway,
         }
     }

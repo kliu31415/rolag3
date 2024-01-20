@@ -68,6 +68,14 @@ pub trait RoomObject {
     fn handle_query_unit_info(&self, _ctx: &RoQueryUnitInfoContext) -> Option<RoQueryUnitInfoResponse> {
         unimplemented!("handle_query_unit_info() can only be called for units. Called for {:?}", self.get_metadata().get_ref());
     }
+
+    fn get_as_boss_hp(&mut self) -> BossHp {
+        unimplemented!("get_as_boss_hp() not implemented for {:?}", self.get_metadata().get_ref())
+    }
+}
+
+pub enum BossHp {
+    Basic{cur_hp: f64, max_hp: f64}
 }
 
 pub struct RoomObjApplyOperationContext<'a> {

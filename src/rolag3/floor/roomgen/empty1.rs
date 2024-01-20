@@ -1,6 +1,6 @@
 use std::{rc::Rc, cell::RefCell, ops::Range};
 
-use crate::rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, RoomObjectCollection}, wall::basic_wall::BasicWall, cosmetic::ground1::new_ground1}, room::RoomCtorArgs, rofiz::rofiz_state::RofizState, floorgen::run::{GenFloorRoomContext, GenFloorRoomResponse}};
+use crate::rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, RoomObjectCollection}, wall::basic_wall::BasicWall, cosmetic::ground1::new_ground1}, room::{RoomBuilderReq, RoomBuilder}, rofiz::rofiz_state::RofizState, floorgen::run::{GenFloorRoomContext, GenFloorRoomResponse}};
 
 use super::util::connection_candidates::all_borders_as_connection_candidates;
 
@@ -48,14 +48,15 @@ fn make_room_empty1(ctx: &mut GenFloorRoomContext, widths: Range<u32>, heights: 
     room_objects.add(Rc::new(RefCell::new(ground)));
 
     GenFloorRoomResponse {
-        room_ctor_args: RoomCtorArgs {
-            width,
-            height,
-            room_objects,
-            rofiz,
-            ttc,
-            connection_candidates: all_borders_as_connection_candidates(width, height),
-            is_hallway: false,
-        },
+        room_builder: RoomBuilder::new(
+            RoomBuilderReq {
+                width,
+                height,
+                room_objects,
+                rofiz,
+                ttc,
+                connection_candidates: all_borders_as_connection_candidates(width, height),
+            },
+        ),
     }
 }

@@ -1,6 +1,6 @@
 use std::{rc::Rc, cell::RefCell};
 
-use crate::rolag3::floor::{floorgen::run::{GenFloorRoomContext, GenFloorRoomResponse}, roomgen::util::{rectangular_maze::make_rectangular_maze, connection_candidates::all_borders_as_connection_candidates}, rofiz::rofiz_state::RofizState, room_object::{room_object_def::{NewRoomObjectContext, RoomObjectCollection}, wall::basic_wall::BasicWall, cosmetic::ground1::new_ground1, tiles::{damage_tile::new_damage_tile, key_tile::new_key_tile}, unit::enemy::{square::{self, blue_diamond::new_square_blue_diamond}, fatstar4::{self, green::new_fatstar4_green}}}, room::RoomCtorArgs};
+use crate::rolag3::floor::{floorgen::run::{GenFloorRoomContext, GenFloorRoomResponse}, roomgen::util::{rectangular_maze::make_rectangular_maze, connection_candidates::all_borders_as_connection_candidates}, rofiz::rofiz_state::RofizState, room_object::{room_object_def::{NewRoomObjectContext, RoomObjectCollection}, wall::basic_wall::BasicWall, cosmetic::ground1::new_ground1, tiles::{damage_tile::new_damage_tile, key_tile::new_key_tile}, unit::enemy::{square::{self, blue_diamond::new_square_blue_diamond}, fatstar4::{self, green::new_fatstar4_green}}}, room::{RoomBuilderReq, RoomBuilder}};
 
 /* Common1001 contains a large maze. The player must activate key tiles around the maze to clear it. There are also
    some enemies that float around.
@@ -114,18 +114,19 @@ fn make_room(ctx: &mut GenFloorRoomContext,
     }
 
     GenFloorRoomResponse {
-        room_ctor_args: RoomCtorArgs {
-            width: room_w as u32,
-            height: room_h as u32,
-            room_objects,
-            rofiz,
-            ttc: 0.4
-                 * f64::sqrt((room_w * room_h) as f64) 
-                 * (0.3
-                    + 0.5 * f64::cbrt(num_key_tiles as f64)
-                    + 0.2 * f64::cbrt(num_enemies as f64)),
-            connection_candidates: all_borders_as_connection_candidates(room_w as u32, room_h as u32),
-            is_hallway: false,
-        },
+        room_builder: RoomBuilder::new(
+            RoomBuilderReq {
+                width: room_w as u32,
+                height: room_h as u32,
+                room_objects,
+                rofiz,
+                ttc: 0.4
+                    * f64::sqrt((room_w * room_h) as f64) 
+                    * (0.3
+                        + 0.5 * f64::cbrt(num_key_tiles as f64)
+                        + 0.2 * f64::cbrt(num_enemies as f64)),
+                connection_candidates: all_borders_as_connection_candidates(room_w as u32, room_h as u32),
+            },
+        ),
     }
 }

@@ -1,6 +1,6 @@
 use std::{rc::Rc, cell::RefCell};
 
-use crate::rolag3::floor::{floorgen::run::{GenFloorRoomContext, GenFloorRoomResponse}, rofiz::rofiz_state::RofizState, room_object::{room_object_def::{NewRoomObjectContext, RoomObjectCollection}, wall::basic_wall::BasicWall, cosmetic::ground1::new_ground1, unit::enemy::lightning::lorbg_fixed_path::{make_logwc_path_polygon, new_lorbg_fixed_path}, damage::DamageColor, tiles::key_tile::{new_key_tile, KEY_TILE_SIDE_LEN}}, room::RoomCtorArgs, roomgen::util::connection_candidates::{SomeBorders, some_borders_as_connection_candidates}};
+use crate::rolag3::floor::{floorgen::run::{GenFloorRoomContext, GenFloorRoomResponse}, rofiz::rofiz_state::RofizState, room_object::{room_object_def::{NewRoomObjectContext, RoomObjectCollection}, wall::basic_wall::BasicWall, cosmetic::ground1::new_ground1, unit::enemy::lightning::lorbg_fixed_path::{make_logwc_path_polygon, new_lorbg_fixed_path}, damage::DamageColor, tiles::key_tile::{new_key_tile, KEY_TILE_SIDE_LEN}}, room::{RoomBuilderReq, RoomBuilder}, roomgen::util::connection_candidates::{SomeBorders, some_borders_as_connection_candidates}};
 
 /* Common1000 contains three orbs moving around the walls, with lasers arcing between the orbs. To clear the room, the
    player must activate 4 key tiles. One key tile is in each quadrant of the room.
@@ -98,14 +98,15 @@ fn make_room_common1000(ctx: &mut GenFloorRoomContext, room_side_len: u32) -> Ge
         _ => panic!("unexpected orb_starting_wall={}", orb_starting_wall),
     };
     GenFloorRoomResponse {
-        room_ctor_args: RoomCtorArgs {
-            width,
-            height,
-            room_objects,
-            rofiz,
-            ttc: 5.0 + 0.3 * (room_side_len as f64),
-            connection_candidates: some_borders_as_connection_candidates(width, height, connection_borders),
-            is_hallway: false,
-        }
+        room_builder: RoomBuilder::new(
+            RoomBuilderReq {
+                width,
+                height,
+                room_objects,
+                rofiz,
+                ttc: 5.0 + 0.3 * (room_side_len as f64),
+                connection_candidates: some_borders_as_connection_candidates(width, height, connection_borders),
+            }
+        ),
     }
 }

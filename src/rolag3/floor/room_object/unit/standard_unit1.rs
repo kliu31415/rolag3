@@ -1,6 +1,6 @@
 use std::any::Any;
 
-use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, RoomObject, RoomObjectMetadata, Act1Context, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse, RoomObjectType, RoQueryUnitInfoContext, RoQueryUnitInfoResponse, RoomObjApplyOperationContext, RoomObjOperation, HcStandardUnitContext, HcStandardUnitResponse}, damage::DamageColor}, draw::DrawContext, rofiz::rofiz_object::{Transformation, Hitbox}}, geometry::shape::Shape};
+use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, RoomObject, RoomObjectMetadata, Act1Context, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse, RoomObjectType, RoQueryUnitInfoContext, RoQueryUnitInfoResponse, RoomObjApplyOperationContext, RoomObjOperation, HcStandardUnitContext, HcStandardUnitResponse, BossHp}, damage::DamageColor}, draw::DrawContext, rofiz::rofiz_object::{Transformation, Hitbox}}, geometry::shape::Shape};
 
 use super::{Unit, standard_unit_common::StandardUnitCommon};
 
@@ -34,6 +34,8 @@ pub struct Su1Logic {
 
     handle_collision_fn: Box<HandleCollisionFnT>,
     hc_projectile_fn: Box<HcProjectileFnT>,
+
+    as_boss_hp_fn: Box<dyn Fn(&mut SuContext) -> BossHp>,
 }
 
 pub enum Act1Fn {
@@ -154,7 +156,10 @@ impl RoomObject for StandardUnit1 {
                 None
             }
         }
+    }
 
+    fn get_as_boss_hp(&mut self) -> BossHp {
+        (self.logic.as_boss_hp_fn)(&mut self.data.get_su_ctx())
     }
 }
 
@@ -223,6 +228,7 @@ pub struct StandardUnit1Builder {
     custom_fns: Vec<Box<CustomFnT>>,
     handle_collision_logic: HandleCollisionLogic,
     hc_projectile_logic: HcProjectileLogic,
+    as_boss_hp_logic: AsBossHpLogic,
     hitbox: Option<(Transformation, Shape)>,
     rofiz_obj_type: RofizObjType,
     damageable: bool,
@@ -247,6 +253,11 @@ pub enum HcProjectileLogic {
     Default_,
 }
 
+pub enum AsBossHpLogic {
+    NotImplemented,
+    Basic,
+}
+
 struct UsDataDummy {
 
 }
@@ -264,6 +275,7 @@ impl StandardUnit1Builder {
             custom_fns: Vec::new(),
             handle_collision_logic: HandleCollisionLogic::Nop,
             hc_projectile_logic: HcProjectileLogic::Default_,
+            as_boss_hp_logic: AsBossHpLogic::NotImplemented,
             hitbox: None,
             rofiz_obj_type: RofizObjType::NonspectralUnit,
             damageable: true,
@@ -318,6 +330,11 @@ impl StandardUnit1Builder {
 
     pub fn handle_collision_logic(mut self, hc_logic: HandleCollisionLogic) -> Self {
         self.handle_collision_logic = hc_logic;
+        self
+    }
+
+    pub fn as_boss_hp_logic(mut self, logic: AsBossHpLogic) -> Self {
+        self.as_boss_hp_logic = logic;
         self
     }
 
@@ -392,7 +409,12 @@ impl StandardUnit1Builder {
 
         let hc_projectile_fn: Box<HcProjectileFnT> = match self.hc_projectile_logic {
             HcProjectileLogic::Default_ => Box::new(hc_projectile_default),
-            HcProjectileLogic::_ShouldNeverHappen => Box::new(hc_projectile_panic),
+            HcProjectileLogic::_ShouldNeverHappen => Box::new(hc_projectile_umimplemented),
+        };
+
+        let as_boss_hp_fn: Box<fn(&mut SuContext) -> BossHp> = match self.as_boss_hp_logic {
+            AsBossHpLogic::NotImplemented => Box::new(as_boss_hp_unimplemented),
+            AsBossHpLogic::Basic => Box::new(as_boss_hp_basic),
         };
 
         StandardUnit1 { 
@@ -412,6 +434,7 @@ impl StandardUnit1Builder {
                 custom_fns: self.custom_fns.into(),
                 handle_collision_fn,
                 hc_projectile_fn,
+                as_boss_hp_fn,
             },
         }
     }
@@ -485,6 +508,14 @@ fn hc_projectile_default(ctx: &mut SuHcProjectileContext) -> HcProjectileRespons
     }
 }
 
-fn hc_projectile_panic(_ctx: &mut SuHcProjectileContext) -> HcProjectileResponse {
-    panic!("handle_collision_projectile called for StandardUnit1, but it's expected to never happen")
+fn hc_projectile_umimplemented(_ctx: &mut SuHcProjectileContext) -> HcProjectileResponse {
+    unimplemented!("handle_collision_projectile() called for this StandardUnit1, but it's expected to never happen")
+}
+
+fn as_boss_hp_unimplemented(_ctx: &mut SuContext) -> BossHp {
+    unimplemented!("as_boss_hp() called for this StandardUnit1, but it's expected to never happen")
+}
+
+fn as_boss_hp_basic(ctx: &mut SuContext) -> BossHp {
+    BossHp::Basic { cur_hp: ctx.su_common.get_cur_hp(), max_hp: ctx.su_common.get_max_hp() }
 }

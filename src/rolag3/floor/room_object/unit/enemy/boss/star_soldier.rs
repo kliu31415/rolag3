@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
-use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Team, Act1Response}, unit::{standard_unit1::{StandardUnit1, StandardUnit1Builder, StandardUnit1BuilderReq, SuAct1Context, SuDrawContext}, standard_unit_common::RotateMove}, damage::DamageColor, projectile::projectile2::{Projectile2Builder, Proj2Shape, Projectile2BuilderReq}}, rofiz::rofiz_object::Transformation, draw::{Color, DrawContext}}, geometry::{shape::{Shape, Point, Vector}, star::get_star_shape}};
+use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Team, Act1Response}, unit::{standard_unit1::{StandardUnit1, StandardUnit1Builder, StandardUnit1BuilderReq, SuAct1Context, SuDrawContext, AsBossHpLogic}, standard_unit_common::RotateMove}, damage::DamageColor, projectile::projectile2::{Projectile2Builder, Proj2Shape, Projectile2BuilderReq}}, rofiz::rofiz_object::Transformation, draw::{Color, DrawContext}}, geometry::{shape::{Shape, Point, Vector}, star::get_star_shape}};
 
 /* StarKing sits in the center of the room and has 4 attack patterns. It has 3 stages. At each stage, it attacks faster
    and the attacks become harder to dodge (e.g. projectiles move faster, projectiles are more irregular).
@@ -77,7 +77,9 @@ pub fn new_boss_star_soldier(ctx: &mut NewRoomObjectContext, x: f64, y: f64) -> 
         .hitbox(xform, shape)
         .angular_power(0.0)
         .angular_traction(1.0)
-        .us_data(Box::new(us_data)).build(ctx)
+        .as_boss_hp_logic(AsBossHpLogic::Basic)
+        .us_data(Box::new(us_data))
+        .build(ctx)
 }
 
 fn act1(ctx: &mut SuAct1Context) -> Act1Response {

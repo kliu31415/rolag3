@@ -59,6 +59,7 @@ pub fn make_hallway1(
         minimap_texture: None,
         ttc: 0.0,
         connection_candidates: Vec::new(),
+        boss: None,
         is_hallway: true,
     }
 }

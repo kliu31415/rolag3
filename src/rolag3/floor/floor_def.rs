@@ -34,16 +34,16 @@ impl Floor {
             ground_theme,
             wall_theme: WallTheme::Monocolor(Color::new(0.1, 0.2, 0.3, 1.0)),
         };
-        let mut room1 = (get_gen_room_fn_test_room1())(&mut gfr_ctx).room_ctor_args.to_room();
+        let mut room1 = (get_gen_room_fn_test_room1())(&mut gfr_ctx).room_builder.build();
         room1.upper_left_x = 0;
         room1.upper_left_y = 0;
-        let mut room2 = (get_gen_room_fn_test_room2())(&mut gfr_ctx).room_ctor_args.to_room();
+        let mut room2 = (get_gen_room_fn_test_room2())(&mut gfr_ctx).room_builder.build();
         room2.upper_left_x = 30;
         room2.upper_left_y = 0;
-        let mut room3 = (get_gen_room_fn_maze1(24, 24))(&mut gfr_ctx).room_ctor_args.to_room();
+        let mut room3 = (get_gen_room_fn_maze1(24, 24))(&mut gfr_ctx).room_builder.build();
         room3.upper_left_x = 30;
         room3.upper_left_y = 30;
-        let mut room4 = (get_gen_room_fn_boss1())(&mut gfr_ctx).room_ctor_args.to_room();
+        let mut room4 = (get_gen_room_fn_boss1())(&mut gfr_ctx).room_builder.build();
         room4.upper_left_x = 150;
         room4.upper_left_y = 30;
 
@@ -127,6 +127,12 @@ impl Floor {
                                 Rc::new(RefCell::new(new_square_rgb_star8(ctx, DamageColor::Blue, 30.0, 30.0))),
                             ])
                         }))(ctx))),
+                }, GenFloorRoomFn {
+                    weight: 1.0, 
+                    func: Box::new(|ctx: &mut GenFloorRoomContext| (get_gen_room_fn_boss_generic_rect(50, 50, 
+                        Box::new(|ctx: &mut NewRoomObjectContext| {
+                            Box::new([Rc::new(RefCell::new(new_boss_star_king(ctx, 25.0, 25.0)))])
+                        }))(ctx))),
                 },]
             },
         ];
@@ -189,7 +195,7 @@ impl Floor {
             new_boss_star_soldier(ctx, 0.0, 0.0);
             panic!()
         };
-        let mut room1 = (get_gen_room_fn_boss_generic_rect(50, 50, make_boss_fn))(&mut gfr_ctx).room_ctor_args.to_room();
+        let mut room1 = (get_gen_room_fn_boss_generic_rect(50, 50, make_boss_fn))(&mut gfr_ctx).room_builder.build();
         room1.upper_left_x = 0;
         room1.upper_left_y = 0;
         room1.finalize_with_connections(renderer, Vec::new(), rng, &mut room_object_id_counter, ground_theme);

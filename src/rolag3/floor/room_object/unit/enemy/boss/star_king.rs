@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc, ops::Range};
 
-use crate::{rolag3::floor::{room_object::{unit::standard_unit1::{StandardUnit1Builder, StandardUnit1BuilderReq, StandardUnit1, SuAct1Context, SuDrawContext}, room_object_def::{NewRoomObjectContext, Team, Act1Response}, damage::DamageColor, projectile::projectile2::{Projectile2Builder, Projectile2BuilderReq, Proj2Shape}}, rofiz::{rofiz_object::{Transformation, Hitbox, RofizObjectMovement}, rofiz_state::RofizObjectRef}, draw::{Color, DrawContext}}, geometry::shape::{Shape, Point}, util::lerp::lerp_f32};
+use crate::{rolag3::floor::{room_object::{unit::standard_unit1::{StandardUnit1Builder, StandardUnit1BuilderReq, StandardUnit1, SuAct1Context, SuDrawContext, AsBossHpLogic}, room_object_def::{NewRoomObjectContext, Team, Act1Response}, damage::DamageColor, projectile::projectile2::{Projectile2Builder, Projectile2BuilderReq, Proj2Shape}}, rofiz::{rofiz_object::{Transformation, Hitbox, RofizObjectMovement}, rofiz_state::RofizObjectRef}, draw::{Color, DrawContext}}, geometry::shape::{Shape, Point}, util::lerp::lerp_f32};
 
 /* StarKing sits in the center of the room and has 4 attack patterns. It has 3 stages. At each stage, it attacks faster
    and the attacks become harder to dodge (e.g. projectiles move faster)
@@ -103,7 +103,9 @@ pub fn new_boss_star_king(ctx: &mut NewRoomObjectContext, x: f64, y: f64) -> Sta
     builder
         .act1_fn(Box::new(act1))
         .draw_fn(Box::new(draw))
-        .us_data(Box::new(us_data)).build(ctx)
+        .us_data(Box::new(us_data))
+        .as_boss_hp_logic(AsBossHpLogic::Basic)
+        .build(ctx)
 }
 
 fn act1(ctx: &mut SuAct1Context) -> Act1Response {

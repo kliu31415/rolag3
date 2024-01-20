@@ -1,6 +1,6 @@
 use std::{rc::Rc, cell::RefCell};
 
-use crate::rolag3::floor::{floorgen::run::{GenFloorRoomContext, GenFloorRoomResponse}, room_object::{wall::basic_wall::BasicWall, cosmetic::ground1::new_ground1, room_object_def::{NewRoomObjectContext, RoomObjectCollection}, unit::enemy::boss::circle_mage1::new_boss_circle_mage1}, rofiz::rofiz_state::RofizState, room::RoomCtorArgs};
+use crate::rolag3::floor::{floorgen::run::{GenFloorRoomContext, GenFloorRoomResponse}, room_object::{wall::basic_wall::BasicWall, cosmetic::ground1::new_ground1, room_object_def::{NewRoomObjectContext, RoomObjectCollection}, unit::enemy::boss::circle_mage1::new_boss_circle_mage1}, rofiz::rofiz_state::RofizState, room::{RoomBuilderReq, RoomBuilder}};
 
 pub fn _get_gen_room_fn_boss_circle_mage1() -> Box<dyn Fn(&mut GenFloorRoomContext) -> GenFloorRoomResponse> {
     Box::new(move |ctx: &mut GenFloorRoomContext| {
@@ -36,17 +36,19 @@ fn _make_room(ctx: &mut GenFloorRoomContext) -> GenFloorRoomResponse {
     room_objects.add(Rc::new(RefCell::new(ground)));
 
     let enemies = new_boss_circle_mage1(&mut new_floor_object_ctx, 25.0, 25.0);
+    let boss = Rc::downgrade(&enemies[0]);
     enemies.into_vec().into_iter().for_each(|x| room_objects.add(x));
 
     GenFloorRoomResponse {
-        room_ctor_args: RoomCtorArgs {
-            width,
-            height,
-            room_objects,
-            rofiz,
-            ttc: 50.0,
-            connection_candidates: Vec::new(),
-            is_hallway: false,
-        }
+        room_builder: RoomBuilder::new(
+            RoomBuilderReq {
+                width,
+                height,
+                room_objects,
+                rofiz,
+                ttc: 50.0,
+                connection_candidates: Vec::new(),
+            }
+        ).boss(boss),
     }
 }

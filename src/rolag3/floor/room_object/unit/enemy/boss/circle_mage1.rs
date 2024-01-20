@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::{Rc, Weak}};
 
-use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Act1Response, Team, Act1QueryArgs, Act1QueryResult, RoomObject}, damage::DamageColor, unit::{standard_unit1::{StandardUnit1Builder, StandardUnit1BuilderReq, SuAct1Context, SuDrawContext}, standard_unit_common::TranslateMove, enemy::lightning::lightning_orb_group::{LightningOrbGroup, new_lightning_orb_group}}}, rofiz::rofiz_object::Transformation, draw::{Color, DrawContext}}, geometry::shape::{Shape, Point}, util::lerp::lerp_f64};
+use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Act1Response, Team, Act1QueryArgs, Act1QueryResult, RoomObject}, damage::DamageColor, unit::{standard_unit1::{StandardUnit1Builder, StandardUnit1BuilderReq, SuAct1Context, SuDrawContext, AsBossHpLogic}, standard_unit_common::TranslateMove, enemy::lightning::lightning_orb_group::{LightningOrbGroup, new_lightning_orb_group}}}, rofiz::rofiz_object::Transformation, draw::{Color, DrawContext}}, geometry::shape::{Shape, Point}, util::lerp::lerp_f64};
 
 /* BossCircleMage1 a green circle that initially starts in the center of the room. It periodically teleports to another
    position in the room. It's surrounded by 6 orbs that block projectiles. A laser exists between any pair of orbs.
@@ -94,6 +94,7 @@ pub fn new_boss_circle_mage1(ctx: &mut NewRoomObjectContext, x: f64, y: f64) -> 
         .draw_fn(Box::new(boss_draw))
         .hitbox(xform, shape)
         .us_data(Box::new(us_data))
+        .as_boss_hp_logic(AsBossHpLogic::Basic)
         .build(ctx);
 
     std::iter::once(Rc::new(RefCell::new(boss)) as _)

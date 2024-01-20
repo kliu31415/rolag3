@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
-use crate::rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, RoomObjectCollection}, wall::basic_wall::BasicWall, cosmetic::ground1::new_ground1, tiles::damage_tile::new_damage_tile}, rofiz::rofiz_state::RofizState, room::RoomCtorArgs, floorgen::run::{GenFloorRoomResponse, GenFloorRoomContext}};
+use crate::rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, RoomObjectCollection}, wall::basic_wall::BasicWall, cosmetic::ground1::new_ground1, tiles::damage_tile::new_damage_tile}, rofiz::rofiz_state::RofizState, room::{RoomBuilderReq, RoomBuilder}, floorgen::run::{GenFloorRoomResponse, GenFloorRoomContext}};
 
 use super::util::rectangular_maze::make_rectangular_maze;
 
@@ -52,14 +52,15 @@ fn make_room_maze1(ctx: &mut GenFloorRoomContext, maze_w: usize, maze_h: usize) 
     }
 
     GenFloorRoomResponse {
-        room_ctor_args: RoomCtorArgs {
-            width: room_w as u32,
-            height: room_h as u32,
-            room_objects,
-            rofiz,
-            ttc: 20.0,
-            connection_candidates: Vec::new(),
-            is_hallway: false,
-        },
+        room_builder: RoomBuilder::new(
+            RoomBuilderReq {
+                width: room_w as u32,
+                height: room_h as u32,
+                room_objects,
+                rofiz,
+                ttc: 20.0,
+                connection_candidates: Vec::new(),
+            },
+        ),
     }
 }
