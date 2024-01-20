@@ -304,7 +304,7 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
                                 shape,
                                 color: draw_color,
                             }
-                        ).lifespan(3.0)
+                        ).lifespan(2.0)
                             .build(&mut nro_ctx);
                         response.add_room_obj(Rc::new(RefCell::new(proj)));
                     }
