@@ -73,31 +73,30 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
                         center: Point::new(0.0, 0.0), 
                         vertexes: Box::new(us_data.inner_vertexes),
                     };
-                    let adjust_velocity_fn = move |velocity: (f64, f64), age: f64| -> (f64, f64) {
+                    let nef_position_fn = move |age: f64| -> (f64, f64) {
                         let radians_per_s = 3.0;
                         let radial_expand_velocity = 5.0;
-                        let expand_until = 0.8;
-                        let (adj_x, adj_y) = if age < expand_until {
-                            let k = age * radial_expand_velocity * radians_per_s;
-                            let rotate_vx = k * -f64::sin(angle + radians_per_s * age);
-                            let rotate_vy = k * f64::cos(angle + radians_per_s * age);
-                            (radial_expand_velocity * f64::cos(angle + radians_per_s * age) + rotate_vx, 
-                             radial_expand_velocity * f64::sin(angle + radians_per_s * age) + rotate_vy)
-                        } else if age < 1.2 {
-                            let k = expand_until * radial_expand_velocity * radians_per_s;
-                            let rotate_vx = k * -f64::sin(angle + radians_per_s * age);
-                            let rotate_vy = k * f64::cos(angle + radians_per_s * age);
-                            (rotate_vx, rotate_vy)
+                        let expand1_until = 1.0;
+                        let rotate1_until = 2.0;
+                        let (x, y) = if age < expand1_until {
+                            (radial_expand_velocity * age * f64::cos(angle), 
+                             radial_expand_velocity * age * f64::sin(angle))
+                        } else if age < rotate1_until {
+                            let r = radial_expand_velocity * expand1_until;
+                            let t = age - expand1_until;
+                            (r * f64::cos(angle + radians_per_s * t), 
+                             r * f64::sin(angle + radians_per_s * t))
                         } else {
+                            let r = radial_expand_velocity * expand1_until;
+                            let t = age - expand1_until;
+                            let (x, y) = (r * f64::cos(angle + radians_per_s * t), 
+                                          r * f64::sin(angle + radians_per_s * t));
+
                             let main_dir_velocity = 10.0;
-                            let k = expand_until * radial_expand_velocity * radians_per_s;
-                            let rotate_vx = k * -f64::sin(angle + radians_per_s * age);
-                            let rotate_vy = k * f64::cos(angle + radians_per_s * age);
-                            (main_dir_velocity * f64::cos(main_dir_angle) + rotate_vx, 
-                             main_dir_velocity * f64::sin(main_dir_angle) + rotate_vy)
+                            (x + (age - rotate1_until) * main_dir_velocity * f64::cos(main_dir_angle),
+                             y + (age - rotate1_until) * main_dir_velocity * f64::sin(main_dir_angle))
                         };
-                        // use + rather than overriding completely, so external forces like black hole aren't ignored
-                        (velocity.0 + adj_x, velocity.1 + adj_y)
+                        (x, y)
                     };
                     let proj = Projectile2Builder::new(
                         Projectile2BuilderReq {
@@ -111,7 +110,7 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
                             shape,
                             color: PROJ_COLOR,
                         }
-                    ).adjust_velocity_fn(Box::new(adjust_velocity_fn))
+                    ).nef_position_fn(Box::new(nef_position_fn))
                         .build(&mut nfo_ctx);
                     response.add_room_obj(Rc::new(RefCell::new(proj)));
                 }

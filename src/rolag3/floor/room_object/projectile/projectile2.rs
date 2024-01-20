@@ -10,6 +10,8 @@ pub struct Projectile2Data {
     remove_me_next_tick: bool,
     shape: Proj2Shape,
     color: Color,
+    prev_velocity_x: f64,
+    prev_velocity_y: f64,
     velocity_x: f64,
     velocity_y: f64,
     age: f64,
@@ -17,10 +19,10 @@ pub struct Projectile2Data {
     homing_to_enemies_force: Option<f64>,
     homing_query_result: Option<Rc<RefCell<Act1QueryResult>>>,
 
-    adjust_velocity_fn: Option<AdjustVelocityFn>,
+    nef_position_fn: Option<NefPositionFn>,
 }
 
-type AdjustVelocityFn = Box<dyn Fn((f64, f64), f64) -> (f64, f64)>;
+type NefPositionFn = Box<dyn Fn(f64) -> (f64, f64)>;
 
 pub struct Projectile2BuilderReq {
     pub team: Team, 
@@ -38,7 +40,10 @@ pub struct Projectile2Builder {
     req: Projectile2BuilderReq,
     lifespan: f64,
     homing_to_enemies_power: Option<f64>,
-    adjust_velocity_fn: Option<AdjustVelocityFn>,
+    // nef = no external force, i.e. this function returns what the position of the projectile would be if no external
+    // forces are acting on the projectile. nef(t_2) - nef(t_1) can be used to calculate the power applied to the
+    // projectile, which is combined with external forces (if there are any) to determine the final velocity.
+    nef_position_fn: Option<NefPositionFn>,
 }
 
 impl Projectile2Builder {
@@ -47,7 +52,7 @@ impl Projectile2Builder {
             req,
             lifespan: 8.0, /* good default for most projectiles */
             homing_to_enemies_power: None,
-            adjust_velocity_fn: None,
+            nef_position_fn: None,
         }
     }
 
@@ -61,8 +66,8 @@ impl Projectile2Builder {
         self
     }
 
-    pub fn adjust_velocity_fn(mut self, adj_fn: AdjustVelocityFn) -> Self {
-        self.adjust_velocity_fn = Some(adj_fn);
+    pub fn nef_position_fn(mut self, nef_fn: NefPositionFn) -> Self {
+        self.nef_position_fn = Some(nef_fn);
         self
     }
 
@@ -71,11 +76,13 @@ impl Projectile2Builder {
             remove_me_next_tick: false,
             shape: self.req.shape.clone(),
             color: self.req.color,
+            prev_velocity_x: self.req.velocity_x,
+            prev_velocity_y: self.req.velocity_y,
             velocity_x: self.req.velocity_x,
             velocity_y: self.req.velocity_y,
             homing_to_enemies_force: self.homing_to_enemies_power,
             homing_query_result: None,
-            adjust_velocity_fn: self.adjust_velocity_fn,
+            nef_position_fn: self.nef_position_fn,
             age: 0.0,
         };
         let shape = match self.req.shape {
@@ -131,17 +138,38 @@ fn act1(ctx: &mut SpAct1Context) -> Act1Response {
         ps_data.homing_query_result = Some(response.add_query(args));
     }
 
-    let mut velocity_x = ps_data.velocity_x;
-    let mut velocity_y = ps_data.velocity_y;
-    if let Some(ref av_fn) = ps_data.adjust_velocity_fn {
-        (velocity_x, velocity_y) = (av_fn)((velocity_x, velocity_y), ps_data.age);
+    if let Some(ref nef_fn) = ps_data.nef_position_fn {
+        assert!(tick_len > 0.0001, "tick_len({}) is very small, which may cause odd behavior", tick_len);
+        assert!(tick_len < 0.005, "tick_len({}) is very large, which may cause odd behavior", tick_len);
+        let (nef1_x, nef1_y) = (nef_fn)(ps_data.age);
+        let (nef2_x, nef2_y) = (nef_fn)(ps_data.age + tick_len);
+        let velocity12_x = (nef2_x - nef1_x) / tick_len;
+        let velocity12_y = (nef2_y - nef1_y) / tick_len;
+        let accel_norm = f64::hypot(velocity12_x - ps_data.prev_velocity_x, velocity12_y - ps_data.prev_velocity_y) / tick_len;
+        let mass = 1.0;
+        let force_norm = accel_norm * mass;
+        let min_effective_speed = 2.0;
+        let prev_velocity_norm = f64::hypot(ps_data.prev_velocity_x, ps_data.prev_velocity_y);
+        let power = force_norm * f64::max(min_effective_speed, prev_velocity_norm);
+        let actual_velocity_norm = f64::hypot(ps_data.velocity_x, ps_data.velocity_y);
+        
+        let force_to_apply = power / f64::max(min_effective_speed, actual_velocity_norm);
+        let f_angle = f64::atan2(velocity12_y - ps_data.prev_velocity_y, velocity12_x - ps_data.prev_velocity_x);
+        let f_x = force_to_apply * f64::cos(f_angle);
+        let f_y = force_to_apply * f64::sin(f_angle);
+        let a_x = f_x / mass;
+        let a_y = f_y / mass;
+        ps_data.velocity_x += a_x * tick_len;
+        ps_data.velocity_y += a_y * tick_len;
     }
 
-    let dx = velocity_x * tick_len;
-    let dy = velocity_y * tick_len;
+    let dx = ps_data.velocity_x * tick_len;
+    let dy = ps_data.velocity_y * tick_len;
     ctx.act1_ctx.get_rofiz().move_object(ctx.sp_ctx.ro_ref, RofizObjectMovement::Move(Transformation::new(dx, dy, 0.0)));
 
     ps_data.age += tick_len;
+    ps_data.prev_velocity_x = ps_data.velocity_x;
+    ps_data.prev_velocity_y = ps_data.velocity_y;
 
     response
 }

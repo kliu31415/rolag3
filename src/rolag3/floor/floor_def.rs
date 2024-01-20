@@ -1,6 +1,6 @@
 use std::{collections::HashMap, cell::RefCell, rc::Rc};
 
-use crate::{gfx::renderer::Renderer, rolag3::floor::{roomgen::{empty1::get_gen_room_fn_empty1, common::_1000::{_1000::get_gen_room_fn_common1000, _1001::get_gen_room_fn_common1001}}, floorgen::run::{GenFloorRoomFn, GenFloorRoomReqInfo}, room_object::{cosmetic::ground1::GroundTheme, wall::basic_wall::WallTheme, unit::enemy::{thinstar4::rgb_circle::new_thinstar4_group, square::rgb_star4or8::{new_square_rgb_star4, new_square_rgb_star8}}, damage::DamageColor}, draw::Color, rofiz::rofiz_state::RofizState}, util::rng::Prng};
+use crate::{gfx::renderer::Renderer, rolag3::floor::{roomgen::{empty1::get_gen_room_fn_empty1, common::_1000::{_1000::get_gen_room_fn_common1000, _1001::get_gen_room_fn_common1001}}, floorgen::run::{GenFloorRoomFn, GenFloorRoomReqInfo}, room_object::{cosmetic::ground1::GroundTheme, wall::basic_wall::WallTheme, unit::enemy::{thinstar4::rgb_circle::new_thinstar4_group, square::rgb_star4or8::{new_square_rgb_star4, new_square_rgb_star8}, hexagon::blue_hexagon::new_hexagon_blue_hexagon}, damage::DamageColor}, draw::Color, rofiz::rofiz_state::RofizState}, util::rng::Prng};
 
 use super::{room::{Room, RoomConnectionInfo}, room_object::{unit::{player::{Player, MoveRooms}, enemy::boss::{star_king::new_boss_star_king, circle_mage1::new_boss_circle_mage1, star_soldier::new_boss_star_soldier}}, room_object_def::{FloorCoordinate, RoomObjectId, RoomObjectRef, RoomObjectType, NewRoomObjectContext, RoomObject}, tiles::room_connection::Direction}, roomgen::{boss_room1::get_gen_room_fn_boss1, test_room1::get_gen_room_fn_test_room1, test_room2::get_gen_room_fn_test_room2, maze1::get_gen_room_fn_maze1, boss::generic_rect::get_gen_room_fn_boss_generic_rect}, floorgen::run::{gen_floor, GenFloorArgs, GenFloorRoomContext}};
 
@@ -100,7 +100,7 @@ impl Floor {
                 num_req: 1..2, 
                 funcs: vec![GenFloorRoomFn {
                     weight: 0.0, 
-                    func: Box::new(|ctx: &mut GenFloorRoomContext| (get_gen_room_fn_boss_generic_rect(50, 50, 
+                    func: Box::new(|ctx: &mut GenFloorRoomContext| (get_gen_room_fn_boss_generic_rect(50, 50, true,
                         Box::new(|ctx: &mut NewRoomObjectContext| {
                             let colors = (0..25).map(|_| {
                                 let randv = ctx.get_randf64();
@@ -115,8 +115,8 @@ impl Floor {
                             new_thinstar4_group(ctx, &colors, 25.0, 25.0)
                         }))(ctx))),
                 }, GenFloorRoomFn {
-                    weight: 1.0, 
-                    func: Box::new(|ctx: &mut GenFloorRoomContext| (get_gen_room_fn_boss_generic_rect(50, 50, 
+                    weight: 0.0, 
+                    func: Box::new(|ctx: &mut GenFloorRoomContext| (get_gen_room_fn_boss_generic_rect(50, 50, true,
                         Box::new(|ctx: &mut NewRoomObjectContext| {
                             Box::new([
                                 Rc::new(RefCell::new(new_square_rgb_star4(ctx, DamageColor::Red, 20.0, 25.0))),
@@ -129,9 +129,9 @@ impl Floor {
                         }))(ctx))),
                 }, GenFloorRoomFn {
                     weight: 1.0, 
-                    func: Box::new(|ctx: &mut GenFloorRoomContext| (get_gen_room_fn_boss_generic_rect(50, 50, 
+                    func: Box::new(|ctx: &mut GenFloorRoomContext| (get_gen_room_fn_boss_generic_rect(50, 50, false,
                         Box::new(|ctx: &mut NewRoomObjectContext| {
-                            Box::new([Rc::new(RefCell::new(new_boss_star_king(ctx, 25.0, 25.0)))])
+                            Box::new([Rc::new(RefCell::new(new_hexagon_blue_hexagon(ctx, 25.0, 25.0)))])
                         }))(ctx))),
                 },]
             },
@@ -195,7 +195,7 @@ impl Floor {
             new_boss_star_soldier(ctx, 0.0, 0.0);
             panic!()
         };
-        let mut room1 = (get_gen_room_fn_boss_generic_rect(50, 50, make_boss_fn))(&mut gfr_ctx).room_builder.build();
+        let mut room1 = (get_gen_room_fn_boss_generic_rect(50, 50, false, make_boss_fn))(&mut gfr_ctx).room_builder.build();
         room1.upper_left_x = 0;
         room1.upper_left_y = 0;
         room1.finalize_with_connections(renderer, Vec::new(), rng, &mut room_object_id_counter, ground_theme);
