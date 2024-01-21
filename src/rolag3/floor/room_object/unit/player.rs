@@ -155,7 +155,7 @@ impl RoomObject for Player {
         };
         let dwoo_response = (self.weapons[self.weapon_idx].draw_on_owner_fn)(&dwoo_ctx);
         ctx.add_draw_op(DrawContext::Z_UNIT_PLAYER_WEAPON, dwoo_response.draw_op);
-        let player_color = self.su_common.as_ref().unwrap().get_draw_color(ctx.get_room_time(), dwoo_response.owner_color);
+        let player_color = self.su_common.as_ref().unwrap().get_draw_color(dwoo_response.owner_color);
 
         let vertexes = [
             Point::new(player_x, player_y),

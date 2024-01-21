@@ -476,7 +476,7 @@ fn draw(ctx: &mut SuDrawContext) {
         },
         _ => panic!("unexpected star_emperor.stage={}", star_emperor.stage),
     };
-    let color = ctx.su_ctx.su_common.get_draw_color(ctx.draw_ctx.get_room_time(), color);
+    let color = ctx.su_ctx.su_common.get_draw_color(color);
     let dop = ctx.draw_ctx.do_circle(color, Point::new(xform.dx as f32, xform.dy as f32), radius);
     ctx.draw_ctx.add_draw_op(DrawContext::Z_UNIT, dop);
 }

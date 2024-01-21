@@ -137,7 +137,7 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
 fn draw(ctx: &mut SuDrawContext) {
     let us_data = ctx.su_ctx.us_data.downcast_mut::<Boss1>().unwrap();
 
-    let color = ctx.su_ctx.su_common.get_draw_color(ctx.draw_ctx.get_room_time(), Color::new(5.0, 0.0, 0.0, 1.0));
+    let color = ctx.su_ctx.su_common.get_draw_color(Color::new(5.0, 0.0, 0.0, 1.0));
     let xform = ctx.draw_ctx.get_rofiz().get_movable_object_xform(ctx.su_ctx.su_common.get_ro_ref());
     let inner_xformed = xform.get_transformed_polygon(&us_data.inner);
     let mut draw_ops = Vec::new();
@@ -148,7 +148,7 @@ fn draw(ctx: &mut SuDrawContext) {
     }
     draw_ops.push(ctx.draw_ctx.do_tri_fan(color, &vertexes));
 
-    let color = ctx.su_ctx.su_common.get_draw_color(ctx.draw_ctx.get_room_time(), Color::new(0.0, 2.0, 0.0, 1.0));
+    let color = ctx.su_ctx.su_common.get_draw_color( Color::new(0.0, 2.0, 0.0, 1.0));
     for quad in get_border_quads(xform, &us_data.outer, &us_data.inner).into_iter() {
         draw_ops.push(ctx.draw_ctx.do_quad_fan(color, quad));
     }

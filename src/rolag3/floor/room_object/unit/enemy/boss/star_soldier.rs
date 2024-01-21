@@ -255,7 +255,7 @@ fn draw(ctx: &mut SuDrawContext) {
         },
         _ => panic!("unexpected star_soldier.stage={}", ss.stage),
     };
-    let color = ctx.su_ctx.su_common.get_draw_color(ctx.draw_ctx.get_room_time(), color);
+    let color = ctx.su_ctx.su_common.get_draw_color(color);
     let xform = ctx.draw_ctx.get_rofiz().get_movable_object_xform(&ctx.su_ctx.su_common.get_ro_ref());
     let vertexes = 
         [Point::new(0.0, 0.0)].iter().chain(ss.vertexes.iter()).chain(ss.vertexes[..1].iter())

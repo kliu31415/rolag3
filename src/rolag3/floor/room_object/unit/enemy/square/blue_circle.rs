@@ -137,8 +137,8 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
 
 fn draw(ctx: &mut SuDrawContext) {
     let us_data = ctx.su_ctx.us_data.downcast_mut::<SquareBlueCircle>().unwrap();
-    let border_color = ctx.su_ctx.su_common.get_draw_color(ctx.draw_ctx.get_room_time(), DrawContext::COLOR_NSU_BORDER);
-    let outer_color = ctx.su_ctx.su_common.get_draw_color(ctx.draw_ctx.get_room_time(), OUTER_COLOR);
+    let border_color = ctx.su_ctx.su_common.get_draw_color(DrawContext::COLOR_NSU_BORDER);
+    let outer_color = ctx.su_ctx.su_common.get_draw_color(OUTER_COLOR);
     let inner_color = match us_data.spit_projectile_start {
         Some(ref x) => {
             let diff = ctx.su_ctx.su_common.get_unit_time() - x.start;

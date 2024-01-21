@@ -82,7 +82,7 @@ pub struct StandardUnitCommon {
     collision_damage_token_buckets: HashMap<RoomObjectRef /* self is dealer, other was dealt damage */, TokenBucket>,
     max_hp: f64,
     hp: f64,
-    last_damaged_time: f64,
+    last_damaged_age: f64,
     floor_take_damage_mult: f64, /* 1 for all units except the player */
 
     budebs: Vec<Budeb>,
@@ -156,7 +156,7 @@ impl StandardUnitCommon {
             collision_damage_token_buckets: HashMap::new(),
             max_hp: hp,
             hp,
-            last_damaged_time: -100.0,
+            last_damaged_age: -100.0,
             floor_take_damage_mult: 1.0,
 
             budebs: Vec::new(),
@@ -532,17 +532,15 @@ impl StandardUnitCommon {
             damage_taken = damage;
             self.hp -= damage;
         }
-        self.last_damaged_time = self.unit_age;
+        self.last_damaged_age = self.unit_age;
         TakeDamageResponse { 
             dead: self.hp <= 0.0,
             damage_taken,
          }
     }
 
-    pub fn get_draw_color(&self, room_time: f64, original_color: Color) -> Color {
-        // TODO: self.last_damaged_time is set from unit_time, so the calculation here mixes room_time and unit_time.
-        // Pick one and stick with it.
-        lerp_no_alpha(((1.0 - 4.0 * f64::min(0.25, room_time - self.last_damaged_time)) / 1.5) as f32, 
+    pub fn get_draw_color(&self, original_color: Color) -> Color {
+        lerp_no_alpha(((1.0 - 4.0 * f64::min(0.25, self.unit_age - self.last_damaged_age)) / 1.5) as f32, 
             original_color,
             Color::new(1.0, 1.0, 1.0, 0.0))
     }

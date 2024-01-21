@@ -55,7 +55,7 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
 }
 
 fn draw(ctx: &mut SuDrawContext) {
-    let color = ctx.su_ctx.su_common.get_draw_color(ctx.draw_ctx.get_room_time(), Color::new(0.1, 0.8, 0.1, 1.0));
+    let color = ctx.su_ctx.su_common.get_draw_color(Color::new(0.1, 0.8, 0.1, 1.0));
     let xform = ctx.draw_ctx.get_rofiz().get_movable_object_xform(ctx.su_ctx.su_common.get_ro_ref());
     let x = xform.dx as f32 - SIDE_LEN / 2.0;
     let y = xform.dy as f32 - SIDE_LEN / 2.0;

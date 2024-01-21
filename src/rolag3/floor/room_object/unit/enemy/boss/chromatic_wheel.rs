@@ -298,12 +298,11 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
 
 fn draw(ctx: &mut SuDrawContext) {
     let us_data = ctx.su_ctx.us_data.downcast_mut::<ChromaticWheel>().unwrap();
-    let room_time = ctx.draw_ctx.get_room_time();
     let unit_age = ctx.su_ctx.su_common.get_unit_time();
     let xform = ctx.draw_ctx.get_rofiz().get_movable_object_xform(ctx.su_ctx.su_common.get_ro_ref());
     let mut dops = Vec::new();
     dops.push(ctx.draw_ctx.do_concentric_circle(
-        ctx.su_ctx.su_common.get_draw_color(room_time, MAIN_INNER_COLOR), 
+        ctx.su_ctx.su_common.get_draw_color(MAIN_INNER_COLOR), 
         DrawContext::COLOR_NSU_BORDER, 
         Point::new(xform.dx as f32, xform.dy as f32),
         RADIUS - BORDER_THICKNESS,
@@ -320,7 +319,7 @@ fn draw(ctx: &mut SuDrawContext) {
         } else {
             R_SUBCIRCLE_COLOR
         };
-        let color = ctx.su_ctx.su_common.get_draw_color(room_time, color);
+        let color = ctx.su_ctx.su_common.get_draw_color(color);
         dops.push(ctx.draw_ctx.do_circle(color, center, OUTER_SUBCIRCLE_RADIUS));
     }
     for bs in us_data.blue_subcircle_info.iter() {
@@ -332,13 +331,13 @@ fn draw(ctx: &mut SuDrawContext) {
         } else {
             B_SUBCIRCLE_COLOR
         };
-        let color = ctx.su_ctx.su_common.get_draw_color(room_time, color);
+        let color = ctx.su_ctx.su_common.get_draw_color(color);
         dops.push(ctx.draw_ctx.do_circle(color, center, OUTER_SUBCIRCLE_RADIUS));
     }
 
     let lerp_t = f64::min(1.0, 4.0 * f64::min(us_data.next_green_wave_at - unit_age, unit_age - us_data.last_green_wave_at));
     let color = Color::lerp(G_PROJ_COLOR, G_SUBCIRCLE_COLOR, lerp_t as f32);
-    let color = ctx.su_ctx.su_common.get_draw_color(room_time, color);
+    let color = ctx.su_ctx.su_common.get_draw_color(color);
     dops.push(ctx.draw_ctx.do_circle(color, Point::new(xform.dx as f32, xform.dy as f32), CENTRAL_SUBCIRCLE_RADIUS));
 
     ctx.draw_ctx.add_draw_op(DrawContext::Z_UNIT, ctx.draw_ctx.dop_group(dops.into()));

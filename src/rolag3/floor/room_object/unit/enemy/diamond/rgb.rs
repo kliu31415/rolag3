@@ -193,14 +193,13 @@ fn cross_prod(x1: f64, y1: f64, x2: f64, y2: f64) -> f64 {
 
 fn draw(ctx: &mut SuDrawContext) {
     let us_data = ctx.su_ctx.us_data.downcast_mut::<DiamondRgb>().unwrap();
-    let room_time = ctx.draw_ctx.get_room_time();
     let xform = ctx.draw_ctx.get_rofiz().get_movable_object_xform(ctx.su_ctx.su_common.get_ro_ref());
     let xlate = Vector::new(xform.dx as f32, xform.dy as f32);
     let border_outer_v = BORDER_VERTEXES.map(|p| p.rotated(xform.dtheta as f32)).map(|p| p + xlate);
     let border_inner_v = us_data.inner_vertexes.map(|p| p.rotated(xform.dtheta as f32)).map(|p| p + xlate);
-    let border_color = ctx.su_ctx.su_common.get_draw_color(room_time, DrawContext::COLOR_NSU_BORDER);
+    let border_color = ctx.su_ctx.su_common.get_draw_color(DrawContext::COLOR_NSU_BORDER);
     let border_dop = ctx.draw_ctx.do_thick_border(border_color, &border_outer_v, &border_inner_v);
-    let inner_color = ctx.su_ctx.su_common.get_draw_color(room_time, us_data.inner_color);
+    let inner_color = ctx.su_ctx.su_common.get_draw_color(us_data.inner_color);
     let inner_dop = ctx.draw_ctx.do_quad_fan(inner_color, border_inner_v);
     ctx.draw_ctx.add_draw_op(DrawContext::Z_UNIT_FLYING, ctx.draw_ctx.dop_group(Box::new([border_dop, inner_dop])));
 }

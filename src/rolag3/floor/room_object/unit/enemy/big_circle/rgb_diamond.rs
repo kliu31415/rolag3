@@ -97,9 +97,8 @@ fn draw(ctx: &mut SuDrawContext) {
     let us_data = ctx.su_ctx.us_data.downcast_mut::<BigCircleBlueDiamond>().unwrap();
     let xform = ctx.draw_ctx.get_rofiz().get_movable_object_xform(ctx.su_ctx.su_common.get_ro_ref());
     let unit_age = ctx.su_ctx.su_common.get_unit_time();
-    let room_time = ctx.draw_ctx.get_room_time();
-    let inner_color = ctx.su_ctx.su_common.get_draw_color(room_time, us_data.outer_color);
-    let outer_color = ctx.su_ctx.su_common.get_draw_color(room_time, DrawContext::COLOR_NSU_BORDER);
+    let inner_color = ctx.su_ctx.su_common.get_draw_color(us_data.outer_color);
+    let outer_color = ctx.su_ctx.su_common.get_draw_color(DrawContext::COLOR_NSU_BORDER);
     let dop_circle = ctx.draw_ctx.do_concentric_circle(
         inner_color, 
         outer_color, 
@@ -118,7 +117,7 @@ fn draw(ctx: &mut SuDrawContext) {
         }
     }) as f32;
     let inner_color = Color::lerp(us_data.inner_color_lerp1, us_data.inner_color_lerp2, lerp_t);
-    let inner_color = ctx.su_ctx.su_common.get_draw_color(room_time, inner_color);
+    let inner_color = ctx.su_ctx.su_common.get_draw_color(inner_color);
     let inner_dop = ctx.draw_ctx.do_quad_fan(inner_color, inner_vertexes);
     ctx.draw_ctx.add_draw_op(DrawContext::Z_UNIT, ctx.draw_ctx.dop_group(Box::new([dop_circle, inner_dop])));
 }

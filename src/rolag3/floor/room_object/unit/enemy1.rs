@@ -126,7 +126,7 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
 }
 
 fn draw(ctx: &mut SuDrawContext) {
-    let color = ctx.su_ctx.su_common.get_draw_color(ctx.draw_ctx.get_room_time(), Color::new(0.1, 0.1, 1.0, 1.0));
+    let color = ctx.su_ctx.su_common.get_draw_color(Color::new(0.1, 0.1, 1.0, 1.0));
     let xform = ctx.draw_ctx.get_rofiz().get_movable_object_xform(ctx.su_ctx.su_common.get_ro_ref());
     let x = xform.dx as f32 - SIDE_LEN / 2.0;
     let y = xform.dy as f32 - SIDE_LEN / 2.0;
@@ -139,13 +139,13 @@ fn draw(ctx: &mut SuDrawContext) {
         Point::new(x, y + h),
     ];
     let dop1 = ctx.draw_ctx.do_quad_fan(color, vertexes);
-    let eye_border_color = ctx.su_ctx.su_common.get_draw_color(ctx.draw_ctx.get_room_time(), Color::new(0.0, 0.0, 0.0, 1.0));
-    let eye_sclera_color = ctx.su_ctx.su_common.get_draw_color(ctx.draw_ctx.get_room_time(), Color::new(1.0, 1.0, 1.0, 1.0));
-    let eye_iris_color = ctx.su_ctx.su_common.get_draw_color(ctx.draw_ctx.get_room_time(), Color::new(0.0, 0.0, 0.0, 1.0));
+    let eye_border_color = ctx.su_ctx.su_common.get_draw_color(Color::new(0.0, 0.0, 0.0, 1.0));
+    let eye_sclera_color = ctx.su_ctx.su_common.get_draw_color(Color::new(1.0, 1.0, 1.0, 1.0));
+    let eye_iris_color = ctx.su_ctx.su_common.get_draw_color(Color::new(0.0, 0.0, 0.0, 1.0));
     let dop2 = ctx.draw_ctx.do_eye(Point::new((xform.dx - 0.25) as f32, (xform.dy - 0.25) as f32), Point::new((xform.dx - 0.25) as f32, (xform.dy - 0.25) as f32), 0.4, 0.25, 0.1, 0.05, eye_border_color, eye_sclera_color, eye_iris_color);
     let dop3 = ctx.draw_ctx.do_eye(Point::new((xform.dx + 0.25) as f32, (xform.dy - 0.25) as f32), Point::new((xform.dx + 0.25) as f32, (xform.dy - 0.25) as f32), 0.4, 0.25, 0.1, 0.05, eye_border_color, eye_sclera_color, eye_iris_color);
-    let mouth_border_color = ctx.su_ctx.su_common.get_draw_color(ctx.draw_ctx.get_room_time(), Color::new(0.0, 0.0, 0.0, 1.0));
-    let mouth_inner_color = ctx.su_ctx.su_common.get_draw_color(ctx.draw_ctx.get_room_time(), Color::new(0.5, 0.5, 0.5, 1.0));
+    let mouth_border_color = ctx.su_ctx.su_common.get_draw_color(Color::new(0.0, 0.0, 0.0, 1.0));
+    let mouth_inner_color = ctx.su_ctx.su_common.get_draw_color(Color::new(0.5, 0.5, 0.5, 1.0));
     let dop4 = ctx.draw_ctx.do_mouth_smile(((1.0 + f64::sin(3.0 * ctx.draw_ctx.get_room_time())) / 2.0) as f32, Point::new(xform.dx as f32, (xform.dy + 0.25) as f32), 0.6, 0.29, 0.05, mouth_border_color, mouth_inner_color);
     let dop_group = ctx.draw_ctx.dop_group(vec![dop1, dop2, dop3, dop4].into_boxed_slice());
     ctx.draw_ctx.add_draw_op(DrawContext::Z_UNIT, dop_group);
