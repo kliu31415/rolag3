@@ -85,6 +85,7 @@ pub fn new_circular_turret_bluntstar3(ctx: &mut NewRoomObjectContext, x: f64, y:
         .angular_power(1.0)
         .angular_traction(10.0)
         .damageable(false)
+        .blocks_room_clear(false)
         .build(ctx)
 }
 

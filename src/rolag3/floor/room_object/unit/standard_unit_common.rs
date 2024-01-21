@@ -489,6 +489,10 @@ impl StandardUnitCommon {
         self.budebs.push(*budeb);
     }
 
+    pub fn set_damageable(&mut self, damageable: bool) {
+        self.damageable = damageable;
+    }
+
     pub fn set_floor_take_damage_mult(&mut self, mult: f64) {
         self.floor_take_damage_mult = mult;
     }

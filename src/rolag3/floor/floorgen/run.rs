@@ -260,7 +260,7 @@ fn gen_room_candidates(args: &mut GenFloorArgs) -> (Room, Vec<Room>, Vec<Vec<Roo
     let num_nrc = 100;
     let weights = args.gen_normal_room_fns.iter().map(|x| x.weight).collect::<Box<_>>();
     while normal_room_candidates.len() < num_nrc {
-        let idx = args.rng.sample_weighted_iter_f64(&weights);
+        let idx = args.rng.sample_weighted_slice_f64(&weights);
         let mut gen_room_ctx = GenFloorRoomContext {
             rng: args.rng,
             room_object_id_counter: args.room_object_id_counter,
@@ -277,7 +277,7 @@ fn gen_room_candidates(args: &mut GenFloorArgs) -> (Room, Vec<Room>, Vec<Vec<Roo
         let mut i_candidates = Vec::new();
         let num_i_candidates = gfrri.num_req.end * 2; // arbitrary *2
         while i_candidates.len () < num_i_candidates {
-            let idx = args.rng.sample_weighted_iter_f64(&weights);
+            let idx = args.rng.sample_weighted_slice_f64(&weights);
             let mut gen_room_ctx = GenFloorRoomContext {
                 rng: args.rng,
                 room_object_id_counter: args.room_object_id_counter,

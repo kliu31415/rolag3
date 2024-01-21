@@ -5,13 +5,14 @@ use crate::{rolag3::floor::{room_object::{room_object_def::{RoomObject, RoomObje
 use super::Projectile;
 
 type Act1FnT = dyn Fn(&mut SpAct1Context) -> Act1Response;
+type SlaveAct1FnT = dyn Fn(&mut SpAct1Context, &mut Act1Response, &dyn Any /*input*/, &mut dyn Any /*output*/);
 type DrawFnT = dyn Fn(&mut SpDrawContext);
 type HandleCollisionFnT = dyn Fn(&mut SpHandleCollisionContext) -> HandleCollisionResponse;
 type ApplyOperationFnT = dyn Fn(&mut SpApplyOperationContext);
 
 pub struct StandardProjectile1 {
     data: Sp1Data,
-    logic: Sp1UnitSpecificLogic,
+    logic: Sp1Logic,
 }
 
 struct Sp1Data {
@@ -25,11 +26,16 @@ struct Sp1Data {
     lifespan_left: f64,
 }
 
-struct Sp1UnitSpecificLogic {
-    act1_fn: Box<Act1FnT>,
+struct Sp1Logic {
+    act1_fn: Act1Fn,
     draw_fn: Box<DrawFnT>,
     handle_collision_fn: Box<HandleCollisionFnT>,
     apply_operation_fn: Box<ApplyOperationFnT>,
+}
+
+enum Act1Fn {
+    Standard(Box<Act1FnT>),
+    _Slave(Box<SlaveAct1FnT>),
 }
 
 impl Sp1Data {
@@ -52,6 +58,8 @@ impl RoomObject for StandardProjectile1 {
     }
 
     fn act1(&mut self, ctx: &mut Act1Context) -> Act1Response {
+        let Act1Fn::Standard(ref f) = self.logic.act1_fn else {return Act1Response::new();};
+
         let tick_len = ctx.get_tick_length();
         self.data.lifespan_left -= tick_len;
         if self.data.lifespan_left < 0.0 {
@@ -66,7 +74,7 @@ impl RoomObject for StandardProjectile1 {
             sp_ctx: &mut sp_ctx,
             act1_ctx: ctx,
         };
-        (self.logic.act1_fn)(&mut sp_act1_ctx)
+        (f)(&mut sp_act1_ctx)
     }
 
     fn draw(&mut self, ctx: &mut DrawContext) {
@@ -128,7 +136,7 @@ pub struct Sp1Builder {
     owner: Weak<RefCell<dyn RoomObject>>,
     
     ps_data: Box<dyn Any>,
-    act1_fn: Box<Act1FnT>,
+    act1_fn: Act1Fn,
     draw_fn: Box<DrawFnT>,
     handle_collision_fn: Box<HandleCollisionFnT>,
     apply_operation_fn: Box<ApplyOperationFnT>,
@@ -140,7 +148,7 @@ impl Sp1Builder {
             req,
             owner: Weak::<RefCell<Dummy>>::new(),
             ps_data: Box::new(Dummy {}),
-            act1_fn: Box::new(act1_nop),
+            act1_fn: Act1Fn::Standard(Box::new(act1_nop)),
             draw_fn: Box::new(draw_nop),
             handle_collision_fn: Box::new(handle_collision_nop),
             apply_operation_fn: Box::new(apply_operation_nop),
@@ -158,7 +166,12 @@ impl Sp1Builder {
     }
 
     pub fn act1_fn(mut self, act1_fn: Box<Act1FnT>) -> Self {
-        self.act1_fn = act1_fn;
+        self.act1_fn = Act1Fn::Standard(act1_fn);
+        self
+    }
+
+    pub fn _slave_act1_fn(mut self, f: Box<SlaveAct1FnT>) -> Self {
+        self.act1_fn = Act1Fn::_Slave(f);
         self
     }
 
@@ -192,7 +205,7 @@ impl Sp1Builder {
                 owner: self.owner,
                 lifespan_left: self.req.lifespan,
             },
-            logic: Sp1UnitSpecificLogic {
+            logic: Sp1Logic {
                 act1_fn: self.act1_fn,
                 draw_fn: self.draw_fn,
                 handle_collision_fn: self.handle_collision_fn,

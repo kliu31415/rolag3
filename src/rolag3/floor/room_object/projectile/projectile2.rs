@@ -16,7 +16,7 @@ pub struct Projectile2Data {
     velocity_y: f64,
     age: f64,
 
-    homing_to_enemies_force: Option<f64>,
+    homing_to_enemies_power_fn: Option<Box<dyn Fn(f64) -> f64>>,
     homing_query_result: Option<Rc<RefCell<Act1QueryResult>>>,
 
     nef_position_fn: Option<NefPositionFn>,
@@ -39,9 +39,11 @@ pub struct Projectile2BuilderReq {
 pub struct Projectile2Builder {
     req: Projectile2BuilderReq,
     lifespan: f64,
-    homing_to_enemies_power: Option<f64>,
-    // nef = no external force, i.e. this function returns what the position of the projectile would be if no external
-    // forces are acting on the projectile. nef(t_2) - nef(t_1) can be used to calculate the power applied to the
+    homing_to_enemies_power_fn: Option<Box<dyn Fn(f64) -> f64>>,
+    // nef = no external force, i.e. this function returns what the position of the projectile would be if
+    // -the projectile starts at the origin
+    // -no external forces are acting on the projectile
+    // nef(t_2) - nef(t_1) can be used to calculate the power applied to the
     // projectile, which is combined with external forces (if there are any) to determine the final velocity.
     nef_position_fn: Option<NefPositionFn>,
 }
@@ -51,7 +53,7 @@ impl Projectile2Builder {
         Self {
             req,
             lifespan: 8.0, /* good default for most projectiles */
-            homing_to_enemies_power: None,
+            homing_to_enemies_power_fn: None,
             nef_position_fn: None,
         }
     }
@@ -61,8 +63,8 @@ impl Projectile2Builder {
         self
     }
 
-    pub fn homing_to_enemies_power(mut self, power: f64) -> Self {
-        self.homing_to_enemies_power = Some(power);
+    pub fn homing_to_enemies_power_fn(mut self, f: Box<dyn Fn(f64) -> f64>) -> Self {
+        self.homing_to_enemies_power_fn = Some(f);
         self
     }
 
@@ -80,7 +82,7 @@ impl Projectile2Builder {
             prev_velocity_y: self.req.velocity_y,
             velocity_x: self.req.velocity_x,
             velocity_y: self.req.velocity_y,
-            homing_to_enemies_force: self.homing_to_enemies_power,
+            homing_to_enemies_power_fn: self.homing_to_enemies_power_fn,
             homing_query_result: None,
             nef_position_fn: self.nef_position_fn,
             age: 0.0,
@@ -115,22 +117,26 @@ fn act1(ctx: &mut SpAct1Context) -> Act1Response {
     let tick_len = ctx.act1_ctx.get_tick_length(); 
 
     let xform = ctx.act1_ctx.get_rofiz().get_movable_object_xform(ctx.sp_ctx.ro_ref);
-    if let Some(power) = ps_data.homing_to_enemies_force {
-        if let Some(ref a1qr) = ps_data.homing_query_result {
-            let Act1QueryResult::ClosestUnit(cu_opt) = &*a1qr.borrow() else {panic!()};
-            if let Some(cu) = cu_opt {
-                let dx = cu.x - xform.dx;
-                let dy = cu.y - xform.dy;
-                let norm = f64::hypot(dx, dy);
-                if norm > 0.1 { // if the norm is less than 0.1, the projectile is too close to accurately home anyway
-                    let p_x = power * dx / norm;
-                    let p_y = power * dy / norm;
-                    let min_effective_velocity = 2.0;
-                    let v_norm = f64::max(min_effective_velocity, f64::hypot(ps_data.velocity_x, ps_data.velocity_y));
-                    let a_x = p_x / v_norm;
-                    let a_y = p_y / v_norm;
-                    ps_data.velocity_x += a_x * tick_len;
-                    ps_data.velocity_y += a_y * tick_len;
+    if let Some(ref power_f) = ps_data.homing_to_enemies_power_fn {
+        let power = (power_f)(ps_data.age);
+        assert!(power >= 0.0, "expected non-negative homing power, got {}", power);
+        if power > 0.0 {
+            if let Some(ref a1qr) = ps_data.homing_query_result {
+                let Act1QueryResult::ClosestUnit(cu_opt) = &*a1qr.borrow() else {panic!()};
+                if let Some(cu) = cu_opt {
+                    let dx = cu.x - xform.dx;
+                    let dy = cu.y - xform.dy;
+                    let norm = f64::hypot(dx, dy);
+                    if norm > 0.1 { // if the norm is less than 0.1, the projectile is too close to accurately home anyway
+                        let p_x = power * dx / norm;
+                        let p_y = power * dy / norm;
+                        let min_effective_velocity = 2.0;
+                        let v_norm = f64::max(min_effective_velocity, f64::hypot(ps_data.velocity_x, ps_data.velocity_y));
+                        let a_x = p_x / v_norm;
+                        let a_y = p_y / v_norm;
+                        ps_data.velocity_x += a_x * tick_len;
+                        ps_data.velocity_y += a_y * tick_len;
+                    }
                 }
             }
         }

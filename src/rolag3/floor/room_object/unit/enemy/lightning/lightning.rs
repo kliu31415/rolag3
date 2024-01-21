@@ -59,6 +59,7 @@ pub fn new_lightning(
         .rofiz_obj_type(RofizObjType::SpectralUnit)
         .us_data(Box::new(lightning))
         .damageable(false)
+        .blocks_room_clear(false)
         .build(ctx)
 }
 

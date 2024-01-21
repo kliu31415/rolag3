@@ -3,6 +3,9 @@ use std::{rc::Rc, cell::RefCell};
 use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Act1Response, Team}, damage::DamageColor, unit::{standard_unit1::{StandardUnit1Builder, StandardUnit1BuilderReq, SuAct1Context, SuDrawContext, StandardUnit1, RofizObjType}, standard_unit_common::{TranslateMove, RotateMove}}, projectile::projectile2::{Proj2Shape, Projectile2Builder, Projectile2BuilderReq}}, rofiz::rofiz_object::Transformation, draw::{Color, DrawContext}}, geometry::{shape::{Shape, Point}, util::get_inner_polygon, star::get_star_shape}, util::lerp::lerp_f64};
 
 /* Thinstar3Red jumps from wall to wall. It sprays a wave of 8 projectiles separated by 45 deg every 1.5 while jumping.
+
+   TODO: ensure that Thinstar3 can be damaged on all rooms. If 3 walls are completely occupied by connections/doors,
+   then this unit jumps only along one wall, which effectively makes it undamageable.
 */
 
 const RADIUS: f64 = 1.1;

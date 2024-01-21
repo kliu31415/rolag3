@@ -35,7 +35,7 @@ impl Prng {
         self.state.gen_range(r)
     }
 
-    pub fn sample_weighted_iter_f64(&mut self, weights: &[f64]) -> usize {
+    pub fn sample_weighted_slice_f64(&mut self, weights: &[f64]) -> usize {
         let sum: f64 = weights.iter().sum();
         let mut cur = self.gen_f64() * sum;
         for i in 0..weights.len() {

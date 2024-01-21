@@ -27,6 +27,7 @@ pub fn new_orb(ctx: &mut NewRoomObjectContext, x: f64, y: f64, radius: f32) -> S
         .rofiz_obj_type(RofizObjType::SpectralUnit)
         .us_data(Box::new(us_data))
         .damageable(false)
+        .blocks_room_clear(false)
         .build(ctx)
 }
 

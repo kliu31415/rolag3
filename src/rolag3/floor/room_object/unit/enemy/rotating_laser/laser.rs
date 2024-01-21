@@ -63,6 +63,7 @@ pub fn new_rotating_laser(
         .hitbox(xform, Shape::of_circle(Point::new(0.0, 0.0), CIRCULAR_BASE_BORDER_R))
         .us_data(Box::new(us_data))
         .damageable(false)
+        .blocks_room_clear(false)
         .add_secondary_hitbox(xform, rect.clone(), RofizObjType::BasicProjectile)
         .build(ctx)
 }

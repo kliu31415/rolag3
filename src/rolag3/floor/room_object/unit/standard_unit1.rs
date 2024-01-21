@@ -232,6 +232,7 @@ pub struct StandardUnit1Builder {
     hitbox: Option<(Transformation, Shape)>,
     rofiz_obj_type: RofizObjType,
     damageable: bool,
+    blocks_room_clear: bool,
     secondary_hitboxes: Vec<(Transformation, Shape, RofizObjType)>,
     room_obj_md: Option<RoomObjectMetadata>,
     remove_immediately_on_death: bool,
@@ -279,6 +280,7 @@ impl StandardUnit1Builder {
             hitbox: None,
             rofiz_obj_type: RofizObjType::NonspectralUnit,
             damageable: true,
+            blocks_room_clear: true,
             secondary_hitboxes: Vec::new(),
             room_obj_md: None,
             remove_immediately_on_death: true,
@@ -353,6 +355,11 @@ impl StandardUnit1Builder {
         self
     }
 
+    pub fn blocks_room_clear(mut self, blocks_room_clear: bool) -> Self {
+        self.blocks_room_clear = blocks_room_clear;
+        self
+    }
+
     pub fn add_secondary_hitbox(mut self, xform: Transformation, shape: Shape, rofiz_obj_type: RofizObjType) -> Self {
         self.secondary_hitboxes.push((xform, shape, rofiz_obj_type));
         self
@@ -424,7 +431,7 @@ impl StandardUnit1Builder {
                 team: self.req.team, 
                 damage_color: self.req.damage_color,
                 su_common, 
-                blocks_room_clear: self.damageable,
+                blocks_room_clear: self.blocks_room_clear,
                 is_dead: false,
                 remove_immediately_on_death: self.remove_immediately_on_death,
             },
