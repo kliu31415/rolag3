@@ -540,6 +540,8 @@ impl StandardUnitCommon {
     }
 
     pub fn get_draw_color(&self, room_time: f64, original_color: Color) -> Color {
+        // TODO: self.last_damaged_time is set from unit_time, so the calculation here mixes room_time and unit_time.
+        // Pick one and stick with it.
         lerp_no_alpha(((1.0 - 4.0 * f64::min(0.25, room_time - self.last_damaged_time)) / 1.5) as f32, 
             original_color,
             Color::new(1.0, 1.0, 1.0, 0.0))

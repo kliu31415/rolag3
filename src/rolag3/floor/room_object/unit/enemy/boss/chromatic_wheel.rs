@@ -8,7 +8,7 @@ use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext
    - Red subcircles fire lasers radially outwards
      - At first, only half of redcircles do this. When the boss's HP drops low enough, all red subcircles do this
    - Blue subcircles fire lasers toward the player after a short prelude
-     - Attacks happen faster as the unit loses hp
+     - At first, no blue subcircles do this. More and more blue subcircles do this as the boss loses hp.
    - The green subcircle releases a radial wave of projectiles
  */
 
@@ -63,6 +63,7 @@ struct RedSubcircleFireInfo {
 struct BlueSubcircleInfo {
     center_r: f64,
     center_theta: f64,
+    active: bool,
 
     num_proj_fired: i32,
     fire_angle: Option<f64>,
@@ -88,6 +89,7 @@ pub fn new_boss_chromatic_wheel(ctx: &mut NewRoomObjectContext, x: f64, y: f64) 
         blue_subcircle_info: std::array::from_fn(|i| BlueSubcircleInfo {
             center_r: (RADIUS - OUTER_SUBCIRCLE_RADIUS - BORDER_THICKNESS - 0.1) as f64,
             center_theta: (2 * i) as f64 / NUM_OUTER_CIRCLES as f64 * 2.0 * std::f64::consts::PI + xform.dtheta,
+            active: false,
             num_proj_fired: 0,
             fire_angle: None,
             start_prelude_age: i as f64 * 0.25,
@@ -149,8 +151,9 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
         }
     }
 
-    for bs in us_data.blue_subcircle_info.iter_mut() {
-        if unit_age > bs.start_prelude_age {
+    let num_blue_subcircles = us_data.blue_subcircle_info.len();
+    for (i, bs) in us_data.blue_subcircle_info.iter_mut().enumerate() {
+        if bs.active && unit_age > bs.start_prelude_age {
             let center_x = xform.dx + bs.center_r * f64::cos(bs.center_theta + xform.dtheta);
             let center_y = xform.dx + bs.center_r * f64::sin(bs.center_theta + xform.dtheta);
 
@@ -203,6 +206,12 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
         }
 
         if unit_age > bs.end_age {
+            let hp_pct = ctx.su_ctx.su_common.get_cur_hp() / ctx.su_ctx.su_common.get_max_hp();
+            let a = 2 * i + num_blue_subcircles;
+            let b = 3 * num_blue_subcircles;
+            if hp_pct < a as f64 / b as f64 {
+                bs.active = true;
+            }
             let prev_end_age = bs.end_age;
             bs.num_proj_fired = 0;
             bs.fire_angle = None;

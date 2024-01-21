@@ -15,6 +15,10 @@ impl Prng {
         }
     }
 
+    pub fn spawn_child(&mut self) -> Self {
+        Self::new_seed_u64(self.gen_u64_range(0..u64::MAX))
+    }
+
     pub fn gen_u64_range(&mut self, r: Range<u64>) -> u64 {
         self.state.gen_range(r)
     }
@@ -42,6 +46,11 @@ impl Prng {
             }
         }
         return weights.len() - 1;
+    }
+
+    pub fn sample_slice_uniform<T: Copy>(&mut self, values: &[T]) -> T {
+        assert!(values.len() > 0);
+        values[self.state.gen_range(0..values.len())]
     }
 
     // [0..1)
