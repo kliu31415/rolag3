@@ -1,6 +1,6 @@
 use std::{collections::HashMap, cell::RefCell, rc::Rc};
 
-use crate::{gfx::renderer::Renderer, rolag3::floor::{roomgen::{empty1::get_gen_room_fn_empty1, common::_1000::{_1000::get_gen_room_fn_common1000, _1001::get_gen_room_fn_common1001, _1002::get_gen_room_fn_common1002a}}, floorgen::run::{GenFloorRoomFn, GenFloorRoomReqInfo}, room_object::{cosmetic::ground1::GroundTheme, wall::basic_wall::WallTheme, unit::enemy::{thinstar4::rgb_circle::new_thinstar4_group, square::rgb_star4or8::{new_square_rgb_star4, new_square_rgb_star8}, boss::chromatic_wheel::new_boss_chromatic_wheel}, damage::DamageColor}, draw::Color, rofiz::rofiz_state::RofizState}, util::rng::Prng};
+use crate::{gfx::renderer::Renderer, rolag3::floor::{roomgen::{empty1::get_gen_room_fn_empty1, common::_100::{_100::get_gen_room_fn_common100, _101::get_gen_room_fn_common101, _102::get_gen_room_fn_common102a}}, floorgen::run::{GenFloorRoomFn, GenFloorRoomReqInfo}, room_object::{cosmetic::ground1::GroundTheme, wall::basic_wall::WallTheme, unit::enemy::{thinstar4::rgb_circle::new_thinstar4_group, square::rgb_star4or8::{new_square_rgb_star4, new_square_rgb_star8}, boss::chromatic_wheel::new_boss_chromatic_wheel}, damage::DamageColor}, draw::Color, rofiz::rofiz_state::RofizState}, util::rng::Prng};
 
 use super::{room::{Room, RoomConnectionInfo}, room_object::{unit::{player::{Player, MoveRooms}, enemy::boss::{star_king::new_boss_star_king, circle_mage1::new_boss_circle_mage1, star_soldier::new_boss_star_soldier}}, room_object_def::{FloorCoordinate, RoomObjectId, RoomObjectRef, RoomObjectType, NewRoomObjectContext, RoomObject}, tiles::room_connection::Direction}, roomgen::{boss_room1::get_gen_room_fn_boss1, test_room1::get_gen_room_fn_test_room1, test_room2::get_gen_room_fn_test_room2, maze1::get_gen_room_fn_maze1, boss::generic_rect::get_gen_room_fn_boss_generic_rect}, floorgen::run::{gen_floor, GenFloorArgs, GenFloorRoomContext}};
 
@@ -221,9 +221,9 @@ impl Floor {
         let gen_initial_room_fn = GenFloorRoomFn {weight: 1.0, func: get_gen_room_fn_empty1(20, 20, 20, 20)};
         let gen_normal_room_fns = vec![
             GenFloorRoomFn {weight: 1.0, func: get_gen_room_fn_empty1(20, 50, 20, 50)},
-            GenFloorRoomFn {weight: 0.0, func: get_gen_room_fn_common1000(30)},
-            GenFloorRoomFn {weight: 0.0, func: get_gen_room_fn_common1001(4, 16, 16, 5, 20)},
-            GenFloorRoomFn {weight: 20.0, func: get_gen_room_fn_common1002a()},
+            GenFloorRoomFn {weight: 0.0, func: get_gen_room_fn_common100(30)},
+            GenFloorRoomFn {weight: 0.0, func: get_gen_room_fn_common101(4, 16, 16, 5, 20)},
+            GenFloorRoomFn {weight: 20.0, func: get_gen_room_fn_common102a()},
         ];
         let ground_theme = GroundTheme::Monocolor(Color::new(0.02, 0.0, 0.0, 1.0));
         let wall_theme = WallTheme::Monocolor(Color::new(0.1, 0.2, 0.3, 1.0));

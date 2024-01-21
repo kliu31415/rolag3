@@ -2,10 +2,10 @@ use std::{cell::RefCell, rc::Rc};
 
 use crate::rolag3::floor::{floorgen::run::{GenFloorRoomContext, GenFloorRoomResponse}, room_object::{room_object_def::NewRoomObjectContext, unit::enemy::big_circle::rgb_diamond::new_big_circle_rgb_diamond, damage::DamageColor}, roomgen::util::{square_room::init_basic_square_room, connection_candidates::all_borders_as_connection_candidates}, room::{RoomBuilder, RoomBuilderReq}};
 
-/* Common1002 contains several BigCircleDiamonds (units that spawn diamonds).
+/* Common102 contains several BigCircleDiamonds (units that spawn diamonds).
  */
 
-pub fn get_gen_room_fn_common1002a() -> Box<dyn Fn(&mut GenFloorRoomContext) -> GenFloorRoomResponse> {
+pub fn get_gen_room_fn_common102a() -> Box<dyn Fn(&mut GenFloorRoomContext) -> GenFloorRoomResponse> {
     Box::new(move |ctx: &mut GenFloorRoomContext| {
         let mut enemy_info = Vec::new();
         for i in 0..2 {

@@ -2,17 +2,17 @@ use std::{rc::Rc, cell::RefCell};
 
 use crate::rolag3::floor::{floorgen::run::{GenFloorRoomContext, GenFloorRoomResponse}, rofiz::rofiz_state::RofizState, room_object::{room_object_def::{NewRoomObjectContext, RoomObjectCollection}, wall::basic_wall::BasicWall, cosmetic::ground1::new_ground1, unit::enemy::lightning::lorbg_fixed_path::{make_logwc_path_polygon, new_lorbg_fixed_path}, damage::DamageColor, tiles::key_tile::{new_key_tile, KEY_TILE_SIDE_LEN}}, room::{RoomBuilderReq, RoomBuilder}, roomgen::util::connection_candidates::{SomeBorders, some_borders_as_connection_candidates}};
 
-/* Common1000 contains three orbs moving around the walls, with lasers arcing between the orbs. To clear the room, the
+/* Common100 contains three orbs moving around the walls, with lasers arcing between the orbs. To clear the room, the
    player must activate 4 key tiles. One key tile is in each quadrant of the room.
 */
 
-pub fn get_gen_room_fn_common1000(room_side_len: u32) -> Box<dyn Fn(&mut GenFloorRoomContext) -> GenFloorRoomResponse> {
+pub fn get_gen_room_fn_common100(room_side_len: u32) -> Box<dyn Fn(&mut GenFloorRoomContext) -> GenFloorRoomResponse> {
     Box::new(move |ctx: &mut GenFloorRoomContext| {
-        make_room_common1000(ctx, room_side_len)
+        make_room(ctx, room_side_len)
     })
 }
 
-fn make_room_common1000(ctx: &mut GenFloorRoomContext, room_side_len: u32) -> GenFloorRoomResponse {
+fn make_room(ctx: &mut GenFloorRoomContext, room_side_len: u32) -> GenFloorRoomResponse {
     assert!(room_side_len >= 10, "room_side_len of {} is too small", room_side_len);
     let wall_theme = ctx.wall_theme;
     let ground_theme = ctx.ground_theme;

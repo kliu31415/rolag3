@@ -2,11 +2,11 @@ use std::{rc::Rc, cell::RefCell};
 
 use crate::rolag3::floor::{floorgen::run::{GenFloorRoomContext, GenFloorRoomResponse}, roomgen::util::{rectangular_maze::make_rectangular_maze, connection_candidates::all_borders_as_connection_candidates}, rofiz::rofiz_state::RofizState, room_object::{room_object_def::{NewRoomObjectContext, RoomObjectCollection}, wall::basic_wall::BasicWall, cosmetic::ground1::new_ground1, tiles::{damage_tile::new_damage_tile, key_tile::new_key_tile}, unit::enemy::{square::{self, blue_diamond::new_square_blue_diamond}, fatstar4::{self, green::new_fatstar4_green}}}, room::{RoomBuilderReq, RoomBuilder}};
 
-/* Common1001 contains a large maze. The player must activate key tiles around the maze to clear it. There are also
+/* Common101 contains a large maze. The player must activate key tiles around the maze to clear it. There are also
    some enemies that float around.
  */
 
-pub fn get_gen_room_fn_common1001(
+pub fn get_gen_room_fn_common101(
     corridor_w: usize,
     w: usize, 
     h: usize,
