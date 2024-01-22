@@ -1,6 +1,6 @@
 use crate::geometry::shape::Point;
 
-use super::renderer::{DrawOp, ViewSpaceCoordinate, ColoredTriVertex, DrawOpTriFan, ColorRGBA32f, DrawOpCCS, DrawOpQuadFan};
+use super::renderer::{DrawOp, ViewSpaceCoordinate, ColoredTriVertex, DrawOpTriFan, ColorRGBA32f, DrawOpCCS, DrawOpQuadFan, Rect};
 
 pub fn draw_op_rect(color: ColorRGBA32f, x: f32, y: f32, w: f32, h: f32) -> DrawOp {
     DrawOp::TriFan(DrawOpTriFan { vertexes: Box::new([
@@ -49,4 +49,8 @@ pub fn draw_thick_border(dst: &mut Vec<DrawOp>, color: ColorRGBA32f, border: &[P
         });
         dst.push(DrawOp::QuadFan(DrawOpQuadFan {vertexes}));
     }
+}
+
+pub fn rect_to_polygon_vertexes(r: &Rect) -> [Point; 4] {
+    [Point::new(r.x, r.y), Point::new(r.x + r.w, r.y), Point::new(r.x + r.w, r.y + r.h), Point::new(r.x, r.y + r.h)]
 }

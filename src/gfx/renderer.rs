@@ -142,7 +142,8 @@ impl DrawOpText {
 
 #[derive(Debug, Clone, Copy)]
 pub enum DrawTextPosition {
-    TopLeft
+    TopLeft,
+    Center,
 }
 
 #[derive(Debug)]
@@ -345,7 +346,7 @@ impl TextureAndMetadata {
             }
         );
     
-        let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let view = texture.create_view(&Default::default());
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             address_mode_u: wgpu::AddressMode::ClampToEdge,
             address_mode_v: wgpu::AddressMode::ClampToEdge,
@@ -636,7 +637,7 @@ impl Renderer for WgpuRenderer {
         smaa_frame.resolve();
         self.smaa_target = Some(smaa_target);
         let output = self.surface.get_current_texture()?;
-        let view = output.texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let view = output.texture.create_view(&Default::default());
         self.bloom_pipeline.process(&mut encoder, self.hdr_pipeline.get_input_view());
         self.hdr_pipeline.process(&mut encoder, &view);
 
@@ -904,12 +905,13 @@ impl WgpuRenderer {
         let k = args.get_key();
         let v = self.cached_text_textures.get(&k).expect("unable to get cached text texture");
         
-        let (x, y) = match args.position {
-            DrawTextPosition::TopLeft => (args.x, args.y),
-        };
-
         let width = v.tmd.texture.width() as f32;
         let height = v.tmd.texture.height() as f32;
+
+        let (x, y) = match args.position {
+            DrawTextPosition::TopLeft => (args.x, args.y),
+            DrawTextPosition::Center => (args.x - 0.5 * width, args.y - 0.5 * height),
+        };
 
         let vertexes = &[
             self.text_tri_to_gpu(&args.color, &ViewSpaceCoordinate::new(x, y), [0.0, 0.0]),
