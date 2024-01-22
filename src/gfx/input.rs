@@ -21,9 +21,11 @@ pub struct InputState {
 
 pub enum PollableInput {
     MouseWheelLineDelta(f32, f32),
+    LmbDown(f64, f64),
+    LmbUp(f64, f64),
 }
 
-//winit defines 255 keys. We place these in 0..255. The 255th index is a dummy, mainly used for error handling.
+// winit defines 255 keys. We place these in 0..255. The 255th index is a dummy, mainly used for error handling.
 const NUM_KEYS: usize = 256;
 const NUM_MOUSE_BUTTONS: usize = u16::MAX as usize;
 
@@ -124,10 +126,16 @@ impl InputState {
             ElementState::Pressed => {
                 self.is_mouse_button_down[button_idx] = true;
                 self.mouse_button_last_down_time[button_idx] = now_unix();
+                if button_idx == Self::mouse_button_to_usize(&MouseButton::Left) {
+                    self.pollable_input.push_back(PollableInput::LmbDown(self.mouse_x, self.mouse_y));
+                }
             }
             ElementState::Released => {
                 self.is_mouse_button_down[button_idx] = false;
                 self.mouse_button_last_up_time[button_idx] = now_unix();
+                if button_idx == Self::mouse_button_to_usize(&MouseButton::Left) {
+                    self.pollable_input.push_back(PollableInput::LmbUp(self.mouse_x, self.mouse_y));
+                }
             }
         }
     }

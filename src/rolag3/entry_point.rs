@@ -10,9 +10,10 @@ use winit::{event::{Event, WindowEvent, KeyEvent, ElementState, MouseButton}, ev
 use crate::util::rng::Prng;
 use crate::{gfx::{self, window::{Window, EventHandler}, renderer::{ColorRGBA32f, DrawTextPosition, DrawOpCCS, DrawOpText, DrawOpWithMetadata, DrawOp, Renderer}, input::PollableInput}, util::{time::now_unix, config::Config}};
 
+use super::between_floors_shop::run::{RunFrameBfshopContext, run_frame_between_floors_shop, MouseButtonAction};
 use super::floor::room_object::unit::player::Player;
 use super::floor::{draw::{DrawFloorContext, get_draw_floor_ops}, run::{RunFloorContext, run_floor_frame, PlayerInput, PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, floor_def::Floor};
-use super::r3run::R3Run;
+use super::r3run::{R3Run, R3RunState};
 
 pub fn run() {
     std::env::set_var("RUST_BACKTRACE", "full");
@@ -113,7 +114,7 @@ impl Rolag3EventHandler {
         let mut rng = Prng::new_seed_u64(123);
         let player = Rc::new(RefCell::new(Player::new_test1()));
 
-        let floor = if true {
+        let _ = if true {
             Floor::new_test2(renderer, &mut rng, player.clone())
         } else {
             // dummy block to prevent the linter from marking functions as unused
@@ -128,7 +129,7 @@ impl Rolag3EventHandler {
             frame_timestamps: VecDeque::new(),
             r3run: R3Run {
                 player,
-                cur_floor: floor,
+                state: R3RunState::BetweenFloorsShop { prev_lmb_down: None },
                 cur_floor_num: 0,
             },
             rng,
@@ -139,6 +140,15 @@ impl Rolag3EventHandler {
     }
 
     fn run_frame(&mut self, window: &mut dyn Window) {
+        match &self.r3run.state {
+            R3RunState::InFloor { .. } => self.run_frame_in_floor(window),
+            R3RunState::BetweenFloorsShop{ .. } => self.run_frame_between_floors_shop(window),
+        };
+    }
+
+    fn run_frame_in_floor(&mut self, window: &mut dyn Window) {
+        let R3RunState::InFloor { floor: cur_floor } = &mut self.r3run.state else {panic!("R3RunState is not InFloor")};
+
         let window_width = window.get_width() as f64;
         let window_height = window.get_height() as f64;
         let input_state = window.get_input_state_mut();
@@ -173,8 +183,11 @@ impl Rolag3EventHandler {
             frame_length = self.frame_timestamps.back().unwrap() - self.frame_timestamps[self.frame_timestamps.len()-2];
             frame_length = f64::min(frame_length, 0.018);
         }
+        while self.frame_timestamps.len() > 2 {
+            self.frame_timestamps.pop_front();
+        }
 
-        let player_position = self.r3run.cur_floor.get_player_center();
+        let player_position = cur_floor.get_player_center();
         let pixels_per_tile = 40.0;
         let camera_x = player_position.x - window_width / 2.0 / pixels_per_tile;
         let camera_y = player_position.y - window_height / 2.0 / pixels_per_tile;
@@ -191,6 +204,7 @@ impl Rolag3EventHandler {
         for input in input_state.poll_all_pollable_input() {
             match input {
                 PollableInput::MouseWheelLineDelta(x, y) => mouse_wheel_line_deltas.push((x, y)),
+                _ => {},
             }
         }
 
@@ -199,7 +213,7 @@ impl Rolag3EventHandler {
             ticks_per_frame: 10,
             frame_length,
             starcash_room_clear_mult,
-            floor: &mut self.r3run.cur_floor,
+            floor: cur_floor,
             player_input: PlayerInput {
                 horizontal_move,
                 vertical_move,
@@ -223,12 +237,12 @@ impl Rolag3EventHandler {
 
         let show_tab_overlay = input_state.is_key_down(&PLAYER_TAB_OVERLAY);
         let draw_floor_ctx = DrawFloorContext {
-            floor: &mut self.r3run.cur_floor,
+            floor: cur_floor,
             window_width,
             window_height,
             pixels_per_tile,
             show_tab_overlay,
-            cached_mem_draw_ops: &mut self.cached_mem_draw_ops,
+            draw_ops: &mut self.cached_mem_draw_ops,
         };
         get_draw_floor_ops(draw_floor_ctx);
         self.cached_mem_draw_ops.drain(..).for_each(|x| window.get_renderer().draw(x));
@@ -245,7 +259,7 @@ impl Rolag3EventHandler {
                 outer_color: ColorRGBA32f::new(0.0, 1.0, 0.0, 1.0),
                 angle_range: Some((3.4, 4.7)),
         })});
-        let rofiz_stats = self.r3run.cur_floor.get_current_room().rofiz.get_stats();
+        let rofiz_stats = cur_floor.get_current_room().rofiz.get_stats();
         let text = [
             format!("fps={}", window.get_renderer().get_fps()),
             format!("num_projectiles={}", rofiz_stats.num_projectiles),
@@ -269,12 +283,37 @@ impl Rolag3EventHandler {
         if let Err(e) = res { log::error!("error when calling renderer.present(): {}", e) }
 
         if rff_response.floor_finished {
-            log::warn!("finished floor. Generating new one");
+            log::warn!("finished floor. Moving to shop");
+            self.r3run.state = R3RunState::BetweenFloorsShop{ prev_lmb_down: None };
+        }
+    }
+
+    fn run_frame_between_floors_shop(&mut self, window: &mut dyn Window) {
+        let R3RunState::BetweenFloorsShop { prev_lmb_down } = &mut self.r3run.state else {panic!("R3RunState is not BetweenFloorsShop")};
+
+        let mut lmb_input = Vec::new();
+        for input in window.get_input_state_mut().poll_all_pollable_input() {
+            match input {
+                PollableInput::LmbDown(x, y) => lmb_input.push(MouseButtonAction::Down(x, y)),
+                PollableInput::LmbUp(x, y) => lmb_input.push(MouseButtonAction::Up(x, y)),
+                _ => {},
+            }
+        }
+
+        let bfshop_ctx = RunFrameBfshopContext {
+            window,
+            prev_lmb_down,
+            lmb_actions: lmb_input,
+        };
+        let response = run_frame_between_floors_shop(bfshop_ctx);
+        if response.move_to_next_floor {
             self.r3run.cur_floor_num += 1;
-            self.r3run.cur_floor = Floor::new_test2(window.get_renderer(), &mut self.rng, self.r3run.player.clone());
+            self.r3run.state = R3RunState::InFloor {
+                floor: Floor::new_test2(window.get_renderer(), &mut self.rng, self.r3run.player.clone()),
+            }; 
             let damage_mult = (3.0 + self.r3run.cur_floor_num as f64) / 3.0;
-            self.r3run.player.borrow_mut().set_floor_take_damage_mult(damage_mult)
-            // passing the player into the fn Floor::new_test...() should automatically move the player to the new
+            self.r3run.player.borrow_mut().set_floor_take_damage_mult(damage_mult);
+            // passing the player into the fn Floor::new...() should automatically move the player to the new
             // floor. No manual work is required.
         }
     }

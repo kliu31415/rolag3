@@ -4,7 +4,11 @@ use super::floor::{floor_def::Floor, room_object::unit::player::Player};
 
 pub struct R3Run {
     pub player: Rc<RefCell<Player>>,
-    pub cur_floor: Floor,
-    pub cur_floor_num: i32, // starts at 0
+    pub state: R3RunState,
+    pub cur_floor_num: i32, // starts at 0. Gets incremented at the same time a new floor starts.
 }
 
+pub enum R3RunState {
+    InFloor{floor: Floor},
+    BetweenFloorsShop {prev_lmb_down: Option<(f64, f64)>},
+}

@@ -10,7 +10,7 @@ pub struct DrawFloorContext<'a> {
     pub window_height: f64,
     pub pixels_per_tile: f64,
     pub show_tab_overlay: bool,
-    pub cached_mem_draw_ops: &'a mut Vec<DrawOpWithMetadata>,
+    pub draw_ops: &'a mut Vec<DrawOpWithMetadata>,
 }
 
 pub fn get_draw_floor_ops(ctx: DrawFloorContext) {
@@ -20,7 +20,7 @@ pub fn get_draw_floor_ops(ctx: DrawFloorContext) {
     {
         let (player, room) = ctx.floor.get_player_and_current_room();
         let mut draw_context = DrawContext {
-            draw_ops: ctx.cached_mem_draw_ops,
+            draw_ops: ctx.draw_ops,
             camera_x: (player_position.x - ctx.window_width / 2.0 / ctx.pixels_per_tile) as f32,
             camera_y: (player_position.y - ctx.window_height / 2.0 / ctx.pixels_per_tile) as f32,
             pixels_per_tile: ctx.pixels_per_tile as f32,
@@ -44,7 +44,7 @@ pub fn get_draw_floor_ops(ctx: DrawFloorContext) {
         };
         extra_draw_ops.push(DrawOpWithMetadata::new(DrawContext::Z_HUD, get_draw_hud_ops(draw_hud_context)));
     }
-    ctx.cached_mem_draw_ops.append(&mut extra_draw_ops);
+    ctx.draw_ops.append(&mut extra_draw_ops);
 
     if ctx.show_tab_overlay {
         let draw_tab_overlay_context = DrawTabOverlayContext {
@@ -52,7 +52,7 @@ pub fn get_draw_floor_ops(ctx: DrawFloorContext) {
             window_width: ctx.window_width as f32,
             window_height: ctx.window_height as f32,
         };
-        ctx.cached_mem_draw_ops.push(DrawOpWithMetadata::new(DrawContext::Z_TAB_OVERLAY,get_draw_tab_overlay_ops(draw_tab_overlay_context)));
+        ctx.draw_ops.push(DrawOpWithMetadata::new(DrawContext::Z_TAB_OVERLAY,get_draw_tab_overlay_ops(draw_tab_overlay_context)));
     }
 }
 
@@ -286,7 +286,7 @@ fn get_draw_fillable_bar_ops(args: DrawFillableBarArgs) -> DrawOp {
     let unfilled_part = draw_op_rect(args.unfilled_part_color, inner_x + fill_len, inner_y, inner_w - fill_len, inner_h);
     ops.push(unfilled_part);
 
-    // TO DEBUG: a panic has occurred before because the font size was 0 while drawing HP text  
+    // TO DEBUG: a panic has occurred before because the font size was 0 while drawing HP text
     if let Some(text_color) = args.text_color {
         ops.push(DrawOp::Text(DrawOpText { 
             text: format!("{} / {}", args.bar_cur_amount.ceil(), args.bar_max_amount.ceil()), 

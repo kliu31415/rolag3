@@ -72,6 +72,7 @@ impl DrawOp {
     }
 }
 
+/* DrawOps within a Group are guaranteed to be rendered in the same order as which they appear in the Group */
 #[derive(Debug)]
 pub struct DrawOpGroup {
     pub ops: Box<[DrawOp]>,
@@ -180,6 +181,10 @@ pub struct Rect {
 impl Rect {
     pub fn new(x: f32, y: f32, w: f32, h: f32) -> Self {
         Self {x, y, w, h}
+    }
+
+    pub fn contains(&self, x: f32, y: f32) -> bool {
+        x > self.x && x < self.x + self.w && y > self.y && y < self.y + self.h
     }
 }
 
