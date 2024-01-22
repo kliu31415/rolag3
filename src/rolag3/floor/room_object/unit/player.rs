@@ -1,4 +1,4 @@
-use crate::{rolag3::floor::{run::{PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, draw::DrawContext, room_object::{room_object_def::{RoomObject, Act1Context, FloorCoordinate, NewRoomObjectContext, RoomObjectMetadata, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse, RoQueryUnitInfoContext, RoQueryUnitInfoResponse, HcTileContext, HcTileEffect, HcTileResponse, RoomObjApplyOperationContext, RoomObjOperation, HcStandardUnitContext, HcStandardUnitResponse}, tiles::room_connection::Direction, damage::DamageColor, unit::standard_unit_common::{BudebExpiry, BudebTractionMult}}, rofiz::{rofiz_object::{Hitbox, Transformation}, rofiz_state::RofizState}, room::RoomConnectionInfo}, geometry::shape::{Shape, Point}, gfx::{renderer::{DrawOp, DrawOpGroup, ColorRGBA32f, DrawOpText, DrawTextPosition}, draw_op_util::draw_op_rect}};
+use crate::{rolag3::floor::{run::{PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, draw::DrawContext, room_object::{room_object_def::{RoomObject, Act1Context, FloorCoordinate, NewRoomObjectContext, RoomObjectMetadata, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse, RoQueryUnitInfoContext, RoQueryUnitInfoResponse, HcTileContext, HcTileEffect, HcTileResponse, RoomObjApplyOperationContext, RoomObjOperation, HcStandardUnitContext, HcStandardUnitResponse, HandleRoomJustClearedContext}, tiles::room_connection::Direction, damage::DamageColor, unit::standard_unit_common::{BudebExpiry, BudebTractionMult}}, rofiz::{rofiz_object::{Hitbox, Transformation}, rofiz_state::RofizState}, room::RoomConnectionInfo}, geometry::shape::{Shape, Point}, gfx::{renderer::{DrawOp, DrawOpGroup, ColorRGBA32f, DrawOpText, DrawTextPosition}, draw_op_util::draw_op_rect}};
 
 use super::{Unit, standard_unit_common::{StandardUnitCommon, Budeb, BudebMaxSpeed, TranslateMove, PolarForce}, weapon::{weapon_def::{Weapon, WeaponHandleTickContext, DrawWeaponHudContext, DrawWeaponOnOwnerContext}, weapon1::new_weapon1, weapon2::new_weapon2, weapon3::new_weapon3}, active_item::{active_item_def::{ActiveItem, ActiveItemHandleTickContext}, clear_enemy_projectiles::new_active_item_clear_projectiles, slow_enemy_time::new_active_item_slow_enemy_time}};
 
@@ -51,8 +51,10 @@ impl RoomObject for Player {
             self.su_common.as_mut().unwrap().apply_budeb(&Budeb::SpeedMult(BudebMaxSpeed::new(1.0, BudebExpiry::Duration(1.5))));
         }
 
-        // process changing weapons. Note that the wheel deltas are only provided the first tick of a frame. The first
-        // tick is expected to consume all deltas.
+        // process changing weapons. Note that the wheel deltas are only provided the first tick of a frame. act1()
+        // expected to consume all deltas during the first tick.
+        /*
+        // legacy logic that uses the scroll wheel to go to the prev/next weapon
         for (_, y) in ctx.get_player_input().mouse_wheel_line_deltas.iter() {
             if *y != 0.0 {
                 if *y > 0.0 {
@@ -61,6 +63,23 @@ impl RoomObject for Player {
                     self.weapon_idx = (self.weapon_idx + 1) % self.weapons.len();
                 }
             }
+        }
+        */
+
+        // logic that uses the mouse wheel events to move to a weapon immediately
+        for (_, y) in ctx.get_player_input().mouse_wheel_line_deltas.iter() {
+            if *y != 0.0 {
+                if *y > 0.0 {
+                    self.weapon_idx = 0;
+                } else {
+                    self.weapon_idx = 2;
+                }
+            }
+        }
+        // todo: only set the weapon idx to 1 if the MMB is newly down. If the MMB is held down from a previous tick,
+        // this should be a nop.
+        if ctx.get_player_input().is_mmb_down {
+            self.weapon_idx = 1;
         }
 
         // regen mana
@@ -165,6 +184,10 @@ impl RoomObject for Player {
         ];
         let dop = ctx.do_quad_fan(player_color, vertexes);
         ctx.add_draw_op(DrawContext::Z_UNIT_PLAYER, dop);
+    }
+
+    fn handle_room_just_cleared(&mut self, ctx: &mut HandleRoomJustClearedContext) {
+        self.starcash += ctx.get_starcash_reward();
     }
 
     fn handle_collision(&mut self, ctx: &mut HandleCollisionContext) -> HandleCollisionResponse {

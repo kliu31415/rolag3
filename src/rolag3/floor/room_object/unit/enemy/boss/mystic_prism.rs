@@ -4,13 +4,12 @@ use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext
 
 /* MysticPrism stays still in the center of the room. It randomly switches between having 4 different inside colors:
    -Transparent: the boss is undamageable in this state.
-      -The boss may dilate projectiles inwards or outwards
-   -Red: the boss fires a radial wave of projectiles
+     -Currently, this state never happens (except at the tick the boss is created)
+   -Red: the boss fires two radial waves of projectiles
+     -As the boss gets lower HP, half of these waves start homing towards the player
    -Green: the boss fires a radial wave of projectiles that stop at a distance of ~5 away, then home towards the player
+     -As the boss gets lower HP, half of these waves start homing towards the player
    -Blue: Fire a wave of projectiles emanating from each edge (so 3 waves). This isn't a radial wave.
-
-   When the boss is low enough HP, it rotates all projectiles of the same inner color as the boss in the same direction
-   the boss itself is rotating.
 */
 
 const MAX_HP: f64 = 500.0;

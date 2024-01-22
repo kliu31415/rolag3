@@ -194,9 +194,11 @@ impl Rolag3EventHandler {
             }
         }
 
+        let starcash_room_clear_mult = 0.1 * (5.0 / (5.0 + self.r3run.cur_floor_num as f64));
         let run_floor_ctx = RunFloorContext {
             ticks_per_frame: 10,
             frame_length,
+            starcash_room_clear_mult,
             floor: &mut self.r3run.cur_floor,
             player_input: PlayerInput {
                 horizontal_move,
@@ -205,6 +207,7 @@ impl Rolag3EventHandler {
                 mouse_y,
                 mouse_theta_relative_to_player,
                 is_lmb_down: input_state.is_mouse_button_down(&MouseButton::Left),
+                is_mmb_down: input_state.is_mouse_button_down(&MouseButton::Middle),
                 is_rmb_down: input_state.is_mouse_button_down(&MouseButton::Right),
                 mouse_wheel_line_deltas: mouse_wheel_line_deltas.into_boxed_slice(),
                 test_input1: input_state.is_key_down(&PLAYER_TEST_INPUT1),

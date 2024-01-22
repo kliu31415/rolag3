@@ -7,6 +7,7 @@ use super::{room_object::room_object_def::{Act1Context, HandleCollisionContext, 
 pub struct RunFloorContext<'a> {
     pub ticks_per_frame: u32,
     pub frame_length: f64,
+    pub starcash_room_clear_mult: f64,
     pub floor: &'a mut Floor,
     pub player_input: PlayerInput,
     pub prev_mouse_x: f64,
@@ -31,6 +32,7 @@ pub fn run_floor_frame(mut ctx: RunFloorContext) -> RunFloorResponse {
         ctx.player_input.mouse_x = lerp_f64(ctx.prev_mouse_x, next_mouse_x, i as f64 / (ctx.ticks_per_frame as f64 - 1.0));
         ctx.player_input.mouse_y = lerp_f64(ctx.prev_mouse_y, next_mouse_y, i as f64 / (ctx.ticks_per_frame as f64 - 1.0));
         let tick_ctx = RunFloorTickContext {
+            starcash_room_clear_mult: ctx.starcash_room_clear_mult,
             floor: ctx.floor,
             player_input: &ctx.player_input,
             tick_length,
@@ -66,6 +68,7 @@ pub struct PlayerInput {
     pub mouse_y: f64, // in floor coordinates
     pub mouse_theta_relative_to_player: f64,
     pub is_lmb_down: bool, // lmb = left mouse button
+    pub is_mmb_down: bool, // mmb = middle mouse button
     pub is_rmb_down: bool, // rmb = right mouse button
     pub mouse_wheel_line_deltas: Box<[(f32, f32)]>, // winit also provides pixel delta, but I'm ignoring that for now
     pub test_input1: bool, // used for testing purposes
@@ -73,6 +76,7 @@ pub struct PlayerInput {
 }
 
 struct RunFloorTickContext<'a> {
+    pub starcash_room_clear_mult: f64,
     pub floor: &'a mut Floor,
     pub player_input: &'a PlayerInput,
     pub tick_length: f64,
@@ -108,7 +112,8 @@ fn run_floor_tick(ctx: RunFloorTickContext) -> RunFloorTickResponse {
         floor_finished |= roca_response.floor_finished;
         detect_and_handle_collisions(room, ctx.rng, ctx.tick_length);
 
-        room.room_objects.handle_if_room_just_cleared(&mut room.rofiz, room.room_time);
+        let starcash_reward = room.ttc * ctx.starcash_room_clear_mult;
+        room.room_objects.handle_if_room_just_cleared(&mut room.rofiz, room.room_time, starcash_reward);
         if room.room_cleared_at_time.is_none() && room.room_objects.is_room_cleared() {
             room.room_cleared_at_time = Some(room.room_time)
         }

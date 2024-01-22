@@ -405,7 +405,12 @@ impl RoomObjectCollection {
     }
 
     #[inline(never)]
-    pub fn handle_if_room_just_cleared(&mut self, rofiz: &mut RofizState, room_time: f64) {
+    pub fn handle_if_room_just_cleared(
+        &mut self, 
+        rofiz: &mut RofizState, 
+        room_time: f64,
+        starcash_reward: f64,
+    ) {
         if self.room_already_cleared {
             return;
         }
@@ -421,6 +426,7 @@ impl RoomObjectCollection {
         let mut ctx = HandleRoomJustClearedContext {
             _rofiz: rofiz,
             room_time,
+            starcash_reward,
         };
         for fo in self.room_objects_by_type.room_objects.values() {
             fo.borrow_mut().handle_room_just_cleared(&mut ctx);
@@ -800,6 +806,7 @@ impl Act1Response {
 pub struct HandleRoomJustClearedContext<'a> {
     _rofiz: &'a mut RofizState,
     room_time: f64,
+    starcash_reward: f64,
 }
 
 impl<'a> HandleRoomJustClearedContext<'a> {
@@ -809,6 +816,10 @@ impl<'a> HandleRoomJustClearedContext<'a> {
 
     pub fn get_room_time(&self) -> f64 {
         self.room_time
+    }
+
+    pub fn get_starcash_reward(&self) -> f64 {
+        self.starcash_reward
     }
 }
 
