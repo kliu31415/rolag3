@@ -4,7 +4,7 @@ use wgpu::BufferDescriptor;
 
 use crate::util::time::now_unix;
 
-use super::{shaders::{triangle1::{TriangleVertexShaderInput, TriangleShaderPipeline}, text_texture1::{TextTextureVertexShaderInput, TextTextureShaderPipeline}, concentric_circle_sector1::{ConcrenticCircleSectorShaderPipeline, ConcrenticCircleSectorVertexShaderInput}, hdr::HdrPipeline, bloom::BloomPipeline, texture2::{Texture2ShaderPipeline, Texture2VertexShaderInput}}, text::font::{FontRasterizer, make_font_rasterizer}};
+use super::{shaders::{triangle1::{TriangleVertexShaderInput, TriangleShaderPipeline}, text_texture1::{TextTextureVertexShaderInput, TextTextureShaderPipeline}, concentric_circle_sector1::{ConcrenticCircleSectorShaderPipeline, ConcrenticCircleSectorVertexShaderInput}, hdr::HdrPipeline, bloom::BloomPipeline, texture2::{Texture2ShaderPipeline, Texture2VertexShaderInput}}, text::font::{FontRasterizer, make_font_rasterizer, Font}};
 
 pub trait Renderer {
     fn resize(&mut self, width: u32, height: u32);
@@ -127,6 +127,7 @@ pub struct DrawOpCCS {
 #[derive(Debug)]
 pub struct DrawOpText {
     pub text: String,
+    pub font: Font,
     pub color: ColorRGBA32f, 
     pub x: f32, 
     pub y: f32, 
@@ -761,7 +762,7 @@ impl WgpuRenderer {
                 let k = t.get_key();
         
                 if !self.cached_text_textures.contains_key(&k) {
-                    let bytes_2d = self.font_rasterizer.rasterize_text_line(&t.text, font_size as f32);
+                    let bytes_2d = self.font_rasterizer.rasterize_text_line(&t.font, &t.text, font_size as f32);
                     if bytes_2d.is_empty() {
                         panic!("rasterized 0 bytes while drawing text. Function call draw(args={:?})", op);
                     }

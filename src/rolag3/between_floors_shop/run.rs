@@ -1,4 +1,4 @@
-use crate::gfx::{window::Window, renderer::{ColorRGBA32f, DrawOpWithMetadata, DrawOp, DrawOpGroup, Rect, DrawOpText}, draw_op_util::{draw_op_rect, draw_thick_border, rect_to_polygon_vertexes}};
+use crate::gfx::{window::Window, renderer::{ColorRGBA32f, DrawOpWithMetadata, DrawOp, DrawOpGroup, Rect, DrawOpText}, draw_op_util::{draw_op_rect, draw_thick_border, rect_to_polygon_vertexes}, text::font::Font};
 
 pub enum MouseButtonAction {
     Down(f64, f64),
@@ -105,6 +105,7 @@ fn get_draw_ops(cbuttons: &[&ClickableButton<ClickableButtonId>], lmb_down: Opti
 
         let text = DrawOp::Text(DrawOpText {
             text: cb.text.to_owned(),
+            font: Font::TekoRegular,
             color: cb.text_color,
             x: cb.rect.x + 0.5 * cb.rect.w,
             y: cb.rect.y + 0.5 * cb.rect.h,

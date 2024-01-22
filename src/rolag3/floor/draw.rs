@@ -1,6 +1,6 @@
 use std::{rc::Weak, cell::RefCell};
 
-use crate::{gfx::{renderer::{ColorRGBA32f, ViewSpaceCoordinate, DrawOpWithMetadata, DrawOpTriFan, DrawOp, ColoredTriVertex, DrawOpCCS, DrawOpGroup, Rect, DrawOpText, DrawTextPosition, DrawOpTexture2, DrawOpQuadFan, DrawOpTri}, draw_op_util::{draw_op_rect, draw_thick_border, draw_op_concentric_circles}}, geometry::{shape::{Point, Vector}, star::get_star_shape, util::get_inner_polygon}};
+use crate::{gfx::{renderer::{ColorRGBA32f, ViewSpaceCoordinate, DrawOpWithMetadata, DrawOpTriFan, DrawOp, ColoredTriVertex, DrawOpCCS, DrawOpGroup, Rect, DrawOpText, DrawTextPosition, DrawOpTexture2, DrawOpQuadFan, DrawOpTri}, draw_op_util::{draw_op_rect, draw_thick_border, draw_op_concentric_circles}, text::font::Font}, geometry::{shape::{Point, Vector}, star::get_star_shape, util::get_inner_polygon}};
 
 use super::{rofiz::rofiz_state::RofizState, floor_def::Floor, room_object::{unit::player::Player, room_object_def::{RoomObject, BossHp}}, room::RoomTile};
 
@@ -201,6 +201,7 @@ fn get_starcash_dops(player: &Player, x: f32, y: f32, row_width: f32) -> DrawOp 
     for color in [ColorRGBA32f::new(0.0, 0.0, 0.0, 0.3), ColorRGBA32f::new(10.0, 10.0, 0.0, 0.05)] {
         let dop = DrawOp::Text(DrawOpText { 
             text: starcash_text.clone(),
+            font: Font::TekoRegular,
             color, 
             x: x + text_offset,
             y: y, 
@@ -227,6 +228,7 @@ fn get_floor_time_left_dops(time_left: f64, x: f32, y: f32, row_width: f32) -> D
     for color in [ColorRGBA32f::new(0.0, 0.0, 0.0, 0.3), ColorRGBA32f::new(10.0, 10.0, 10.0, 0.03)] {
         let dop = DrawOp::Text(DrawOpText { 
             text: time_text.clone(),
+            font: Font::TekoRegular,
             color, 
             x: x + text_offset,
             y: y, 
@@ -290,6 +292,7 @@ fn get_draw_fillable_bar_ops(args: DrawFillableBarArgs) -> DrawOp {
     if let Some(text_color) = args.text_color {
         ops.push(DrawOp::Text(DrawOpText { 
             text: format!("{} / {}", args.bar_cur_amount.ceil(), args.bar_max_amount.ceil()), 
+            font: Font::TekoRegular,
             color: text_color, 
             x: inner_x, 
             y: inner_y, 

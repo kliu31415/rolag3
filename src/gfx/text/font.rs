@@ -1,23 +1,33 @@
-use cosmic_text::{Attrs, Buffer, Color, FontSystem, Metrics, SwashCache, Shaping};
+use std::path::PathBuf;
+
+use cosmic_text::{Attrs, Buffer, Color, FontSystem, Metrics, SwashCache, Shaping, fontdb::{Source, Database}};
 
 pub trait FontRasterizer {
-    fn rasterize_text_line(&mut self, text: &str, font_size: f32) -> Vec<Vec<u8>>; 
+    fn rasterize_text_line(&mut self, font: &Font, text: &str, font_size: f32) -> Vec<Vec<u8>>; 
+}
+
+#[derive(Debug)]
+pub enum Font {
+    TekoRegular
 }
 
 struct CosmicFontRasterizer {
-    font_system: FontSystem,
+    teko_regular_font: FontSystem,
     swash_cache: SwashCache,
 }
 
 impl FontRasterizer for CosmicFontRasterizer {
-    fn rasterize_text_line(&mut self, text: &str, font_size: f32) -> Vec<Vec<u8>> {
+    fn rasterize_text_line(&mut self, font: &Font, text: &str, font_size: f32) -> Vec<Vec<u8>> {
         if font_size <= 0.0 {
             // cosmic text panics if the font size is 0, so we might as well check beforehand
             panic!("rasterize_text_line(text={}) called with nonpositive font_size({})", text, font_size);
         }
         let metrics = Metrics::new(font_size, font_size);
-        let mut buffer = Buffer::new(&mut self.font_system, metrics);
-        let mut buffer = buffer.borrow_with(&mut self.font_system);
+        let font_system = match font {
+            Font::TekoRegular => &mut self.teko_regular_font,
+        };
+        let mut buffer = Buffer::new(font_system, metrics);
+        let mut buffer = buffer.borrow_with(font_system);
         let attrs = Attrs::new();
         buffer.set_size(f32::MAX, f32::MAX);
         buffer.set_text(text, attrs, Shaping::Advanced);
@@ -55,8 +65,14 @@ impl CosmicFontRasterizer {
 }
 
 pub fn make_font_rasterizer() -> Box<dyn FontRasterizer> {
+    // I'm not sure what locale is used for, but Cosmic Text requires it. I hardcode en-US so the experience is 
+    // consistent across different devices.
+    let mut teko_regular_font = FontSystem::new_with_locale_and_db(String::from("en-US"), Database::new());
+    let id = teko_regular_font.db_mut().load_font_source(Source::File(PathBuf::from(r"fonts\Teko-Regular.ttf")));
+    assert!(!id.is_empty(), "Teko Regular id is empty, so loading likely failed");
+
     Box::new(CosmicFontRasterizer {
-        font_system: FontSystem::new(),
+        teko_regular_font,
         swash_cache: SwashCache::new(),
     })
 }

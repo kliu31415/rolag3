@@ -7,6 +7,7 @@ use env_logger::fmt::Color;
 use log::Level;
 use winit::{event::{Event, WindowEvent, KeyEvent, ElementState, MouseButton}, event_loop::EventLoopWindowTarget, keyboard::{PhysicalKey, KeyCode}};
 
+use crate::gfx::text::font::Font;
 use crate::util::rng::Prng;
 use crate::{gfx::{self, window::{Window, EventHandler}, renderer::{ColorRGBA32f, DrawTextPosition, DrawOpCCS, DrawOpText, DrawOpWithMetadata, DrawOp, Renderer}, input::PollableInput}, util::{time::now_unix, config::Config}};
 
@@ -272,6 +273,7 @@ impl Rolag3EventHandler {
                 z: 100.0, 
                 op: DrawOp::Text(DrawOpText { 
                     text: text.clone(), 
+                    font: Font::TekoRegular,
                     color: ColorRGBA32f::new(0.0, 0.2, 0.2, 1.0),
                     x: 0.0,
                     y: 150.0 + (i * 45) as f32,
