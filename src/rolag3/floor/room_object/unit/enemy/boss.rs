@@ -3,3 +3,4 @@ pub mod star_king;
 pub mod star_soldier;
 pub mod chromatic_wheel;
 pub mod mystic_prism;
+pub mod prismatic_prism;

@@ -89,7 +89,7 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
                         shape,
                         color: PROJ_COLOR,
                     }
-                ).homing_to_enemies_power_fn(Box::new(|_: f64| 200.0))
+                ).homing_xlate_to_enemies_power_fn(Box::new(|_: f64| 200.0))
                     .build(&mut nfo_ctx);
                 response.add_room_obj(Rc::new(RefCell::new(proj)));
             }

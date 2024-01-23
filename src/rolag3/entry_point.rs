@@ -286,6 +286,7 @@ impl Rolag3EventHandler {
 
         if rff_response.floor_finished {
             log::warn!("finished floor. Moving to shop");
+            self.r3run.cur_floor_num += 1;
             self.r3run.state = R3RunState::BetweenFloorsShop{ prev_lmb_down: None };
         }
     }
@@ -309,7 +310,6 @@ impl Rolag3EventHandler {
         };
         let response = run_frame_between_floors_shop(bfshop_ctx);
         if response.move_to_next_floor {
-            self.r3run.cur_floor_num += 1;
             self.r3run.state = R3RunState::InFloor {
                 floor: Floor::new_test2(window.get_renderer(), &mut self.rng, self.r3run.player.clone()),
             }; 
