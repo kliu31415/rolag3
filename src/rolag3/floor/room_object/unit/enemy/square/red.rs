@@ -5,7 +5,7 @@ use crate::{rolag3::floor::{room_object::{room_object_def::{Act1QueryResult, New
 const INNER_COLOR_INACTIVE: Color = Color::new(2.0, 0.0, 0.0, 1.0);
 const INNER_COLOR_ACTIVE: Color = Color::new(5.0, 0.1, 0.1, 1.0);
 
-pub struct SquareRed {
+struct SquareRed {
     move_charge: Option<MoveCharge>,
     query_result: Option<Rc<RefCell<Act1QueryResult>>>,
     border_vertexes: [Point; 4],
@@ -107,7 +107,6 @@ fn draw(ctx: &mut SuDrawContext) {
         },
         None => INNER_COLOR_INACTIVE,
     };
-    let us_data = ctx.su_ctx.us_data.downcast_mut::<SquareRed>().unwrap();
     let border_color = ctx.su_ctx.su_common.get_draw_color(DrawContext::COLOR_NSU_BORDER);
     let inner_color = ctx.su_ctx.su_common.get_draw_color(inner_color);
     let xform = ctx.draw_ctx.get_rofiz().get_movable_object_xform(ctx.su_ctx.su_common.get_ro_ref());

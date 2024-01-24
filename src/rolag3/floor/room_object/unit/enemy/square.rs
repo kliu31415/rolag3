@@ -5,3 +5,4 @@ pub mod green;
 pub mod red;
 pub mod red_square;
 pub mod rgb_star4or8;
+pub mod rgb_2tri;

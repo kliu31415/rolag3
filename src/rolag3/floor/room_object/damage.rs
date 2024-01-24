@@ -3,8 +3,8 @@ pub enum DamageColor {
     Red,
     Green,
     Blue,
-    NotSet,
     Silver,
+    NotSet,
 }
 
 impl DamageColor {
