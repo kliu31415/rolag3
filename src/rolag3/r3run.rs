@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
-use super::{floor::{floor_def::Floor, room_object::unit::player::Player}, between_floors_shop::run::SelectedButton};
+use super::{floor::{floor_def::Floor, room_object::unit::player::Player}, between_floors_shop::run::ShopState};
 
 pub struct R3Run {
     pub player: Rc<RefCell<Player>>,
@@ -10,5 +10,5 @@ pub struct R3Run {
 
 pub enum R3RunState {
     InFloor{floor: Floor},
-    BetweenFloorsShop {prev_lmb_down_xy: Option<(f64, f64)>, selected_button: Option<SelectedButton>},
+    BetweenFloorsShop {prev_lmb_down_xy: Option<(f64, f64)>, shop_state: ShopState},
 }

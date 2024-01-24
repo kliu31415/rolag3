@@ -8,6 +8,7 @@ use log::Level;
 use winit::{event::{Event, WindowEvent, KeyEvent, ElementState, MouseButton}, event_loop::EventLoopWindowTarget, keyboard::{PhysicalKey, KeyCode}};
 
 use crate::gfx::text::font::Font;
+use crate::rolag3::between_floors_shop::run::ShopState;
 use crate::util::rng::Prng;
 use crate::{gfx::{self, window::{Window, EventHandler}, renderer::{ColorRGBA32f, DrawTextPosition, DrawOpCCS, DrawOpText, DrawOpWithMetadata, DrawOp, Renderer}, input::PollableInput}, util::{time::now_unix, config::Config}};
 
@@ -130,7 +131,7 @@ impl Rolag3EventHandler {
             frame_timestamps: VecDeque::new(),
             r3run: R3Run {
                 player,
-                state: R3RunState::BetweenFloorsShop { prev_lmb_down_xy: None, selected_button: None },
+                state: R3RunState::BetweenFloorsShop { prev_lmb_down_xy: None, shop_state: ShopState::Root },
                 cur_floor_num: 0,
             },
             rng,
@@ -287,12 +288,12 @@ impl Rolag3EventHandler {
         if rff_response.floor_finished {
             log::warn!("finished floor. Moving to shop");
             self.r3run.cur_floor_num += 1;
-            self.r3run.state = R3RunState::BetweenFloorsShop{ prev_lmb_down_xy: None, selected_button: None };
+            self.r3run.state = R3RunState::BetweenFloorsShop{ prev_lmb_down_xy: None, shop_state: ShopState::Root };
         }
     }
 
     fn run_frame_between_floors_shop(&mut self, window: &mut dyn Window) {
-        let R3RunState::BetweenFloorsShop { prev_lmb_down_xy, selected_button } = &mut self.r3run.state else {panic!("R3RunState is not BetweenFloorsShop")};
+        let R3RunState::BetweenFloorsShop { prev_lmb_down_xy, shop_state } = &mut self.r3run.state else {panic!("R3RunState is not BetweenFloorsShop")};
 
         // enclose this block in its own scope to ensure all borrows it uses are dropped. In particular, the borrow
         // of player needs to be dropped, because Floor::new...() borrows the player mutably.
@@ -307,10 +308,12 @@ impl Rolag3EventHandler {
                 }
             }
 
+            let mouse_xy = (window.get_input_state_mut().get_mouse_x(), window.get_input_state_mut().get_mouse_y());
             let bfshop_ctx = RunFrameBfshopContext {
                 window,
+                mouse_xy,
                 prev_lmb_down_xy,
-                selected_button,
+                shop_state,
                 lmb_actions: lmb_input,
                 player: &*self.r3run.player.borrow(),
             };

@@ -759,7 +759,8 @@ impl WgpuRenderer {
 
     fn process_for_draw_op(&mut self, op: &DrawOp) {
         match op {
-            DrawOp::Text(ref t) => {
+            // ignore empty text because the cosmic text rasterizer panics when rendering a 0x0 image
+            DrawOp::Text(ref t) => if !t.text.is_empty() {
                 let font_size = t.font_size as u32; // we round down to the nearest int for now
                 let k = t.get_key();
         

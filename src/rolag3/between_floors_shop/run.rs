@@ -7,8 +7,9 @@ pub enum MouseButtonAction {
 
 pub struct RunFrameBfshopContext<'a> {
     pub window: &'a mut dyn Window,
+    pub mouse_xy: (f64, f64),
     pub prev_lmb_down_xy: &'a mut Option<(f64, f64)>,
-    pub selected_button: &'a mut Option<SelectedButton>,
+    pub shop_state: &'a mut ShopState,
     pub lmb_actions: Vec<MouseButtonAction>,
     pub player: &'a Player,
 }
@@ -27,8 +28,10 @@ pub fn run_frame_between_floors_shop(ctx: RunFrameBfshopContext) -> RunFrameBfsh
         id: ClickableButtonId::NextFloor,
         rect: Rect::new(0.85 * w, 0.02 * h, 0.13 * w, 0.04 * h),
         border_thickness: 0.005 * h,
-        border_color: ColorRGBA32f::new(0.5, 0.5, 0.5, 1.0),
+        border_color: ColorRGBA32f::new(0.1, 0.1, 0.1, 1.0),
         border_color_on_press: ColorRGBA32f::new(1.1, 1.1, 0.5, 1.0),
+        border_color_on_hover: ColorRGBA32f::new(1.0, 1.0, 0.3, 1.0),
+        border_color_while_selected: None,
         inner_color: ColorRGBA32f::new(0.01, 0.01, 0.01, 1.0),
         text: "Next Floor".to_owned(),
         font_size: 0.7 * 0.04 * h,
@@ -46,8 +49,10 @@ pub fn run_frame_between_floors_shop(ctx: RunFrameBfshopContext) -> RunFrameBfsh
             id: ClickableButtonId::InventoryWeapon { idx: i },
             rect: weapon_rects[i],
             border_thickness,
-            border_color: ColorRGBA32f::new(0.5, 0.5, 0.5, 1.0),
-            border_color_on_press: ColorRGBA32f::new(1.1, 1.1, 0.5, 1.0),
+            border_color: ColorRGBA32f::new(0.1, 0.1, 0.1, 1.0),
+            border_color_on_press: ColorRGBA32f::new(1.1, 1.1, 0.1, 1.0),
+            border_color_on_hover: ColorRGBA32f::new(1.0, 1.0, 0.3, 1.0),
+            border_color_while_selected: Some(ColorRGBA32f::new(0.8, 0.8, 0.8, 1.0)),
             inner_color: ColorRGBA32f::new(0.01, 0.01, 0.01, 1.0),
             text: String::new(),
             font_size: 0.85 * (weapon_rects[i].h - 2.0 * border_thickness),
@@ -55,7 +60,7 @@ pub fn run_frame_between_floors_shop(ctx: RunFrameBfshopContext) -> RunFrameBfsh
         }
     });
 
-    let cbuttons = std::iter::once(&next_floor_button).chain(weapon_buttons.iter()).collect::<Box<_>>();
+    let cbuttons = std::iter::once(next_floor_button).chain(weapon_buttons.into_iter()).collect::<Box<_>>();
 
     for lmba in ctx.lmb_actions {
         match lmba {
@@ -85,8 +90,8 @@ pub fn run_frame_between_floors_shop(ctx: RunFrameBfshopContext) -> RunFrameBfsh
 
                             match cb.id {
                                 ClickableButtonId::NextFloor => move_to_next_floor = true,
-                                ClickableButtonId::InventoryWeapon { idx } => {
-                                    *ctx.selected_button = Some(SelectedButton::InventoryWeapon { idx });
+                                ClickableButtonId::InventoryWeapon { .. } => {
+                                    *ctx.shop_state = ShopState::ButtonSelected(cb.id.clone());
                                 }
                             }
                         }
@@ -100,9 +105,10 @@ pub fn run_frame_between_floors_shop(ctx: RunFrameBfshopContext) -> RunFrameBfsh
     let draw_op = get_draw_ops(
         w,
         h,
-        &ctx.selected_button,
+        &ctx.shop_state,
         &cbuttons,
         &weapon_rects, 
+        ctx.mouse_xy,
         *ctx.prev_lmb_down_xy, 
         ctx.player,
     );
@@ -118,9 +124,10 @@ pub fn run_frame_between_floors_shop(ctx: RunFrameBfshopContext) -> RunFrameBfsh
 fn get_draw_ops(
     w: f32,
     h: f32,
-    selected_button: &Option<SelectedButton>,
-    cbuttons: &[&ClickableButton<ClickableButtonId>], 
+    shop_state: &ShopState,
+    cbuttons: &[ClickableButton<ClickableButtonId>], 
     weapon_rects: &[Rect; 3],
+    mouse_xy: (f64, f64),
     lmb_down: Option<(f64, f64)>,
     player: &Player,
 ) -> DrawOpWithMetadata {
@@ -139,10 +146,19 @@ fn get_draw_ops(
         let border_vertexes = rect_to_polygon_vertexes(&cb.rect);
         let inner_vertexes = rect_to_polygon_vertexes(&inner_rect);
         let mut border_color = cb.border_color;
-        if let Some((x, y)) = lmb_down {
+        let this_button_selected = match shop_state {
+            ShopState::ButtonSelected(cb_id) => cb.id.eq(cb_id),
+            _ => false,
+        };
+        if this_button_selected {
+            let err_msg = format!("button {:?} has border_color_while_selected=None", cb.id);
+            border_color = cb.border_color_while_selected.expect(&err_msg);
+        } else if let Some((x, y)) = lmb_down {
             if cb.rect.contains(x as f32, y as f32) {
                 border_color = cb.border_color_on_press;
             }
+        } else if cb.rect.contains(mouse_xy.0 as f32, mouse_xy.1 as f32) {
+            border_color = cb.border_color_on_hover;
         }
         draw_thick_border(&mut draw_ops, border_color, &border_vertexes, &inner_vertexes);
 
@@ -190,7 +206,7 @@ fn get_draw_ops(
     );
     let outer_polygon = rect_to_polygon_vertexes(&outer_rect);
     let inner_polygon = rect_to_polygon_vertexes(&inner_rect);
-    let border_color = if selected_button.is_some() {
+    let border_color = if !matches!(shop_state, ShopState::Root) {
         ColorRGBA32f::new(1.0, 1.0, 1.0, 1.0)
     } else {
         ColorRGBA32f::new(1.0, 1.0, 1.0, 0.1)
@@ -204,28 +220,34 @@ fn get_draw_ops(
     );
     let font_size = 0.025 * f32::sqrt(w * h); 
     let desc_start = text_rect.y + 0.0275 * f32::sqrt(w * h);
-    if let Some(sb) = selected_button {
-        match sb {
-            SelectedButton::InventoryWeapon { idx } => {
-                // TODO: use multiline text rasterization to ensure text wraps around automatically
-                draw_ops.push(DrawOp::Text(DrawOpText {
-                    text: player.get_weapon_name(*idx).to_owned(),
-                    font: Font::TekoRegular,
-                    color: colors[*idx],
-                    x: text_rect.x,
-                    y: text_rect.y,
-                    font_size,
-                    position: crate::gfx::renderer::DrawTextPosition::TopLeft,
-                }));
-                draw_ops.push(DrawOp::Text(DrawOpText {
-                    text: player.get_weapon_shop_description(*idx).to_owned(),
-                    font: Font::TekoRegular,
-                    color: ColorRGBA32f::new(1.0, 1.0, 1.0, 1.0),
-                    x: text_rect.x,
-                    y: desc_start,
-                    font_size,
-                    position: crate::gfx::renderer::DrawTextPosition::TopLeft,
-                }));
+    match shop_state {
+        ShopState::Root => {
+            // nop so far
+        },
+        ShopState::ButtonSelected(cb_id) => {
+            match cb_id {
+                ClickableButtonId::InventoryWeapon { idx } => {
+                    // TODO: use multiline text rasterization to ensure text wraps around automatically
+                    draw_ops.push(DrawOp::Text(DrawOpText {
+                        text: player.get_weapon_name(*idx).to_owned(),
+                        font: Font::TekoRegular,
+                        color: colors[*idx],
+                        x: text_rect.x,
+                        y: text_rect.y,
+                        font_size,
+                        position: crate::gfx::renderer::DrawTextPosition::TopLeft,
+                    }));
+                    draw_ops.push(DrawOp::Text(DrawOpText {
+                        text: player.get_weapon_shop_description(*idx).to_owned(),
+                        font: Font::TekoRegular,
+                        color: ColorRGBA32f::new(1.0, 1.0, 1.0, 1.0),
+                        x: text_rect.x,
+                        y: desc_start,
+                        font_size,
+                        position: crate::gfx::renderer::DrawTextPosition::TopLeft,
+                    }));
+                }
+                _ => panic!("unexpected ShopState::ButtonSelected button id: {:?}", cb_id)
             }
         }
     }
@@ -233,23 +255,27 @@ fn get_draw_ops(
     DrawOpWithMetadata::new(0.0, DrawOp::Group(DrawOpGroup::new(draw_ops.into())))
 }
 
-struct ClickableButton<T> {
+struct ClickableButton<T: Clone + PartialEq> {
     id: T,
     rect: Rect,
     border_thickness: f32,
     border_color: ColorRGBA32f,
     border_color_on_press: ColorRGBA32f,
+    border_color_on_hover: ColorRGBA32f,
+    border_color_while_selected: Option<ColorRGBA32f>, // set to None if the button isn't clickable
     inner_color: ColorRGBA32f,
     text: String,
     font_size: f32,
     text_color: ColorRGBA32f,
 }
 
-enum ClickableButtonId {
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum ClickableButtonId {
     NextFloor,
     InventoryWeapon{idx: usize},
 }
 
-pub enum SelectedButton {
-    InventoryWeapon{idx: usize},
+pub enum ShopState {
+    Root,
+    ButtonSelected(ClickableButtonId), // note that not all ClickableButtons are clickable
 }
