@@ -90,8 +90,35 @@ struct RunFloorTickResponse {
 
 #[inline(never)]
 fn run_floor_tick(ctx: RunFloorTickContext) -> RunFloorTickResponse {
-    let (player, room, id_counter) = ctx.floor.get_player_and_current_room_and_id_counter();
+    let (player, room, _) = ctx.floor.get_player_and_current_room_and_id_counter();
+
+    // The wtmr logic must occur before act1() is called on RoomObjects.
+    // Why: Otherwise, if wtmr is Some on the last tick of a frame, then the player will move rooms, and no more 
+    // run_floor_ticks() will be called that frame. This means that when RoomObjects in the newly moved to room are 
+    // drawn, no act1() calls on the RoomObjects will have occurred yet. We want to ensure that act1() is called on 
+    // all RoomObjects before any draw() calls. Remember that RoomObjects are allowed to assume that at least one
+    // act1() call occurs before draw(), which allows for lazy initialization in act1().
+    //
+    // More generally, we want the whole run_floor_tick() flow to run on a room before any draw() calls, 
+    // and act1() is part of this flow.
+    //
+    // One such bug that arises otherwise is that RoomConnections don't think an empty room is cleared until the 
+    // function handle_if_room_just_cleared() is called. This means that if the run_floor_tick() flow isn't run
+    // for a room before the room's RoomObjects are drawn, then for the first frame after entering a room, the
+    // RoomConnections may appear as if the room was uncleared.
+    let wtmr = player.borrow_mut().poll_wants_to_move_rooms();
+    if let Some(rci) = wtmr {
+        room.room_objects.remove_player();
+        ctx.floor.player_room_id = rci.connects_to_room_id;
+        assert!(ctx.floor.rooms.contains_key(&rci.connects_to_room_id), "player is moving to nonexistent room");
+        let err_msg = format!("player is moving to nonexistent room {}", rci.connects_to_room_id);
+        let rofiz = &mut ctx.floor.rooms.get_mut(&rci.connects_to_room_id).expect(&err_msg).rofiz;
+        player.borrow_mut().move_rooms(rofiz, MoveRooms::Connection(rci));
+        ctx.floor.rooms.get_mut(&rci.connects_to_room_id).expect(&err_msg).room_objects.add(player);
+    }
+
     let mut floor_finished = false;
+    let (_, room, id_counter) = ctx.floor.get_player_and_current_room_and_id_counter();
 
     {
         room.room_time += ctx.tick_length;
@@ -121,17 +148,6 @@ fn run_floor_tick(ctx: RunFloorTickContext) -> RunFloorTickResponse {
 
     if ctx.run_validation {
         room.room_objects.validate_end_tick();
-    }
-
-    let wtmr = player.borrow_mut().poll_wants_to_move_rooms();
-    if let Some(rci) = wtmr {
-        room.room_objects.remove_player();
-        ctx.floor.player_room_id = rci.connects_to_room_id;
-        assert!(ctx.floor.rooms.contains_key(&rci.connects_to_room_id), "player is moving to nonexistent room");
-        let err_msg = format!("player is moving to nonexistent room {}", rci.connects_to_room_id);
-        let rofiz = &mut ctx.floor.rooms.get_mut(&rci.connects_to_room_id).expect(&err_msg).rofiz;
-        player.borrow_mut().move_rooms(rofiz, MoveRooms::Connection(rci));
-        ctx.floor.rooms.get_mut(&rci.connects_to_room_id).expect(&err_msg).room_objects.add(player);
     }
 
     ctx.floor.floor_time_left -= ctx.tick_length;
