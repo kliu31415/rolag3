@@ -7,6 +7,8 @@ type DrawWeaponHudFn = dyn Fn(&DrawWeaponHudContext) -> DrawWeaponHudResponse;
 type DrawWeaponOnOwnerFn = dyn Fn(&DrawWeaponOnOwnerContext) -> DrawWeaponOnOwnerResponse;
 
 pub struct Weapon {
+    pub name: &'static str,
+    pub shop_description: &'static str,
     pub ws_data: Box<dyn Any>,
     pub handle_tick_fn: Box<WeaponHandleTickFn>,
     pub draw_hud_fn: Box<DrawWeaponHudFn>,
@@ -14,8 +16,17 @@ pub struct Weapon {
 }
 
 impl Weapon {
-    pub fn new(ws_data: Box<dyn Any>, handle_tick_fn: Box<WeaponHandleTickFn>, draw_hud_fn: Box<DrawWeaponHudFn>, draw_on_owner_fn: Box<DrawWeaponOnOwnerFn>) -> Self {
+    pub fn new(
+        name: &'static str,
+        shop_description: &'static str,
+        ws_data: Box<dyn Any>, 
+        handle_tick_fn: Box<WeaponHandleTickFn>, 
+        draw_hud_fn: Box<DrawWeaponHudFn>, 
+        draw_on_owner_fn: Box<DrawWeaponOnOwnerFn>,
+    ) -> Self {
         Self {
+            name,
+            shop_description,
             ws_data,
             handle_tick_fn,
             draw_hud_fn,
@@ -58,7 +69,6 @@ pub struct DrawWeaponHudContext {
     // (x, y) represent the top left corner pixel coordinate
     pub x: f32,
     pub y: f32,
-    pub is_selected: bool,
 }
 
 pub struct DrawWeaponHudResponse {

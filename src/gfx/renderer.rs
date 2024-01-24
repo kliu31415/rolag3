@@ -144,6 +144,8 @@ impl DrawOpText {
 #[derive(Debug, Clone, Copy)]
 pub enum DrawTextPosition {
     TopLeft,
+    BottomLeft,
+    _BottomCenter,
     Center,
 }
 
@@ -911,6 +913,8 @@ impl WgpuRenderer {
 
         let (x, y) = match args.position {
             DrawTextPosition::TopLeft => (args.x, args.y),
+            DrawTextPosition::BottomLeft => (args.x, args.y - height),
+            DrawTextPosition::_BottomCenter => (args.x - 0.5 * width, args.y - height),
             DrawTextPosition::Center => (args.x - 0.5 * width, args.y - 0.5 * height),
         };
 

@@ -161,7 +161,7 @@ fn get_draw_hud_ops(ctx: DrawHudContext) -> DrawOp {
     }
 
     // Weapons
-    ops.push(ctx.player.get_weapon_hud_draw_op(0.87 * ctx.window_width, 0.11 * ctx.window_height, 0.03 * ctx.window_height, 0.11 * ctx.window_width));
+    ops.push(ctx.player.get_weapons_hud_draw_op(0.87 * ctx.window_width, 0.11 * ctx.window_height, 0.11 * ctx.window_width, 0.03 * ctx.window_height));
 
     // Floor Time Left
     let top_left_row_width = 0.04 * ctx.window_height;

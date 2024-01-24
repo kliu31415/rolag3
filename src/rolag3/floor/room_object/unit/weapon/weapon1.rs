@@ -6,6 +6,9 @@ use super::weapon_def::{WeaponHandleTickContext, Weapon, WeaponHandleTickRespons
 
 /* Weapon1 rapidly shoots green squares, like a laser. It has no special attack. */
 
+const NAME: &str = "Green Laser";
+const SHOP_DESCRIPTION: &str = "Shoots a rapid, continuous laser beam";
+
 const PRIMARY_ATTACK_INTERVAL: f64 = 0.003;
 const PROJ_COLOR: Color = Color::new(0.0, 1.6, 0.0, 1.0);
 const PROJ_VERTEXES: [Point; 4] = [Point::new(-0.2, -0.2), Point::new(0.2, -0.2), Point::new(0.2, 0.2), Point::new(-0.2, 0.2)];
@@ -18,7 +21,14 @@ pub fn new_weapon1() -> Weapon {
     let ws_data = Box::new(Weapon1Data {
         since_last_primary_attack: PRIMARY_ATTACK_INTERVAL,
     });
-    Weapon::new(ws_data, Box::new(handle_tick_fn), Box::new(draw_hud), Box::new(draw_on_owner))
+    Weapon::new(
+        NAME,
+        SHOP_DESCRIPTION,
+        ws_data, 
+        Box::new(handle_tick_fn), 
+        Box::new(draw_hud), 
+        Box::new(draw_on_owner),
+    )
 }
 
 fn handle_tick_fn(ctx: &mut WeaponHandleTickContext) -> WeaponHandleTickResponse {

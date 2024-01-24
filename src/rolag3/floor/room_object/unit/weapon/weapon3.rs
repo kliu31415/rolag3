@@ -7,6 +7,9 @@ use super::weapon_def::{Weapon, WeaponHandleTickContext, WeaponHandleTickRespons
 /* Weapon3 shoots a wave of 3 red circles at intervals of 0.1s. It has no special attack.
 */
 
+const NAME: &str = "Crimson Shotgun";
+const SHOP_DESCRIPTION: &str = "Fires waves of three projectiles";
+
 const PRIMARY_ATTACK_INTERVAL: f64 = 0.1;
 const PROJ_COLOR: Color = Color::new(6.0, 0.1, 0.1, 1.0);
 const PROJ_RADIUS: f32 = 0.4;
@@ -20,7 +23,14 @@ pub fn new_weapon3() -> Weapon {
     let ws_data = Box::new(Weapon3Data {
         since_last_primary_attack: PRIMARY_ATTACK_INTERVAL,
     });
-    Weapon::new(ws_data, Box::new(handle_tick_fn), Box::new(draw_hud), Box::new(draw_on_owner))
+    Weapon::new(
+        NAME,
+        SHOP_DESCRIPTION,
+        ws_data, 
+        Box::new(handle_tick_fn), 
+        Box::new(draw_hud), 
+        Box::new(draw_on_owner),
+    )
 }
 
 fn handle_tick_fn(ctx: &mut WeaponHandleTickContext) -> WeaponHandleTickResponse {

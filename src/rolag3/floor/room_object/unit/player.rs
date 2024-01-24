@@ -355,7 +355,7 @@ impl Player {
         self.max_mana
     }
 
-    pub fn get_weapon_hud_draw_op(&self, x: f32, y: f32, row_height: f32, row_width: f32) -> DrawOp {
+    pub fn get_weapons_hud_draw_op(&self, x: f32, y: f32, row_width: f32, row_height: f32) -> DrawOp {
         let mut ops = Vec::new();
         for (i, weapon) in self.weapons.iter().enumerate() {
             let background_color = if self.weapon_idx == i{
@@ -376,7 +376,6 @@ impl Player {
                 scale_height: inner_scale,
                 x: x + buffer_px,
                 y: y + buffer_px,
-                is_selected: self.weapon_idx == i,
             };
             let r = (weapon.draw_hud_fn)(&dwh_ctx);
             let mut this_row_ops = vec![background, r.weapon_draw_op];
@@ -402,6 +401,52 @@ impl Player {
             ops.push(DrawOp::Group(DrawOpGroup { ops: this_row_ops.into_boxed_slice() }));
         }
         DrawOp::Group(DrawOpGroup { ops: ops.into_boxed_slice() })
+    }
+
+    pub fn get_weapon_draw_op(
+        &self, 
+        idx: usize, 
+        background_color: ColorRGBA32f, 
+        ammo_text_color: ColorRGBA32f,
+        x: f32, 
+        y: f32, 
+        row_width: f32,
+        row_height: f32, 
+    ) -> DrawOp {
+        let mut this_row_ops = Vec::new();
+        let background = draw_op_rect(background_color, x, y, row_width, row_height);
+        this_row_ops.push(background);
+        let buffer_px = 0.15 * row_height;
+        let inner_scale = row_height - 2.0 * buffer_px;
+
+        let dwh_ctx = DrawWeaponHudContext { 
+            scale_height: inner_scale,
+            x: x + buffer_px,
+            y: y + buffer_px,
+        };
+        let r = (self.weapons[idx].draw_hud_fn)(&dwh_ctx);
+        this_row_ops.push(r.weapon_draw_op);
+
+        let ammo_text = DrawOp::Text(DrawOpText { 
+            text: r.ammo_text.clone(), 
+            font: Font::TekoRegular,
+            color: ammo_text_color,
+            x: x + row_height, 
+            y, 
+            font_size: row_height,
+            position: DrawTextPosition::TopLeft,
+        });
+        this_row_ops.push(ammo_text);
+
+        DrawOp::Group(DrawOpGroup { ops: this_row_ops.into_boxed_slice() })
+    }
+
+    pub fn get_weapon_name(&self, weapon_idx: usize) -> &str {
+        self.weapons[weapon_idx].name
+    }
+
+    pub fn get_weapon_shop_description(&self, weapon_idx: usize) -> &str {
+        self.weapons[weapon_idx].shop_description
     }
 
     pub fn set_floor_take_damage_mult(&mut self, mult: f64) {

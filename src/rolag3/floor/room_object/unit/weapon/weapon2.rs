@@ -5,8 +5,12 @@ use crate::{rolag3::floor::{draw::Color, room_object::{room_object_def::RoomObje
 use super::weapon_def::{Weapon, WeaponHandleTickResponse, WeaponHandleTickContext, DrawWeaponHudContext, DrawWeaponHudResponse, DrawWeaponOnOwnerContext, DrawWeaponOnOwnerResponse};
 
 /* Weapon2 shoots a wave of 3 blue squares at intervals of 0.3s.
-   It has a special attack, which when used, causes it to shoot much more rapidly.
+   It has a special attack, which when used, causes it to shoot a radial wave of 128 projectiles.
 */
+
+const NAME: &str = "Lapis Trigun";
+const SHOP_DESCRIPTION: &str = "Fires waves of three projectiles. 
+Has a special attack that ejects a radial wave of 128 projectiles";
 
 const PRIMARY_ATTACK_INTERVAL: f64 = 0.3;
 const SPECIAL_ATTACK_COOLDOWN: f64 = 1.5;
@@ -25,7 +29,14 @@ pub fn new_weapon2() -> Weapon {
         since_last_primary_attack: PRIMARY_ATTACK_INTERVAL,
         since_last_special_attack: SPECIAL_ATTACK_COOLDOWN,
     });
-    Weapon::new(ws_data, Box::new(handle_tick_fn), Box::new(draw_hud), Box::new(draw_on_owner))
+    Weapon::new(
+        NAME,
+        SHOP_DESCRIPTION,
+        ws_data, 
+        Box::new(handle_tick_fn), 
+        Box::new(draw_hud), 
+        Box::new(draw_on_owner),
+    )
 }
 
 fn handle_tick_fn(ctx: &mut WeaponHandleTickContext) -> WeaponHandleTickResponse {

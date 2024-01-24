@@ -11,7 +11,7 @@ use crate::gfx::text::font::Font;
 use crate::util::rng::Prng;
 use crate::{gfx::{self, window::{Window, EventHandler}, renderer::{ColorRGBA32f, DrawTextPosition, DrawOpCCS, DrawOpText, DrawOpWithMetadata, DrawOp, Renderer}, input::PollableInput}, util::{time::now_unix, config::Config}};
 
-use super::between_floors_shop::run::{RunFrameBfshopContext, run_frame_between_floors_shop, MouseButtonAction};
+use super::between_floors_shop::run::{RunFrameBfshopContext, run_frame_between_floors_shop, MouseButtonAction, RunFrameBfshopResponse};
 use super::floor::room_object::unit::player::Player;
 use super::floor::{draw::{DrawFloorContext, get_draw_floor_ops}, run::{RunFloorContext, run_floor_frame, PlayerInput, PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, floor_def::Floor};
 use super::r3run::{R3Run, R3RunState};
@@ -130,7 +130,7 @@ impl Rolag3EventHandler {
             frame_timestamps: VecDeque::new(),
             r3run: R3Run {
                 player,
-                state: R3RunState::BetweenFloorsShop { prev_lmb_down: None },
+                state: R3RunState::BetweenFloorsShop { prev_lmb_down_xy: None, selected_button: None },
                 cur_floor_num: 0,
             },
             rng,
@@ -287,28 +287,36 @@ impl Rolag3EventHandler {
         if rff_response.floor_finished {
             log::warn!("finished floor. Moving to shop");
             self.r3run.cur_floor_num += 1;
-            self.r3run.state = R3RunState::BetweenFloorsShop{ prev_lmb_down: None };
+            self.r3run.state = R3RunState::BetweenFloorsShop{ prev_lmb_down_xy: None, selected_button: None };
         }
     }
 
     fn run_frame_between_floors_shop(&mut self, window: &mut dyn Window) {
-        let R3RunState::BetweenFloorsShop { prev_lmb_down } = &mut self.r3run.state else {panic!("R3RunState is not BetweenFloorsShop")};
+        let R3RunState::BetweenFloorsShop { prev_lmb_down_xy, selected_button } = &mut self.r3run.state else {panic!("R3RunState is not BetweenFloorsShop")};
 
-        let mut lmb_input = Vec::new();
-        for input in window.get_input_state_mut().poll_all_pollable_input() {
-            match input {
-                PollableInput::LmbDown(x, y) => lmb_input.push(MouseButtonAction::Down(x, y)),
-                PollableInput::LmbUp(x, y) => lmb_input.push(MouseButtonAction::Up(x, y)),
-                _ => {},
+        // enclose this block in its own scope to ensure all borrows it uses are dropped. In particular, the borrow
+        // of player needs to be dropped, because Floor::new...() borrows the player mutably.
+        let response: RunFrameBfshopResponse;
+        {
+            let mut lmb_input = Vec::new();
+            for input in window.get_input_state_mut().poll_all_pollable_input() {
+                match input {
+                    PollableInput::LmbDown(x, y) => lmb_input.push(MouseButtonAction::Down(x, y)),
+                    PollableInput::LmbUp(x, y) => lmb_input.push(MouseButtonAction::Up(x, y)),
+                    _ => {},
+                }
             }
+
+            let bfshop_ctx = RunFrameBfshopContext {
+                window,
+                prev_lmb_down_xy,
+                selected_button,
+                lmb_actions: lmb_input,
+                player: &*self.r3run.player.borrow(),
+            };
+            response = run_frame_between_floors_shop(bfshop_ctx);
         }
 
-        let bfshop_ctx = RunFrameBfshopContext {
-            window,
-            prev_lmb_down,
-            lmb_actions: lmb_input,
-        };
-        let response = run_frame_between_floors_shop(bfshop_ctx);
         if response.move_to_next_floor {
             self.r3run.state = R3RunState::InFloor {
                 floor: Floor::new_test2(window.get_renderer(), &mut self.rng, self.r3run.player.clone()),
