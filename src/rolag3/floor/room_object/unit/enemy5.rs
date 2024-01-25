@@ -68,7 +68,7 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
     if let Some(ref mut sps) = us_data.spit_projectile_start {
         if !sps.proj_spit && ctx.act1_ctx.get_room_time() - sps.start > 0.5 {
             sps.proj_spit = true;
-            let xform = ctx.act1_ctx.get_rofiz().get_movable_object_xform(ctx.su_ctx.su_common.get_ro_ref());
+            let xform = ctx.su_ctx.su_common.get_rofiz_xform(ctx.act1_ctx.get_rofiz());
             let self_as_weak = ctx.act1_ctx.get_self_as_weak();
             let mut nfo_ctx = NewRoomObjectContext::from_act1_ctx(ctx.act1_ctx);
             for i in 0..4 {
@@ -122,7 +122,7 @@ fn draw(ctx: &mut SuDrawContext) {
     assert!(us_data.border.vertexes.len() == 4);
     assert!(us_data.outer.vertexes.len() == 4);
     assert!(us_data.inner.vertexes.len() == 4);
-    let xform = ctx.draw_ctx.get_rofiz().get_movable_object_xform(ctx.su_ctx.su_common.get_ro_ref());
+    let xform = ctx.su_ctx.su_common.get_rofiz_xform(ctx.draw_ctx.get_rofiz());
     let border = xform.get_transformed_polygon(&us_data.border).vertexes;
     let outer = xform.get_transformed_polygon(&us_data.outer).vertexes;
     let inner = xform.get_transformed_polygon(&us_data.inner).vertexes;

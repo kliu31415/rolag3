@@ -42,7 +42,7 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
     let mut response = Act1Response::new();
     let tick_len = ctx.su_ctx.su_common.get_unit_tick_len();
     let room_time = ctx.act1_ctx.get_room_time();
-    let xform = ctx.act1_ctx.get_rofiz().get_movable_object_xform(ctx.su_ctx.su_common.get_ro_ref());
+    let xform = ctx.su_ctx.su_common.get_rofiz_xform(ctx.act1_ctx.get_rofiz());
 
     match us_data.action {
         Some(ref mut action) => match action {
@@ -138,7 +138,7 @@ fn draw(ctx: &mut SuDrawContext) {
     let us_data = ctx.su_ctx.us_data.downcast_mut::<Boss1>().unwrap();
 
     let color = ctx.su_ctx.su_common.get_draw_color(Color::new(5.0, 0.0, 0.0, 1.0));
-    let xform = ctx.draw_ctx.get_rofiz().get_movable_object_xform(ctx.su_ctx.su_common.get_ro_ref());
+    let xform = ctx.su_ctx.su_common.get_rofiz_xform(ctx.draw_ctx.get_rofiz());
     let inner_xformed = xform.get_transformed_polygon(&us_data.inner);
     let mut draw_ops = Vec::new();
     let mut vertexes = Vec::new();

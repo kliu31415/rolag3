@@ -105,7 +105,7 @@ pub fn new_boss_circle_mage1(ctx: &mut NewRoomObjectContext, x: f64, y: f64) -> 
 fn boss_act1(ctx: &mut SuAct1Context) -> Act1Response {
     let mut response = Act1Response::new();
     let us_data = ctx.su_ctx.us_data.downcast_mut::<CircleMage1>().unwrap();
-    let xform = ctx.act1_ctx.get_rofiz().get_movable_object_xform(ctx.su_ctx.su_common.get_ro_ref());
+    let xform = ctx.su_ctx.su_common.get_rofiz_xform(ctx.act1_ctx.get_rofiz());
     if let Some(ref qr) = us_data.query_result {
         match &*qr.borrow() {
             Act1QueryResult::ClosestUnit(v) => {
@@ -200,7 +200,7 @@ fn boss_draw(ctx: &mut SuDrawContext) {
     let us_data = ctx.su_ctx.us_data.downcast_mut::<CircleMage1>().unwrap();
     let border_color = ctx.su_ctx.su_common.get_draw_color(DrawContext::COLOR_NSU_BORDER);
     let inner_color = ctx.su_ctx.su_common.get_draw_color(OUTER_COLOR);
-    let xform = ctx.draw_ctx.get_rofiz().get_movable_object_xform(ctx.su_ctx.su_common.get_ro_ref());
+    let xform = ctx.su_ctx.su_common.get_rofiz_xform(ctx.draw_ctx.get_rofiz());
     let center = Point::new(xform.dx as f32, xform.dy as f32);
     let cc_dop = ctx.draw_ctx.do_concentric_circle(inner_color, border_color, center, OUTER_RADIUS, BORDER_RADIUS);
     let inner_dop = ctx.draw_ctx.do_circle(PROJ_COLOR, center, PROJ_RADIUS);

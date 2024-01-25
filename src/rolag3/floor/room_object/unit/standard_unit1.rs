@@ -142,9 +142,8 @@ impl RoomObject for StandardUnit1 {
     }
 
     fn handle_query_unit_info(&self, ctx: &RoQueryUnitInfoContext) -> Option<RoQueryUnitInfoResponse> {
-        match self.data.su_common.get_ro_ref_opt() {
-            Some(ro_ref) => {
-                let xform = ctx.get_rofiz().get_movable_object_xform(ro_ref);
+        match self.data.su_common.try_get_rofiz_xform(ctx.get_rofiz()) {
+            Some(xform) => {
                 Some(RoQueryUnitInfoResponse { 
                     unit: ctx.get_self_as_weak(),
                     team: self.data.team, 

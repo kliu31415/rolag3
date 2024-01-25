@@ -33,7 +33,7 @@ pub fn new_enemy2(ctx: &mut NewRoomObjectContext, x: f64, y: f64) -> StandardUni
 
 fn act1(ctx: &mut SuAct1Context) -> Act1Response {
     let us_data = ctx.su_ctx.us_data.downcast_mut::<Enemy2>().unwrap();
-    let xform = ctx.act1_ctx.get_rofiz().get_movable_object_xform(ctx.su_ctx.su_common.get_ro_ref());
+    let xform = ctx.su_ctx.su_common.get_rofiz_xform(ctx.act1_ctx.get_rofiz());
     if let Some(ref qr) = us_data.query_result {
         match &*qr.borrow() {
             Act1QueryResult::ClosestUnit(v) => {
@@ -56,7 +56,7 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
 
 fn draw(ctx: &mut SuDrawContext) {
     let color = ctx.su_ctx.su_common.get_draw_color(Color::new(0.1, 0.8, 0.1, 1.0));
-    let xform = ctx.draw_ctx.get_rofiz().get_movable_object_xform(ctx.su_ctx.su_common.get_ro_ref());
+    let xform = ctx.su_ctx.su_common.get_rofiz_xform(ctx.draw_ctx.get_rofiz());
     let x = xform.dx as f32 - SIDE_LEN / 2.0;
     let y = xform.dy as f32 - SIDE_LEN / 2.0;
     let w = SIDE_LEN;

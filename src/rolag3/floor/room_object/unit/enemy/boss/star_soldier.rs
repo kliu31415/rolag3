@@ -99,7 +99,7 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
         ss.stage_start_unit_age[2] = Some(unit_age);
         ctx.su_ctx.su_common.set_angular_power(3.0);
     }
-    let xform = ctx.act1_ctx.get_rofiz().get_movable_object_xform(&ctx.su_ctx.su_common.get_ro_ref());
+    let xform = ctx.su_ctx.su_common.get_rofiz_xform(ctx.act1_ctx.get_rofiz());
     if ss.attack_action.is_none() {
         let between_actions = BETWEEN_ACTIONS * ss.wait_until_next_action_mult * 8.0 / (8.0 + ss.stage as f64);
         if unit_age - ss.action_ended_at > between_actions {
@@ -256,7 +256,7 @@ fn draw(ctx: &mut SuDrawContext) {
         _ => panic!("unexpected star_soldier.stage={}", ss.stage),
     };
     let color = ctx.su_ctx.su_common.get_draw_color(color);
-    let xform = ctx.draw_ctx.get_rofiz().get_movable_object_xform(&ctx.su_ctx.su_common.get_ro_ref());
+    let xform = ctx.su_ctx.su_common.get_rofiz_xform(ctx.draw_ctx.get_rofiz());
     let vertexes = 
         [Point::new(0.0, 0.0)].iter().chain(ss.vertexes.iter()).chain(ss.vertexes[..1].iter())
         .map(|p| Point::new(p.x, p.y))

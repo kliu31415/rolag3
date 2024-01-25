@@ -171,12 +171,15 @@ impl StandardUnitCommon {
         self.velocity_y
     }
 
-    pub fn get_ro_ref_opt(&self) -> Option<&RofizObjectRef> {
-        self.ro_ref.as_ref()
+    pub fn try_get_rofiz_xform(&self, rofiz: &RofizState) -> Option<Transformation> {
+        if let Some(ro_ref) = &self.ro_ref {
+            return Some(rofiz.get_movable_object_xform(ro_ref));
+        }
+        None
     }
 
-    pub fn get_ro_ref(&self) -> &RofizObjectRef {
-        self.ro_ref.as_ref().unwrap()
+    pub fn get_rofiz_xform(&self, rofiz: &RofizState) -> Transformation {
+        rofiz.get_movable_object_xform(self.ro_ref.as_ref().unwrap())
     }
 
     fn decelerate_xy(&mut self, tick_length: f64, force: f64) {

@@ -69,7 +69,7 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
     match us_data.birth_action {
         Some(ref action) => {
             if unit_age > action.end_time {
-                let xform = ctx.act1_ctx.get_rofiz().get_movable_object_xform(ctx.su_ctx.su_common.get_ro_ref());
+                let xform = ctx.su_ctx.su_common.get_rofiz_xform(ctx.act1_ctx.get_rofiz());
                 let nro_ctx = &mut NewRoomObjectContext::from_act1_ctx(ctx.act1_ctx);
                 let child = Rc::new(RefCell::new(new_diamond_rgb(nro_ctx, *ctx.su_ctx.damage_color, xform.dx, xform.dy, std::f64::consts::FRAC_PI_2))) as _;
                 us_data.children.push(Rc::downgrade(&child));
@@ -95,7 +95,7 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
 
 fn draw(ctx: &mut SuDrawContext) {
     let us_data = ctx.su_ctx.us_data.downcast_mut::<BigCircleBlueDiamond>().unwrap();
-    let xform = ctx.draw_ctx.get_rofiz().get_movable_object_xform(ctx.su_ctx.su_common.get_ro_ref());
+    let xform = ctx.su_ctx.su_common.get_rofiz_xform(ctx.draw_ctx.get_rofiz());
     let unit_age = ctx.su_ctx.su_common.get_unit_time();
     let inner_color = ctx.su_ctx.su_common.get_draw_color(us_data.outer_color);
     let outer_color = ctx.su_ctx.su_common.get_draw_color(DrawContext::COLOR_NSU_BORDER);

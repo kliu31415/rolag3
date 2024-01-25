@@ -102,7 +102,7 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
     us_data.fired_proj_time_ago += unit_tick_len;
     if us_data.fired_proj_time_ago > FIRE_PROJ_INTERVAL {
         us_data.fired_proj_time_ago -= FIRE_PROJ_INTERVAL;
-        let xform = ctx.act1_ctx.get_rofiz().get_movable_object_xform(ctx.su_ctx.su_common.get_ro_ref());
+        let xform = ctx.su_ctx.su_common.get_rofiz_xform(ctx.act1_ctx.get_rofiz());
         for i in 0..2 {
             let self_as_weak = ctx.act1_ctx.get_self_as_weak();
             let proj_speed = 10.0;
@@ -138,7 +138,7 @@ fn draw(ctx: &mut SuDrawContext) {
     let us_data = ctx.su_ctx.us_data.downcast_mut::<SquareRgb2Tri>().unwrap();
     let border_color = ctx.su_ctx.su_common.get_draw_color(DrawContext::COLOR_NSU_BORDER);
     let outer_color = ctx.su_ctx.su_common.get_draw_color(IDX_TO_OUTER_DRAW_COLOR[us_data.outer_color]);
-    let xform = ctx.draw_ctx.get_rofiz().get_movable_object_xform(ctx.su_ctx.su_common.get_ro_ref());
+    let xform = ctx.su_ctx.su_common.get_rofiz_xform(ctx.draw_ctx.get_rofiz());
     let xlate_vec = Vector::new(xform.dx as f32, xform.dy as f32);
     let border_vertexes = us_data.border_vertexes.map(|v| v.rotated(xform.dtheta as f32).translated(xlate_vec));
     let outer_vertexes = us_data.inner_vertexes.map(|v| v.rotated(xform.dtheta as f32).translated(xlate_vec));

@@ -92,7 +92,7 @@ pub fn new_circular_turret_bluntstar3(ctx: &mut NewRoomObjectContext, x: f64, y:
 fn act1(ctx: &mut SuAct1Context) -> Act1Response {
     let us_data = ctx.su_ctx.us_data.downcast_mut::<CirTurBluntStar3>().unwrap();
     let mut response = Act1Response::new();
-    let xform = ctx.act1_ctx.get_rofiz().get_movable_object_xform(ctx.su_ctx.su_common.get_ro_ref());
+    let xform = ctx.su_ctx.su_common.get_rofiz_xform(ctx.act1_ctx.get_rofiz());
     ctx.su_ctx.su_common.set_rotate_move(RotateMove::Accelerate { atheta: 1.0 });
     us_data.since_shot_proj -= ctx.su_ctx.su_common.get_unit_tick_len();
     if us_data.since_shot_proj < 0.0 {
@@ -130,7 +130,7 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
 
 fn draw(ctx: &mut SuDrawContext) {
     let us_data = ctx.su_ctx.us_data.downcast_mut::<CirTurBluntStar3>().unwrap();
-    let xform = ctx.draw_ctx.get_rofiz().get_movable_object_xform(ctx.su_ctx.su_common.get_ro_ref());
+    let xform = ctx.su_ctx.su_common.get_rofiz_xform(ctx.draw_ctx.get_rofiz());
     let circles_dop = ctx.draw_ctx.do_concentric_circle(
         us_data.circle_inner_color,
         DrawContext::COLOR_NSU_BORDER, 

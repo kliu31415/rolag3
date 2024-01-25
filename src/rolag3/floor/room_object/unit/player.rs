@@ -86,7 +86,7 @@ impl RoomObject for Player {
         self.mana = f64::min(self.mana + self.mana_regen * tick_len, self.max_mana);
 
         // process active items
-        let xform = ctx.get_rofiz().get_movable_object_xform(self.su_common.as_ref().unwrap().get_ro_ref());
+        let xform = self.su_common.as_ref().unwrap().get_rofiz_xform(ctx.get_rofiz());
         if self.active_items.len() >= 1 {
             let active_item = &mut self.active_items[0];
             let mut aihc_ctx = ActiveItemHandleTickContext {
@@ -161,7 +161,7 @@ impl RoomObject for Player {
     }
 
     fn draw(&mut self, ctx: &mut DrawContext) {
-        let xform = ctx.get_rofiz().get_movable_object_xform(self.su_common.as_ref().unwrap().get_ro_ref());
+        let xform = self.su_common.as_ref().unwrap().get_rofiz_xform(ctx.get_rofiz());
         let player_x = xform.dx as f32 - Self::PLAYER_S / 2.0;
         let player_y = xform.dy as f32 - Self::PLAYER_S / 2.0;
         let player_w = Self::PLAYER_S;
@@ -256,7 +256,7 @@ impl RoomObject for Player {
     }
 
     fn handle_query_unit_info(&self, ctx: &RoQueryUnitInfoContext) -> Option<RoQueryUnitInfoResponse> {
-        let xform = ctx.get_rofiz().get_movable_object_xform(self.su_common.as_ref().unwrap().get_ro_ref());
+        let xform = self.su_common.as_ref().unwrap().get_rofiz_xform(ctx.get_rofiz());
         Some(RoQueryUnitInfoResponse { 
             unit: ctx.get_self_as_weak(),
             team: Team::Player, 
@@ -325,7 +325,7 @@ impl Player {
     }
 
     pub fn get_center_point(&self, rofiz: &RofizState) -> FloorCoordinate {
-        let xform = rofiz.get_movable_object_xform(self.su_common.as_ref().unwrap().get_ro_ref());
+        let xform = self.su_common.as_ref().unwrap().get_rofiz_xform(rofiz);
         FloorCoordinate::new(xform.dx, xform.dy)
     }
 

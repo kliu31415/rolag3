@@ -100,7 +100,7 @@ pub fn new_diamond_rgb(ctx: &mut NewRoomObjectContext, damage_color: DamageColor
 
 fn act1(ctx: &mut SuAct1Context) -> Act1Response {
     let us_data = ctx.su_ctx.us_data.downcast_mut::<DiamondRgb>().unwrap();
-    let xform = ctx.act1_ctx.get_rofiz().get_movable_object_xform(ctx.su_ctx.su_common.get_ro_ref());
+    let xform = ctx.su_ctx.su_common.get_rofiz_xform(ctx.act1_ctx.get_rofiz());
     if let Some(qr) = us_data.query_result.take() {
         let Act1QueryResult::ClosestUnit(cu_opt) = &*qr.borrow() else {panic!("unexpected qr={:?}", &*qr.borrow())};
         if let Some(cu) = cu_opt {
@@ -193,7 +193,7 @@ fn cross_prod(x1: f64, y1: f64, x2: f64, y2: f64) -> f64 {
 
 fn draw(ctx: &mut SuDrawContext) {
     let us_data = ctx.su_ctx.us_data.downcast_mut::<DiamondRgb>().unwrap();
-    let xform = ctx.draw_ctx.get_rofiz().get_movable_object_xform(ctx.su_ctx.su_common.get_ro_ref());
+    let xform = ctx.su_ctx.su_common.get_rofiz_xform(ctx.draw_ctx.get_rofiz());
     let xlate = Vector::new(xform.dx as f32, xform.dy as f32);
     let border_outer_v = BORDER_VERTEXES.map(|p| p.rotated(xform.dtheta as f32)).map(|p| p + xlate);
     let border_inner_v = us_data.inner_vertexes.map(|p| p.rotated(xform.dtheta as f32)).map(|p| p + xlate);

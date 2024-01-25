@@ -52,7 +52,7 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
 
     let mut response = Act1Response::new();
     let tick_len = ctx.su_ctx.su_common.get_unit_tick_len();
-    let xform = ctx.act1_ctx.get_rofiz().get_movable_object_xform(ctx.su_ctx.su_common.get_ro_ref());
+    let xform = ctx.su_ctx.su_common.get_rofiz_xform(ctx.act1_ctx.get_rofiz());
 
     if let Some(ref qr) = us_data.query_result {
         match &*qr.borrow() {
@@ -127,7 +127,7 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
 
 fn draw(ctx: &mut SuDrawContext) {
     let color = ctx.su_ctx.su_common.get_draw_color(Color::new(0.1, 0.1, 1.0, 1.0));
-    let xform = ctx.draw_ctx.get_rofiz().get_movable_object_xform(ctx.su_ctx.su_common.get_ro_ref());
+    let xform = ctx.su_ctx.su_common.get_rofiz_xform(ctx.draw_ctx.get_rofiz());
     let x = xform.dx as f32 - SIDE_LEN / 2.0;
     let y = xform.dy as f32 - SIDE_LEN / 2.0;
     let w = SIDE_LEN;

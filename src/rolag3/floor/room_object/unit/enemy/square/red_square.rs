@@ -67,7 +67,7 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
     if let Some(ref mut sps) = us_data.spit_projectile_start {
         if !sps.proj_spit && ctx.act1_ctx.get_room_time() - sps.start > 0.5 {
             sps.proj_spit = true;
-            let xform = ctx.act1_ctx.get_rofiz().get_movable_object_xform(ctx.su_ctx.su_common.get_ro_ref());
+            let xform = ctx.su_ctx.su_common.get_rofiz_xform(ctx.act1_ctx.get_rofiz());
             let self_as_weak = ctx.act1_ctx.get_self_as_weak();
             let mut nfo_ctx = NewRoomObjectContext::from_act1_ctx(ctx.act1_ctx);
             for i in 0..4 {
@@ -125,7 +125,7 @@ fn draw(ctx: &mut SuDrawContext) {
         None => INNER_COLOR,
     };
     let inner_color = ctx.su_ctx.su_common.get_draw_color(inner_color);
-    let xform = ctx.draw_ctx.get_rofiz().get_movable_object_xform(ctx.su_ctx.su_common.get_ro_ref());
+    let xform = ctx.su_ctx.su_common.get_rofiz_xform(ctx.draw_ctx.get_rofiz());
     let border_vertexes = us_data.border_vertexes.map(|v| Point::new(xform.dx as f32 + v.x, xform.dy as f32 + v.y));
     let outer_vertexes = us_data.outer_vertexes.map(|v| Point::new(xform.dx as f32 + v.x, xform.dy as f32 + v.y));
     let inner_vertexes = us_data.inner_vertexes.map(|v| Point::new(xform.dx as f32 + v.x, xform.dy as f32 + v.y));

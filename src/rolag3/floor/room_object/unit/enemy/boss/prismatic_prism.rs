@@ -114,7 +114,7 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
     let us_data = ctx.su_ctx.us_data.downcast_mut::<PrismaticPrism>().unwrap();
     let mut response = Act1Response::new();
     let unit_age = ctx.su_ctx.su_common.get_unit_time();
-    let xform = ctx.act1_ctx.get_rofiz().get_movable_object_xform(ctx.su_ctx.su_common.get_ro_ref());
+    let xform = ctx.su_ctx.su_common.get_rofiz_xform(ctx.act1_ctx.get_rofiz());
     let hp_pct = ctx.su_ctx.su_common.get_cur_hp() / ctx.su_ctx.su_common.get_max_hp();
 
     let mut new_action = false;
@@ -403,7 +403,7 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
 
 fn draw(ctx: &mut SuDrawContext) {
     let us_data = ctx.su_ctx.us_data.downcast_mut::<PrismaticPrism>().unwrap();
-    let xform = ctx.draw_ctx.get_rofiz().get_movable_object_xform(ctx.su_ctx.su_common.get_ro_ref());
+    let xform = ctx.su_ctx.su_common.get_rofiz_xform(ctx.draw_ctx.get_rofiz());
     let center_vec = Vector::new(xform.dx as f32, xform.dy as f32);
     let border_vertexes = us_data.border_vertexes.map(|p| p.rotated(xform.dtheta as f32).translated(center_vec));
     let outer_vertexes = us_data.outer_vertexes.map(|p| p.rotated(xform.dtheta as f32).translated(center_vec));

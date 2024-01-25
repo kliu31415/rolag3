@@ -45,7 +45,7 @@ pub fn new_fatstar4_green(ctx: &mut NewRoomObjectContext, x: f64, y: f64) -> Sta
 
 fn act1(ctx: &mut SuAct1Context) -> Act1Response {
     let us_data = ctx.su_ctx.us_data.downcast_mut::<FatStar4Green>().unwrap();
-    let xform = ctx.act1_ctx.get_rofiz().get_movable_object_xform(ctx.su_ctx.su_common.get_ro_ref());
+    let xform = ctx.su_ctx.su_common.get_rofiz_xform(ctx.act1_ctx.get_rofiz());
     if *ctx.su_ctx.is_dead {
         let mut response = Act1Response::new().remove_room_obj(ctx.su_ctx.md.get_ref());
         let self_as_weak = ctx.act1_ctx.get_self_as_weak();
@@ -102,7 +102,7 @@ fn draw(ctx: &mut SuDrawContext) {
     let us_data = ctx.su_ctx.us_data.downcast_mut::<FatStar4Green>().unwrap();
     let border_color = ctx.su_ctx.su_common.get_draw_color(DrawContext::COLOR_NSU_BORDER);
     let inner_color = ctx.su_ctx.su_common.get_draw_color(INNER_COLOR);
-    let xform = ctx.draw_ctx.get_rofiz().get_movable_object_xform(ctx.su_ctx.su_common.get_ro_ref());
+    let xform = ctx.su_ctx.su_common.get_rofiz_xform(ctx.draw_ctx.get_rofiz());
     let border_vertexes = us_data.border_vertexes
         .map(|v| v.rotated(xform.dtheta as f32))
         .map(|v| Point::new(xform.dx as f32 + v.x, xform.dy as f32 + v.y));

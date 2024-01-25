@@ -48,7 +48,7 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
     let mut response = Act1Response::new();
     let us_data = ctx.su_ctx.us_data.downcast_mut::<SquareRed>().unwrap();
     let tick_len = ctx.su_ctx.su_common.get_unit_tick_len();
-    let xform = ctx.act1_ctx.get_rofiz().get_movable_object_xform(ctx.su_ctx.su_common.get_ro_ref());
+    let xform = ctx.su_ctx.su_common.get_rofiz_xform(ctx.act1_ctx.get_rofiz());
 
     if let Some(ref qr) = us_data.query_result {
         match &*qr.borrow() {
@@ -109,7 +109,7 @@ fn draw(ctx: &mut SuDrawContext) {
     };
     let border_color = ctx.su_ctx.su_common.get_draw_color(DrawContext::COLOR_NSU_BORDER);
     let inner_color = ctx.su_ctx.su_common.get_draw_color(inner_color);
-    let xform = ctx.draw_ctx.get_rofiz().get_movable_object_xform(ctx.su_ctx.su_common.get_ro_ref());
+    let xform = ctx.su_ctx.su_common.get_rofiz_xform(ctx.draw_ctx.get_rofiz());
     let border_vertexes = us_data.border_vertexes.map(|v| Point::new(xform.dx as f32 + v.x, xform.dy as f32 + v.y));
     let inner_vertexes = us_data.inner_vertexes.map(|v| Point::new(xform.dx as f32 + v.x, xform.dy as f32 + v.y));
     let border_dop = ctx.draw_ctx.do_thick_border(border_color, &border_vertexes, &inner_vertexes);

@@ -71,7 +71,7 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
         let movement = TranslateMove::SetXY { x, y };
         ctx.su_ctx.su_common.set_translate_move(movement);
     } else {
-        let xform = ctx.act1_ctx.get_rofiz().get_movable_object_xform(ctx.su_ctx.su_common.get_ro_ref());
+        let xform = ctx.su_ctx.su_common.get_rofiz_xform(ctx.act1_ctx.get_rofiz());
         match us_data.action {
             Some(ref action) => {
                 let unit_age = ctx.su_ctx.su_common.get_unit_time();
@@ -139,7 +139,7 @@ fn draw(ctx: &mut SuDrawContext) {
     let us_data = ctx.su_ctx.us_data.downcast_mut::<ThinStar3RedCircle>().unwrap();
     let border_color = ctx.su_ctx.su_common.get_draw_color(DrawContext::COLOR_NSU_BORDER);
     let outer_color = ctx.su_ctx.su_common.get_draw_color(OUTER_COLOR);
-    let xform = ctx.draw_ctx.get_rofiz().get_movable_object_xform(ctx.su_ctx.su_common.get_ro_ref());
+    let xform = ctx.su_ctx.su_common.get_rofiz_xform(ctx.draw_ctx.get_rofiz());
     let border_vertexes = us_data.border_vertexes
         .map(|v| v.rotated(xform.dtheta as f32))
         .map(|v| Point::new(xform.dx as f32 + v.x, xform.dy as f32 + v.y));

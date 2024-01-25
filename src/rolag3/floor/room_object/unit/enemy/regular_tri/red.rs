@@ -67,7 +67,7 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
     }
     assert!(us_data.excitement >= 0.0);
 
-    let xform = ctx.act1_ctx.get_rofiz().get_movable_object_xform(ctx.su_ctx.su_common.get_ro_ref());
+    let xform = ctx.su_ctx.su_common.get_rofiz_xform(ctx.act1_ctx.get_rofiz());
     let theta = xform.dtheta + (us_data.translate_dir as f64) * 2.0/3.0 * std::f64::consts::PI;
     ctx.su_ctx.su_common.set_translate_move(TranslateMove::Accelerate { ax: f64::cos(theta), ay: f64::sin(theta)});
     ctx.su_ctx.su_common.set_rotate_move(RotateMove::Accelerate { atheta: us_data.rotate_dir as f64 });
@@ -91,7 +91,7 @@ fn draw(ctx: &mut SuDrawContext) {
     let inner_color = Color::lerp(INNER_COLOR, EXCITED_COLOR, inner_color_t as f32);
     let border_color = ctx.su_ctx.su_common.get_draw_color(DrawContext::COLOR_NSU_BORDER);
     let inner_color = ctx.su_ctx.su_common.get_draw_color(inner_color);
-    let xform = ctx.draw_ctx.get_rofiz().get_movable_object_xform(ctx.su_ctx.su_common.get_ro_ref());
+    let xform = ctx.su_ctx.su_common.get_rofiz_xform(ctx.draw_ctx.get_rofiz());
     let border = xform.get_transformed_polygon(&us_data.border).vertexes;
     let inner = xform.get_transformed_polygon(&us_data.inner).vertexes;
     let dop_border = ctx.draw_ctx.do_thick_border(border_color, &border, &inner);

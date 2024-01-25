@@ -92,7 +92,7 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
     us_data.since_last_fired += tick_len;
     if us_data.since_last_fired > us_data.fire_interval {
         us_data.since_last_fired -= us_data.fire_interval;
-        let xform = ctx.act1_ctx.get_rofiz().get_movable_object_xform(ctx.su_ctx.su_common.get_ro_ref());
+        let xform = ctx.su_ctx.su_common.get_rofiz_xform(ctx.act1_ctx.get_rofiz());
         let self_as_weak = ctx.act1_ctx.get_self_as_weak();
         let mut nfo_ctx = NewRoomObjectContext::from_act1_ctx(ctx.act1_ctx);
         let num_proj = 32;
@@ -127,7 +127,7 @@ fn draw(ctx: &mut SuDrawContext) {
     let lerp_t = f64::min(1.0, 5.0 * f64::min(us_data.since_last_fired, us_data.fire_interval - us_data.since_last_fired));
     let inner_color = Color::lerp(INNER_COLORS[us_data.color_idx], PROJ_COLORS[us_data.color_idx], lerp_t as f32);
     let inner_color = ctx.su_ctx.su_common.get_draw_color(inner_color);
-    let xform = ctx.draw_ctx.get_rofiz().get_movable_object_xform(ctx.su_ctx.su_common.get_ro_ref());
+    let xform = ctx.su_ctx.su_common.get_rofiz_xform(ctx.draw_ctx.get_rofiz());
     let border_vertexes = us_data.border_vertexes.map(|v| Point::new(xform.dx as f32 + v.x, xform.dy as f32 + v.y));
     let outer_vertexes = us_data.outer_vertexes.map(|v| Point::new(xform.dx as f32 + v.x, xform.dy as f32 + v.y));
     let border_dop = ctx.draw_ctx.do_thick_border(border_color, &border_vertexes, &outer_vertexes);
