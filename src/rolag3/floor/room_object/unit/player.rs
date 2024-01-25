@@ -1,6 +1,6 @@
 use crate::{rolag3::floor::{run::{PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, draw::DrawContext, room_object::{room_object_def::{RoomObject, Act1Context, FloorCoordinate, NewRoomObjectContext, RoomObjectMetadata, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse, RoQueryUnitInfoContext, RoQueryUnitInfoResponse, HcTileContext, HcTileEffect, HcTileResponse, RoomObjApplyOperationContext, RoomObjOperation, HcStandardUnitContext, HcStandardUnitResponse, HandleRoomJustClearedContext}, tiles::room_connection::Direction, damage::DamageColor, unit::standard_unit_common::{BudebExpiry, BudebTractionMult}}, rofiz::{rofiz_object::{Hitbox, Transformation}, rofiz_state::RofizState}, room::RoomConnectionInfo}, geometry::shape::{Shape, Point}, gfx::{renderer::{DrawOp, DrawOpGroup, ColorRGBA32f, DrawOpText, DrawTextPosition}, draw_op_util::draw_op_rect, text::font::Font}};
 
-use super::{Unit, standard_unit_common::{StandardUnitCommon, Budeb, BudebMaxSpeed, TranslateMove, PolarForce}, weapon::{weapon_def::{Weapon, WeaponHandleTickContext, DrawWeaponHudContext, DrawWeaponOnOwnerContext}, weapon1::new_weapon1, weapon2::new_weapon2, weapon3::new_weapon3}, active_item::{active_item_def::{ActiveItem, ActiveItemHandleTickContext}, clear_enemy_projectiles::new_active_item_clear_projectiles, slow_enemy_time::new_active_item_slow_enemy_time}};
+use super::{Unit, standard_unit_common::{StandardUnitCommon, Budeb, BudebMaxSpeed, TranslateMove, PolarForce}, weapon::{weapon_def::{Weapon, WeaponHandleTickContext, DrawWeaponHudContext, DrawWeaponOnOwnerContext, BuyAmmoInfo}, weapon1::new_weapon1, weapon2::new_weapon2, weapon3::new_weapon3}, active_item::{active_item_def::{ActiveItem, ActiveItemHandleTickContext}, clear_enemy_projectiles::new_active_item_clear_projectiles, slow_enemy_time::new_active_item_slow_enemy_time}};
 
 pub struct Player {
     md: RoomObjectMetadata,
@@ -113,6 +113,7 @@ impl RoomObject for Player {
         let nro_ctx = &mut NewRoomObjectContext::from_act1_ctx(ctx);
         let mut wht_ctx = WeaponHandleTickContext{
             ws_data: weapon.ws_data.as_mut(),
+            ammo: &mut weapon.ammo,
             tick_len,
             nro_ctx,
             owner: self_as_weak,
@@ -376,6 +377,7 @@ impl Player {
                 scale_height: inner_scale,
                 x: x + buffer_px,
                 y: y + buffer_px,
+                ammo: weapon.ammo,
             };
             let r = (weapon.draw_hud_fn)(&dwh_ctx);
             let mut this_row_ops = vec![background, r.weapon_draw_op];
@@ -423,6 +425,7 @@ impl Player {
             scale_height: inner_scale,
             x: x + buffer_px,
             y: y + buffer_px,
+            ammo: self.weapons[idx].ammo,
         };
         let r = (self.weapons[idx].draw_hud_fn)(&dwh_ctx);
         this_row_ops.push(r.weapon_draw_op);
@@ -447,6 +450,23 @@ impl Player {
 
     pub fn get_weapon_shop_description(&self, weapon_idx: usize) -> &str {
         self.weapons[weapon_idx].shop_description
+    }
+
+    pub fn get_weapon_buy_ammo_info(&self, weapon_idx: usize) -> Option<&BuyAmmoInfo> {
+        self.weapons[weapon_idx].buy_ammo_info.as_ref()
+    }
+
+    pub fn try_buy_weapon_ammo(&mut self, weapon_idx: usize) {
+        let error_msg = format!("can't buy ammo for weapon(idx={}, name={}), \
+            because that weapon doesn't have buyable ammo", 
+            weapon_idx, 
+            self.get_weapon_name(weapon_idx),
+        );
+        let bai = self.weapons[weapon_idx].buy_ammo_info.as_ref().expect(&error_msg);
+        if self.starcash >= bai.starcash_cost {
+            self.starcash -= bai.starcash_cost;
+            self.weapons[weapon_idx].ammo += bai.ammo_amount;
+        }
     }
 
     pub fn set_floor_take_damage_mult(&mut self, mult: f64) {

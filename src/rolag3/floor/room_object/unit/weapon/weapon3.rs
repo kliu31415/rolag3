@@ -2,13 +2,15 @@ use std::{cell::RefCell, rc::Rc};
 
 use crate::{rolag3::floor::{room_object::{projectile::projectile2::{Projectile2BuilderReq, Proj2Shape, Projectile2Builder}, damage::DamageColor}, draw::Color}, gfx::draw_op_util::draw_op_circle, geometry::shape::Point};
 
-use super::weapon_def::{Weapon, WeaponHandleTickContext, WeaponHandleTickResponse, DrawWeaponHudContext, DrawWeaponHudResponse, DrawWeaponOnOwnerResponse, DrawWeaponOnOwnerContext};
+use super::weapon_def::{Weapon, WeaponHandleTickContext, WeaponHandleTickResponse, DrawWeaponHudContext, DrawWeaponHudResponse, DrawWeaponOnOwnerResponse, DrawWeaponOnOwnerContext, BuyAmmoInfo};
 
 /* Weapon3 shoots a wave of 3 red circles at intervals of 0.1s. It has no special attack.
 */
 
 const NAME: &str = "Crimson Shotgun";
 const SHOP_DESCRIPTION: &str = "Fires waves of three projectiles";
+const STARTING_AMMO: f64 = 1e3;
+const BUY_AMMO_INFO: BuyAmmoInfo = BuyAmmoInfo { ammo_amount: 100.0, starcash_cost: 2.0 };
 
 const PRIMARY_ATTACK_INTERVAL: f64 = 0.1;
 const PROJ_COLOR: Color = Color::new(6.0, 0.1, 0.1, 1.0);
@@ -26,6 +28,8 @@ pub fn new_weapon3() -> Weapon {
     Weapon::new(
         NAME,
         SHOP_DESCRIPTION,
+        STARTING_AMMO,
+        Some(BUY_AMMO_INFO),
         ws_data, 
         Box::new(handle_tick_fn), 
         Box::new(draw_hud), 
@@ -42,9 +46,10 @@ fn handle_tick_fn(ctx: &mut WeaponHandleTickContext) -> WeaponHandleTickResponse
     if !ctx.primary_attack {
         return response;
     }
-    if ws_data.since_last_primary_attack < PRIMARY_ATTACK_INTERVAL {
+    if ws_data.since_last_primary_attack < PRIMARY_ATTACK_INTERVAL || *ctx.ammo < 1.0 {
         return response;
     }
+    *ctx.ammo -= 1.0;
     ws_data.since_last_primary_attack = 0.0;
 
     let proj_velocity = 40.0;
@@ -79,7 +84,7 @@ fn draw_hud(ctx: &DrawWeaponHudContext) -> DrawWeaponHudResponse {
     let weapon_draw_op = draw_op_circle((&PROJ_COLOR).into(), center, radius);
     DrawWeaponHudResponse { 
         weapon_draw_op,
-        ammo_text: "ammo_text".to_owned(),
+        ammo_text: format!("{}", ctx.ammo),
      }
 }
 

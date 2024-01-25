@@ -1,15 +1,17 @@
 use std::{rc::Rc, cell::RefCell};
 
-use crate::{rolag3::floor::{room_object::{projectile::projectile2::{Proj2Shape, Projectile2BuilderReq, Projectile2Builder}, damage::DamageColor}, draw::Color}, geometry::{shape::{Point, Vector}, util::translate_polygon}, gfx::draw_op_util::draw_op_rect};
+use crate::{rolag3::floor::{room_object::{projectile::projectile2::{Proj2Shape, Projectile2BuilderReq, Projectile2Builder}, damage::DamageColor}, draw::Color, rofiz::rofiz_object::Transformation}, geometry::{shape::{Point, Vector}, util::translate_polygon}, gfx::draw_op_util::draw_op_rect};
 
-use super::weapon_def::{WeaponHandleTickContext, Weapon, WeaponHandleTickResponse, DrawWeaponHudContext, DrawWeaponHudResponse, DrawWeaponOnOwnerContext, DrawWeaponOnOwnerResponse};
+use super::weapon_def::{WeaponHandleTickContext, Weapon, WeaponHandleTickResponse, DrawWeaponHudContext, DrawWeaponHudResponse, DrawWeaponOnOwnerContext, DrawWeaponOnOwnerResponse, BuyAmmoInfo};
 
 /* Weapon1 rapidly shoots green squares, like a laser. It has no special attack. */
 
 const NAME: &str = "Green Laser";
 const SHOP_DESCRIPTION: &str = "Shoots a rapid, continuous laser beam";
+const STARTING_AMMO: f64 = 1e4;
+const BUY_AMMO_INFO: BuyAmmoInfo = BuyAmmoInfo { ammo_amount: 1000.0, starcash_cost: 5.0 };
 
-const PRIMARY_ATTACK_INTERVAL: f64 = 0.003;
+const PRIMARY_ATTACK_INTERVAL: f64 = 0.0025;
 const PROJ_COLOR: Color = Color::new(0.0, 1.6, 0.0, 1.0);
 const PROJ_VERTEXES: [Point; 4] = [Point::new(-0.2, -0.2), Point::new(0.2, -0.2), Point::new(0.2, 0.2), Point::new(-0.2, 0.2)];
 
@@ -24,6 +26,8 @@ pub fn new_weapon1() -> Weapon {
     Weapon::new(
         NAME,
         SHOP_DESCRIPTION,
+        STARTING_AMMO,
+        Some(BUY_AMMO_INFO),
         ws_data, 
         Box::new(handle_tick_fn), 
         Box::new(draw_hud), 
@@ -41,41 +45,47 @@ fn handle_tick_fn(ctx: &mut WeaponHandleTickContext) -> WeaponHandleTickResponse
     if !ctx.primary_attack {
         return response;
     }
-    if ws_data.since_last_primary_attack < PRIMARY_ATTACK_INTERVAL {
-        return response;
-    }
-    ws_data.since_last_primary_attack -= PRIMARY_ATTACK_INTERVAL;
 
-    let proj_velocity = 100.0;
-    let proj_angle = f64::atan2(ctx.mouse_y - ctx.owner_xform.dy, ctx.mouse_x - ctx.owner_xform.dx);
-    let velocity_x = ctx.owner_velocity_x + proj_velocity * f64::cos(proj_angle);
-    let velocity_y = ctx.owner_velocity_y + proj_velocity * f64::sin(proj_angle);
-    let shape = Proj2Shape::TriFan {
-        center: Point::new(0.0, 0.0), 
-        vertexes: Box::new(PROJ_VERTEXES),
-    };
-    let proj = Projectile2Builder::new(
-        Projectile2BuilderReq {
-            team: ctx.owner_team,
-            damage_color: DamageColor::Green,
-            damage: 2.0,
-            owner: ctx.owner.clone(),
-            velocity_x,
-            velocity_y,
-            xform: ctx.owner_xform,
-            shape,
-            color: PROJ_COLOR,
-        }
-    ).lifespan(3.0)
-        .build(ctx.nro_ctx);
-    
-    response.new_room_objs.push(Rc::new(RefCell::new(proj)));
+    while ws_data.since_last_primary_attack >= PRIMARY_ATTACK_INTERVAL && *ctx.ammo >= 1.0 {
+        ws_data.since_last_primary_attack -= PRIMARY_ATTACK_INTERVAL;
+        *ctx.ammo -= 1.0;
+
+        let proj_velocity = 120.0;
+        let proj_angle = f64::atan2(ctx.mouse_y - ctx.owner_xform.dy, ctx.mouse_x - ctx.owner_xform.dx);
+        let velocity_x = ctx.owner_velocity_x + proj_velocity * f64::cos(proj_angle);
+        let velocity_y = ctx.owner_velocity_y + proj_velocity * f64::sin(proj_angle);
+        let shape = Proj2Shape::TriFan {
+            center: Point::new(0.0, 0.0), 
+            vertexes: Box::new(PROJ_VERTEXES),
+        };
+        let proj_xform = Transformation::new(
+            ctx.owner_xform.dx + ws_data.since_last_primary_attack * velocity_x,
+            ctx.owner_xform.dy + ws_data.since_last_primary_attack * velocity_y,
+            0.0,
+        );
+        let proj = Projectile2Builder::new(
+            Projectile2BuilderReq {
+                team: ctx.owner_team,
+                damage_color: DamageColor::Green,
+                damage: 2.0,
+                owner: ctx.owner.clone(),
+                velocity_x,
+                velocity_y,
+                xform: proj_xform,
+                shape,
+                color: PROJ_COLOR,
+            }
+        ).lifespan(2.0)
+            .build(ctx.nro_ctx);
+        response.new_room_objs.push(Rc::new(RefCell::new(proj)));
+    }
+
     response
 }
 
 fn draw_hud(ctx: &DrawWeaponHudContext) -> DrawWeaponHudResponse {
     let weapon_draw_op = draw_op_rect((&PROJ_COLOR).into(), ctx.x, ctx.y, ctx.scale_height, ctx.scale_height);
-    DrawWeaponHudResponse { weapon_draw_op, ammo_text: "ammo_text".to_owned() }
+    DrawWeaponHudResponse { weapon_draw_op, ammo_text: format!("{}", ctx.ammo) }
 }
 
 fn draw_on_owner(ctx: &DrawWeaponOnOwnerContext) -> DrawWeaponOnOwnerResponse {

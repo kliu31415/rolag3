@@ -1,5 +1,9 @@
 use crate::{gfx::{window::Window, renderer::{ColorRGBA32f, DrawOpWithMetadata, DrawOp, DrawOpGroup, Rect, DrawOpText}, draw_op_util::{draw_op_rect, draw_thick_border, rect_to_polygon_vertexes}, text::font::Font}, rolag3::floor::room_object::unit::player::Player};
 
+const LOWER_THIRD_Y_FRAC: f32 = 0.75;
+const LOWER_THIRD_NAME_Y_FRAC: f32 = 0.04;
+const LOWER_THIRD_BORDER_PX_FRAC: f32 = 0.005;
+
 pub enum MouseButtonAction {
     Down(f64, f64),
     Up(f64, f64)
@@ -11,7 +15,7 @@ pub struct RunFrameBfshopContext<'a> {
     pub prev_lmb_down_xy: &'a mut Option<(f64, f64)>,
     pub shop_state: &'a mut ShopState,
     pub lmb_actions: Vec<MouseButtonAction>,
-    pub player: &'a Player,
+    pub player: &'a mut Player,
 }
 
 pub struct RunFrameBfshopResponse {
@@ -60,7 +64,39 @@ pub fn run_frame_between_floors_shop(ctx: RunFrameBfshopContext) -> RunFrameBfsh
         }
     });
 
-    let cbuttons = std::iter::once(next_floor_button).chain(weapon_buttons.into_iter()).collect::<Box<_>>();
+    let buy_ammo_button = if let ShopState::ButtonSelected(ClickableButtonId::InventoryWeapon { idx }) = ctx.shop_state {
+        let bai = ctx.player.get_weapon_buy_ammo_info(*idx);
+        if let Some(bai) = bai {
+            let lower_y_border_px = LOWER_THIRD_BORDER_PX_FRAC * f32::sqrt(w * h);
+            let lower_y = LOWER_THIRD_Y_FRAC * h;
+            let button_w = 0.18 * w;
+            let button_h = LOWER_THIRD_NAME_Y_FRAC * h;
+            let rect = Rect::new(w - lower_y_border_px - button_w, lower_y + lower_y_border_px, button_w, button_h);
+            let border_thickness = 0.002 * f32::sqrt(w * h);
+            Some(ClickableButton {
+                id: ClickableButtonId::BuyAmmo { idx: *idx },
+                rect,
+                border_thickness,
+                border_color: ColorRGBA32f::new(0.1, 0.1, 0.1, 1.0),
+                border_color_on_press: ColorRGBA32f::new(1.1, 1.1, 0.1, 1.0),
+                border_color_on_hover: ColorRGBA32f::new(1.0, 1.0, 0.3, 1.0),
+                border_color_while_selected: None,
+                inner_color: ColorRGBA32f::new(0.01, 0.01, 0.01, 1.0),
+                text: format!("Buy Ammo: {} / {} Starcash", bai.ammo_amount, bai.starcash_cost),
+                font_size: 0.85 * (rect.h - 2.0 * border_thickness),
+                text_color: ColorRGBA32f::new(1.0, 1.0, 1.0, 1.0),
+            })
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
+    let cbuttons = std::iter::once(next_floor_button)
+        .chain(weapon_buttons.into_iter())
+        .chain(buy_ammo_button.into_iter())
+        .collect::<Box<_>>();
 
     for lmba in ctx.lmb_actions {
         match lmba {
@@ -92,6 +128,9 @@ pub fn run_frame_between_floors_shop(ctx: RunFrameBfshopContext) -> RunFrameBfsh
                                 ClickableButtonId::NextFloor => move_to_next_floor = true,
                                 ClickableButtonId::InventoryWeapon { .. } => {
                                     *ctx.shop_state = ShopState::ButtonSelected(cb.id.clone());
+                                }
+                                ClickableButtonId::BuyAmmo { idx } => {
+                                    ctx.player.try_buy_weapon_ammo(idx);
                                 }
                             }
                         }
@@ -197,8 +236,8 @@ fn get_draw_ops(
     }
 
     // draw lower third, which shows descriptions
-    let outer_rect = Rect::new(0.0, 0.75*h, w, 0.25*h);
-    let border_px = 0.005 * f32::sqrt(w*h);
+    let outer_rect = Rect::new(0.0, LOWER_THIRD_Y_FRAC * h, w, (1.0 - LOWER_THIRD_Y_FRAC) * h);
+    let border_px = LOWER_THIRD_BORDER_PX_FRAC * f32::sqrt(w*h);
     let inner_rect = Rect::new(outer_rect.x + border_px, 
         outer_rect.y + border_px, 
         outer_rect.w - 2.0*border_px, 
@@ -218,8 +257,9 @@ fn get_draw_ops(
         inner_rect.w - 2.0*text_buffer_px, 
         inner_rect.h - 2.0*text_buffer_px,
     );
-    let font_size = 0.025 * f32::sqrt(w * h); 
-    let desc_start = text_rect.y + 0.0275 * f32::sqrt(w * h);
+    let name_font_size = 0.85 * LOWER_THIRD_NAME_Y_FRAC * f32::sqrt(w * h); 
+    let desc_font_size = 0.7 * LOWER_THIRD_NAME_Y_FRAC * f32::sqrt(w * h); 
+    let desc_start = text_rect.y + LOWER_THIRD_NAME_Y_FRAC * f32::sqrt(w * h);
     match shop_state {
         ShopState::Root => {
             // nop so far
@@ -234,7 +274,7 @@ fn get_draw_ops(
                         color: colors[*idx],
                         x: text_rect.x,
                         y: text_rect.y,
-                        font_size,
+                        font_size: name_font_size,
                         position: crate::gfx::renderer::DrawTextPosition::TopLeft,
                     }));
                     draw_ops.push(DrawOp::Text(DrawOpText {
@@ -243,7 +283,7 @@ fn get_draw_ops(
                         color: ColorRGBA32f::new(1.0, 1.0, 1.0, 1.0),
                         x: text_rect.x,
                         y: desc_start,
-                        font_size,
+                        font_size: desc_font_size,
                         position: crate::gfx::renderer::DrawTextPosition::TopLeft,
                     }));
                 }
@@ -273,6 +313,7 @@ struct ClickableButton<T: Clone + PartialEq> {
 pub enum ClickableButtonId {
     NextFloor,
     InventoryWeapon{idx: usize},
+    BuyAmmo{idx: usize},
 }
 
 pub enum ShopState {

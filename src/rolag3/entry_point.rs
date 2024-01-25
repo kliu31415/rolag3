@@ -315,7 +315,7 @@ impl Rolag3EventHandler {
                 prev_lmb_down_xy,
                 shop_state,
                 lmb_actions: lmb_input,
-                player: &*self.r3run.player.borrow(),
+                player: &mut *self.r3run.player.borrow_mut(),
             };
             response = run_frame_between_floors_shop(bfshop_ctx);
         }

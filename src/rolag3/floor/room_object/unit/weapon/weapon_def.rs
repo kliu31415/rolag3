@@ -9,16 +9,25 @@ type DrawWeaponOnOwnerFn = dyn Fn(&DrawWeaponOnOwnerContext) -> DrawWeaponOnOwne
 pub struct Weapon {
     pub name: &'static str,
     pub shop_description: &'static str,
+    pub ammo: f64,
+    pub buy_ammo_info: Option<BuyAmmoInfo>,
     pub ws_data: Box<dyn Any>,
     pub handle_tick_fn: Box<WeaponHandleTickFn>,
     pub draw_hud_fn: Box<DrawWeaponHudFn>,
     pub draw_on_owner_fn: Box<DrawWeaponOnOwnerFn>,
 }
 
+pub struct BuyAmmoInfo {
+    pub ammo_amount: f64,
+    pub starcash_cost: f64,
+}
+
 impl Weapon {
     pub fn new(
         name: &'static str,
         shop_description: &'static str,
+        ammo: f64,
+        buy_ammo_info: Option<BuyAmmoInfo>,
         ws_data: Box<dyn Any>, 
         handle_tick_fn: Box<WeaponHandleTickFn>, 
         draw_hud_fn: Box<DrawWeaponHudFn>, 
@@ -27,6 +36,8 @@ impl Weapon {
         Self {
             name,
             shop_description,
+            ammo,
+            buy_ammo_info,
             ws_data,
             handle_tick_fn,
             draw_hud_fn,
@@ -37,6 +48,7 @@ impl Weapon {
 
 pub struct WeaponHandleTickContext<'a> {
     pub ws_data: &'a mut dyn Any,
+    pub ammo: &'a mut f64,
     pub tick_len: f64,
     pub nro_ctx: &'a mut NewRoomObjectContext<'a>,
     pub owner: Weak<RefCell<dyn RoomObject>>,
@@ -69,6 +81,8 @@ pub struct DrawWeaponHudContext {
     // (x, y) represent the top left corner pixel coordinate
     pub x: f32,
     pub y: f32,
+
+    pub ammo: f64,
 }
 
 pub struct DrawWeaponHudResponse {

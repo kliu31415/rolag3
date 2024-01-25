@@ -2,7 +2,7 @@ use std::{rc::Rc, cell::RefCell};
 
 use crate::{rolag3::floor::{draw::Color, room_object::{room_object_def::RoomObject, projectile::projectile2::{Proj2Shape, Projectile2BuilderReq, Projectile2Builder}, damage::DamageColor}}, geometry::{shape::{Point, Vector}, util::translate_polygon}, gfx::draw_op_util::draw_op_rect};
 
-use super::weapon_def::{Weapon, WeaponHandleTickResponse, WeaponHandleTickContext, DrawWeaponHudContext, DrawWeaponHudResponse, DrawWeaponOnOwnerContext, DrawWeaponOnOwnerResponse};
+use super::weapon_def::{Weapon, WeaponHandleTickResponse, WeaponHandleTickContext, DrawWeaponHudContext, DrawWeaponHudResponse, DrawWeaponOnOwnerContext, DrawWeaponOnOwnerResponse, BuyAmmoInfo};
 
 /* Weapon2 shoots a wave of 3 blue squares at intervals of 0.3s.
    It has a special attack, which when used, causes it to shoot a radial wave of 128 projectiles.
@@ -11,6 +11,8 @@ use super::weapon_def::{Weapon, WeaponHandleTickResponse, WeaponHandleTickContex
 const NAME: &str = "Lapis Trigun";
 const SHOP_DESCRIPTION: &str = "Fires waves of three projectiles. 
 Has a special attack that ejects a radial wave of 128 projectiles";
+const STARTING_AMMO: f64 = 1e2;
+const BUY_AMMO_INFO: BuyAmmoInfo = BuyAmmoInfo { ammo_amount: 100.0, starcash_cost: 2.0 };
 
 const PRIMARY_ATTACK_INTERVAL: f64 = 0.3;
 const SPECIAL_ATTACK_COOLDOWN: f64 = 1.5;
@@ -32,6 +34,8 @@ pub fn new_weapon2() -> Weapon {
     Weapon::new(
         NAME,
         SHOP_DESCRIPTION,
+        STARTING_AMMO,
+        Some(BUY_AMMO_INFO),
         ws_data, 
         Box::new(handle_tick_fn), 
         Box::new(draw_hud), 
@@ -61,10 +65,10 @@ fn handle_tick_fn(ctx: &mut WeaponHandleTickContext) -> WeaponHandleTickResponse
     if !ctx.primary_attack {
         return response;
     }
-    if ws_data.since_last_primary_attack < PRIMARY_ATTACK_INTERVAL {
+    if ws_data.since_last_primary_attack < PRIMARY_ATTACK_INTERVAL || *ctx.ammo < 1.0 {
         return response;
     }
-
+    *ctx.ammo -= 1.0;
     ws_data.since_last_primary_attack = 0.0;
 
     for i in -1..2 {
@@ -104,7 +108,7 @@ fn draw_hud(ctx: &DrawWeaponHudContext) -> DrawWeaponHudResponse {
     let weapon_draw_op = draw_op_rect((&PROJ_COLOR).into(), ctx.x, ctx.y, ctx.scale_height, ctx.scale_height);
     DrawWeaponHudResponse { 
         weapon_draw_op,
-        ammo_text: "∞".to_owned(),
+        ammo_text: format!("{}", ctx.ammo),
     }
 }
 
