@@ -24,18 +24,17 @@ const IDX_TO_INNER_DRAW_COLOR: [Color; 3] = [
     Color::new(0.05, 0.05, 14.5, 1.0),
 ];
 
-const INNER_TRI_VERTEXES: [Point; 3] = [
-    Point::new(0.3, 0.0),
-    Point::new(-0.3, -0.2),
-    Point::new(-0.3, 0.2),
+const INNER_CIRCLE_RADIUS: f32 = 0.25;
+
+const INNER_CIRCLE_CENTERS: [Point; 2] = [
+    Point::new(0.3, -0.28),
+    Point::new(0.3, 0.28),
 ];
 
-const INNER_TRI_OFFSETS: [Vector; 2] = [
-    Vector::new(0.3, -0.28),
-    Vector::new(0.3, 0.28),
-];
-
-const FIRE_PROJ_INTERVAL: f64 = 0.5;
+const PROJ_FIRE_INTERVAL: f64 = 0.0025;
+const PROJ_SPEED: f64 = 180.0;
+const ALTERNATE_EVERY_N: usize = 400;
+const START_FIRE_PROJ_NUM: usize = 500;
 
 fn damage_color_to_idx(dc: DamageColor) -> usize {
     match dc {
@@ -46,16 +45,16 @@ fn damage_color_to_idx(dc: DamageColor) -> usize {
     }
 }
 
-struct SquareRgb2Tri {
+struct SquareRgb2Circle {
     border_vertexes: [Point; 4],
     inner_vertexes: [Point; 4],
     outer_color: usize,
     inner_colors: [usize; 2],
     position_fn: Box<dyn Fn(f64) -> (f64, f64)>,
-    fired_proj_time_ago: f64,
+    num_proj_fired: usize,
 }
 
-pub fn new_square_rgb_2tri(
+pub fn new_square_rgb_2circle(
     ctx: &mut NewRoomObjectContext, 
     outer_color: DamageColor,
     inner_colors: [DamageColor; 2],
@@ -68,21 +67,21 @@ pub fn new_square_rgb_2tri(
     let (x, y) = (position_fn)(0.0);
     let xform = Transformation::new(x, y, theta);
     let shape = Shape::of_polygon(Box::new(border_vertexes));
-    let us_data = SquareRgb2Tri {
+    let us_data = SquareRgb2Circle {
         border_vertexes,
         inner_vertexes,
         outer_color: damage_color_to_idx(outer_color),
         inner_colors: inner_colors.map(|x| damage_color_to_idx(x)),
         position_fn,
-        fired_proj_time_ago: 0.0,
+        num_proj_fired: 0,
     };
 
     StandardUnit1Builder::new(StandardUnit1BuilderReq {
         team: Team::Enemy,
         damage_color: outer_color,
         hp: 20.0,
-        engine_power: 0.0, //nop,
-        tire_traction: 0.0, //nop,
+        engine_power: 0.0, // nop
+        tire_traction: 0.0, // nop
     }).act1_fn(Box::new(act1))
         .draw_fn(Box::new(draw))
         .hitbox(xform, shape)
@@ -93,49 +92,62 @@ pub fn new_square_rgb_2tri(
 
 fn act1(ctx: &mut SuAct1Context) -> Act1Response {
     let mut response = Act1Response::new();
-    let us_data = ctx.su_ctx.us_data.downcast_mut::<SquareRgb2Tri>().unwrap();
+    let us_data = ctx.su_ctx.us_data.downcast_mut::<SquareRgb2Circle>().unwrap();
     let unit_age = ctx.su_ctx.su_common.get_unit_time();
-    let unit_tick_len = ctx.su_ctx.su_common.get_unit_tick_len();
     let (x, y) = (us_data.position_fn)(unit_age);
     ctx.su_ctx.su_common.set_translate_move(TranslateMove::SetXY { x, y });
 
-    us_data.fired_proj_time_ago += unit_tick_len;
-    if us_data.fired_proj_time_ago > FIRE_PROJ_INTERVAL {
-        us_data.fired_proj_time_ago -= FIRE_PROJ_INTERVAL;
+    let desired_npf = (unit_age / PROJ_FIRE_INTERVAL) as usize;
+    while us_data.num_proj_fired < desired_npf {
+        let fired_time_ago = unit_age - PROJ_FIRE_INTERVAL * (us_data.num_proj_fired as f64);
         let xform = ctx.su_ctx.su_common.get_rofiz_xform(ctx.act1_ctx.get_rofiz());
         for i in 0..2 {
+            if i == 1 && us_data.num_proj_fired < START_FIRE_PROJ_NUM {
+                // before START_FIRE_AT, only fire a prelude for one of the lasers. The only laser doesn't fire at all.
+                continue;
+            }
+            let laser_fired = if us_data.num_proj_fired < START_FIRE_PROJ_NUM {
+                true
+            } else {
+                ((us_data.num_proj_fired - START_FIRE_PROJ_NUM) / ALTERNATE_EVERY_N) % 2 == i
+            };
             let self_as_weak = ctx.act1_ctx.get_self_as_weak();
-            let proj_speed = 10.0;
-            let inner_tri_offset = INNER_TRI_OFFSETS[i].rotated(xform.dtheta as f32);
+            let inner_circle_center = INNER_CIRCLE_CENTERS[i].rotated(xform.dtheta as f32);
+            let velocity_x = PROJ_SPEED * f64::cos(xform.dtheta);
+            let velocity_y = PROJ_SPEED * f64::sin(xform.dtheta);
             let proj_xform = Transformation::new(
-                xform.dx + inner_tri_offset.x as f64, 
-                xform.dy + inner_tri_offset.y as f64, 
+                xform.dx + inner_circle_center.x as f64 + fired_time_ago * velocity_x,
+                xform.dy + inner_circle_center.y as f64 + fired_time_ago * velocity_y, 
                 xform.dtheta,
             );
-            let rotate_homing_fn = Box::new(|_: f64| -> f64 {
-                0.3
-            });
+            let (damage, draw_color) = if !laser_fired || us_data.num_proj_fired < START_FIRE_PROJ_NUM {
+                let mut color = IDX_TO_INNER_DRAW_COLOR[us_data.inner_colors[i]];
+                color.a = 0.01;
+                (0.0, color)
+            } else {
+                (10.0 * PROJ_FIRE_INTERVAL, IDX_TO_INNER_DRAW_COLOR[us_data.inner_colors[i]])
+            };
             let proj = Projectile2Builder::new(Projectile2BuilderReq {
                 team: Team::Enemy,
                 damage_color: IDX_TO_DAMAGE_COLOR[us_data.inner_colors[i]],
-                damage: 3.0,
+                damage,
                 owner: self_as_weak,
-                velocity_x: proj_speed * f64::cos(xform.dtheta),
-                velocity_y: proj_speed * f64::sin(xform.dtheta),
+                velocity_x,
+                velocity_y,
                 xform: proj_xform,
-                shape: Proj2Shape::TriFan{center: Point::new(0.0, 0.0), vertexes: Box::new(INNER_TRI_VERTEXES) },
-                color: IDX_TO_INNER_DRAW_COLOR[us_data.inner_colors[i]],
-            }).homing_rotate_to_enemies_speed_fn(Box::new(rotate_homing_fn))
-                .build(&mut NewRoomObjectContext::from_act1_ctx(ctx.act1_ctx));
+                shape: Proj2Shape::Circle { x: 0.0, y: 0.0, r: INNER_CIRCLE_RADIUS },
+                color: draw_color,
+            }).build(&mut NewRoomObjectContext::from_act1_ctx(ctx.act1_ctx));
             response.add_room_obj(Rc::new(RefCell::new(proj)));
         }
+        us_data.num_proj_fired += 1;
     }
 
     response
 }
 
 fn draw(ctx: &mut SuDrawContext) {
-    let us_data = ctx.su_ctx.us_data.downcast_mut::<SquareRgb2Tri>().unwrap();
+    let us_data = ctx.su_ctx.us_data.downcast_mut::<SquareRgb2Circle>().unwrap();
     let border_color = ctx.su_ctx.su_common.get_draw_color(DrawContext::COLOR_NSU_BORDER);
     let outer_color = ctx.su_ctx.su_common.get_draw_color(IDX_TO_OUTER_DRAW_COLOR[us_data.outer_color]);
     let xform = ctx.su_ctx.su_common.get_rofiz_xform(ctx.draw_ctx.get_rofiz());
@@ -147,9 +159,8 @@ fn draw(ctx: &mut SuDrawContext) {
 
     let inner_dops: [_; 2] = std::array::from_fn(|i| {
         let color = IDX_TO_INNER_DRAW_COLOR[us_data.inner_colors[i]];
-        let vertexes = INNER_TRI_VERTEXES
-            .map(|v| v.translated(INNER_TRI_OFFSETS[i]).rotated(xform.dtheta as f32).translated(xlate_vec));
-        ctx.draw_ctx.do_tri(color, vertexes)
+        let center = INNER_CIRCLE_CENTERS[i].rotated(xform.dtheta as f32).translated(xlate_vec);
+        ctx.draw_ctx.do_circle(color, center, INNER_CIRCLE_RADIUS)
     });
 
     let dops = [border_dop].into_iter().chain([outer_dop].into_iter()).chain(inner_dops.into_iter());
