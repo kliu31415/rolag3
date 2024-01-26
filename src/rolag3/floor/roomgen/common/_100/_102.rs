@@ -21,8 +21,8 @@ pub fn get_gen_room_fn_common102a() -> Box<dyn Fn(&mut GenFloorRoomContext) -> G
 }
 
 fn make_room(ctx: &mut GenFloorRoomContext, 
-    w: usize, 
-    h: usize,
+    w: u32, 
+    h: u32,
     enemy_info: &[(f64, f64, DamageColor)],
 ) -> GenFloorRoomResponse {
     assert!(w >= 15, "w({}) is too low", w);
@@ -38,12 +38,12 @@ fn make_room(ctx: &mut GenFloorRoomContext,
     GenFloorRoomResponse {
         room_builder: RoomBuilder::new(
             RoomBuilderReq {
-                width: w as u32,
-                height: h as u32,
+                width: w,
+                height: h,
                 room_objects,
                 rofiz,
                 ttc: 0.2 * f64::sqrt((w*h) as f64) + 10.0 * enemy_info.len() as f64,
-                connection_candidates: all_borders_as_connection_candidates(w as u32, h as u32),
+                connection_candidates: all_borders_as_connection_candidates(w, h),
             },
         ),
     }

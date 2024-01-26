@@ -4,8 +4,10 @@ pub struct AccelTile {
     md: RoomObjectMetadata,
     ro_ref: RofizObjectRef,
     unit_last_affected_time: Option<f64>,
+    theta_fn: Box<dyn Fn(f64) -> f64>,
 }
 
+const SIDE_LEN: f32 = 2.0;
 const OUTER_SHAPE: [Point; 4] = [Point::new(0.0, 0.0), Point::new(2.0, 0.0), Point::new(2.0, 2.0), Point::new(0.0, 2.0)];
 const INNER_SHAPE: [Point; 4] = [Point::new(0.2, 0.2), Point::new(1.8, 0.2), Point::new(1.8, 1.8), Point::new(0.2, 1.8)];
 const BORDER_COLOR: Color = Color::new(1.0, 1.0, 1.0, 0.2);
@@ -33,13 +35,9 @@ impl RoomObject for AccelTile {
 
         let mut all_draw_ops = Vec::new();
 
+        let theta = (self.theta_fn)(ctx.get_room_time()) as f32;
         for ((v1, v2), (v3, v4)) in quads.into_iter() {
-            let quad = [
-                v1 + translate,
-                v2 + translate,
-                v3 + translate,
-                v4 + translate,
-            ];
+            let quad = [v1, v2, v3, v4].map(|p| p.translated(translate));
             all_draw_ops.push(ctx.do_quad_fan(BORDER_COLOR, quad));
         }
 
@@ -49,7 +47,7 @@ impl RoomObject for AccelTile {
         };
 
         let caret_translate = translate + Vector::new(1.0, 1.0);
-        let caret_shape = CARET_SHAPE.iter().map(|p| p + caret_translate).collect::<Vec<_>>();
+        let caret_shape = CARET_SHAPE.map(|p| p.rotated(theta).translated(caret_translate));
         all_draw_ops.push(ctx.do_tri_fan(caret_color, &caret_shape));
 
         ctx.add_draw_op(DrawContext::Z_TILE, ctx.dop_group(all_draw_ops.into_boxed_slice()));
@@ -57,7 +55,7 @@ impl RoomObject for AccelTile {
 
     fn handle_collision(&mut self, ctx: &mut HandleCollisionContext) -> HandleCollisionResponse {
         let hct_ctx = HcTileContext {
-            tile_effect: HcTileEffect::Accelerate { force: 2000.0, theta: 0.0 },
+            tile_effect: HcTileEffect::Accelerate { force: 2000.0, theta: (self.theta_fn)(ctx.get_room_time()) },
         };
         let hct_resp = ctx.get_other().borrow_mut().handle_collision_tile(&hct_ctx);
         if hct_resp.unit_affected {
@@ -67,13 +65,13 @@ impl RoomObject for AccelTile {
     }
 }
 
-pub fn new_accel_tile(ctx: &mut NewRoomObjectContext, x: u32, y: u32) -> AccelTile {
+pub fn new_accel_tile(ctx: &mut NewRoomObjectContext, x: u32, y: u32, theta_fn: Box<dyn Fn(f64) -> f64>) -> AccelTile {
     let md = RoomObjectMetadata::new(ctx, RoomObjectType::Other);
     // The accel tile doesn't interact with projectiles, so it behaves like a Rofiz basic projectile. Making it a basic
     // projectile results in faster performance.
-    let shape = Shape::of_square(0.0, 0.0, 2.0);
+    let shape = Shape::of_square(0.0, 0.0, SIDE_LEN);
     let xform = Transformation::new(x as f64, y as f64, 0.0);
     let hitbox = Hitbox::new(xform, shape);
     let ro_ref = ctx.add_basic_projectile(md.get_ref(), hitbox);
-    AccelTile { md, ro_ref, unit_last_affected_time: None}
+    AccelTile { md, ro_ref, unit_last_affected_time: None, theta_fn}
 }

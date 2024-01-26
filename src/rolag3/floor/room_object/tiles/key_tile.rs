@@ -30,11 +30,7 @@ impl RoomObject for KeyTile {
         &self.md
     }
 
-    fn act1(&mut self, ctx: &mut Act1Context) -> Act1Response {
-        let fill_frac = (self.charge_amount / MAX_CHARGE) as f32;
-        if fill_frac == 1.0 && self.key_fully_charged_at.is_none() {
-            self.key_fully_charged_at = Some(ctx.get_room_time());
-        }
+    fn act1(&mut self, _ctx: &mut Act1Context) -> Act1Response {
         Act1Response::new()
     }
 
@@ -93,6 +89,10 @@ impl RoomObject for KeyTile {
         let hct_resp = ctx.get_other().borrow_mut().handle_collision_tile(&hct_ctx);
         if hct_resp.unit_affected {
             self.charge_amount = f64::min(self.charge_amount + ctx.get_tick_length(), MAX_CHARGE);
+            let fill_frac = (self.charge_amount / MAX_CHARGE) as f32;
+            if fill_frac == 1.0 && self.key_fully_charged_at.is_none() {
+                self.key_fully_charged_at = Some(ctx.get_room_time());
+            }
         }
         HandleCollisionResponse::new()
     }

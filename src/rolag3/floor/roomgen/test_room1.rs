@@ -126,7 +126,7 @@ fn make_test_room1(ctx: &mut GenFloorRoomContext) -> GenFloorRoomResponse {
     let bhole = new_black_hole(&mut new_floor_object_ctx, Some(DamageColor::Green), 15.0, 15.0);
     room_objects.add(Rc::new(RefCell::new(bhole)));
 
-    let accel_tile = new_accel_tile(&mut new_floor_object_ctx, 10, 10);
+    let accel_tile = new_accel_tile(&mut new_floor_object_ctx, 10, 10, Box::new(|_| 0.0));
     room_objects.add(Rc::new(RefCell::new(accel_tile)));
 
     let damage_tile = new_damage_tile(&mut new_floor_object_ctx, 10, 13);

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{rolag3::floor::{room_object::room_object_def::{RoomObjectMetadata, RoomObject, Act1Response, Act1Context, HandleCollisionContext, HandleCollisionResponse, HcTileContext, HcTileEffect, RoomObjectType, NewRoomObjectContext, RoomObjectId}, rofiz::{rofiz_state::RofizObjectRef, rofiz_object::{Transformation, Hitbox}}, draw::{Color, DrawContext}}, geometry::{shape::{Point, Vector, Shape}, star::get_star_shape}, util::token_bucket::TokenBucket};
+use crate::{rolag3::floor::{room_object::room_object_def::{RoomObjectMetadata, RoomObject, Act1Response, Act1Context, HandleCollisionContext, HandleCollisionResponse, HcTileContext, HcTileEffect, RoomObjectType, NewRoomObjectContext, RoomObjectId, HandleRoomJustClearedContext}, rofiz::{rofiz_state::RofizObjectRef, rofiz_object::{Transformation, Hitbox}}, draw::{Color, DrawContext}}, geometry::{shape::{Point, Vector, Shape}, star::get_star_shape}, util::token_bucket::TokenBucket};
 
 pub struct DamageTile {
     md: RoomObjectMetadata,
@@ -8,13 +8,16 @@ pub struct DamageTile {
     unit_last_affected_time: Option<f64>,
     unit_damage_token_buckets: HashMap<RoomObjectId, TokenBucket>,
     x_shape: Box<[Point]>,
+    is_active: Box<dyn Fn(f64) -> bool>,
+    room_cleared: bool,
 }
 
 const OUTER_SHAPE: [Point; 4] = [Point::new(0.0, 0.0), Point::new(1.0, 0.0), Point::new(1.0, 1.0), Point::new(0.0, 1.0)];
 const INNER_SHAPE: [Point; 4] = [Point::new(0.1, 0.1), Point::new(0.9, 0.1), Point::new(0.9, 0.9), Point::new(0.1, 0.9)];
 const BORDER_COLOR: Color = Color::new(1.0, 1.0, 1.0, 0.2);
-const X_COLOR_NO_FX: Color = Color::new(6.0, 0.05, 0.05, 0.8);
-const X_COLOR_FX: Color = Color::new(15.0, 0.1, 0.1, 0.8);
+const X_COLOR_INACTIVE: Color = Color::new(6.0, 0.05, 0.05, 0.02);
+const X_COLOR_ACTIVE_NO_FX: Color = Color::new(6.0, 0.05, 0.05, 0.8);
+const X_COLOR_ACTIVE_FX: Color = Color::new(15.0, 0.1, 0.1, 0.8);
 
 impl RoomObject for DamageTile {
     fn get_metadata(&self) -> &RoomObjectMetadata {
@@ -46,9 +49,13 @@ impl RoomObject for DamageTile {
             all_draw_ops.push(ctx.do_quad_fan(BORDER_COLOR,quad))
         }
 
-        let x_color = match self.unit_last_affected_time {
-            Some(t) => Color::lerp(X_COLOR_FX, X_COLOR_NO_FX, f32::min(1.0, 5.0 * (ctx.get_room_time() - t) as f32)),
-            None => X_COLOR_NO_FX, 
+        let x_color = if !self.room_cleared && (self.is_active)(ctx.get_room_time()) {
+            match self.unit_last_affected_time {
+                Some(t) => Color::lerp(X_COLOR_ACTIVE_FX, X_COLOR_ACTIVE_NO_FX, f32::min(1.0, 5.0 * (ctx.get_room_time() - t) as f32)),
+                None => X_COLOR_ACTIVE_NO_FX, 
+            }
+        } else {
+            X_COLOR_INACTIVE
         };
 
         let inner_translate = Vector::new(0.5, 0.5) + translate;
@@ -88,6 +95,9 @@ impl RoomObject for DamageTile {
     }
 
     fn handle_collision(&mut self, ctx: &mut HandleCollisionContext) -> HandleCollisionResponse {
+        if self.room_cleared || !(self.is_active)(ctx.get_room_time()) {
+            return HandleCollisionResponse::new();
+        }
         let other_id = ctx.get_other().borrow().get_metadata().get_ref();
         let token_bucket = self.unit_damage_token_buckets.entry(other_id.id).or_insert(TokenBucket::new(2.0, 8.0));
         let hct_ctx = HcTileContext {
@@ -98,6 +108,10 @@ impl RoomObject for DamageTile {
             self.unit_last_affected_time = Some(ctx.get_room_time());
         }
         HandleCollisionResponse::new()
+    }
+
+    fn handle_room_just_cleared(&mut self, _ctx: &mut HandleRoomJustClearedContext) {
+        self.room_cleared = true;
     }
 }
 
@@ -110,5 +124,38 @@ pub fn new_damage_tile(ctx: &mut NewRoomObjectContext, x: u32, y: u32) -> Damage
     let hitbox = Hitbox::new(xform, shape);
     let ro_ref = ctx.add_basic_projectile(md.get_ref(), hitbox);
     let x_shape: Box<[Point]> = get_star_shape(4, 0.1, 0.4, std::f32::consts::FRAC_PI_4);
-    DamageTile { md, ro_ref, unit_last_affected_time: None, unit_damage_token_buckets: HashMap::new(), x_shape}
+    DamageTile { 
+        md, 
+        ro_ref, 
+        unit_last_affected_time: None, 
+        unit_damage_token_buckets: HashMap::new(), 
+        x_shape, 
+        is_active: Box::new(|_| true),
+        room_cleared: false,
+    }
+}
+
+pub fn new_damage_tile_with_is_active_fn(
+    ctx: &mut NewRoomObjectContext, 
+    x: u32, 
+    y: u32, 
+    is_active: Box<dyn Fn(f64) -> bool>,
+) -> DamageTile {
+    let md = RoomObjectMetadata::new(ctx, RoomObjectType::Other);
+    // The damage tile doesn't interact with projectiles, so it behaves like a Rofiz basic projectile. Making it a basic
+    // projectile results in faster performance.
+    let shape = Shape::of_square(0.0, 0.0, 1.0);
+    let xform = Transformation::new(x as f64, y as f64, 0.0);
+    let hitbox = Hitbox::new(xform, shape);
+    let ro_ref = ctx.add_basic_projectile(md.get_ref(), hitbox);
+    let x_shape: Box<[Point]> = get_star_shape(4, 0.1, 0.4, std::f32::consts::FRAC_PI_4);
+    DamageTile { 
+        md, 
+        ro_ref, 
+        unit_last_affected_time: None, 
+        unit_damage_token_buckets: HashMap::new(), 
+        x_shape, 
+        is_active,
+        room_cleared: false,
+    }
 }

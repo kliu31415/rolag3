@@ -58,6 +58,10 @@ impl Prng {
         self.state.gen_range(0.0..1.0)
     }
 
+    pub fn gen_f64_range(&mut self, r: Range<f64>) -> f64 {
+        self.state.gen_range(r)
+    }
+
     pub fn gen_fair_bool(&mut self) -> bool {
         self.state.gen_bool(0.5)
     }
