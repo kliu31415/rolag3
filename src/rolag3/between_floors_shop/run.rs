@@ -1,6 +1,6 @@
 use std::any::Any;
 
-use crate::{gfx::{window::Window, renderer::{ColorRGBA32f, DrawOpWithMetadata, DrawOp, DrawOpGroup, Rect}}, rolag3::{floor::room_object::unit::player::Player, gui::element::{KuiButtonBuilder, KuiButtonBuilderReq, kui_tree_run_frame, KuiTreeRunFrameArgs, KuiElement, KesData, KuiButtonTextAlign, KuiCustomFn, KuiSection}}};
+use crate::{gfx::{window::Window, renderer::{ColorRGBA32f, DrawOpWithMetadata, DrawOp, DrawOpGroup, Rect}}, rolag3::{floor::room_object::unit::player::Player, gui::{element::{KuiButtonBuilder, KuiButtonBuilderReq, kui_tree_run_frame, KuiTreeRunFrameArgs, KuiElement, KesData, KuiButtonTextAlign, KuiCustomFn, KuiSection}, starcash::get_starcash_star_value_dops}}};
 
 const LOWER_THIRD_Y_FRAC: f32 = 0.75;
 const LOWER_THIRD_NAME_Y_FRAC: f32 = 0.04;
@@ -30,6 +30,12 @@ pub fn run_frame_between_floors_shop(ctx: RunFrameBfshopContext) -> RunFrameBfsh
 
     let mut move_to_next_floor = false;
 
+    let header_h = 0.06 * h;
+    let mut header_section = KuiElement {
+        rect: Rect::new(0.0, 0.0, w, header_h),
+        children: Vec::new(),
+        kes_data: KesData::Section(KuiSection { color: None }),
+    };
     let next_floor_button = KuiButtonBuilder::new(KuiButtonBuilderReq {})
         .click_id_fn(Box::new(|| Box::new(ButtonId::NextFloor)))
         .color(ColorRGBA32f::new(0.01, 0.01, 0.01, 1.0))
@@ -46,11 +52,21 @@ pub fn run_frame_between_floors_shop(ctx: RunFrameBfshopContext) -> RunFrameBfsh
         children: Vec::new(),
         kes_data: KesData::Button(next_floor_button),
     };
+    header_section.children.push(next_floor_button);
+    
+    let starcash_h = header_h;
+    let starcash_amt = ctx.player.get_starcash();
+    let starcash_dop = KuiElement {
+        rect: Rect::new(0.0, 0.0, 0.0, 0.0),
+        children: Vec::new(),
+        kes_data: KesData::CustomFn(KuiCustomFn { f: Box::new(move |_| Some(get_starcash_star_value_dops(starcash_amt, 0.0, 0.0, starcash_h))) }),
+    };
+    header_section.children.push(starcash_dop);
 
     let mut weapon_inventory_section = KuiElement {
-        rect: Rect::new(0.03 * w, 0.06 * h, w, 0.25 * h),
+        rect: Rect::new(0.03 * w, header_h, w, 0.25 * h),
         children: Vec::new(),
-        kes_data: KesData::_Section(KuiSection { color: None }),
+        kes_data: KesData::Section(KuiSection { color: None }),
     };
     let title_y = 0.05 * h;
     let weapon_title = KuiElement {
@@ -115,15 +131,81 @@ pub fn run_frame_between_floors_shop(ctx: RunFrameBfshopContext) -> RunFrameBfsh
         }
     });
     weapon_buttons.into_iter().for_each(|x| weapon_inventory_section.children.push(x));
+    
+    let border_px = LOWER_THIRD_BORDER_PX_FRAC * f32::sqrt(w*h);
+    let border_color = if !matches!(ctx.shop_state, ShopState::Root) {
+        ColorRGBA32f::new(1.0, 1.0, 1.0, 1.0)
+    } else {
+        ColorRGBA32f::new(1.0, 1.0, 1.0, 0.1)
+    };
+    let colors = [
+        ColorRGBA32f::new(1.0, 0.01, 0.01, 1.0),
+        ColorRGBA32f::new(0.0, 1.0, 0.0, 1.0),
+        ColorRGBA32f::new(0.07, 0.07, 1.0, 1.0),
+    ];
+    let description_box = KuiButtonBuilder::new(KuiButtonBuilderReq{})
+        .border_thickness(border_px)
+        .border_color(border_color)
+        .build();
+    let mut description_box = KuiElement {
+        rect: Rect::new(0.0, h * LOWER_THIRD_Y_FRAC, w, h * (1.0 - LOWER_THIRD_Y_FRAC)),
+        children: Vec::new(),
+        kes_data: KesData::Button(description_box),
+    };
+    if let Some((name, name_color, description)) = match ctx.shop_state {
+        ShopState::Root => {
+            None
+        },
+        ShopState::ButtonSelected(cb_id) => {
+            match cb_id {
+                ButtonId::InventoryWeapon { idx } => {
+                    // TODO: use multiline text rasterization to ensure text wraps around automatically
+                    let name = ctx.player.get_weapon_name(*idx).to_owned();
+                    let color = colors[*idx];
+                    let description = ctx.player.get_weapon_shop_description(*idx).to_owned();
+                    Some((name, color, description))
+                }
+                _ => panic!("unexpected ShopState::ButtonSelected button id: {:?}", cb_id)
+            }
+        }
+    } {
+        let buffer_px = border_px * 1.3;
+        let name_kes = KuiButtonBuilder::new(KuiButtonBuilderReq {})
+            .text(name)
+            .text_align(KuiButtonTextAlign::TopLeft)
+            .font_size(0.85 * LOWER_THIRD_NAME_Y_FRAC * f32::sqrt(w * h))
+            .text_color(name_color)
+            .build();
+        description_box.children.push(KuiElement {
+            rect: Rect::new(buffer_px, buffer_px, 0.0, 0.0),
+            children: Vec::new(),
+            kes_data: KesData::Button(name_kes),
+        });
 
+        let description_kes = KuiButtonBuilder::new(KuiButtonBuilderReq {})
+            .text(description)
+            .text_align(KuiButtonTextAlign::TopLeft)
+            .font_size(0.7 * LOWER_THIRD_NAME_Y_FRAC * f32::sqrt(w * h))
+            .text_color(ColorRGBA32f::new(1.0, 1.0, 1.0, 1.0))
+            .build();
+        description_box.children.push(KuiElement {
+            rect: Rect::new(
+                buffer_px,
+                buffer_px + LOWER_THIRD_NAME_Y_FRAC * f32::sqrt(w * h), 
+                0.0, 
+                0.0,
+            ),
+            children: Vec::new(),
+            kes_data: KesData::Button(description_kes),
+        });
+    }
     let buy_ammo_button = if let ShopState::ButtonSelected(ButtonId::InventoryWeapon { idx }) = ctx.shop_state {
         let bai = ctx.player.get_weapon_buy_ammo_info(*idx);
         if let Some(bai) = bai {
             let lower_y_border_px = LOWER_THIRD_BORDER_PX_FRAC * f32::sqrt(w * h);
-            let lower_y = LOWER_THIRD_Y_FRAC * h;
             let button_w = 0.18 * w;
             let button_h = LOWER_THIRD_NAME_Y_FRAC * h;
-            let rect = Rect::new(w - lower_y_border_px - button_w, lower_y + lower_y_border_px, button_w, button_h);
+            let rect = Rect::new(w - lower_y_border_px - button_w, lower_y_border_px, button_w, button_h);
             let border_thickness = 0.002 * f32::sqrt(w * h);
 
             let idx_val = *idx;
@@ -149,81 +231,10 @@ pub fn run_frame_between_floors_shop(ctx: RunFrameBfshopContext) -> RunFrameBfsh
     } else {
         None
     };
-    
-    let border_px = LOWER_THIRD_BORDER_PX_FRAC * f32::sqrt(w*h);
-    let border_color = if !matches!(ctx.shop_state, ShopState::Root) {
-        ColorRGBA32f::new(1.0, 1.0, 1.0, 1.0)
-    } else {
-        ColorRGBA32f::new(1.0, 1.0, 1.0, 0.1)
-    };
-    let colors = [
-        ColorRGBA32f::new(1.0, 0.01, 0.01, 1.0),
-        ColorRGBA32f::new(0.0, 1.0, 0.0, 1.0),
-        ColorRGBA32f::new(0.07, 0.07, 1.0, 1.0),
-    ];
-    // The description box isn't actually a button. However, a subset of Button's functionality can support
-    // rendering description boxes
-    let description_box = KuiButtonBuilder::new(KuiButtonBuilderReq{})
-        .border_thickness(border_px)
-        .border_color(border_color)
-        .build();
-    let mut kui_desc_box_children = Vec::new();
-    if let Some((name, name_color, description)) = match ctx.shop_state {
-        ShopState::Root => {
-            None
-        },
-        ShopState::ButtonSelected(cb_id) => {
-            match cb_id {
-                ButtonId::InventoryWeapon { idx } => {
-                    // TODO: use multiline text rasterization to ensure text wraps around automatically
-                    let name = ctx.player.get_weapon_name(*idx).to_owned();
-                    let color = colors[*idx];
-                    let description = ctx.player.get_weapon_shop_description(*idx).to_owned();
-                    Some((name, color, description))
-                }
-                _ => panic!("unexpected ShopState::ButtonSelected button id: {:?}", cb_id)
-            }
-        }
-    } {
-        let buffer_px = border_px * 1.3;
-        let name_kes = KuiButtonBuilder::new(KuiButtonBuilderReq {})
-            .text(name)
-            .text_align(KuiButtonTextAlign::TopLeft)
-            .font_size(0.85 * LOWER_THIRD_NAME_Y_FRAC * f32::sqrt(w * h))
-            .text_color(name_color)
-            .build();
-        kui_desc_box_children.push(KuiElement {
-            rect: Rect::new(buffer_px, buffer_px, 0.0, 0.0),
-            children: Vec::new(),
-            kes_data: KesData::Button(name_kes),
-        });
+    buy_ammo_button.into_iter().for_each(|x| description_box.children.push(x));
 
-        let description_kes = KuiButtonBuilder::new(KuiButtonBuilderReq {})
-            .text(description)
-            .text_align(KuiButtonTextAlign::TopLeft)
-            .font_size(0.7 * LOWER_THIRD_NAME_Y_FRAC * f32::sqrt(w * h))
-            .text_color(ColorRGBA32f::new(1.0, 1.0, 1.0, 1.0))
-            .build();
-        kui_desc_box_children.push(KuiElement {
-            rect: Rect::new(
-                buffer_px,
-                buffer_px + LOWER_THIRD_NAME_Y_FRAC * f32::sqrt(w * h), 
-                0.0, 
-                0.0,
-            ),
-            children: Vec::new(),
-            kes_data: KesData::Button(description_kes),
-        });
-    }
-    let description_box = KuiElement {
-        rect: Rect::new(0.0, h * LOWER_THIRD_Y_FRAC, w, h * (1.0 - LOWER_THIRD_Y_FRAC)),
-        children: kui_desc_box_children,
-        kes_data: KesData::Button(description_box),
-    };
-
-    let elements = std::iter::once(next_floor_button)
+    let elements = [header_section].into_iter()
         .chain([weapon_inventory_section].into_iter())
-        .chain(buy_ammo_button.into_iter())
         .chain([description_box].into_iter())
         .collect::<Box<_>>();
 

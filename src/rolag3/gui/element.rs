@@ -10,7 +10,7 @@ pub struct KuiElement {
 }
 
 pub enum KesData {
-    _Section(KuiSection),
+    Section(KuiSection),
     Button(KuiButton),
     CustomFn(KuiCustomFn)
 }
@@ -41,7 +41,7 @@ pub fn kui_tree_run_frame(args: &KuiTreeRunFrameArgs) -> KuiTreeRunFrameResponse
         rect.x += args.x;
         rect.y += args.y;
         let this_ke_draw_op = match &ke.kes_data {
-            KesData::_Section(section) => {
+            KesData::Section(section) => {
                 if let Some(dop) = section.run_frame(rect) {
                     Some(dop)
                 } else {

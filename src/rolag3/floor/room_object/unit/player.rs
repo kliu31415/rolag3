@@ -288,7 +288,7 @@ impl Player {
             max_mana: 20.0,
             mana_regen: 0.5,
             damage_color: DamageColor::NotSet,
-            starcash: 0.0,
+            starcash: 100.0,
         }
     }
 
