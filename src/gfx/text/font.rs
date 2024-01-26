@@ -6,7 +6,7 @@ pub trait FontRasterizer {
     fn rasterize_text_line(&mut self, font: &Font, text: &str, font_size: f32) -> Vec<Vec<u8>>; 
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum Font {
     TekoRegular
 }

@@ -1,6 +1,6 @@
 use std::{rc::Weak, cell::RefCell};
 
-use crate::{gfx::{renderer::{ColorRGBA32f, ViewSpaceCoordinate, DrawOpWithMetadata, DrawOpTriFan, DrawOp, ColoredTriVertex, DrawOpCCS, DrawOpGroup, Rect, DrawOpText, DrawTextPosition, DrawOpTexture2, DrawOpQuadFan, DrawOpTri}, draw_op_util::{draw_op_rect, draw_thick_border, draw_op_concentric_circles}, text::font::Font}, geometry::{shape::{Point, Vector}, star::get_star_shape, util::get_inner_polygon}};
+use crate::{gfx::{renderer::{ColorRGBA32f, ViewSpaceCoordinate, DrawOpWithMetadata, DrawOpTriFan, DrawOp, ColoredTriVertex, DrawOpCCS, DrawOpGroup, Rect, DrawOpText, DrawTextPosition, DrawOpTexture2, DrawOpQuadFan, DrawOpTri}, draw_op_util::{draw_op_rect, draw_op_concentric_circles}, text::font::Font}, geometry::shape::Point, rolag3::gui::{fillable_bar::{DrawFillableBarArgs, get_draw_fillable_bar_ops}, starcash::get_starcash_star_value_dops}};
 
 use super::{rofiz::rofiz_state::RofizState, floor_def::Floor, room_object::{unit::player::Player, room_object_def::{RoomObject, BossHp}}, room::RoomTile};
 
@@ -168,49 +168,9 @@ fn get_draw_hud_ops(ctx: DrawHudContext) -> DrawOp {
     ops.push(get_floor_time_left_dops(ctx.floor_time_left, 0.0, 0.0, top_left_row_width));
 
     // StarCash
-    ops.push(get_starcash_dops(ctx.player, 0.0, top_left_row_width, top_left_row_width));
+    ops.push(get_starcash_star_value_dops(ctx.player.get_starcash(), 0.0, top_left_row_width, top_left_row_width));
 
     DrawOp::Group(DrawOpGroup { ops: ops.into_boxed_slice() })
-}
-
-fn get_starcash_dops(player: &Player, x: f32, y: f32, row_width: f32) -> DrawOp {
-    let star_inner_radius = 0.25 * row_width;
-    let star_outer_radius = 0.45 * row_width;
-    let border_thickness = 0.06 * row_width;
-    let mut star_border = get_star_shape(5, star_inner_radius, star_outer_radius, -0.1 * std::f32::consts::PI);
-    let mut star_inner = get_inner_polygon(border_thickness, &star_border);
-    let star_center_vsc = ViewSpaceCoordinate::new(x + 0.5 * row_width, y + 0.5 * row_width);
-    let star_center_vec = Vector::new(0.5 * row_width, 0.5 * row_width);
-    star_border.iter_mut().for_each(|p| *p = *p + star_center_vec + Vector::new(x, y));
-    star_inner.iter_mut().for_each(|p| *p = *p + star_center_vec + Vector::new(x, y));
-    let mut star_dops = Vec::new();
-    draw_thick_border(&mut star_dops, ColorRGBA32f::new(10.0, 10.0, 10.0, 0.01), &star_border, &star_inner);
-    let star_inner_color = ColorRGBA32f::new(10.0, 10.0, 0.0, 0.05);
-    for (v1, v2) in star_inner.iter().zip(star_inner[1..].iter().chain(star_inner[..1].iter())) {
-        let vertexes = [
-            ColoredTriVertex { color: star_inner_color, vertex: star_center_vsc },
-            ColoredTriVertex { color: star_inner_color, vertex: ViewSpaceCoordinate::new(v1.x, v1.y) },
-            ColoredTriVertex { color: star_inner_color, vertex: ViewSpaceCoordinate::new(v2.x, v2.y) },
-        ];
-        star_dops.push(DrawOp::Tri(DrawOpTri { vertexes }));
-    }
-
-    assert!(player.get_starcash() >= 0.0);
-    let starcash_text = format!("{}", player.get_starcash() as i64);
-    let text_offset = 1.0 * row_width;
-    for color in [ColorRGBA32f::new(0.0, 0.0, 0.0, 0.3), ColorRGBA32f::new(10.0, 10.0, 0.0, 0.05)] {
-        let dop = DrawOp::Text(DrawOpText { 
-            text: starcash_text.clone(),
-            font: Font::TekoRegular,
-            color, 
-            x: x + text_offset,
-            y: y, 
-            font_size: row_width, 
-            position: DrawTextPosition::TopLeft,
-        });
-        star_dops.push(dop);
-    }
-    DrawOp::Group(DrawOpGroup {ops: star_dops.into()})
 }
 
 fn get_floor_time_left_dops(time_left: f64, x: f32, y: f32, row_width: f32) -> DrawOp {
@@ -238,70 +198,6 @@ fn get_floor_time_left_dops(time_left: f64, x: f32, y: f32, row_width: f32) -> D
         dops.push(dop);
     }
     DrawOp::Group(DrawOpGroup {ops: dops.into()})
-}
-
-#[derive(Debug)]
-struct DrawFillableBarArgs {
-    x: f32,
-    y: f32,
-    w: f32,
-    h: f32,
-    border_px: f32,
-    bar_cur_amount: f64,
-    bar_max_amount: f64,
-    border_color: ColorRGBA32f,
-    filled_part_color: ColorRGBA32f,
-    unfilled_part_color: ColorRGBA32f,
-    text_color: Option<ColorRGBA32f>,
-}
-
-fn get_draw_fillable_bar_ops(args: DrawFillableBarArgs) -> DrawOp {
-    assert!(args.border_px * 2.0 <= args.w, "bar border consumes more than entire bar, args={:?}", args);
-    assert!(args.border_px * 2.0 <= args.h, "bar border consumes more than entire bar, args={:?}", args);
-    let mut ops = Vec::new();
-
-    let border_vert = [
-        Point::new(args.x, args.y),
-        Point::new(args.x + args.w, args.y),
-        Point::new(args.x + args.w, args.y + args.h),
-        Point::new(args.x, args.y + args.h),
-    ];
-    let inner_x = args.x + args.border_px;
-    let inner_y = args.y + args.border_px;
-    let inner_w = args.w - 2.0 * args.border_px;
-    let inner_h = args.h - 2.0 * args.border_px;
-    let inner_vert = [
-        Point::new(inner_x, inner_y),
-        Point::new(inner_x + inner_w, inner_y),
-        Point::new(inner_x + inner_w, inner_y + inner_h),
-        Point::new(inner_x, inner_y + inner_h),
-    ];
-
-    draw_thick_border(&mut ops, args.border_color, &border_vert, &inner_vert);
-    let outline = draw_op_rect(args.border_color, args.x, args.y, args.w, args.h);
-    ops.push(outline);
-
-    let fill_len = inner_w * (args.bar_cur_amount / args.bar_max_amount) as f32;
-
-    let filled_part = draw_op_rect(args.filled_part_color, inner_x, inner_y, fill_len, inner_h);
-    ops.push(filled_part);
-    let unfilled_part = draw_op_rect(args.unfilled_part_color, inner_x + fill_len, inner_y, inner_w - fill_len, inner_h);
-    ops.push(unfilled_part);
-
-    // TO DEBUG: a panic has occurred before because the font size was 0 while drawing HP text
-    if let Some(text_color) = args.text_color {
-        ops.push(DrawOp::Text(DrawOpText { 
-            text: format!("{} / {}", args.bar_cur_amount.ceil(), args.bar_max_amount.ceil()), 
-            font: Font::TekoRegular,
-            color: text_color, 
-            x: inner_x, 
-            y: inner_y, 
-            font_size: inner_h, 
-            position: DrawTextPosition::TopLeft,
-        }));
-    }
-
-    DrawOp::Group(DrawOpGroup { ops: ops.into_boxed_slice() })
 }
 
 pub struct DrawContext<'a> {

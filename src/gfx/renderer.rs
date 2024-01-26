@@ -45,7 +45,7 @@ enum ShaderInput {
 /* Tri and QuadFan are subsets of TriFan, but they exist to eliminate heap allocation costs. Tri/QuadFan are backed by
    a stack-allocated fixed-size array, while TriFan is backed by a heap-allocated boxed slice.
  */
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum DrawOp {
     Group(DrawOpGroup),
     Tri(DrawOpTri),
@@ -73,7 +73,7 @@ impl DrawOp {
 }
 
 /* DrawOps within a Group are guaranteed to be rendered in the same order as which they appear in the Group */
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DrawOpGroup {
     pub ops: Box<[DrawOp]>,
 }
@@ -92,27 +92,27 @@ pub struct ColoredTriVertex {
     pub vertex: ViewSpaceCoordinate,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DrawOpTri {
     pub vertexes: [ColoredTriVertex; 3],
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DrawOpQuadFan {
     pub vertexes: [ColoredTriVertex; 4],
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DrawOpTriFan {
     pub vertexes: Box<[ColoredTriVertex]>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DrawOpTriStrip {
     pub vertexes: Box<[ColoredTriVertex]>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DrawOpCCS {
     pub x: f32,
     pub y: f32,
@@ -124,7 +124,7 @@ pub struct DrawOpCCS {
     pub angle_range: Option<(f32, f32)>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DrawOpText {
     pub text: String,
     pub font: Font,
@@ -149,7 +149,7 @@ pub enum DrawTextPosition {
     Center,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DrawOpTexture2 {
     pub texture: TmdRef,
     pub color_mod: ColorRGBA32f,
