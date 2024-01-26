@@ -1,6 +1,6 @@
 use std::{rc::Rc, cell::RefCell};
 
-use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Team, Act1Response}, unit::{standard_unit1::{StandardUnit1, StandardUnit1Builder, StandardUnit1BuilderReq, SuAct1Context, SuDrawContext, RofizObjType}, standard_unit_common::TranslateMove}, damage::DamageColor, projectile::projectile2::{Projectile2Builder, Projectile2BuilderReq, Proj2Shape}}, rofiz::rofiz_object::Transformation, draw::{Color, DrawContext}}, geometry::{shape::{Shape, Point, Vector}, util::{rotate_polygon, regular_polygon, get_inner_polygon}}};
+use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Team, Act1Response}, unit::{standard_unit1::{StandardUnit1, StandardUnit1Builder, StandardUnit1BuilderReq, SuAct1Context, SuDrawContext, RofizObjType}, standard_unit_common::TranslateMove}, damage::DamageColor, projectile::projectile2::{Projectile2Builder, Projectile2BuilderReq, Proj2Shape}}, rofiz::rofiz_object::Transformation, draw::{Color, DrawContext}}, geometry::{shape::{Shape, Point, Vector}, util::{rotate_polygon, regular_polygon, get_inner_polygon}}, util::lerp::lerp_f64};
 
 /* SquareRgb2Tri moves along a wall and shoots pairs of rotating homing projectiles. The rotating homing projectiles
    can be of different colors than the square itself.
@@ -52,6 +52,19 @@ struct SquareRgb2Circle {
     inner_colors: [usize; 2],
     position_fn: Box<dyn Fn(f64) -> (f64, f64)>,
     num_proj_fired: usize,
+}
+
+
+pub fn position_fn_between_two_points(time1to2: f64, (x1, y1): (f64, f64), (x2, y2): (f64, f64)) -> Box<dyn Fn(f64) -> (f64, f64)> {
+    Box::new(move |age: f64| -> (f64, f64) {
+        let age = age % (2.0 * time1to2);
+        if age < time1to2 {
+            (lerp_f64(x1, x2, age / time1to2), lerp_f64(y1, y2, age / time1to2))
+        } else {
+            let age = 2.0 * time1to2 - age;
+            (lerp_f64(x1, x2, age / time1to2), lerp_f64(y1, y2, age / time1to2))
+        }
+    })
 }
 
 pub fn new_square_rgb_2circle(

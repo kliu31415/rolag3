@@ -31,3 +31,29 @@ pub fn init_basic_square_room(
 
     (rofiz, room_objects)
 }
+
+pub fn init_basic_square_room_no_ground(
+    ctx: &mut GenFloorRoomContext,
+    w: u32, 
+    h: u32, 
+) -> (RofizState, RoomObjectCollection) {
+    let wall_theme = ctx.wall_theme;
+    let mut rofiz = RofizState::new();
+    let mut nro_ctx = NewRoomObjectContext::from_gfr_ctx(&mut rofiz, ctx);
+    let mut room_objects = RoomObjectCollection::new();
+    for i in 0..w {
+        let wall = BasicWall::new(&mut nro_ctx, wall_theme, i, 0);
+        room_objects.add(Rc::new(RefCell::new(wall)));
+        let wall = BasicWall::new(&mut nro_ctx, wall_theme, i, h - 1);
+        room_objects.add(Rc::new(RefCell::new(wall)));
+    }
+
+    for i in 1..h-1 {
+        let wall = BasicWall::new(&mut nro_ctx, wall_theme, 0, i);
+        room_objects.add(Rc::new(RefCell::new(wall)));
+        let wall = BasicWall::new(&mut nro_ctx, wall_theme, w - 1, i);
+        room_objects.add(Rc::new(RefCell::new(wall)));
+    }
+
+    (rofiz, room_objects)
+}

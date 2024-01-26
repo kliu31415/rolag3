@@ -548,7 +548,7 @@ fn make_hallway_candidate_grid(
         assert!(room.width >= 5);
         assert!(room.height >= 5);
         let mut candidates = room.connection_candidates.clone();
-        assert_ne!(candidates.len(), 0);
+        assert_ne!(candidates.len(), 0, "connection candidates len is 0");
         loop {
             let candidate = candidates[args.rng.gen_usize_range(0..candidates.len())];
             connections.push(candidate);
