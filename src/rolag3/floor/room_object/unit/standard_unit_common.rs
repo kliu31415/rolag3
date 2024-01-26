@@ -7,6 +7,7 @@ pub enum Budeb {
     SpeedMult(BudebMaxSpeed),
     TimeSpeedMult(BudebTimeSpeedMult),
     TractionMult(BudebTractionMult),
+    TractionCap(BudebTractionCap),
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -40,6 +41,21 @@ impl BudebTractionMult {
     pub fn new(multiplier: f64, expiry: BudebExpiry) -> Self {
         Self {
             multiplier,
+            expiry,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct BudebTractionCap {
+    pub cap: f64,
+    pub expiry: BudebExpiry,
+}
+
+impl BudebTractionCap {
+    pub fn new(cap: f64, expiry: BudebExpiry) -> Self {
+        Self {
+            cap,
             expiry,
         }
     }
@@ -298,6 +314,7 @@ impl StandardUnitCommon {
         let mut min_speed_mult = 1.0;
         let mut max_traction_mult = 1.0;
         let mut min_traction_mult = 1.0;
+        let mut traction_cap = 1e6;
         let mut expired_budeb_idx = Vec::new();
         for (i, budeb) in self.budebs.iter_mut().enumerate() {
             match budeb {
@@ -337,6 +354,24 @@ impl StandardUnitCommon {
                         }
                     }
                 },
+                Budeb::TractionCap(v) => {
+                    match v.expiry {
+                        BudebExpiry::Duration(ref mut d) => {
+                            *d -= tick_length;
+                            if *d < 0.0 {
+                                expired_budeb_idx.push(i);
+                            } else {
+                                traction_cap = f64::max(traction_cap, v.cap);
+                                traction_cap = f64::min(traction_cap, v.cap);
+                            }
+                        }
+                        BudebExpiry::OneTick => {
+                            expired_budeb_idx.push(i);
+                            traction_cap = f64::max(traction_cap, v.cap);
+                            traction_cap = f64::min(traction_cap, v.cap);
+                        }
+                    }
+                },
                 Budeb::TimeSpeedMult(_) => {}, // handled in start_act1()
             }
         }
@@ -345,16 +380,16 @@ impl StandardUnitCommon {
         }
         let speed_mult = max_speed_mult * min_speed_mult;
         let traction_mult = max_traction_mult * min_traction_mult;
+        let traction = f64::min(traction_cap, traction_mult * self.tire_traction);
 
         if self.ro_ref.is_some() {
-            self.move_primary_ro_ref(rofiz, tick_length, traction_mult, speed_mult);
+            self.move_primary_ro_ref(rofiz, tick_length, traction, speed_mult);
         }
 
         self.act1_started = false;
     }
 
-    fn move_primary_ro_ref(&mut self, rofiz: &mut RofizState, tick_length: f64, traction_mult: f64, speed_mult: f64) {
-        let tire_traction = self.tire_traction * traction_mult;
+    fn move_primary_ro_ref(&mut self, rofiz: &mut RofizState, tick_length: f64, tire_traction: f64, speed_mult: f64) {
         let min_velocity = self.min_effective_velocity;
         let min_angular_velocity = self.min_effective_angular_velocity;
         match self.translate {

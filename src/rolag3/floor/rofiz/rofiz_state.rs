@@ -278,22 +278,33 @@ impl RofizState {
             let xend = f32::clamp(nsu_i.bounding_box.x2 + 1.0, 0.0, self.wall_x_end as f32) as usize;
             let ystart = f32::clamp(nsu_i.bounding_box.y1, 0.0, self.wall_y_end as f32) as usize;
             let yend = f32::clamp(nsu_i.bounding_box.y2 + 1.0, 0.0, self.wall_y_end as f32) as usize;
-            for x in xstart..xend {
-                for y in ystart..yend {
-                    iterations += 1;
-                    if let Some(ref bw) = self.has_wall_at_coordinate[x][y] {
-                        let bw = self.obj_pool.basic_walls[bw.idx as usize].as_ref().unwrap();
-                        if nsu_i.overlaps_ro_wall(&bw) {
-                            collisions.push(RofizCollision::new(nsu_i.room_object_ref, false, bw.room_object_ref, false));
-                            // keep moving the unit back while both of the following hold:
-                            // 1. the unit is moved back to a different position
-                            // 2. the different position overlaps with a wall.
-                            // Remember, we assert that the unit's original position must never overlap with a basic wall
-                            while Self::move_back(&mut nsu_i) && nsu_i.overlaps_ro_wall(&bw) {
-                                iterations += 1;
-                                assert!(iterations < iterations_max);
+            let mut bw_loop_iter = 0;
+            let mut end_bw_check_loop = false;
+            while !end_bw_check_loop {
+                bw_loop_iter += 1;
+                assert!(bw_loop_iter < iterations_max);
+
+                end_bw_check_loop = true;
+                'outer: for x in xstart..xend {
+                    for y in ystart..yend {
+                        iterations += 1;
+                        if let Some(ref bw) = self.has_wall_at_coordinate[x][y] {
+                            let bw = self.obj_pool.basic_walls[bw.idx as usize].as_ref().unwrap();
+                            if nsu_i.overlaps_ro_wall(&bw) {
+                                collisions.push(RofizCollision::new(nsu_i.room_object_ref, false, bw.room_object_ref, false));
+                                // keep moving the unit back while both of the following hold:
+                                // 1. the unit is moved back to a different position
+                                // 2. the different position overlaps with a wall.
+                                // Remember, we assert that the unit's original position must never overlap with a basic wall
+                                while Self::move_back(&mut nsu_i) && nsu_i.overlaps_ro_wall(&bw) {
+                                    iterations += 1;
+                                    assert!(iterations < iterations_max);
+                                }
+                                
+                                // since the unit moved, it needs to be rechecked against all walls.
+                                end_bw_check_loop = false;
+                                break 'outer;
                             }
-                            // since the unit moved, it needs to be rechecked against all walls.
                         }
                     }
                 }

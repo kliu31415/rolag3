@@ -968,8 +968,15 @@ pub struct HcTileContext {
 pub enum HcTileEffect {
     Accelerate {force: f64, theta: f64},
     DealDamage {damage: f64},
-    TractionMult {mult: f64},
+    TractionMult {mult: f64, duration: HcTileEffectDuration},
+    TractionCap {cap: f64, duration: HcTileEffectDuration},
     ChargeTile {},
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum HcTileEffectDuration {
+    OneTick,
+    Time(f64)
 }
 
 pub struct HcTileResponse {

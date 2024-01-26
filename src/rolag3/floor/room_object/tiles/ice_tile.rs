@@ -1,4 +1,4 @@
-use crate::{rolag3::floor::{room_object::room_object_def::{RoomObject, RoomObjectType, HandleCollisionContext, RoomObjectMetadata, Act1Response, Act1Context, HandleCollisionResponse, NewRoomObjectContext, HcTileContext, HcTileEffect}, draw::{DrawContext, Color}, rofiz::{rofiz_object::{Transformation, Hitbox}, rofiz_state::RofizObjectRef}}, geometry::{shape::{Shape, Point, Vector}, star::get_star_shape, util::{get_inner_polygon, translate_polygon}}};
+use crate::{rolag3::floor::{room_object::room_object_def::{RoomObject, RoomObjectType, HandleCollisionContext, RoomObjectMetadata, Act1Response, Act1Context, HandleCollisionResponse, NewRoomObjectContext, HcTileContext, HcTileEffect, HcTileEffectDuration}, draw::{DrawContext, Color}, rofiz::{rofiz_object::{Transformation, Hitbox}, rofiz_state::RofizObjectRef}}, geometry::{shape::{Shape, Point, Vector}, star::get_star_shape, util::{get_inner_polygon, translate_polygon}}};
 use once_cell::sync::Lazy;
 
 pub struct IceTile {
@@ -52,7 +52,7 @@ impl RoomObject for IceTile {
         let hct_ctx = HcTileContext {
             // don't multiply traction by 0, because then the player can get stuck on ice tiles if the player is
             // moving very slowly and can't change directions.
-            tile_effect: HcTileEffect::TractionMult { mult: 0.01 },
+            tile_effect: HcTileEffect::TractionMult { mult: 0.01, duration: HcTileEffectDuration::OneTick },
         };
         let hct_resp = ctx.get_other().borrow_mut().handle_collision_tile(&hct_ctx);
         if hct_resp.unit_affected {

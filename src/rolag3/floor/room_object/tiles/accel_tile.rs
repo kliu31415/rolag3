@@ -1,4 +1,4 @@
-use crate::{rolag3::floor::{room_object::room_object_def::{RoomObject, RoomObjectType, HandleCollisionContext, RoomObjectMetadata, Act1Response, Act1Context, HandleCollisionResponse, NewRoomObjectContext, HcTileContext, HcTileEffect}, draw::{DrawContext, Color}, rofiz::{rofiz_object::{Transformation, Hitbox}, rofiz_state::RofizObjectRef}}, geometry::shape::{Shape, Point, Vector}};
+use crate::{rolag3::floor::{room_object::{room_object_def::{RoomObject, RoomObjectType, HandleCollisionContext, RoomObjectMetadata, Act1Response, Act1Context, HandleCollisionResponse, NewRoomObjectContext, HcTileContext, HcTileEffect, HcTileEffectDuration}, unit::player}, draw::{DrawContext, Color}, rofiz::{rofiz_object::{Transformation, Hitbox}, rofiz_state::RofizObjectRef}}, geometry::shape::{Shape, Point, Vector}};
 
 pub struct AccelTile {
     md: RoomObjectMetadata,
@@ -61,6 +61,18 @@ impl RoomObject for AccelTile {
         if hct_resp.unit_affected {
             self.unit_last_affected_time = Some(ctx.get_room_time());
         }
+
+        let hct_ctx = HcTileContext {
+            // add a temporary cap to the tire traction to ensure the accel tile can always propel the player by
+            // 10+ grid unit lengths in a short time frame. This is important because some room logic relies on
+            // this behavior.
+            tile_effect: HcTileEffect::TractionCap { 
+                cap: 0.2 * player::DEFAULT_TIRE_TRACTION, 
+                duration: HcTileEffectDuration::Time(0.1),
+            },
+        };
+        let _ = ctx.get_other().borrow_mut().handle_collision_tile(&hct_ctx);
+
         HandleCollisionResponse::new()
     }
 }
