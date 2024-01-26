@@ -1,6 +1,6 @@
 use std::any::Any;
 
-use crate::{gfx::{window::Window, renderer::{ColorRGBA32f, DrawOpWithMetadata, DrawOp, DrawOpGroup, Rect}}, rolag3::{floor::room_object::unit::player::Player, gui::{element::{KuiButtonBuilder, KuiButtonBuilderReq, kui_tree_run_frame, KuiTreeRunFrameArgs, KuiElement, KesData, KuiButtonTextAlign, KuiCustomFn, KuiSection}, starcash::get_starcash_star_value_dops}}};
+use crate::{gfx::{window::Window, renderer::{ColorRGBA32f, DrawOpWithMetadata, DrawOp, DrawOpGroup, Rect}}, rolag3::{floor::room_object::unit::player::Player, gui::{element::{KuiButtonBuilder, KuiButtonBuilderReq, kui_tree_run_frame, KuiTreeRunFrameArgs, KuiElement, KesData, KuiButtonTextAlign, KuiCustomFn, KuiSection}, starcash::get_starcash_star_value_dops, fillable_bar::{DrawFillableBarArgs, get_draw_fillable_bar_ops}}}};
 
 const LOWER_THIRD_Y_FRAC: f32 = 0.75;
 const LOWER_THIRD_NAME_Y_FRAC: f32 = 0.04;
@@ -28,7 +28,7 @@ pub fn run_frame_between_floors_shop(ctx: RunFrameBfshopContext) -> RunFrameBfsh
     let w = ctx.window.get_width() as f32;
     let h = ctx.window.get_height() as f32;
 
-    let mut move_to_next_floor = false;
+    let mut start_floor = false;
 
     let header_h = 0.06 * h;
     let mut header_section = KuiElement {
@@ -36,32 +36,100 @@ pub fn run_frame_between_floors_shop(ctx: RunFrameBfshopContext) -> RunFrameBfsh
         children: Vec::new(),
         kes_data: KesData::Section(KuiSection { color: None }),
     };
-    let next_floor_button = KuiButtonBuilder::new(KuiButtonBuilderReq {})
+    let start_floor_button = KuiButtonBuilder::new(KuiButtonBuilderReq {})
         .click_id_fn(Box::new(|| Box::new(ButtonId::NextFloor)))
         .color(ColorRGBA32f::new(0.01, 0.01, 0.01, 1.0))
         .border_thickness(0.005 * h)
         .border_color(ColorRGBA32f::new(0.1, 0.1, 0.1, 1.0))
         .border_color_on_press(ColorRGBA32f::new(1.1, 1.1, 0.5, 1.0))
         .border_color_on_hover(ColorRGBA32f::new(1.0, 1.0, 0.3, 1.0))
-        .text("Next Floor".to_owned())
+        .text("Start Floor".to_owned())
         .font_size(0.7 * 0.04 * h)
         .text_color(ColorRGBA32f::new(1.0, 1.0, 1.0, 1.0))
         .build();
-    let next_floor_button = KuiElement {
+    let start_floor_button = KuiElement {
         rect: Rect::new(0.9 * w, 0.0, 0.1 * w, 0.05 * h),
         children: Vec::new(),
-        kes_data: KesData::Button(next_floor_button),
+        kes_data: KesData::Button(start_floor_button),
     };
-    header_section.children.push(next_floor_button);
-    
+    header_section.children.push(start_floor_button);
+
+    let mut cur_header_x = 0.0;
+
+    let floor_num_dop = KuiElement {
+        rect: Rect::new(cur_header_x, 0.0, 0.0, header_h),
+        children: Vec::new(),
+        kes_data: KesData::Button(KuiButtonBuilder::new(KuiButtonBuilderReq {  })
+            .text(format!("Floor {}", 1))
+            .text_align(KuiButtonTextAlign::TopLeft)
+            .font_size(header_h)
+            .text_color(ColorRGBA32f::new(1.0, 1.0, 1.0, 1.0))
+            .build()
+        ),
+    };
+    header_section.children.push(floor_num_dop);
+    cur_header_x += 3.0 * header_h;
+
     let starcash_h = header_h;
     let starcash_amt = ctx.player.get_starcash();
     let starcash_dop = KuiElement {
-        rect: Rect::new(0.0, 0.0, 0.0, 0.0),
+        rect: Rect::new(cur_header_x, 0.0, 0.0, 0.0),
         children: Vec::new(),
-        kes_data: KesData::CustomFn(KuiCustomFn { f: Box::new(move |_| Some(get_starcash_star_value_dops(starcash_amt, 0.0, 0.0, starcash_h))) }),
+        kes_data: KesData::CustomFn(KuiCustomFn { f: Box::new(move |r| Some(get_starcash_star_value_dops(starcash_amt, r.x, 0.0, starcash_h))) }),
     };
     header_section.children.push(starcash_dop);
+    cur_header_x += 3.0 * starcash_h;
+
+    let hp_bar_w = 0.15 * w;
+    let player_cur_hp = ctx.player.get_cur_hp();
+    let player_max_hp = ctx.player.get_max_hp();
+    let hp_bar_dop = KuiElement {
+        rect: Rect::new(cur_header_x, 0.0, hp_bar_w, starcash_h),
+        children: Vec::new(),
+        kes_data: KesData::CustomFn(KuiCustomFn { f: Box::new(move |r| {
+            let hp_bar_args = DrawFillableBarArgs { 
+                x: r.x, 
+                y: r.y, 
+                w: r.w, 
+                h: r.h, 
+                border_px: 0.08 * r.h, 
+                bar_cur_amount: player_cur_hp,
+                bar_max_amount: player_max_hp, 
+                border_color: ColorRGBA32f::new(0.1, 0.1, 0.1, 0.9),
+                filled_part_color: ColorRGBA32f::new(1.0, 0.0, 0.0, 0.9), 
+                unfilled_part_color: ColorRGBA32f::new(0.0, 0.0, 0.0, 0.9),
+                text_color: Some(ColorRGBA32f::new(0.0, 1.0, 1.0, 0.9)),
+            };
+            Some(get_draw_fillable_bar_ops(hp_bar_args))
+        })}),
+    };
+    header_section.children.push(hp_bar_dop);
+    cur_header_x += 1.2 * hp_bar_w;
+
+    let mana_bar_w = 0.15 * w;
+    let player_cur_mana = ctx.player.get_cur_mana();
+    let player_max_mana = ctx.player.get_max_mana();
+    let mana_bar_dop = KuiElement {
+        rect: Rect::new(cur_header_x, 0.0, mana_bar_w, starcash_h),
+        children: Vec::new(),
+        kes_data: KesData::CustomFn(KuiCustomFn { f: Box::new(move |r| {
+            let mana_bar_args = DrawFillableBarArgs { 
+                x: r.x, 
+                y: r.y, 
+                w: r.w, 
+                h: r.h, 
+                border_px: 0.08 * r.h, 
+                bar_cur_amount: player_cur_mana,
+                bar_max_amount: player_max_mana, 
+                border_color: ColorRGBA32f::new(0.1, 0.1, 0.1, 0.9),
+                filled_part_color: ColorRGBA32f::new(0.02, 0.02, 3.0, 0.9), 
+                unfilled_part_color: ColorRGBA32f::new(0.0, 0.0, 0.0, 0.9),
+                text_color: Some(ColorRGBA32f::new(1.0, 1.0, 0.0, 0.9)),
+            };
+            Some(get_draw_fillable_bar_ops(mana_bar_args))
+        })}),
+    };
+    header_section.children.push(mana_bar_dop);
 
     let mut weapon_inventory_section = KuiElement {
         rect: Rect::new(0.03 * w, header_h, w, 0.25 * h),
@@ -284,7 +352,7 @@ pub fn run_frame_between_floors_shop(ctx: RunFrameBfshopContext) -> RunFrameBfsh
         let cbid = cbid_any.downcast_ref::<ButtonId>().unwrap();
         match cbid {
             ButtonId::NextFloor => {
-                move_to_next_floor = true;
+                start_floor = true;
             },
             ButtonId::InventoryWeapon { .. } => {
                 *ctx.shop_state = ShopState::ButtonSelected(*cbid);
@@ -302,7 +370,7 @@ pub fn run_frame_between_floors_shop(ctx: RunFrameBfshopContext) -> RunFrameBfsh
     if let Err(e) = res { log::error!("error when calling renderer.present(): {}", e) }
 
     RunFrameBfshopResponse {
-        move_to_next_floor,
+        move_to_next_floor: start_floor,
     }
 }
 
