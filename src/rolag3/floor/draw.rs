@@ -285,6 +285,29 @@ impl DrawContext<'_> {
         self.dop_group(dops.into())
     }
 
+    pub fn do_thick_border_2color(&self, outer_color: Color, inner_color: Color, outer: &[Point], inner: &[Point]) -> DrawOp {
+        assert_eq!(outer.len(), inner.len(), "Thick border outer and inner vertexes must have the same length");
+        assert!(outer.len() > 2, "Degenerate thick border with <=2 vertexes detected");
+        let o1 = outer.iter();
+        let o2 = outer[1..].iter().chain(outer[..1].iter());
+        let i1 = inner.iter();
+        let i2 = inner[1..].iter().chain(inner[..1].iter());
+        let quads = o1.zip(o2).zip(i1.zip(i2));
+
+        let mut dops = Vec::new();
+        dops.reserve(outer.len());
+        for ((o1, o2), (i1, i2)) in quads {
+            let vertexes = [
+                (*o1, outer_color),
+                (*i1, inner_color),
+                (*i2, inner_color),
+                (*o2, outer_color),
+            ];
+            dops.push(self.do_quad_fan_multicolor(vertexes));
+        }
+        self.dop_group(dops.into())
+    }
+
     pub fn do_tri_fan(&self, color: Color, vertexes: &[Point]) -> DrawOp {
         let vs_coords = vertexes
             .iter()

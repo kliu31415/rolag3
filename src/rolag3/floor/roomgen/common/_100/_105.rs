@@ -55,7 +55,7 @@ fn make_room(ctx: &mut GenFloorRoomContext) -> GenFloorRoomResponse {
         );
         room_objects.add(Rc::new(RefCell::new(enemy)));
 
-        let nook_len = rng.gen_u32_range(5..8);
+        let nook_len = 6;
         for i in 0..=nook_len {
             for v in [-3.0, 3.0] {
                 let (x, y) = (x + v * f64::sin(theta), y + v * f64::cos(theta));
