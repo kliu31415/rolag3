@@ -10,7 +10,7 @@ use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext
 */
 
 const RADIUS: f64 = 0.9;
-const MAX_HP: f64 = 20.0;
+const MAX_HP: f64 = 15.0;
 
 const RED_OUTER_COLOR: Color = Color::new(0.5, 0.02, 0.02, 1.0);
 const RED_PROJ_FIRE_INTERVAL: f64 = 0.002;

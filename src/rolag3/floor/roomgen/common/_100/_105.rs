@@ -5,7 +5,7 @@ use std::{rc::Rc, cell::RefCell};
 
 use crate::rolag3::floor::{floorgen::run::{GenFloorRoomContext, GenFloorRoomResponse}, roomgen::util::{square_room::init_basic_square_room_no_ground, connection_candidates::all_borders_as_connection_candidates}, room_object::{room_object_def::NewRoomObjectContext, unit::enemy::square::rgb_2circle::{new_square_rgb_2circle, position_fn_between_two_points}, damage::DamageColor, wall::basic_wall::BasicWall, cosmetic::ground1::new_ground1}, room::{RoomBuilder, RoomBuilderReq}};
 
- pub fn get_gen_room_fn_common105() -> Box<dyn Fn(&mut GenFloorRoomContext) -> GenFloorRoomResponse> {
+pub fn get_gen_room_fn_common105() -> Box<dyn Fn(&mut GenFloorRoomContext) -> GenFloorRoomResponse> {
     Box::new(move |ctx: &mut GenFloorRoomContext| {
         make_room(ctx)
     })
