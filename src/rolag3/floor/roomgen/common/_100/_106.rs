@@ -1,4 +1,3 @@
-
 use crate::rolag3::floor::{floorgen::run::{GenFloorRoomContext, GenFloorRoomResponse}, roomgen::util::{connection_candidates::all_borders_as_connection_candidates, square_room::init_basic_square_room}, room_object::{room_object_def::NewRoomObjectContext, unit::enemy::thinstar4::rgb_circle::new_thinstar4_group, damage::DamageColor}, room::{RoomBuilder, RoomBuilderReq}};
 
 /* Common106 contains starflies
@@ -15,6 +14,8 @@ pub fn get_gen_room_fn_common106(
 }
 
 fn make_room(ctx: &mut GenFloorRoomContext, w: u32, h: u32, num_enemies: usize) -> GenFloorRoomResponse {
+    assert!(w >= 15, "w({}) is too low", w);
+    assert!(h >= 15, "h({}) is too low", h);
     let mut rng = ctx.rng.spawn_child();
     let (mut rofiz, mut room_objects) = init_basic_square_room(ctx, w, h);
     let nro_ctx = &mut NewRoomObjectContext::from_gfr_ctx(&mut rofiz, ctx);
