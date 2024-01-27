@@ -117,7 +117,7 @@ impl Rolag3EventHandler {
         let player = Rc::new(RefCell::new(Player::new_test1()));
 
         let _ = if true {
-            Floor::new_test2(renderer, &mut rng, player.clone())
+
         } else {
             // dummy block to prevent the linter from marking functions as unused
             let _ = Floor::new_test1(renderer, &mut rng, player.clone());

@@ -6,7 +6,7 @@ pub const DEFAULT_TIRE_TRACTION: f64 = 500.0;
 
 pub struct Player {
     md: RoomObjectMetadata,
-    su_common: Option<StandardUnitCommon>,
+    su_common: StandardUnitCommon,
     change_rooms: Option<RoomConnectionInfo>,
     weapons: Vec<Weapon>,
     weapon_idx: usize,
@@ -31,22 +31,22 @@ impl RoomObject for Player {
     fn act1(&mut self, ctx: &mut Act1Context) -> Act1Response {
         let mut response = Act1Response::new();
 
-        self.su_common.as_mut().unwrap().start_act1(ctx.get_tick_length());
-        let tick_len = self.su_common.as_ref().unwrap().get_unit_tick_len();
+        self.su_common.start_act1(ctx.get_tick_length());
+        let tick_len = self.su_common.get_unit_tick_len();
 
         // process tile effects
         let mut additional_force = Vec::new();
         self.hc_tile_effects.drain(..).for_each(|x| {
             match x {
                 HcTileEffect::Accelerate { force, theta } => additional_force.push(PolarForce{r: force, theta}),
-                HcTileEffect::DealDamage { damage } => {self.su_common.as_mut().unwrap().take_damage(damage);},
+                HcTileEffect::DealDamage { damage } => {self.su_common.take_damage(damage);},
                 HcTileEffect::TractionMult { mult, duration } => {
                     let expiry = match duration {
                         HcTileEffectDuration::OneTick => BudebExpiry::OneTick,
                         HcTileEffectDuration::Time(v) => BudebExpiry::Duration(v),
                     };
                     let budeb = Budeb::TractionMult(BudebTractionMult::new(mult, expiry));
-                    self.su_common.as_mut().unwrap().apply_budeb(&budeb);
+                    self.su_common.apply_budeb(&budeb);
                 },
                 HcTileEffect::TractionCap { cap, duration } => {
                     let expiry = match duration {
@@ -54,7 +54,7 @@ impl RoomObject for Player {
                         HcTileEffectDuration::Time(v) => BudebExpiry::Duration(v),
                     };
                     let budeb = Budeb::TractionCap(BudebTractionCap::new(cap, expiry));
-                    self.su_common.as_mut().unwrap().apply_budeb(&budeb);
+                    self.su_common.apply_budeb(&budeb);
                 },
                 HcTileEffect::ChargeTile {} => {}, // nop
             }
@@ -62,7 +62,7 @@ impl RoomObject for Player {
 
         // process test input
         if ctx.get_player_input().test_input1 {
-            self.su_common.as_mut().unwrap().apply_budeb(&Budeb::SpeedMult(BudebMaxSpeed::new(1.0, BudebExpiry::Duration(1.5))));
+            self.su_common.apply_budeb(&Budeb::SpeedMult(BudebMaxSpeed::new(1.0, BudebExpiry::Duration(1.5))));
         }
 
         // process changing weapons. Note that the wheel deltas are only provided the first tick of a frame. act1()
@@ -100,7 +100,7 @@ impl RoomObject for Player {
         self.mana = f64::min(self.mana + self.mana_regen * tick_len, self.max_mana);
 
         // process active items
-        let xform = self.su_common.as_ref().unwrap().get_rofiz_xform(ctx.get_rofiz());
+        let xform = self.su_common.get_rofiz_xform(ctx.get_rofiz());
         if self.active_items.len() >= 1 {
             let active_item = &mut self.active_items[0];
             let mut aihc_ctx = ActiveItemHandleTickContext {
@@ -132,8 +132,8 @@ impl RoomObject for Player {
             nro_ctx,
             owner: self_as_weak,
             owner_team: Team::Player,
-            owner_velocity_x: self.su_common.as_ref().unwrap().get_velocity_x(),
-            owner_velocity_y: self.su_common.as_ref().unwrap().get_velocity_y(),
+            owner_velocity_x: self.su_common.get_velocity_x(),
+            owner_velocity_y: self.su_common.get_velocity_y(),
             owner_xform: xform,
             mouse_x,
             mouse_y,
@@ -168,15 +168,15 @@ impl RoomObject for Player {
             move_action = TranslateMove::Nop;
         }
 
-        self.su_common.as_mut().unwrap().add_external_forces(additional_force);
-        self.su_common.as_mut().unwrap().set_translate_move(move_action);
-        self.su_common.as_mut().unwrap().end_act1(ctx.get_rofiz());
+        self.su_common.add_external_forces(additional_force);
+        self.su_common.set_translate_move(move_action);
+        self.su_common.end_act1(ctx.get_rofiz());
 
         response
     }
 
     fn draw(&mut self, ctx: &mut DrawContext) {
-        let xform = self.su_common.as_ref().unwrap().get_rofiz_xform(ctx.get_rofiz());
+        let xform = self.su_common.get_rofiz_xform(ctx.get_rofiz());
         let player_x = xform.dx as f32 - Self::PLAYER_S / 2.0;
         let player_y = xform.dy as f32 - Self::PLAYER_S / 2.0;
         let player_w = Self::PLAYER_S;
@@ -189,7 +189,7 @@ impl RoomObject for Player {
         };
         let dwoo_response = (self.weapons[self.weapon_idx].draw_on_owner_fn)(&dwoo_ctx);
         ctx.add_draw_op(DrawContext::Z_UNIT_PLAYER_WEAPON, dwoo_response.draw_op);
-        let player_color = self.su_common.as_ref().unwrap().get_draw_color(dwoo_response.owner_color);
+        let player_color = self.su_common.get_draw_color(dwoo_response.owner_color);
 
         let vertexes = [
             Point::new(player_x, player_y),
@@ -207,7 +207,7 @@ impl RoomObject for Player {
 
     fn handle_collision(&mut self, ctx: &mut HandleCollisionContext) -> HandleCollisionResponse {
         let hcsu_ctx = &mut HcStandardUnitContext {
-            suc: self.su_common.as_mut().unwrap(),
+            suc: &mut self.su_common,
             team: Team::Player,
             damage_color: self.damage_color,
         };
@@ -220,7 +220,7 @@ impl RoomObject for Player {
             return HcProjectileResponse::nop();
         }
         let damage_mult = DamageColor::get_damage_mult(ctx.damage_color, self.damage_color);
-        let td_response = self.su_common.as_mut().unwrap().take_damage(ctx.damage * damage_mult);
+        let td_response = self.su_common.take_damage(ctx.damage * damage_mult);
         let mut room_objects_to_delete = Vec::new();
         if td_response.dead {
             room_objects_to_delete.push(self.md.get_ref());
@@ -239,7 +239,7 @@ impl RoomObject for Player {
             }
         }
         let damage_mult = DamageColor::get_damage_mult(ctx.damage_color, self.damage_color);
-        let td_resp = self.su_common.as_mut().unwrap().take_collision_damage_from(self.md.get_ref(), damage_mult, ctx.suc);
+        let td_resp = self.su_common.take_collision_damage_from(self.md.get_ref(), damage_mult, ctx.suc);
         let mut room_objects_to_delete = Vec::new();
         if td_resp.dead {
             room_objects_to_delete.push(self.md.get_ref());
@@ -263,7 +263,7 @@ impl RoomObject for Player {
         match ctx.get_operation() {
             RoomObjOperation::UnitBudeb { exclude_teams_filter, budeb } => {
                 if !exclude_teams_filter.contains(&Team::Player) {
-                    self.su_common.as_mut().unwrap().apply_budeb(budeb);
+                    self.su_common.apply_budeb(budeb);
                 }
             },
             _ => {},
@@ -271,7 +271,7 @@ impl RoomObject for Player {
     }
 
     fn handle_query_unit_info(&self, ctx: &RoQueryUnitInfoContext) -> Option<RoQueryUnitInfoResponse> {
-        let xform = self.su_common.as_ref().unwrap().get_rofiz_xform(ctx.get_rofiz());
+        let xform = self.su_common.get_rofiz_xform(ctx.get_rofiz());
         Some(RoQueryUnitInfoResponse { 
             unit: ctx.get_self_as_weak(),
             team: Team::Player, 
@@ -290,9 +290,22 @@ impl Player {
 
     pub fn new_test1() -> Player {
         let md = RoomObjectMetadata::new_for_player();
+        let su_common = StandardUnitCommon::new(
+            None, 
+            true, 
+            10.0, /* keep this a nonzero value for now to make visually verifying the unit-unit collision stack works properly easier */
+            1e3, 
+            15.0, 
+            DEFAULT_TIRE_TRACTION, 
+            0.0, 
+            0.0, 
+            150.0, 
+            10.0,
+            0.0 /* nop */,
+        );
         Player {
             md,
-            su_common: None,
+            su_common,
             change_rooms: None,
             weapons: vec![new_weapon3(), new_weapon1(), new_weapon2()],
             weapon_idx: 0,
@@ -322,25 +335,11 @@ impl Player {
         );
         let ro_ref = new_room_rofiz.add_nonspectral_unit(self.md.get_ref(), hitbox);
 
-        // Rofiz will automatically clean up the old su_common.rofiz_object, because it'll detect that no RoomObjects
-        // hold a reference to it anymore.
-        self.su_common = Some(StandardUnitCommon::new(
-            Some(ro_ref), 
-            true, 
-            10.0, /* keep this a nonzero value for now to make visually verifying the unit-unit collision stack works properly easier */
-            1e3, 
-            15.0, 
-            DEFAULT_TIRE_TRACTION, 
-            0.0, 
-            0.0, 
-            150.0, 
-            10.0,
-            0.0 /* nop */,
-        ));
+        self.su_common.player_move_rooms(ro_ref);
     }
 
     pub fn get_center_point(&self, rofiz: &RofizState) -> FloorCoordinate {
-        let xform = self.su_common.as_ref().unwrap().get_rofiz_xform(rofiz);
+        let xform = self.su_common.get_rofiz_xform(rofiz);
         FloorCoordinate::new(xform.dx, xform.dy)
     }
 
@@ -355,11 +354,11 @@ impl Player {
     }
 
     pub fn get_cur_hp(&self) -> f64 {
-        self.su_common.as_ref().unwrap().get_cur_hp()
+        self.su_common.get_cur_hp()
     }
 
     pub fn get_max_hp(&self) -> f64 {
-        self.su_common.as_ref().unwrap().get_max_hp()
+        self.su_common.get_max_hp()
     }
 
     pub fn get_cur_mana(&self) -> f64 {
@@ -484,7 +483,7 @@ impl Player {
     }
 
     pub fn set_floor_take_damage_mult(&mut self, mult: f64) {
-        self.su_common.as_mut().unwrap().set_floor_take_damage_mult(mult);
+        self.su_common.set_floor_take_damage_mult(mult);
     }
 }
 

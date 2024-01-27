@@ -305,6 +305,10 @@ impl StandardUnitCommon {
         self.unit_age
     }
 
+    pub fn player_move_rooms(&mut self, new_ro_ref: RofizObjectRef) {
+        self.ro_ref = Some(new_ro_ref);
+    }
+
     pub fn end_act1(&mut self, rofiz: &mut RofizState) {
         assert!(self.act1_started, "cannot call standard_unit_common::end_act1() before act1 has started");
 
