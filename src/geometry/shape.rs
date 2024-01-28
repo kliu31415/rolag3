@@ -301,6 +301,10 @@ impl BoundingBox {
         ((b2.x1 >= b1.x1 && b2.x1 <= b1.x2) || (b1.x1 >= b2.x1 && b1.x1 <= b2.x2)) &&
         ((b2.y1 >= b1.y1 && b2.y1 <= b1.y2) || (b1.y1 >= b2.y1 && b1.y1 <= b2.y2))
     }
+
+    pub fn contains(&self, other: &BoundingBox) -> bool {
+        self.x1 <= other.x1 && self.x2 >= other.x2 && self.y1 <= other.y1 && self.y2 >= other.y2
+    }
 }
 
 #[derive(Debug, Copy, Clone)]

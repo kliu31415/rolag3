@@ -9,7 +9,7 @@ use super::weapon_def::{Weapon, WeaponHandleTickContext, WeaponHandleTickRespons
 
 const NAME: &str = "Ruby Rockets";
 const SHOP_DESCRIPTION: &str = "Fires exploding rockets at a moderate pace
-Special attack: fires a radial wave of 64 rockets";
+Special attack (Rocket Rain): fires a radial wave of 64 rockets";
 const STARTING_AMMO: f64 = 1e2;
 const BUY_AMMO_INFO: BuyAmmoInfo = BuyAmmoInfo { ammo_amount: 50.0, starcash_cost: 5.0 };
 

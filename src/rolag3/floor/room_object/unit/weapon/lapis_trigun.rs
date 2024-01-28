@@ -10,7 +10,7 @@ use super::weapon_def::{Weapon, WeaponHandleTickResponse, WeaponHandleTickContex
 
 const NAME: &str = "Lapis Trigun";
 const SHOP_DESCRIPTION: &str = "Fires waves of three projectiles. 
-Has a special attack that ejects a radial wave of 128 projectiles";
+Special attack (Gem Storm): ejects a radial wave of 128 projectiles";
 const STARTING_AMMO: f64 = 1e2;
 const BUY_AMMO_INFO: BuyAmmoInfo = BuyAmmoInfo { ammo_amount: 100.0, starcash_cost: 2.0 };
 

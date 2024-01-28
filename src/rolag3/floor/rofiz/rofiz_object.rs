@@ -89,24 +89,15 @@ impl RofizObjMovable {
     }
 
     pub fn overlaps_ro_wall(&self, other: &RofizObjBasicWall) -> bool {
-        if !BoundingBox::overlap(&self.bounding_box, &other.bounding_box) {
-            return false;
-        }
-        shapes_overlap(&self.temp_hitbox, &other.shape)
+        shapes_overlap(&self.temp_hitbox, &self.bounding_box, &other.shape, &other.bounding_box)
     }
 
     pub fn initial_overlaps_ro_movable(&self, other: &RofizObjMovable) -> bool {
-        if !BoundingBox::overlap(&self.bounding_box, &other.bounding_box) {
-            return false;
-        }
-        shapes_overlap(&self.initial_hitbox, &other.temp_hitbox)
+        shapes_overlap(&self.initial_hitbox, &self.bounding_box, &other.temp_hitbox, &other.bounding_box)
     }
     
     pub fn overlaps_ro_movable(&self, other: &RofizObjMovable) -> bool {
-        if !BoundingBox::overlap(&self.bounding_box, &other.bounding_box) {
-            return false;
-        }
-        shapes_overlap(&self.temp_hitbox, &other.temp_hitbox)
+        shapes_overlap(&self.temp_hitbox, &self.bounding_box, &other.temp_hitbox, &other.bounding_box)
     }
 
     pub fn officially_move(&mut self) {
