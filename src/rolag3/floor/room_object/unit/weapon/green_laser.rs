@@ -8,6 +8,7 @@ use super::weapon_def::{WeaponHandleTickContext, Weapon, WeaponHandleTickRespons
 
 const NAME: &str = "Green Laser";
 const SHOP_DESCRIPTION: &str = "Shoots a rapid, continuous laser beam";
+const SHOP_COST: u64 = 50;
 const STARTING_AMMO: f64 = 1e4;
 const BUY_AMMO_INFO: BuyAmmoInfo = BuyAmmoInfo { ammo_amount: 1000.0, starcash_cost: 5.0 };
 
@@ -24,8 +25,10 @@ pub fn new_weapon_green_laser() -> Weapon {
         since_last_primary_attack: PRIMARY_ATTACK_INTERVAL,
     });
     Weapon::new(
+        DamageColor::Green,
         NAME,
         SHOP_DESCRIPTION,
+        SHOP_COST,
         STARTING_AMMO,
         Some(BUY_AMMO_INFO),
         ws_data, 

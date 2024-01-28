@@ -14,6 +14,7 @@ use crate::{gfx::{self, window::{Window, EventHandler}, renderer::{ColorRGBA32f,
 
 use super::between_floors_shop::run::{RunFrameBfshopContext, run_frame_between_floors_shop, MouseButtonAction, RunFrameBfshopResponse};
 use super::floor::room_object::unit::player::Player;
+use super::floor::room_object::unit::weapon::crimson_shotgun::new_weapon_crimson_shotgun;
 use super::floor::{draw::{DrawFloorContext, get_draw_floor_ops}, run::{RunFloorContext, run_floor_frame, PlayerInput, PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, floor_def::Floor};
 use super::r3run::{R3Run, R3RunState};
 
@@ -131,7 +132,11 @@ impl Rolag3EventHandler {
             frame_timestamps: VecDeque::new(),
             r3run: R3Run {
                 player,
-                state: R3RunState::BetweenFloorsShop { prev_lmb_down_xy: None, shop_state: ShopState::Root },
+                state: R3RunState::BetweenFloorsShop {
+                    prev_lmb_down_xy: None,
+                    shop_state: ShopState::Root,
+                    shop_weapons: vec![new_weapon_crimson_shotgun()],
+                },
                 cur_floor_num: 0,
             },
             rng,
@@ -290,12 +295,20 @@ impl Rolag3EventHandler {
         if rff_response.floor_finished {
             log::warn!("finished floor. Moving to shop");
             self.r3run.cur_floor_num += 1;
-            self.r3run.state = R3RunState::BetweenFloorsShop{ prev_lmb_down_xy: None, shop_state: ShopState::Root };
+            self.r3run.state = R3RunState::BetweenFloorsShop {
+                prev_lmb_down_xy: None, 
+                shop_state: ShopState::Root,
+                shop_weapons: vec![new_weapon_crimson_shotgun()],
+            };
         }
     }
 
     fn run_frame_between_floors_shop(&mut self, window: &mut dyn Window) {
-        let R3RunState::BetweenFloorsShop { prev_lmb_down_xy, shop_state } = &mut self.r3run.state else {panic!("R3RunState is not BetweenFloorsShop")};
+        let R3RunState::BetweenFloorsShop { 
+            prev_lmb_down_xy, 
+            shop_state, 
+            shop_weapons,
+        } = &mut self.r3run.state else {panic!("R3RunState is not BetweenFloorsShop")};
 
         // enclose this block in its own scope to ensure all borrows it uses are dropped. In particular, the borrow
         // of player needs to be dropped, because Floor::new...() borrows the player mutably.
@@ -318,6 +331,7 @@ impl Rolag3EventHandler {
                 shop_state,
                 lmb_actions: lmb_input,
                 player: &mut *self.r3run.player.borrow_mut(),
+                shop_weapons,
             };
             response = run_frame_between_floors_shop(bfshop_ctx);
         }

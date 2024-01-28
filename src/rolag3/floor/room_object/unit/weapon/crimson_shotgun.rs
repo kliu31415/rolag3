@@ -9,6 +9,7 @@ use super::weapon_def::{Weapon, WeaponHandleTickContext, WeaponHandleTickRespons
 
 const NAME: &str = "Crimson Shotgun";
 const SHOP_DESCRIPTION: &str = "Fires waves of three projectiles";
+const SHOP_COST: u64 = 10;
 const STARTING_AMMO: f64 = 1e3;
 const BUY_AMMO_INFO: BuyAmmoInfo = BuyAmmoInfo { ammo_amount: 100.0, starcash_cost: 2.0 };
 
@@ -26,8 +27,10 @@ pub fn new_weapon_crimson_shotgun() -> Weapon {
         since_last_primary_attack: PRIMARY_ATTACK_INTERVAL,
     });
     Weapon::new(
+        DamageColor::Red,
         NAME,
         SHOP_DESCRIPTION,
+        SHOP_COST,
         STARTING_AMMO,
         Some(BUY_AMMO_INFO),
         ws_data, 

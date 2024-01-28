@@ -1,10 +1,12 @@
 use std::any::Any;
 
-use crate::{gfx::{window::Window, renderer::{ColorRGBA32f, DrawOpWithMetadata, DrawOp, DrawOpGroup, Rect}}, rolag3::{floor::room_object::unit::player::Player, gui::{element::{KuiButtonBuilder, KuiButtonBuilderReq, kui_tree_run_frame, KuiTreeRunFrameArgs, KuiElement, KesData, KuiButtonTextAlign, KuiCustomFn, KuiSection}, starcash::get_starcash_star_value_dops, fillable_bar::{DrawFillableBarArgs, get_draw_fillable_bar_ops}}}};
+use crate::{gfx::{window::Window, renderer::{ColorRGBA32f, DrawOpWithMetadata, DrawOp, DrawOpGroup, Rect}}, rolag3::{floor::room_object::unit::{player::Player, weapon::weapon_def::Weapon}, gui::{element::{KuiButtonBuilder, KuiButtonBuilderReq, kui_tree_run_frame, KuiTreeRunFrameArgs, KuiElement, KesData, KuiButtonTextAlign, KuiCustomFn, KuiSection}, starcash::get_starcash_star_value_dops, fillable_bar::{DrawFillableBarArgs, get_draw_fillable_bar_ops}}}};
 
-const LOWER_THIRD_Y_FRAC: f32 = 0.75;
-const LOWER_THIRD_NAME_Y_FRAC: f32 = 0.04;
-const LOWER_THIRD_BORDER_PX_FRAC: f32 = 0.005;
+const DESC_BOX_Y_FRAC: f32 = 0.75;
+const DESC_BOX_NAME_Y_FRAC: f32 = 0.04;
+const DESC_BOX_BORDER_PX_FRAC: f32 = 0.005;
+
+const SHOP_SECTION_Y_FRAC: f32 = 0.4;
 
 pub enum MouseButtonAction {
     Down(f64, f64),
@@ -18,6 +20,7 @@ pub struct RunFrameBfshopContext<'a> {
     pub shop_state: &'a mut ShopState,
     pub lmb_actions: Vec<MouseButtonAction>,
     pub player: &'a mut Player,
+    pub shop_weapons: &'a mut Vec<Weapon>,
 }
 
 pub struct RunFrameBfshopResponse {
@@ -25,10 +28,102 @@ pub struct RunFrameBfshopResponse {
 }
 
 pub fn run_frame_between_floors_shop(ctx: RunFrameBfshopContext) -> RunFrameBfshopResponse {
-    let w = ctx.window.get_width() as f32;
+    let _w = ctx.window.get_width() as f32;
     let h = ctx.window.get_height() as f32;
 
     let mut start_floor = false;
+
+    let main_header_section = get_shop_ui_main_header(&ctx);
+    let inventory_header = get_shop_ui_inventory_header(&ctx, main_header_section.rect.h);
+    let weapon_inventory_section = get_shop_ui_weapon_inventory(&ctx, inventory_header.rect.y + inventory_header.rect.h);
+    let shop_header = get_shop_ui_shop_header(&ctx, h * SHOP_SECTION_Y_FRAC);
+    let shop_weapons = get_shop_ui_shop_weapons(&ctx, shop_header.rect.y + shop_header.rect.h);
+    let description_box_section = get_shop_ui_description_box(&ctx, h * DESC_BOX_Y_FRAC);
+
+    let elements = [main_header_section].into_iter()
+        .chain([inventory_header].into_iter())
+        .chain([weapon_inventory_section].into_iter())
+        .chain([shop_header].into_iter())
+        .chain([shop_weapons].into_iter())
+        .chain([description_box_section].into_iter())
+        .collect::<Box<_>>();
+
+    let mut lmb_click_locations = Vec::new();
+    for lmba in ctx.lmb_actions {
+        match lmba {
+            MouseButtonAction::Down(x, y) => {
+                *ctx.prev_lmb_down_xy = Some((x, y));
+            }
+            MouseButtonAction::Up(x, y) => {
+                // this "if let Some" block should almost always get it. It only doesn't get hit if the previous
+                // lmb press wasn't recorded, which can happen if the lmb press happened in a different window or
+                // before R3Run enters the shop state.
+                if let Some((down_x, down_y)) = *ctx.prev_lmb_down_xy {
+                    lmb_click_locations.push(((down_x as f32, down_y as f32), (x as f32, y as f32)));
+                }
+                *ctx.prev_lmb_down_xy = None;
+            }
+        }
+    }
+
+    let button_id_selected = if let ShopState::ButtonSelected(id) = ctx.shop_state {
+        Some(Box::new(id.clone()) as _)
+    } else {
+        None
+    };
+
+    let lmb_currently_down_location = if let Some((x, y)) = ctx.prev_lmb_down_xy {
+        Some((*x as f32, *y as f32))
+    } else {
+        None
+    };
+
+    let kui_args = KuiTreeRunFrameArgs {
+        x: 0.0,
+        y: 0.0,
+        button_id_selected: &button_id_selected,
+        button_id_eq_fn: &button_id_eq,
+        elements: &elements,
+        mouse_xy: (ctx.mouse_xy.0 as f32, ctx.mouse_xy.1 as f32),
+        lmb_currently_down_location,
+        lmb_click_locations: lmb_click_locations.as_slice(),
+    };
+    let mut kui_response = kui_tree_run_frame(&kui_args);
+    kui_response.clicked_button_ids.sort_by_key(|x| x.0);
+    for (_, cbid_any) in kui_response.clicked_button_ids {
+        let cbid = cbid_any.downcast_ref::<ButtonId>().unwrap();
+        match cbid {
+            ButtonId::NextFloor => {
+                start_floor = true;
+            },
+            ButtonId::InventoryWeapon {..} | ButtonId::ShopWeapon { .. } => {
+                *ctx.shop_state = ShopState::ButtonSelected(*cbid);
+            },
+            ButtonId::BuyAmmo { idx } => {
+                ctx.player.try_buy_weapon_ammo(*idx);
+            },
+            ButtonId::BuyWeapon { idx } => {
+                if ctx.player.try_buy_shop_weapon(ctx.shop_weapons, *idx) {
+                    *ctx.shop_state = ShopState::Root;
+                }
+            },
+        };
+    }
+
+    let mut draw_ops = Vec::new();
+    draw_ops.push(kui_response.draw_op);
+    ctx.window.get_renderer().draw(DrawOpWithMetadata::new(0.0, DrawOp::Group(DrawOpGroup::new(draw_ops.into()))));
+    let res = ctx.window.get_renderer().present(ColorRGBA32f{r: 0.0, g: 0.0, b: 0.0, a: 1.0});
+    if let Err(e) = res { log::error!("error when calling renderer.present(): {}", e) }
+
+    RunFrameBfshopResponse {
+        move_to_next_floor: start_floor,
+    }
+}
+
+fn get_shop_ui_main_header(ctx: &RunFrameBfshopContext) -> KuiElement {
+    let w = ctx.window.get_width() as f32;
+    let h = ctx.window.get_height() as f32;
 
     let header_h = 0.06 * h;
     let mut header_section = KuiElement {
@@ -131,26 +226,70 @@ pub fn run_frame_between_floors_shop(ctx: RunFrameBfshopContext) -> RunFrameBfsh
     };
     header_section.children.push(mana_bar_dop);
 
+    header_section
+}
+
+fn get_shop_ui_inventory_header(ctx: &RunFrameBfshopContext, y: f32) -> KuiElement {
+    let w = ctx.window.get_width() as f32;
+    let h = ctx.window.get_height() as f32;
+
+    let section_h = 0.06 * h;
+    let mut text_section = KuiElement {
+        rect: Rect::new(0.0, y, w, section_h),
+        children: Vec::new(),
+        kes_data: KesData::Button(KuiButtonBuilder::new(KuiButtonBuilderReq{})
+            .text("INVENTORY".to_owned())
+            .font_size(0.8 * section_h)
+            .text_color(ColorRGBA32f::new(1.0, 1.0, 1.0, 1.0))
+            .build()
+        )
+    };
+
+    let left_divider = KuiElement {
+        rect: Rect::new(0.0, 0.4 * section_h, 0.4 * w, 0.2 * section_h),
+        children: Vec::new(),
+        kes_data: KesData::Section(KuiSection {
+            color: Some(ColorRGBA32f::new(0.3, 0.3, 0.3, 1.0)),
+        })
+    };
+
+    let right_divider = KuiElement {
+        rect: Rect::new(0.6 * w, 0.4 * section_h, 0.4 * w, 0.2 * section_h),
+        children: Vec::new(),
+        kes_data: KesData::Section(KuiSection {
+            color: Some(ColorRGBA32f::new(0.3, 0.3, 0.3, 1.0)),
+        })
+    };
+
+    text_section.children = vec![left_divider, right_divider];
+
+    text_section
+}
+
+fn get_shop_ui_weapon_inventory(ctx: &RunFrameBfshopContext, y: f32) -> KuiElement {
+    let w = ctx.window.get_width() as f32;
+    let h = ctx.window.get_height() as f32;
+
     let mut weapon_inventory_section = KuiElement {
-        rect: Rect::new(0.03 * w, header_h, w, 0.25 * h),
+        rect: Rect::new(0.03 * w, y, w, 0.25 * h),
         children: Vec::new(),
         kes_data: KesData::Section(KuiSection { color: None }),
     };
-    let title_y = 0.05 * h;
+    let title_y_buffer = 0.04 * h;
     let weapon_title = KuiElement {
-        rect: Rect::new(0.0, 0.95 * title_y, 0.0, 0.0),
+        rect: Rect::new(0.0, 0.9 * title_y_buffer, 0.0, 0.0),
         children: Vec::new(),
         kes_data: KesData::Button(KuiButtonBuilder::new(KuiButtonBuilderReq {  })
             .text("Weapons".to_owned())
             .text_align(KuiButtonTextAlign::BottomLeft)
-            .font_size(0.8 * title_y)
+            .font_size(title_y_buffer)
             .text_color(ColorRGBA32f::new(1.0, 1.0, 1.0, 1.0))
             .build()
         ),
     };
     weapon_inventory_section.children.push(weapon_title);
     let weapon_rects: [Rect; 3] = std::array::from_fn(|i| {
-        Rect::new(0.0, title_y + (0.065 * i as f32) * h, 0.12 * w, 0.05 * h)
+        Rect::new(0.0, title_y_buffer + (0.065 * i as f32) * h, 0.12 * w, 0.05 * h)
     });
     let colors = [
         ColorRGBA32f::new(1.0, 0.01, 0.01, 1.0),
@@ -166,15 +305,14 @@ pub fn run_frame_between_floors_shop(ctx: RunFrameBfshopContext) -> RunFrameBfsh
             .border_color(ColorRGBA32f::new(0.1, 0.1, 0.1, 1.0))
             .border_color_on_press(ColorRGBA32f::new(1.1, 1.1, 0.1, 1.0))
             .border_color_on_hover(ColorRGBA32f::new(1.0, 1.0, 0.3, 1.0))
-            .border_color_while_selected(ColorRGBA32f::new(0.8, 0.8, 0.8, 1.0))
+            .border_color_while_selected(ColorRGBA32f::new(0.1, 1.0, 1.0, 1.0))
             .build();
 
         let mut children = Vec::new();
         let background_color = ColorRGBA32f::new(0.0, 0.0, 0.0, 0.0);
         let ammo_text_color = colors[i];
         let buffer_px = 0.1 * weapon_rects[i].h;
-        let dop = ctx.player.get_weapon_draw_op(
-            i, 
+        let dop = ctx.player.get_weapon(i).draw(
             background_color, 
             ammo_text_color, 
             weapon_rects[i].x + buffer_px + weapon_inventory_section.rect.x, 
@@ -199,8 +337,126 @@ pub fn run_frame_between_floors_shop(ctx: RunFrameBfshopContext) -> RunFrameBfsh
         }
     });
     weapon_buttons.into_iter().for_each(|x| weapon_inventory_section.children.push(x));
-    
-    let border_px = LOWER_THIRD_BORDER_PX_FRAC * f32::sqrt(w*h);
+
+    weapon_inventory_section
+}
+
+fn get_shop_ui_shop_header(ctx: &RunFrameBfshopContext, y: f32) -> KuiElement {
+    let w = ctx.window.get_width() as f32;
+    let h = ctx.window.get_height() as f32;
+
+    let section_h = 0.06 * h;
+    let mut text_section = KuiElement {
+        rect: Rect::new(0.0, y, w, section_h),
+        children: Vec::new(),
+        kes_data: KesData::Button(KuiButtonBuilder::new(KuiButtonBuilderReq{})
+            .text("SHOP".to_owned())
+            .font_size(0.8 * section_h)
+            .text_color(ColorRGBA32f::new(1.0, 1.0, 1.0, 1.0))
+            .build()
+        )
+    };
+
+    let left_divider = KuiElement {
+        rect: Rect::new(0.0, 0.4 * section_h, 0.4 * w, 0.2 * section_h),
+        children: Vec::new(),
+        kes_data: KesData::Section(KuiSection {
+            color: Some(ColorRGBA32f::new(0.3, 0.3, 0.3, 1.0)),
+        })
+    };
+
+    let right_divider = KuiElement {
+        rect: Rect::new(0.6 * w, 0.4 * section_h, 0.4 * w, 0.2 * section_h),
+        children: Vec::new(),
+        kes_data: KesData::Section(KuiSection {
+            color: Some(ColorRGBA32f::new(0.3, 0.3, 0.3, 1.0)),
+        })
+    };
+
+    text_section.children = vec![left_divider, right_divider];
+
+    text_section
+}
+
+fn get_shop_ui_shop_weapons(ctx: &RunFrameBfshopContext, y: f32) -> KuiElement {
+    let w = ctx.window.get_width() as f32;
+    let h = ctx.window.get_height() as f32;
+
+    let mut weapon_inventory_section = KuiElement {
+        rect: Rect::new(0.03 * w, y, w, 0.25 * h),
+        children: Vec::new(),
+        kes_data: KesData::Section(KuiSection { color: None }),
+    };
+    let title_y_buffer = 0.04 * h;
+    let weapon_title = KuiElement {
+        rect: Rect::new(0.0, 0.9 * title_y_buffer, 0.0, 0.0),
+        children: Vec::new(),
+        kes_data: KesData::Button(KuiButtonBuilder::new(KuiButtonBuilderReq {  })
+            .text("Weapons".to_owned())
+            .text_align(KuiButtonTextAlign::BottomLeft)
+            .font_size(title_y_buffer)
+            .text_color(ColorRGBA32f::new(1.0, 1.0, 1.0, 1.0))
+            .build()
+        ),
+    };
+    weapon_inventory_section.children.push(weapon_title);
+    let weapon_rects: [Rect; 3] = std::array::from_fn(|i| {
+        Rect::new(0.0, title_y_buffer + (0.065 * i as f32) * h, 0.12 * w, 0.05 * h)
+    });
+    let colors = [
+        ColorRGBA32f::new(1.0, 0.01, 0.01, 1.0),
+        ColorRGBA32f::new(0.0, 1.0, 0.0, 1.0),
+        ColorRGBA32f::new(0.07, 0.07, 1.0, 1.0),
+    ];
+    let weapon_buttons = ctx.shop_weapons.iter().enumerate().map(|(i, weapon)| {
+        let border_thickness = 0.003 * f32::sqrt(w * h);
+        let main_button = KuiButtonBuilder::new(KuiButtonBuilderReq {})
+            .click_id_fn(Box::new(move || Box::new(ButtonId::ShopWeapon { idx: i })))
+            .color(ColorRGBA32f::new(0.01, 0.01, 0.01, 1.0))
+            .border_thickness(border_thickness)
+            .border_color(ColorRGBA32f::new(0.1, 0.1, 0.1, 1.0))
+            .border_color_on_press(ColorRGBA32f::new(1.1, 1.1, 0.1, 1.0))
+            .border_color_on_hover(ColorRGBA32f::new(1.0, 1.0, 0.3, 1.0))
+            .border_color_while_selected(ColorRGBA32f::new(0.1, 1.0, 1.0, 1.0))
+            .build();
+
+        let mut children = Vec::new();
+        let background_color = ColorRGBA32f::new(0.0, 0.0, 0.0, 0.0);
+        let ammo_text_color = colors[i];
+        let buffer_px = 0.1 * weapon_rects[i].h;
+        let dop = weapon.draw(
+            background_color, 
+            ammo_text_color, 
+            weapon_rects[i].x + buffer_px + weapon_inventory_section.rect.x, 
+            weapon_rects[i].y + buffer_px + weapon_inventory_section.rect.y, 
+            weapon_rects[i].w - 2.0 * buffer_px, 
+            weapon_rects[i].h - 2.0 * buffer_px,
+        );
+        let wd_op = KuiCustomFn {
+            f: Box::new(move |_| Some(dop.clone())),
+        };
+        let wd_kui_element = KuiElement {
+            rect: Rect::new(buffer_px, buffer_px, 0.0, 0.0),
+            children: Vec::new(),
+            kes_data: KesData::CustomFn(wd_op),
+        };
+        children.push(wd_kui_element);
+
+        KuiElement {
+            rect: weapon_rects[i],
+            children,
+            kes_data: KesData::Button(main_button)
+        }
+    });
+    weapon_buttons.into_iter().for_each(|x| weapon_inventory_section.children.push(x));
+
+    weapon_inventory_section
+}
+
+fn get_shop_ui_description_box(ctx: &RunFrameBfshopContext, y: f32) -> KuiElement {
+    let w = ctx.window.get_width() as f32;
+    let h = ctx.window.get_height() as f32;
+    let border_px = DESC_BOX_BORDER_PX_FRAC * f32::sqrt(w * h);
     let border_color = if !matches!(ctx.shop_state, ShopState::Root) {
         ColorRGBA32f::new(1.0, 1.0, 1.0, 1.0)
     } else {
@@ -216,7 +472,7 @@ pub fn run_frame_between_floors_shop(ctx: RunFrameBfshopContext) -> RunFrameBfsh
         .border_color(border_color)
         .build();
     let mut description_box = KuiElement {
-        rect: Rect::new(0.0, h * LOWER_THIRD_Y_FRAC, w, h * (1.0 - LOWER_THIRD_Y_FRAC)),
+        rect: Rect::new(0.0, y, w, h - y),
         children: Vec::new(),
         kes_data: KesData::Button(description_box),
     };
@@ -224,13 +480,19 @@ pub fn run_frame_between_floors_shop(ctx: RunFrameBfshopContext) -> RunFrameBfsh
         ShopState::Root => {
             None
         },
-        ShopState::ButtonSelected(cb_id) => {
+        ShopState::ButtonSelected(ref cb_id) => {
             match cb_id {
                 ButtonId::InventoryWeapon { idx } => {
                     // TODO: use multiline text rasterization to ensure text wraps around automatically
-                    let name = ctx.player.get_weapon_name(*idx).to_owned();
+                    let name = ctx.player.get_weapon(*idx).name.to_owned();
                     let color = colors[*idx];
-                    let description = ctx.player.get_weapon_shop_description(*idx).to_owned();
+                    let description = ctx.player.get_weapon(*idx).shop_description.to_owned();
+                    Some((name, color, description))
+                },
+                ButtonId::ShopWeapon { idx } => {
+                    let name = ctx.shop_weapons[*idx].name.to_owned();
+                    let color = colors[*idx];
+                    let description = ctx.shop_weapons[*idx].shop_description.to_owned();
                     Some((name, color, description))
                 }
                 _ => panic!("unexpected ShopState::ButtonSelected button id: {:?}", cb_id)
@@ -241,7 +503,7 @@ pub fn run_frame_between_floors_shop(ctx: RunFrameBfshopContext) -> RunFrameBfsh
         let name_kes = KuiButtonBuilder::new(KuiButtonBuilderReq {})
             .text(name)
             .text_align(KuiButtonTextAlign::TopLeft)
-            .font_size(0.85 * LOWER_THIRD_NAME_Y_FRAC * f32::sqrt(w * h))
+            .font_size(0.85 * DESC_BOX_NAME_Y_FRAC * f32::sqrt(w * h))
             .text_color(name_color)
             .build();
         description_box.children.push(KuiElement {
@@ -253,13 +515,13 @@ pub fn run_frame_between_floors_shop(ctx: RunFrameBfshopContext) -> RunFrameBfsh
         let description_kes = KuiButtonBuilder::new(KuiButtonBuilderReq {})
             .text(description)
             .text_align(KuiButtonTextAlign::TopLeft)
-            .font_size(0.7 * LOWER_THIRD_NAME_Y_FRAC * f32::sqrt(w * h))
+            .font_size(0.7 * DESC_BOX_NAME_Y_FRAC * f32::sqrt(w * h))
             .text_color(ColorRGBA32f::new(1.0, 1.0, 1.0, 1.0))
             .build();
         description_box.children.push(KuiElement {
             rect: Rect::new(
                 buffer_px,
-                buffer_px + LOWER_THIRD_NAME_Y_FRAC * f32::sqrt(w * h), 
+                buffer_px + DESC_BOX_NAME_Y_FRAC * f32::sqrt(w * h), 
                 0.0, 
                 0.0,
             ),
@@ -267,12 +529,14 @@ pub fn run_frame_between_floors_shop(ctx: RunFrameBfshopContext) -> RunFrameBfsh
             kes_data: KesData::Button(description_kes),
         });
     }
-    let buy_ammo_button = if let ShopState::ButtonSelected(ButtonId::InventoryWeapon { idx }) = ctx.shop_state {
-        let bai = ctx.player.get_weapon_buy_ammo_info(*idx);
+
+    let lower_y_border_px = DESC_BOX_BORDER_PX_FRAC * f32::sqrt(w * h);
+
+    let buy_ammo_button = if let ShopState::ButtonSelected(ButtonId::InventoryWeapon { ref idx }) = ctx.shop_state {
+        let bai = &ctx.player.get_weapon(*idx).buy_ammo_info;
         if let Some(bai) = bai {
-            let lower_y_border_px = LOWER_THIRD_BORDER_PX_FRAC * f32::sqrt(w * h);
             let button_w = 0.18 * w;
-            let button_h = LOWER_THIRD_NAME_Y_FRAC * h;
+            let button_h = DESC_BOX_NAME_Y_FRAC * h;
             let rect = Rect::new(w - lower_y_border_px - button_w, lower_y_border_px, button_w, button_h);
             let border_thickness = 0.002 * f32::sqrt(w * h);
 
@@ -301,84 +565,71 @@ pub fn run_frame_between_floors_shop(ctx: RunFrameBfshopContext) -> RunFrameBfsh
     };
     buy_ammo_button.into_iter().for_each(|x| description_box.children.push(x));
 
-    let elements = [header_section].into_iter()
-        .chain([weapon_inventory_section].into_iter())
-        .chain([description_box].into_iter())
-        .collect::<Box<_>>();
-
-    let mut lmb_click_locations = Vec::new();
-    for lmba in ctx.lmb_actions {
-        match lmba {
-            MouseButtonAction::Down(x, y) => {
-                *ctx.prev_lmb_down_xy = Some((x, y));
-            }
-            MouseButtonAction::Up(x, y) => {
-                // this "if let Some" block should almost always get it. It only doesn't get hit if the previous
-                // lmb press wasn't recorded, which can happen if the lmb press happened in a different window or
-                // before R3Run enters the shop state.
-                if let Some((down_x, down_y)) = *ctx.prev_lmb_down_xy {
-                    lmb_click_locations.push(((down_x as f32, down_y as f32), (x as f32, y as f32)));
-                }
-                *ctx.prev_lmb_down_xy = None;
-            }
-        }
-    }
-
-    let button_id_selected = if let ShopState::ButtonSelected(id) = ctx.shop_state {
-        Some(Box::new(id.clone()) as _)
-    } else {
-        None
-    };
-
-    let lmb_currently_down_location = if let Some((x, y)) = ctx.prev_lmb_down_xy {
-        Some((*x as f32, *y as f32))
-    } else {
-        None
-    };
-
-    let kui_args = KuiTreeRunFrameArgs {
-        x: 0.0,
-        y: 0.0,
-        button_id_selected: &button_id_selected,
-        button_id_eq_fn: &button_id_eq,
-        elements: &elements,
-        mouse_xy: (ctx.mouse_xy.0 as f32, ctx.mouse_xy.1 as f32),
-        lmb_currently_down_location,
-        lmb_click_locations: lmb_click_locations.as_slice(),
-    };
-    let mut kui_response = kui_tree_run_frame(&kui_args);
-    kui_response.clicked_button_ids.sort_by_key(|x| x.0);
-    for (_, cbid_any) in kui_response.clicked_button_ids {
-        let cbid = cbid_any.downcast_ref::<ButtonId>().unwrap();
-        match cbid {
-            ButtonId::NextFloor => {
-                start_floor = true;
-            },
-            ButtonId::InventoryWeapon { .. } => {
-                *ctx.shop_state = ShopState::ButtonSelected(*cbid);
-            },
-            ButtonId::BuyAmmo { idx } => {
-                ctx.player.try_buy_weapon_ammo(*idx);
-            },
+    let buy_weapon_ammo_desc = if let ShopState::ButtonSelected(ButtonId::ShopWeapon { ref idx }) = ctx.shop_state {
+        let bai = &ctx.shop_weapons[*idx].buy_ammo_info;
+        let text  = if let Some(bai) = bai {
+            format!("Ammo Cost: {} / {} Starcash", bai.ammo_amount, bai.starcash_cost)
+        } else {
+            format!("Ammo is Free")
         };
-    }
+        let button_w = 0.18 * w;
+        let button_h = DESC_BOX_NAME_Y_FRAC * h;
+        let rect = Rect::new(w - lower_y_border_px - button_w, lower_y_border_px, button_w, button_h);
+        let border_thickness = 0.002 * f32::sqrt(w * h);
 
-    let mut draw_ops = Vec::new();
-    draw_ops.push(kui_response.draw_op);
-    ctx.window.get_renderer().draw(DrawOpWithMetadata::new(0.0, DrawOp::Group(DrawOpGroup::new(draw_ops.into()))));
-    let res = ctx.window.get_renderer().present(ColorRGBA32f{r: 0.0, g: 0.0, b: 0.0, a: 1.0});
-    if let Err(e) = res { log::error!("error when calling renderer.present(): {}", e) }
+        let button = KuiButtonBuilder::new(KuiButtonBuilderReq {})
+            .text(text)
+            .font_size(0.85 * (rect.h - 2.0 * border_thickness))
+            .text_color(ColorRGBA32f::new(1.0, 1.0, 1.0, 0.2))
+            .build();
+        Some(KuiElement {
+            rect,
+            children: Vec::new(),
+            kes_data: KesData::Button(button),
+        })
+    } else {
+        None
+    };
+    buy_weapon_ammo_desc.into_iter().for_each(|x| description_box.children.push(x));
 
-    RunFrameBfshopResponse {
-        move_to_next_floor: start_floor,
-    }
+    let buy_weapon_button = if let ShopState::ButtonSelected(ButtonId::ShopWeapon { ref idx }) = ctx.shop_state {
+        let button_w = 0.18 * w;
+        let button_h = DESC_BOX_NAME_Y_FRAC * h;
+        let rect = Rect::new((w - button_w) / 2.0, lower_y_border_px, button_w, button_h);
+        let border_thickness = 0.002 * f32::sqrt(w * h);
+        let weapon_cost = ctx.shop_weapons[*idx].shop_cost;
+        let idx_val = *idx;
+        let button = KuiButtonBuilder::new(KuiButtonBuilderReq {})
+            .click_id_fn(Box::new(move || Box::new(ButtonId::BuyWeapon { idx: idx_val })))
+            .color(ColorRGBA32f::new(0.01, 0.01, 0.01, 1.0))
+            .border_thickness(border_thickness)
+            .border_color(ColorRGBA32f::new(0.1, 0.1, 0.1, 1.0))
+            .border_color_on_press(ColorRGBA32f::new(1.1, 1.1, 0.1, 1.0))
+            .border_color_on_hover(ColorRGBA32f::new(1.0, 1.0, 0.3, 1.0))
+            .text(format!("Buy Weapon: {} Starcash", weapon_cost))
+            .font_size(0.85 * (rect.h - 2.0 * border_thickness))
+            .text_color(ColorRGBA32f::new(1.0, 1.0, 1.0, 1.0))
+            .build();
+        Some(KuiElement {
+            rect,
+            children: Vec::new(),
+            kes_data: KesData::Button(button),
+        })
+    } else {
+        None
+    };
+    buy_weapon_button.into_iter().for_each(|x| description_box.children.push(x));
+
+    description_box
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ButtonId {
     NextFloor,
     InventoryWeapon{idx: usize},
+    ShopWeapon{idx: usize},
     BuyAmmo{idx: usize},
+    BuyWeapon{idx: usize},
 }
 
 fn button_id_eq(a: &dyn Any, b: &dyn Any) -> bool {

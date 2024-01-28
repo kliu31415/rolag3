@@ -11,6 +11,7 @@ use super::weapon_def::{Weapon, WeaponHandleTickResponse, WeaponHandleTickContex
 const NAME: &str = "Lapis Trigun";
 const SHOP_DESCRIPTION: &str = "Fires waves of three projectiles. 
 Special attack (Gem Storm): ejects a radial wave of 128 projectiles";
+const SHOP_COST: u64 = 10;
 const STARTING_AMMO: f64 = 1e2;
 const BUY_AMMO_INFO: BuyAmmoInfo = BuyAmmoInfo { ammo_amount: 100.0, starcash_cost: 2.0 };
 
@@ -32,8 +33,10 @@ pub fn new_weapon_lapis_trigun() -> Weapon {
         since_last_special_attack: SPECIAL_ATTACK_COOLDOWN,
     });
     Weapon::new(
+        DamageColor::Blue,
         NAME,
         SHOP_DESCRIPTION,
+        SHOP_COST,
         STARTING_AMMO,
         Some(BUY_AMMO_INFO),
         ws_data, 

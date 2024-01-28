@@ -1,6 +1,6 @@
 use crate::{rolag3::floor::{run::{PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, draw::DrawContext, room_object::{room_object_def::{RoomObject, Act1Context, FloorCoordinate, NewRoomObjectContext, RoomObjectMetadata, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse, RoQueryUnitInfoContext, RoQueryUnitInfoResponse, HcTileContext, HcTileEffect, HcTileResponse, RoomObjApplyOperationContext, RoomObjOperation, HcStandardUnitContext, HcStandardUnitResponse, HandleRoomJustClearedContext, HcTileEffectDuration}, tiles::room_connection::Direction, damage::DamageColor, unit::{standard_unit_common::{BudebExpiry, BudebTractionMult, BudebTractionCap}, weapon::crimson_shotgun::new_weapon_crimson_shotgun}}, rofiz::{rofiz_object::{Hitbox, Transformation}, rofiz_state::RofizState}, room::RoomConnectionInfo}, geometry::shape::{Shape, Point}, gfx::{renderer::{DrawOp, DrawOpGroup, ColorRGBA32f, DrawOpText, DrawTextPosition}, draw_op_util::draw_op_rect, text::font::Font}};
 
-use super::{Unit, standard_unit_common::{StandardUnitCommon, Budeb, BudebMaxSpeed, TranslateMove, PolarForce}, weapon::{weapon_def::{Weapon, WeaponHandleTickContext, DrawWeaponHudContext, DrawWeaponOnOwnerContext, BuyAmmoInfo}, green_laser::new_weapon_green_laser, lapis_trigun::new_weapon_lapis_trigun, ruby_rockets::new_weapon_ruby_rockets}, active_item::{active_item_def::{ActiveItem, ActiveItemHandleTickContext}, clear_enemy_projectiles::new_active_item_clear_projectiles, slow_enemy_time::new_active_item_slow_enemy_time}};
+use super::{Unit, standard_unit_common::{StandardUnitCommon, Budeb, BudebMaxSpeed, TranslateMove, PolarForce}, weapon::{weapon_def::{Weapon, WeaponHandleTickContext, DrawWeaponHudContext, DrawWeaponOnOwnerContext}, green_laser::new_weapon_green_laser, lapis_trigun::new_weapon_lapis_trigun, ruby_rockets::new_weapon_ruby_rockets}, active_item::{active_item_def::{ActiveItem, ActiveItemHandleTickContext}, clear_enemy_projectiles::new_active_item_clear_projectiles, slow_enemy_time::new_active_item_slow_enemy_time}};
 
 pub const DEFAULT_TIRE_TRACTION: f64 = 500.0;
 
@@ -429,62 +429,15 @@ impl Player {
         DrawOp::Group(DrawOpGroup { ops: ops.into_boxed_slice() })
     }
 
-    pub fn get_weapon_draw_op(
-        &self, 
-        idx: usize, 
-        background_color: ColorRGBA32f, 
-        ammo_text_color: ColorRGBA32f,
-        x: f32, 
-        y: f32, 
-        row_width: f32,
-        row_height: f32, 
-    ) -> DrawOp {
-        let mut this_row_ops = Vec::new();
-        let background = draw_op_rect(background_color, x, y, row_width, row_height);
-        this_row_ops.push(background);
-        let buffer_px = 0.15 * row_height;
-        let inner_scale = row_height - 2.0 * buffer_px;
-
-        let dwh_ctx = DrawWeaponHudContext { 
-            scale_height: inner_scale,
-            x: x + buffer_px,
-            y: y + buffer_px,
-            ammo: self.weapons[idx].ammo,
-        };
-        let r = (self.weapons[idx].draw_hud_fn)(&dwh_ctx);
-        this_row_ops.push(r.weapon_draw_op);
-
-        let ammo_text = DrawOp::Text(DrawOpText { 
-            text: r.ammo_text.clone(), 
-            font: Font::TekoRegular,
-            color: ammo_text_color,
-            x: x + row_height, 
-            y, 
-            font_size: row_height,
-            position: DrawTextPosition::TopLeft,
-        });
-        this_row_ops.push(ammo_text);
-
-        DrawOp::Group(DrawOpGroup { ops: this_row_ops.into_boxed_slice() })
-    }
-
-    pub fn get_weapon_name(&self, weapon_idx: usize) -> &str {
-        self.weapons[weapon_idx].name
-    }
-
-    pub fn get_weapon_shop_description(&self, weapon_idx: usize) -> &str {
-        self.weapons[weapon_idx].shop_description
-    }
-
-    pub fn get_weapon_buy_ammo_info(&self, weapon_idx: usize) -> Option<&BuyAmmoInfo> {
-        self.weapons[weapon_idx].buy_ammo_info.as_ref()
+    pub fn get_weapon(&self, idx: usize) -> &Weapon {
+        &self.weapons[idx]
     }
 
     pub fn try_buy_weapon_ammo(&mut self, weapon_idx: usize) {
         let error_msg = format!("can't buy ammo for weapon(idx={}, name={}), \
             because that weapon doesn't have buyable ammo", 
             weapon_idx, 
-            self.get_weapon_name(weapon_idx),
+            self.weapons[weapon_idx].name,
         );
         let bai = self.weapons[weapon_idx].buy_ammo_info.as_ref().expect(&error_msg);
         if self.starcash >= bai.starcash_cost {
@@ -493,8 +446,28 @@ impl Player {
         }
     }
 
+    pub fn try_buy_shop_weapon(&mut self, shop_weapons: &mut Vec<Weapon>, idx: usize) -> bool{
+        if self.starcash >= shop_weapons[idx].shop_cost as f64 {
+            let weapon = shop_weapons.remove(idx);
+            self.starcash -= weapon.shop_cost as f64;
+            let weapon_idx = weapon_damage_color_to_idx(weapon.damage_color);
+            self.weapons[weapon_idx] = weapon;
+            return true;
+        }
+        false
+    }
+
     pub fn set_floor_take_damage_mult(&mut self, mult: f64) {
         self.su_common.set_floor_take_damage_mult(mult);
+    }
+}
+
+fn weapon_damage_color_to_idx(dc: DamageColor) -> usize {
+    match dc {
+        DamageColor::Red => 0,
+        DamageColor::Green => 1,
+        DamageColor::Blue => 2,
+        _ => panic!("unexpected weapon damage color {:?}", dc),
     }
 }
 

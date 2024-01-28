@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
-use crate::{rolag3::floor::{room_object::{projectile::{projectile2::{Projectile2BuilderReq, Proj2Shape, Projectile2Builder, Explosion1OnDeathFnArgs}, explosion1::{Explosion1, new_explosion1}}, damage::DamageColor, room_object_def::RoomObject}, draw::Color, rofiz::rofiz_object::Transformation}, gfx::draw_op_util::draw_op_circle, geometry::shape::{Point, Vector}};
+use crate::{rolag3::floor::{room_object::{projectile::{projectile2::{Projectile2BuilderReq, Proj2Shape, Projectile2Builder, Explosion1OnDeathFnArgs}, explosion1::{Explosion1, new_explosion1}}, damage::DamageColor, room_object_def::RoomObject}, draw::Color, rofiz::rofiz_object::Transformation}, gfx::renderer::{DrawOp, DrawOpTri, ColoredTriVertex, ColorRGBA32f, ViewSpaceCoordinate}, geometry::shape::{Point, Vector}};
 
 use super::weapon_def::{Weapon, WeaponHandleTickContext, WeaponHandleTickResponse, DrawWeaponHudContext, DrawWeaponHudResponse, DrawWeaponOnOwnerResponse, DrawWeaponOnOwnerContext, BuyAmmoInfo};
 
@@ -10,6 +10,7 @@ use super::weapon_def::{Weapon, WeaponHandleTickContext, WeaponHandleTickRespons
 const NAME: &str = "Ruby Rockets";
 const SHOP_DESCRIPTION: &str = "Fires exploding rockets at a moderate pace
 Special attack (Rocket Rain): fires a radial wave of 64 rockets";
+const SHOP_COST: u64 = 20;
 const STARTING_AMMO: f64 = 1e2;
 const BUY_AMMO_INFO: BuyAmmoInfo = BuyAmmoInfo { ammo_amount: 50.0, starcash_cost: 5.0 };
 
@@ -31,8 +32,10 @@ pub fn new_weapon_ruby_rockets() -> Weapon {
         since_last_special_attack: SPECIAL_ATTACK_COOLDOWN,
     });
     Weapon::new(
+        DamageColor::Red,
         NAME,
         SHOP_DESCRIPTION,
+        SHOP_COST,
         STARTING_AMMO,
         Some(BUY_AMMO_INFO),
         ws_data, 
@@ -133,9 +136,17 @@ fn spawn_projectile(ctx: &mut WeaponHandleTickContext, angle: f64, explosion_rad
 
 
 fn draw_hud(ctx: &DrawWeaponHudContext) -> DrawWeaponHudResponse {
-    let center = (ctx.x + ctx.scale_height / 2.0, ctx.y + ctx.scale_height / 2.0);
-    let radius = ctx.scale_height / 2.0;
-    let weapon_draw_op = draw_op_circle((&PROJ_COLOR).into(), center, radius);
+    let center = Vector::new(ctx.x + ctx.scale_height / 2.0, ctx.y + ctx.scale_height / 2.0);
+    let vertexes = PROJ_VERTEXES
+        .map(|p| Point::new(p.x * ctx.scale_height, p.y * ctx.scale_height))
+        .map(|p| p + center)
+        .map(|p| 
+            ColoredTriVertex { 
+                color: ColorRGBA32f::new(PROJ_COLOR.r, PROJ_COLOR.g, PROJ_COLOR.b, PROJ_COLOR.a), 
+                vertex: ViewSpaceCoordinate::new(p.x, p.y),
+            }
+        );
+    let weapon_draw_op = DrawOp::Tri(DrawOpTri { vertexes });
     DrawWeaponHudResponse { 
         weapon_draw_op,
         ammo_text: format!("{}", ctx.ammo),
