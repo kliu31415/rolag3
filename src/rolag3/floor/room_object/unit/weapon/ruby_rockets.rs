@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
-use crate::{rolag3::floor::{room_object::{projectile::{projectile2::{Projectile2BuilderReq, Proj2Shape, Projectile2Builder, Explosion1OnDeathFnArgs}, explosion1::{Explosion1, new_explosion1}}, damage::DamageColor}, draw::Color, rofiz::rofiz_object::Transformation}, gfx::draw_op_util::draw_op_circle, geometry::shape::{Point, Vector}};
+use crate::{rolag3::floor::{room_object::{projectile::{projectile2::{Projectile2BuilderReq, Proj2Shape, Projectile2Builder, Explosion1OnDeathFnArgs}, explosion1::{Explosion1, new_explosion1}}, damage::DamageColor, room_object_def::RoomObject}, draw::Color, rofiz::rofiz_object::Transformation}, gfx::draw_op_util::draw_op_circle, geometry::shape::{Point, Vector}};
 
 use super::weapon_def::{Weapon, WeaponHandleTickContext, WeaponHandleTickResponse, DrawWeaponHudContext, DrawWeaponHudResponse, DrawWeaponOnOwnerResponse, DrawWeaponOnOwnerContext, BuyAmmoInfo};
 
@@ -8,21 +8,27 @@ use super::weapon_def::{Weapon, WeaponHandleTickContext, WeaponHandleTickRespons
 */
 
 const NAME: &str = "Ruby Rockets";
-const SHOP_DESCRIPTION: &str = "Fires exploding rockets at a moderate pace";
+const SHOP_DESCRIPTION: &str = "Fires exploding rockets at a moderate pace
+Special attack: fires a radial wave of 64 rockets";
 const STARTING_AMMO: f64 = 1e2;
 const BUY_AMMO_INFO: BuyAmmoInfo = BuyAmmoInfo { ammo_amount: 50.0, starcash_cost: 5.0 };
 
 const PRIMARY_ATTACK_INTERVAL: f64 = 0.7;
+const SPECIAL_ATTACK_COOLDOWN: f64 = 0.5;
+const SPECIAL_ATTACK_MANA_COST: f64 = 5.0;
 const PROJ_COLOR: Color = Color::new(6.0, 0.05, 0.05, 1.0);
 const PROJ_VERTEXES: [Point; 3] = [Point::new(0.5, 0.0), Point::new(-0.3, -0.3), Point::new(-0.3, 0.3)];
+const PROJ_VELOCITY: f64 = 50.0;
 
 struct RubyRockets {
     since_last_primary_attack: f64,
+    since_last_special_attack: f64,
 }
 
 pub fn new_weapon_ruby_rockets() -> Weapon {
     let ws_data = Box::new(RubyRockets {
         since_last_primary_attack: PRIMARY_ATTACK_INTERVAL,
+        since_last_special_attack: SPECIAL_ATTACK_COOLDOWN,
     });
     Weapon::new(
         NAME,
@@ -42,6 +48,18 @@ fn handle_tick_fn(ctx: &mut WeaponHandleTickContext) -> WeaponHandleTickResponse
     response.damage_color = DamageColor::Red;
 
     ws_data.since_last_primary_attack += ctx.tick_len;
+    ws_data.since_last_special_attack += ctx.tick_len;
+
+    if ctx.special_attack && ws_data.since_last_special_attack >= SPECIAL_ATTACK_COOLDOWN && ctx.owner_mana >= SPECIAL_ATTACK_MANA_COST {
+        response.mana_delta -= SPECIAL_ATTACK_MANA_COST;
+        ws_data.since_last_special_attack = 0.0;
+        let num_proj = 64;
+        for i in 0..num_proj {
+            let angle = (i as f64) / (num_proj as f64) * 2.0 * std::f64::consts::PI;
+            response.new_room_objs.push(spawn_projectile(ctx, angle, 3.0));
+        }
+        return response;
+    }
     if !ctx.primary_attack {
         return response;
     }
@@ -51,65 +69,66 @@ fn handle_tick_fn(ctx: &mut WeaponHandleTickContext) -> WeaponHandleTickResponse
     *ctx.ammo -= 1.0;
     ws_data.since_last_primary_attack = 0.0;
 
-    let proj_velocity = 70.0;
-    for i in 0..=0 {
-        let proj_angle = f64::atan2(ctx.mouse_y - ctx.owner_xform.dy, ctx.mouse_x - ctx.owner_xform.dx);
-        let angle = proj_angle + (i as f64) * std::f64::consts::FRAC_PI_6;
-        let velocity_x = ctx.owner_velocity_x + proj_velocity * f64::cos(angle);
-        let velocity_y = ctx.owner_velocity_y + proj_velocity * f64::sin(angle);
-        let shape = Proj2Shape::TriFan { center: Point::new(0.0, 0.0), vertexes: Box::new(PROJ_VERTEXES) };
-        let new_explosion1_fn = |args: Explosion1OnDeathFnArgs| -> Explosion1 {
-            let stop_expand_at = 0.5;
-            let lifespan = 0.65;
-            assert!(stop_expand_at < lifespan);
-            let radius_fn = move |age: f64| {
-                5.0 * f64::cbrt(f64::min(1.0, age / stop_expand_at))
-            };
-            let outer_color_fn = move |age| {
-                let mut color = Color::new(10.0, 0.1, 0.1, 0.6);
-                if age > stop_expand_at {
-                    color.a *= ((lifespan - age) / (lifespan - stop_expand_at)) as f32;
-                }
-                color
-            };
-            let inner_color_fn = move |age| {
-                let mut color = Color::new(10.0, 1.0, 1.0, 0.01);
-                if age > stop_expand_at {
-                    color.a *= ((lifespan - age) / (lifespan - stop_expand_at)) as f32;
-                }
-                color
-            };
-            new_explosion1(args.nro_ctx, 
-                args.team, 
-                args.owner, 
-                DamageColor::Red, 
-                args.x, 
-                args.y, 
-                10.0, 
-                lifespan, 
-                Box::new(outer_color_fn), 
-                Box::new(inner_color_fn), 
-                Box::new(radius_fn),
-            )
-        };
-        let proj_xform: Transformation = Transformation::new(ctx.owner_xform.dx, ctx.owner_xform.dy, f64::atan2(velocity_y, velocity_x));
-        let proj = Projectile2Builder::new(
-            Projectile2BuilderReq{
-                team: ctx.owner_team,
-                damage_color: DamageColor::Red,
-                damage: 3.0,
-                owner: ctx.owner.clone(),
-                velocity_x,
-                velocity_y,
-                xform: proj_xform,
-                shape,
-                color: PROJ_COLOR,
-            }
-        ).explosion1_on_death_fn(Box::new(new_explosion1_fn))
-            .build(ctx.nro_ctx);
-        response.new_room_objs.push(Rc::new(RefCell::new(proj)));
-    }
+    let angle = f64::atan2(ctx.mouse_y - ctx.owner_xform.dy, ctx.mouse_x - ctx.owner_xform.dx);
+    let proj = spawn_projectile(ctx, angle, 4.0);
+    response.new_room_objs.push(proj);
     response
+}
+
+fn spawn_projectile(ctx: &mut WeaponHandleTickContext, angle: f64, explosion_radius: f64) -> Rc<RefCell<dyn RoomObject>> {
+    let velocity_x = ctx.owner_velocity_x + PROJ_VELOCITY * f64::cos(angle);
+    let velocity_y = ctx.owner_velocity_y + PROJ_VELOCITY * f64::sin(angle);
+    let shape = Proj2Shape::TriFan { center: Point::new(0.0, 0.0), vertexes: Box::new(PROJ_VERTEXES) };
+    let new_explosion1_fn = move |args: Explosion1OnDeathFnArgs| -> Explosion1 {
+        let stop_expand_at = 0.5;
+        let lifespan = 0.65;
+        assert!(stop_expand_at < lifespan);
+        let radius_fn = move |age: f64| {
+            explosion_radius * f64::cbrt(f64::min(1.0, age / stop_expand_at))
+        };
+        let outer_color_fn = move |age| {
+            let mut color = Color::new(10.0, 0.1, 0.1, 0.6);
+            if age > stop_expand_at {
+                color.a *= ((lifespan - age) / (lifespan - stop_expand_at)) as f32;
+            }
+            color
+        };
+        let inner_color_fn = move |age| {
+            let mut color = Color::new(10.0, 1.0, 1.0, 0.01);
+            if age > stop_expand_at {
+                color.a *= ((lifespan - age) / (lifespan - stop_expand_at)) as f32;
+            }
+            color
+        };
+        new_explosion1(args.nro_ctx, 
+            args.team, 
+            args.owner, 
+            DamageColor::Red, 
+            args.x, 
+            args.y, 
+            10.0, 
+            lifespan, 
+            Box::new(outer_color_fn), 
+            Box::new(inner_color_fn), 
+            Box::new(radius_fn),
+        )
+    };
+    let proj_xform: Transformation = Transformation::new(ctx.owner_xform.dx, ctx.owner_xform.dy, f64::atan2(velocity_y, velocity_x));
+    let proj = Projectile2Builder::new(
+        Projectile2BuilderReq{
+            team: ctx.owner_team,
+            damage_color: DamageColor::Red,
+            damage: 3.0,
+            owner: ctx.owner.clone(),
+            velocity_x,
+            velocity_y,
+            xform: proj_xform,
+            shape,
+            color: PROJ_COLOR,
+        }
+    ).explosion1_on_death_fn(Box::new(new_explosion1_fn))
+        .build(ctx.nro_ctx);
+    Rc::new(RefCell::new(proj))
 }
 
 
