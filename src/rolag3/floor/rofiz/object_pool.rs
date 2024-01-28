@@ -21,6 +21,17 @@ use rayon::prelude::*;
    half at this point.
    -Sometimes, when multiple RofizObjects are deleted, the second half becomes the more loaded half
  */
+
+/* Benchmarks for how long start_moafc() takes with various values of PAR_ITER_MIN_LEN on i9-11980HK
+-format is milliseconds with (<10 movable objs, ~4000 alive circular projectiles, ~4000 just-dead circular projectiles)
+-1: (0.03, 0.17, 0.09)
+-32: (0.0008, 0.14, 0.06)
+-128: (0.0009, 0.15, 0.05)
+-512: (0.001, 0.016-0.020 (high variance), 0.04)
+*/
+
+const PAR_ITER_MIN_LEN: usize = 128;
+
 const INITIAL_POOL_SIZE: usize = 16;
 const MAX_LOAD_FACTOR: f64 = 0.47;
 
@@ -211,8 +222,8 @@ impl RofizObjPool {
     }
     
     pub fn start_moafc(&mut self) {
-        let begin = now_unix();
-        self.movable.par_iter_mut().for_each(|x| {
+        let begin: f64 = now_unix();
+        self.movable.par_iter_mut().with_min_len(PAR_ITER_MIN_LEN).for_each(|x| {
             match x {
                 None => {},
                 Some(ref mut v) => v.start_moafc(),
@@ -220,13 +231,13 @@ impl RofizObjPool {
         });
         let end = now_unix();
         self.timings.push_back(end - begin);
-        /*if self.timings.len() > 200 {
+        if self.timings.len() > 150 {
             while self.timings.len() > 100 {
                 self.timings.pop_front();
             }
-            let numerator: f64 = self.timings.iter().sum();
-            log::warn!("start_moafc_time={}", numerator / 100.0);
-        }*/
+            //let numerator: f64 = self.timings.iter().sum();
+            //log::warn!("start_moafc_time={}ms", 1e3 * numerator / 100.0);
+        }
     }
 }
 

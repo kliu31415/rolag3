@@ -8,6 +8,7 @@ use super::weapon_def::{Weapon, WeaponHandleTickResponse, WeaponHandleTickContex
    It has a special attack, which when used, causes it to shoot a radial wave of 128 projectiles.
 */
 
+const SP_ATK_PROJ_COUNT: usize = 128;
 const NAME: &str = "Lapis Trigun";
 const SHOP_DESCRIPTION: &str = "Fires waves of three projectiles. 
 Special attack (Gem Storm): ejects a radial wave of 128 projectiles";
@@ -57,9 +58,8 @@ fn handle_tick_fn(ctx: &mut WeaponHandleTickContext) -> WeaponHandleTickResponse
     if ctx.special_attack && ws_data.since_last_special_attack >= SPECIAL_ATTACK_COOLDOWN && ctx.owner_mana >= SPECIAL_ATTACK_MANA_COST {
         response.mana_delta -= SPECIAL_ATTACK_MANA_COST;
         ws_data.since_last_special_attack = 0.0;
-        let maxi = 128;
-        for i in 0..maxi {
-            let angle_adjust = (i as f64) / (maxi as f64) * 2.0 * std::f64::consts::PI;
+        for i in 0..SP_ATK_PROJ_COUNT {
+            let angle_adjust = (i as f64) / (SP_ATK_PROJ_COUNT as f64) * 2.0 * std::f64::consts::PI;
             response.new_room_objs.push(spawn_projectile(ctx, angle_adjust));
         }
         return response;
