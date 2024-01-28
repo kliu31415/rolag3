@@ -196,6 +196,10 @@ impl Vector {
         f32::hypot(self.x, self.y)
     }
 
+    pub fn norm_sq(&self) -> f32 {
+        f32::powi(self.x, 2) + f32::powi(self.y, 2)
+    }
+
     pub fn normalized(&self) -> Self {
         let n = self.norm();
         Self {
@@ -216,6 +220,14 @@ impl std::ops::Add<Vector> for Vector {
 
     fn add(self, rhs: Vector) -> Vector {
         Vector::new(self.x + rhs.x, self.y + rhs.y)
+    }
+}
+
+impl std::ops::Mul<f32> for Vector {
+    type Output = Vector;
+
+    fn mul(self, rhs: f32) -> Vector {
+        Vector::new(rhs * self.x, rhs * self.y)
     }
 }
 
