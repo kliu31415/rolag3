@@ -31,8 +31,8 @@ const INNER_TRI_VERTEXES: [Point; 3] = [
 ];
 
 const INNER_TRI_OFFSETS: [Vector; 2] = [
-    Vector::new(0.3, -0.28),
-    Vector::new(0.3, 0.28),
+    Vector::new(0.35, -0.28),
+    Vector::new(0.35, 0.28),
 ];
 
 const FIRE_PROJ_INTERVAL: f64 = 0.5;

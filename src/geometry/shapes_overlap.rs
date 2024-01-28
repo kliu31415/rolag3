@@ -11,10 +11,10 @@ pub fn shapes_overlap(shape1: &Shape, bb1: &BoundingBox, shape2: &Shape, bb2: &B
                 if polygon_edges_overlap(p1, p2) {
                     return true;
                 }
-                if bb1.contains(bb2) {
-                    return polygon_contains_polygon(p1, p2);
-                } else if bb2.contains(bb1) {
-                    return polygon_contains_polygon(p2, p1);
+                if polygon_contains_polygon(p1, bb1, p2, bb2) {
+                    return true;
+                } else if polygon_contains_polygon(p2, bb2, p1, bb1) {
+                    return true;
                 }
                 return false;
             }
@@ -75,9 +75,14 @@ fn polygon_edges_overlap(p1: &Polygon, p2: &Polygon) -> bool {
 }
 
 // TODO: verify this function works
-fn polygon_contains_polygon(p1: &Polygon, p2: &Polygon) -> bool {
+fn polygon_contains_polygon(p1: &Polygon, bb1: &BoundingBox, p2: &Polygon, bb2: &BoundingBox) -> bool {
+    if !bb1.contains(bb2) {
+        return false;
+    }
+
     let b1 = p2.vertexes[0];
-    let b2 = Point::new(1000.0, 1.0);
+    // 0.8 and 0.7 are arbitrary. We just need the other point to be outside the p1's bounding box
+    let b2 = Point::new(bb1.x2 + 0.8, bb1.y2 + 0.7);
     for i in 0..p1.vertexes.len() {
         let a1 = if i == 0 {p1.vertexes[p1.vertexes.len()-1]} else {p1.vertexes[i-1]};
         let a2 = p1.vertexes[i];
