@@ -242,6 +242,8 @@ impl Rolag3EventHandler {
             floor: cur_floor,
             window_width,
             window_height,
+            mouse_x_px: input_state.get_mouse_x(),
+            mouse_y_px: input_state.get_mouse_y(),
             pixels_per_tile,
             show_tab_overlay,
             draw_ops: &mut self.cached_mem_draw_ops,

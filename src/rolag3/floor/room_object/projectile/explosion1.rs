@@ -10,8 +10,8 @@ pub struct Explosion1 {
     dps: f64,
     creation_time: f64,
     lifespan: f64,
-    outer_color: Color,
-    inner_color: Color,
+    outer_color_fn: Box<dyn Fn(f64) -> Color>,
+    inner_color_fn: Box<dyn Fn(f64) -> Color>,
     radius_fn: Box<dyn Fn(f64) -> f64>,
     md: RoomObjectMetadata,
 }
@@ -35,10 +35,13 @@ impl RoomObject for Explosion1 {
 
     fn draw(&mut self, ctx: &mut DrawContext) {
         let xform = ctx.get_rofiz().get_movable_object_xform(&self.ro_ref);
-        let outer_radius = (self.radius_fn)(ctx.get_room_time() - self.creation_time) as f32;
+        let age = ctx.get_room_time() - self.creation_time;
+        let outer_radius = (self.radius_fn)(age) as f32;
         let inner_radius = f32::max(0.0, outer_radius - 0.1);
         let center = Point::new(xform.dx as f32, xform.dy as f32);
-        let dop = ctx.do_concentric_circle(self.inner_color, self.outer_color, center, inner_radius, outer_radius);
+        let inner_color = (self.inner_color_fn)(age);
+        let outer_color = (self.outer_color_fn)(age);
+        let dop = ctx.do_concentric_circle(inner_color, outer_color, center, inner_radius, outer_radius);
         ctx.add_draw_op(DrawContext::Z_EXPLOSION, dop);
     }
 
@@ -63,8 +66,8 @@ pub fn new_explosion1(
     y: f64,
     dps: f64,
     lifespan: f64,
-    outer_color: Color,
-    inner_color: Color,
+    outer_color_fn: Box<dyn Fn(f64) -> Color>,
+    inner_color_fn: Box<dyn Fn(f64) -> Color>,
     radius_fn: Box<dyn Fn(f64) -> f64>,
 ) -> Explosion1 {
     let md = RoomObjectMetadata::new(ctx, RoomObjectType::Other);
@@ -79,8 +82,8 @@ pub fn new_explosion1(
         dps,
         creation_time: ctx.get_room_time(),
         lifespan,
-        outer_color,
-        inner_color,
+        outer_color_fn,
+        inner_color_fn,
         radius_fn,
         md,
     }

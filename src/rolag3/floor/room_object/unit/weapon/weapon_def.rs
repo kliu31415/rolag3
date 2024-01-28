@@ -92,10 +92,15 @@ pub struct DrawWeaponHudResponse {
 
 pub struct DrawWeaponOnOwnerContext<'a> {
     // all fields represent measurements in game map tiles (game units)
+    pub ws_data: &'a dyn Any,
     pub draw_ctx: &'a DrawContext<'a>,
     // (x, y) repesents the center of the owner
     pub x: f32,
     pub y: f32,
+
+    pub owner_xform: Transformation,
+    pub mouse_x_game_coords: f64,
+    pub mouse_y_game_coords: f64,
 }
 
 pub struct DrawWeaponOnOwnerResponse {

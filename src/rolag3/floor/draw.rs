@@ -8,6 +8,8 @@ pub struct DrawFloorContext<'a> {
     pub floor: &'a mut Floor,
     pub window_width: f64,
     pub window_height: f64,
+    pub mouse_x_px: f64,
+    pub mouse_y_px: f64,
     pub pixels_per_tile: f64,
     pub show_tab_overlay: bool,
     pub draw_ops: &'a mut Vec<DrawOpWithMetadata>,
@@ -19,10 +21,16 @@ pub fn get_draw_floor_ops(ctx: DrawFloorContext) {
     let mut extra_draw_ops = Vec::new();
     {
         let (player, room) = ctx.floor.get_player_and_current_room();
+        let camera_x = player_position.x - ctx.window_width / 2.0 / ctx.pixels_per_tile;
+        let camera_y = player_position.y - ctx.window_height / 2.0 / ctx.pixels_per_tile;
+        let mouse_x_game_coords = camera_x + ctx.mouse_x_px / ctx.pixels_per_tile;
+        let mouse_y_game_coords = camera_y + ctx.mouse_y_px / ctx.pixels_per_tile;
         let mut draw_context = DrawContext {
             draw_ops: ctx.draw_ops,
-            camera_x: (player_position.x - ctx.window_width / 2.0 / ctx.pixels_per_tile) as f32,
-            camera_y: (player_position.y - ctx.window_height / 2.0 / ctx.pixels_per_tile) as f32,
+            camera_x: camera_x as f32,
+            camera_y: camera_y as f32,
+            mouse_x_game_coords,
+            mouse_y_game_coords,
             pixels_per_tile: ctx.pixels_per_tile as f32,
             rofiz: &room.rofiz,
             room_time: room.room_time,
@@ -204,6 +212,8 @@ pub struct DrawContext<'a> {
     draw_ops: &'a mut Vec<DrawOpWithMetadata>,
     camera_x: f32,
     camera_y: f32,
+    mouse_x_game_coords: f64,
+    mouse_y_game_coords: f64,
     pixels_per_tile: f32,
     rofiz: &'a RofizState,
     room_time: f64,
@@ -260,6 +270,14 @@ impl DrawContext<'_> {
 
     pub const COLOR_NSU_BORDER: Color = Color::new(0.2, 0.2, 0.2, 1.0);
     pub const COLOR_SU_BORDER: Color = Color::new(0.5, 0.5, 0.5, 1.0);
+
+    pub fn get_mouse_x_game_coords(&self) -> f64{
+        self.mouse_x_game_coords
+    }
+
+    pub fn get_mouse_y_game_coords(&self) -> f64{
+        self.mouse_y_game_coords
+    }
 
     pub fn add_draw_op(&mut self, z: f64, op: DrawOp) {
         self.draw_ops.push(DrawOpWithMetadata::new(z, op));

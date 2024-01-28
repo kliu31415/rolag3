@@ -150,6 +150,7 @@ impl Projectile2Builder {
             shape,
         }).ps_data(Box::new(ps_data))
             .act1_fn(Box::new(act1))
+            .end_of_life_fn(Box::new(end_of_life))
             .draw_fn(Box::new(draw))
             .handle_collision_fn(Box::new(handle_collision))
             .apply_operation_fn(Box::new(apply_operation))
@@ -301,6 +302,25 @@ fn act1(ctx: &mut SpAct1Context) -> Act1Response {
     ps_data.age += tick_len;
 
     response
+}
+
+fn end_of_life(ctx: &mut SpAct1Context) -> Act1Response {
+    let ps_data = ctx.sp_ctx.ps_data.downcast_mut::<Projectile2Data>().unwrap();
+    let xform = ctx.act1_ctx.get_rofiz().get_movable_object_xform(ctx.sp_ctx.ro_ref);
+    let mut response = Act1Response::new();
+    if let Some(explosion_fn) = &ps_data.explosion1_on_death_fn {
+        let self_as_weak = ctx.act1_ctx.get_self_as_weak();
+        let args = Explosion1OnDeathFnArgs {
+            nro_ctx: &mut NewRoomObjectContext::from_act1_ctx(ctx.act1_ctx),
+            team: ctx.sp_ctx.team,
+            owner: self_as_weak,
+            x: xform.dx,
+            y: xform.dy,
+        };
+        let explosion = (explosion_fn)(args);
+        response.add_room_obj(Rc::new(RefCell::new(explosion)));
+    }
+    return response;
 }
 
 fn draw(ctx: &mut SpDrawContext) {

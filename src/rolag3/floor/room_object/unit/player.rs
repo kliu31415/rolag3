@@ -182,12 +182,17 @@ impl RoomObject for Player {
         let player_w = Self::PLAYER_S;
         let player_h = Self::PLAYER_S;
 
+        let weapon = &mut self.weapons[self.weapon_idx];
         let dwoo_ctx = DrawWeaponOnOwnerContext {
             draw_ctx: ctx,
+            ws_data: weapon.ws_data.as_ref(),
             x: xform.dx as f32,
             y: xform.dy as f32,
+            owner_xform: xform,
+            mouse_x_game_coords: ctx.get_mouse_x_game_coords(),
+            mouse_y_game_coords: ctx.get_mouse_y_game_coords(),
         };
-        let dwoo_response = (self.weapons[self.weapon_idx].draw_on_owner_fn)(&dwoo_ctx);
+        let dwoo_response = (weapon.draw_on_owner_fn)(&dwoo_ctx);
         ctx.add_draw_op(DrawContext::Z_UNIT_PLAYER_WEAPON, dwoo_response.draw_op);
         let player_color = self.su_common.get_draw_color(dwoo_response.owner_color);
 

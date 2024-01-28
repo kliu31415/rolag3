@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
-use crate::{rolag3::floor::{room_object::{projectile::{projectile2::{Projectile2BuilderReq, Proj2Shape, Projectile2Builder, Explosion1OnDeathFnArgs}, explosion1::{Explosion1, new_explosion1}}, damage::DamageColor}, draw::Color}, gfx::draw_op_util::draw_op_circle, geometry::shape::{Point, Vector}};
+use crate::{rolag3::floor::{room_object::{projectile::{projectile2::{Projectile2BuilderReq, Proj2Shape, Projectile2Builder, Explosion1OnDeathFnArgs}, explosion1::{Explosion1, new_explosion1}}, damage::DamageColor}, draw::Color, rofiz::rofiz_object::Transformation}, gfx::draw_op_util::draw_op_circle, geometry::shape::{Point, Vector}};
 
 use super::weapon_def::{Weapon, WeaponHandleTickContext, WeaponHandleTickResponse, DrawWeaponHudContext, DrawWeaponHudResponse, DrawWeaponOnOwnerResponse, DrawWeaponOnOwnerContext, BuyAmmoInfo};
 
@@ -8,7 +8,7 @@ use super::weapon_def::{Weapon, WeaponHandleTickContext, WeaponHandleTickRespons
 */
 
 const NAME: &str = "Ruby Rockets";
-const SHOP_DESCRIPTION: &str = "Fires a rocket";
+const SHOP_DESCRIPTION: &str = "Fires exploding rockets at a moderate pace";
 const STARTING_AMMO: f64 = 1e2;
 const BUY_AMMO_INFO: BuyAmmoInfo = BuyAmmoInfo { ammo_amount: 50.0, starcash_cost: 5.0 };
 
@@ -59,9 +59,25 @@ fn handle_tick_fn(ctx: &mut WeaponHandleTickContext) -> WeaponHandleTickResponse
         let velocity_y = ctx.owner_velocity_y + proj_velocity * f64::sin(angle);
         let shape = Proj2Shape::TriFan { center: Point::new(0.0, 0.0), vertexes: Box::new(PROJ_VERTEXES) };
         let new_explosion1_fn = |args: Explosion1OnDeathFnArgs| -> Explosion1 {
-            let lifespan = 0.5;
+            let stop_expand_at = 0.5;
+            let lifespan = 0.65;
+            assert!(stop_expand_at < lifespan);
             let radius_fn = move |age: f64| {
-                5.0 * f64::cbrt(age / lifespan)
+                5.0 * f64::cbrt(f64::min(1.0, age / stop_expand_at))
+            };
+            let outer_color_fn = move |age| {
+                let mut color = Color::new(10.0, 0.1, 0.1, 0.6);
+                if age > stop_expand_at {
+                    color.a *= ((lifespan - age) / (lifespan - stop_expand_at)) as f32;
+                }
+                color
+            };
+            let inner_color_fn = move |age| {
+                let mut color = Color::new(10.0, 1.0, 1.0, 0.01);
+                if age > stop_expand_at {
+                    color.a *= ((lifespan - age) / (lifespan - stop_expand_at)) as f32;
+                }
+                color
             };
             new_explosion1(args.nro_ctx, 
                 args.team, 
@@ -71,11 +87,12 @@ fn handle_tick_fn(ctx: &mut WeaponHandleTickContext) -> WeaponHandleTickResponse
                 args.y, 
                 10.0, 
                 lifespan, 
-                Color::new(10.0, 0.1, 0.1, 0.6), 
-                Color::new(10.0, 1.0, 1.0, 0.01), 
+                Box::new(outer_color_fn), 
+                Box::new(inner_color_fn), 
                 Box::new(radius_fn),
             )
         };
+        let proj_xform: Transformation = Transformation::new(ctx.owner_xform.dx, ctx.owner_xform.dy, f64::atan2(velocity_y, velocity_x));
         let proj = Projectile2Builder::new(
             Projectile2BuilderReq{
                 team: ctx.owner_team,
@@ -84,7 +101,7 @@ fn handle_tick_fn(ctx: &mut WeaponHandleTickContext) -> WeaponHandleTickResponse
                 owner: ctx.owner.clone(),
                 velocity_x,
                 velocity_y,
-                xform: ctx.owner_xform,
+                xform: proj_xform,
                 shape,
                 color: PROJ_COLOR,
             }
@@ -107,9 +124,15 @@ fn draw_hud(ctx: &DrawWeaponHudContext) -> DrawWeaponHudResponse {
 }
 
 fn draw_on_owner(ctx: &DrawWeaponOnOwnerContext) -> DrawWeaponOnOwnerResponse {
-    let vertexes = PROJ_VERTEXES.map(|p| p + Vector::new(ctx.x, ctx.y));
+    let ws_data = ctx.ws_data.downcast_ref::<RubyRockets>().unwrap();
+    let angle = f64::atan2(ctx.mouse_y_game_coords - ctx.owner_xform.dy, ctx.mouse_x_game_coords - ctx.owner_xform.dx) as f32;
+    let vertexes = PROJ_VERTEXES.map(|p| p.rotated(angle).translated(Vector::new(ctx.x, ctx.y)));
+
+    let lerp_t = f64::min(ws_data.since_last_primary_attack / PRIMARY_ATTACK_INTERVAL, 1.0) as f32;
+    let inner_color = Color::lerp(Color::new(0.1, 0.0, 0.0, 1.0), PROJ_COLOR, lerp_t);
+
     DrawWeaponOnOwnerResponse {
-        draw_op: ctx.draw_ctx.do_tri(PROJ_COLOR, vertexes),
-        owner_color: Color::new(1.0, 0.1, 0.1, 1.0),
+        draw_op: ctx.draw_ctx.do_tri(inner_color, vertexes),
+        owner_color: Color::new(0.3, 0.01, 0.01, 1.0),
     }
 }

@@ -28,6 +28,7 @@ struct Sp1Data {
 
 struct Sp1Logic {
     act1_fn: Act1Fn,
+    end_of_life_fn: Option<Box<Act1FnT>>,
     draw_fn: Box<DrawFnT>,
     handle_collision_fn: Box<HandleCollisionFnT>,
     apply_operation_fn: Box<ApplyOperationFnT>,
@@ -66,8 +67,19 @@ impl RoomObject for StandardProjectile1 {
             if let Some(_owner) = self.data.owner.upgrade() {
                 // notify owner?
             }
-            // TODO: create explosion if Projectile2 wants to
-            return Act1Response::new().remove_room_obj(self.get_metadata().get_ref());
+
+            let mut response = if let Some(eol_fn) = &self.logic.end_of_life_fn {
+                let mut sp_ctx = self.data.get_sp_ctx();
+                let mut sp_act1_ctx = SpAct1Context {
+                    sp_ctx: &mut sp_ctx,
+                    act1_ctx: ctx,
+                };
+                (eol_fn)(&mut sp_act1_ctx)
+            } else {
+                Act1Response::new()
+            };
+            response = response.remove_room_obj(self.get_metadata().get_ref());
+            return response;
         }
 
         let mut sp_ctx = self.data.get_sp_ctx();
@@ -138,6 +150,7 @@ pub struct Sp1Builder {
     
     ps_data: Box<dyn Any>,
     act1_fn: Act1Fn,
+    end_of_life_fn: Option<Box<Act1FnT>>,
     draw_fn: Box<DrawFnT>,
     handle_collision_fn: Box<HandleCollisionFnT>,
     apply_operation_fn: Box<ApplyOperationFnT>,
@@ -150,6 +163,7 @@ impl Sp1Builder {
             owner: Weak::<RefCell<Dummy>>::new(),
             ps_data: Box::new(Dummy {}),
             act1_fn: Act1Fn::Standard(Box::new(act1_nop)),
+            end_of_life_fn: None,
             draw_fn: Box::new(draw_nop),
             handle_collision_fn: Box::new(handle_collision_nop),
             apply_operation_fn: Box::new(apply_operation_nop),
@@ -168,6 +182,11 @@ impl Sp1Builder {
 
     pub fn act1_fn(mut self, act1_fn: Box<Act1FnT>) -> Self {
         self.act1_fn = Act1Fn::Standard(act1_fn);
+        self
+    }
+
+    pub fn end_of_life_fn(mut self, act1_fn: Box<Act1FnT>) -> Self {
+        self.end_of_life_fn = Some(act1_fn);
         self
     }
 
@@ -208,6 +227,7 @@ impl Sp1Builder {
             },
             logic: Sp1Logic {
                 act1_fn: self.act1_fn,
+                end_of_life_fn: self.end_of_life_fn,
                 draw_fn: self.draw_fn,
                 handle_collision_fn: self.handle_collision_fn,
                 apply_operation_fn: self.apply_operation_fn,
