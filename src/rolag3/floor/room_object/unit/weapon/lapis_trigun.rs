@@ -4,7 +4,7 @@ use crate::{rolag3::floor::{draw::Color, room_object::{room_object_def::RoomObje
 
 use super::weapon_def::{Weapon, WeaponHandleTickResponse, WeaponHandleTickContext, DrawWeaponHudContext, DrawWeaponHudResponse, DrawWeaponOnOwnerContext, DrawWeaponOnOwnerResponse, BuyAmmoInfo};
 
-/* Weapon2 shoots a wave of 3 blue squares at intervals of 0.3s.
+/* Lapis Trigun shoots a wave of 3 blue squares at intervals of 0.3s.
    It has a special attack, which when used, causes it to shoot a radial wave of 128 projectiles.
 */
 
@@ -26,7 +26,7 @@ struct Weapon2Data {
     since_last_special_attack: f64,
 }
 
-pub fn new_weapon2() -> Weapon {
+pub fn new_weapon_lapis_trigun() -> Weapon {
     let ws_data = Box::new(Weapon2Data {
         since_last_primary_attack: PRIMARY_ATTACK_INTERVAL,
         since_last_special_attack: SPECIAL_ATTACK_COOLDOWN,

@@ -2,7 +2,7 @@ use std::{cell::RefCell, rc::{Weak, Rc}};
 
 use crate::{rolag3::floor::{room_object::{room_object_def::{RoomObject, NewRoomObjectContext, Act1Response, HandleCollisionResponse, HcProjectileContext, Team, RoomObjOperation, Act1QueryResult, Act1QueryArgs}, damage::DamageColor}, draw::{DrawContext, Color}, rofiz::rofiz_object::{Transformation, RofizObjectMovement}}, geometry::shape::{Shape, Point, Vector}};
 
-use super::standard_projectile1::{Sp1Builder, Sp1BuilderReq, StandardProjectile1, SpAct1Context, SpDrawContext, SpHandleCollisionContext, SpApplyOperationContext};
+use super::{standard_projectile1::{Sp1Builder, Sp1BuilderReq, StandardProjectile1, SpAct1Context, SpDrawContext, SpHandleCollisionContext, SpApplyOperationContext}, explosion1::Explosion1};
 
 // Projectile2 is a normal projectile shaped like a triangle fan or circle. It moves at a constant velocity
 
@@ -20,17 +20,29 @@ pub struct Projectile2Data {
     homing_rotate_to_enemies_speed_fn: Option<Box<dyn Fn(f64) -> f64>>,
     homing_query_result: Option<Rc<RefCell<Act1QueryResult>>>,
 
-    nef_position_fn: Option<NefPositionFn>,
-    external_power_fn: Option<ExternalPowerFn>,
+    nef_position_fn: Option<NefPositionFnT>,
+    external_power_fn: Option<ExternalPowerFnT>,
+
+    explosion1_on_death_fn: Option<Explosion1OnDeathFnT>,
 }
 
-type NefPositionFn = Box<dyn Fn(f64) -> (f64, f64)>;
+type NefPositionFnT = Box<dyn Fn(f64) -> (f64, f64)>;
 
 pub struct ExternalPowerFnContext {
     pub age: f64,
     pub xform: Transformation,
 }
-type ExternalPowerFn = Box<dyn Fn(&ExternalPowerFnContext) -> (f64, f64)>;
+type ExternalPowerFnT = Box<dyn Fn(&ExternalPowerFnContext) -> (f64, f64)>;
+
+pub struct Explosion1OnDeathFnArgs<'a> {
+    pub nro_ctx: &'a mut NewRoomObjectContext<'a>,
+    pub team: Team,
+    pub owner: Weak<RefCell<dyn RoomObject>>,
+    pub x: f64,
+    pub y: f64,
+}
+
+type Explosion1OnDeathFnT = Box<dyn Fn(Explosion1OnDeathFnArgs) -> Explosion1>;
 
 pub struct Projectile2BuilderReq {
     pub team: Team, 
@@ -54,12 +66,16 @@ pub struct Projectile2Builder {
     // -no external forces are acting on the projectile
     // nef(t_2) - nef(t_1) can be used to calculate the power applied to the
     // projectile, which is combined with external forces (if there are any) to determine the final velocity.
-    nef_position_fn: Option<NefPositionFn>,
+    nef_position_fn: Option<NefPositionFnT>,
 
     // applies power to the projectile based on an instantaneous external power. Empirically, having both this and NEF
     // allows external forces on the projectile to be more cleanly specified.
-    external_power_fn: Option<ExternalPowerFn>,
+    external_power_fn: Option<ExternalPowerFnT>,
+
+    explosion1_on_death_fn: Option<Explosion1OnDeathFnT>,
 }
+
+
 
 impl Projectile2Builder {
     pub fn new(req: Projectile2BuilderReq) -> Self {
@@ -70,6 +86,7 @@ impl Projectile2Builder {
             homing_rotate_to_enemies_speed_fn: None,
             nef_position_fn: None,
             external_power_fn: None,
+            explosion1_on_death_fn: None,
         }
     }
 
@@ -88,13 +105,18 @@ impl Projectile2Builder {
         self
     }
 
-    pub fn nef_position_fn(mut self, nef_fn: NefPositionFn) -> Self {
+    pub fn nef_position_fn(mut self, nef_fn: NefPositionFnT) -> Self {
         self.nef_position_fn = Some(nef_fn);
         self
     }
 
-    pub fn external_power_fn(mut self, ep_fn: ExternalPowerFn) -> Self {
+    pub fn external_power_fn(mut self, ep_fn: ExternalPowerFnT) -> Self {
         self.external_power_fn = Some(ep_fn);
+        self
+    }
+
+    pub fn explosion1_on_death_fn(mut self, e1od_fn: Explosion1OnDeathFnT) -> Self {
+        self.explosion1_on_death_fn = Some(e1od_fn);
         self
     }
 
@@ -112,6 +134,7 @@ impl Projectile2Builder {
             homing_query_result: None,
             nef_position_fn: self.nef_position_fn,
             external_power_fn: self.external_power_fn,
+            explosion1_on_death_fn: self.explosion1_on_death_fn,
             age: 0.0,
         };
         let shape = match self.req.shape {
@@ -137,13 +160,27 @@ impl Projectile2Builder {
 
 fn act1(ctx: &mut SpAct1Context) -> Act1Response {
     let ps_data = ctx.sp_ctx.ps_data.downcast_mut::<Projectile2Data>().unwrap();
+    let xform = ctx.act1_ctx.get_rofiz().get_movable_object_xform(ctx.sp_ctx.ro_ref);
     if ps_data.remove_me_next_tick {
-        return Act1Response::new().remove_room_obj(ctx.sp_ctx.md.get_ref());
+        let mut response = Act1Response::new().remove_room_obj(ctx.sp_ctx.md.get_ref());
+        if let Some(explosion_fn) = &ps_data.explosion1_on_death_fn {
+            let self_as_weak = ctx.act1_ctx.get_self_as_weak();
+            let args = Explosion1OnDeathFnArgs {
+                nro_ctx: &mut NewRoomObjectContext::from_act1_ctx(ctx.act1_ctx),
+                team: ctx.sp_ctx.team,
+                owner: self_as_weak,
+                x: xform.dx,
+                y: xform.dy,
+            };
+            let explosion = (explosion_fn)(args);
+            response.add_room_obj(Rc::new(RefCell::new(explosion)));
+        }
+
+        return response;
     }
     let mut response = Act1Response::new();
     let tick_len = ctx.act1_ctx.get_tick_length(); 
 
-    let xform = ctx.act1_ctx.get_rofiz().get_movable_object_xform(ctx.sp_ctx.ro_ref);
     let mut theta_change = 0.0;
     if let Some(ref homing_xlate_fn) = ps_data.homing_xlate_to_enemies_power_fn {
         let power = (homing_xlate_fn)(ps_data.age);
@@ -292,21 +329,54 @@ fn draw(ctx: &mut SpDrawContext) {
 }
 
 fn handle_collision(ctx: &mut SpHandleCollisionContext) -> HandleCollisionResponse {
+    let ps_data = ctx.sp_ctx.ps_data.downcast_mut::<Projectile2Data>().unwrap();
+    let xform = ctx.hc_ctx.get_rofiz().get_movable_object_xform(ctx.sp_ctx.ro_ref);
     if ctx.hc_ctx.get_other().borrow().blocks_projectiles() {
-        return HandleCollisionResponse::new().remove_room_obj(ctx.sp_ctx.md.get_ref());
+        let mut response = HandleCollisionResponse::new().remove_room_obj(ctx.sp_ctx.md.get_ref());
+        if let Some(explosion_fn) = &ps_data.explosion1_on_death_fn {
+            let self_as_weak = ctx.hc_ctx.get_self_as_weak();
+            let args = Explosion1OnDeathFnArgs {
+                nro_ctx: &mut NewRoomObjectContext::from_hc_ctx(ctx.hc_ctx),
+                team: ctx.sp_ctx.team,
+                owner: self_as_weak,
+                x: xform.dx,
+                y: xform.dy,
+            };
+            let explosion = (explosion_fn)(args);
+            response = response.add_room_obj(Rc::new(RefCell::new(explosion)));
+        }
+        return response;
     }
+
     let hcp_response = ctx.hc_ctx.get_other().borrow_mut().handle_collision_projectile(&HcProjectileContext{
         team: ctx.sp_ctx.team,
         damage_color: ctx.sp_ctx.damage_color,
         damage: ctx.sp_ctx.damage,
         room_time: ctx.hc_ctx.get_room_time(),
     });
+    let mut response = HandleCollisionResponse::new();
     let mut to_remove = hcp_response.room_objects_to_delete;
     if hcp_response.projectile_consumed {
         to_remove.push(ctx.sp_ctx.md.get_ref());
+        if let Some(explosion_fn) = &ps_data.explosion1_on_death_fn {
+            let self_as_weak = ctx.hc_ctx.get_self_as_weak();
+            let args = Explosion1OnDeathFnArgs {
+                nro_ctx: &mut NewRoomObjectContext::from_hc_ctx(ctx.hc_ctx),
+                team: ctx.sp_ctx.team,
+                owner: self_as_weak,
+                x: xform.dx,
+                y: xform.dy,
+            };
+            let explosion = (explosion_fn)(args);
+            response = response.add_room_obj(Rc::new(RefCell::new(explosion)));
+        }
     }
-    HandleCollisionResponse::new().remove_room_objs(to_remove.as_slice())
+
+    response = response.remove_room_objs(to_remove.as_slice());
+    return response;
 }
+
+
 
 fn apply_operation(ctx: &mut SpApplyOperationContext) {
     let ps_data = ctx.sp_ctx.ps_data.downcast_mut::<Projectile2Data>().unwrap();

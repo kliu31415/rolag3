@@ -4,7 +4,7 @@ use crate::{rolag3::floor::{room_object::{projectile::projectile2::{Proj2Shape, 
 
 use super::weapon_def::{WeaponHandleTickContext, Weapon, WeaponHandleTickResponse, DrawWeaponHudContext, DrawWeaponHudResponse, DrawWeaponOnOwnerContext, DrawWeaponOnOwnerResponse, BuyAmmoInfo};
 
-/* Weapon1 rapidly shoots green squares, like a laser. It has no special attack. */
+/* Green Laser rapidly shoots green squares, like a laser. It has no special attack. */
 
 const NAME: &str = "Green Laser";
 const SHOP_DESCRIPTION: &str = "Shoots a rapid, continuous laser beam";
@@ -19,7 +19,7 @@ struct Weapon1Data {
     since_last_primary_attack: f64,
 }
 
-pub fn new_weapon1() -> Weapon {
+pub fn new_weapon_green_laser() -> Weapon {
     let ws_data = Box::new(Weapon1Data {
         since_last_primary_attack: PRIMARY_ATTACK_INTERVAL,
     });

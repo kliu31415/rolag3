@@ -201,7 +201,12 @@ impl RoomObjectsByType {
 
     fn remove(&mut self, r: &RoomObjectRef) {
         let removed = self.room_objects.remove(r);
-        if removed.is_none() {
+        if let Some(removed) = removed {
+            if !removed.borrow().is_player() {
+                let v = Rc::strong_count(&removed);
+                assert_eq!(1, v,"after removing room object with id={:?}, Rc strong count is {} (expected 1)", r, v);
+            }
+        } else {
             panic!("unable to remove room object with id={:?}", r);
         }
     }
@@ -312,13 +317,16 @@ impl RoomObjectCollection {
     }
 
     #[inline(never)]
-    pub fn act1(&mut self, ctx: &mut Act1Context) -> RocAct1Response {
+    pub fn act1(&mut self, mut ctx: Act1Context) -> RocAct1Response {
         self.cached_mem.reset();
 
         for room_obj in self.room_objects_by_type.room_objects.values() {
             ctx.self_as_rc = Some(room_obj.clone());
-            self.cached_mem.act1_responses.push(room_obj.borrow_mut().act1(ctx));
+            self.cached_mem.act1_responses.push(room_obj.borrow_mut().act1(&mut ctx));
         }
+        // Set to None to be extra-safe about enforcing the invariant that the Rc strong count to a RoomObject is 
+        // (almost) always 1. This will help prevent bugs.
+        ctx.self_as_rc = None;
 
         let mut floor_finished = false;
         for r in self.cached_mem.act1_responses.iter_mut() {
@@ -484,9 +492,11 @@ impl RoomObjectCollection {
             // -One in the RoomObjectsByType map of the room the player is in
             // -One as a local field in the calling function (run_floor_tick())
             if v.borrow().is_player() {
-                if ref_count != 4 {
+                // might not be worth the overhead of validating the player's Rc strong count, because that requires
+                // knowing all owners of Player, which is tough
+                /*if ref_count != 4 {
                     panic!("RoomObject Player Rc::strong_count()={}. Expected 4. Id={:?}", ref_count, v.borrow().get_metadata().get_ref());
-                }
+                }*/
             } else if ref_count != 1 {
                 panic!("RoomObject Rc::strong_count()={}. Expected 1. Id={:?}", ref_count, v.borrow().get_metadata().get_ref());
             }
@@ -526,6 +536,15 @@ impl<'a> NewRoomObjectContext<'a> {
             room_object_id_counter: act1_ctx.room_object_id_counter,
             room_time: act1_ctx.room_time,
             rng: act1_ctx.rng,
+        }
+    }
+
+    pub fn from_hc_ctx(hc_ctx: &'a mut HandleCollisionContext) -> Self {
+        Self {
+            rofiz: hc_ctx.rofiz,
+            room_object_id_counter: hc_ctx.room_object_id_counter,
+            room_time: hc_ctx.room_time,
+            rng: hc_ctx.rng,
         }
     }
 
@@ -827,20 +846,33 @@ pub struct HandleCollisionContext<'a> {
     other: Rc<RefCell<dyn RoomObject>>,
     other_is_spectral: bool,
     rng: &'a mut Prng,
+    room_object_id_counter: &'a mut RoomObjectId,
     room_time: f64,
+    self_as_rc: Rc<RefCell<dyn RoomObject>>,
     _tick_length: f64,
-    _rofiz: &'a RofizState,
+    rofiz: &'a mut RofizState,
 }
 
 impl<'a> HandleCollisionContext<'a> {
-    pub fn new(other: Rc<RefCell<dyn RoomObject>>, other_is_spectral: bool, rng: &'a mut Prng, room_time: f64, tick_length: f64, rofiz: &'a RofizState) -> Self {
+    pub fn new(
+        other: Rc<RefCell<dyn RoomObject>>, 
+        other_is_spectral: bool, 
+        rng: &'a mut Prng, 
+        room_object_id_counter: &'a mut RoomObjectId,
+        room_time: f64, 
+        self_as_rc: Rc<RefCell<dyn RoomObject>>,
+        tick_length: f64, 
+        rofiz: &'a mut RofizState,
+    ) -> Self {
         Self { 
             other,
             other_is_spectral,
             rng,
+            room_object_id_counter,
             room_time,
+            self_as_rc,
             _tick_length: tick_length,
-            _rofiz: rofiz,
+            rofiz,
         }
     }
     
@@ -869,23 +901,29 @@ impl<'a> HandleCollisionContext<'a> {
         self.room_time
     }
 
+    pub fn get_self_as_weak(&self) -> Weak<RefCell<dyn RoomObject>> {
+        Rc::downgrade(&self.self_as_rc)
+    }
+
     pub fn get_tick_length(&self) -> f64 {
         self._tick_length
     }
 
-    pub fn _get_rofiz(&self) -> &RofizState {
-        self._rofiz
+    pub fn get_rofiz(&self) -> &RofizState {
+        self.rofiz
     }
 }
 
 pub struct HandleCollisionResponse {
     room_objects_to_remove: Vec<RoomObjectRef>,
+    room_objects_to_add: Vec<Rc<RefCell<dyn RoomObject>>>,
 }
 
 impl HandleCollisionResponse {
     pub fn new() -> Self {
         Self { 
             room_objects_to_remove: Vec::new(),
+            room_objects_to_add: Vec::new(),
         }
     }
 
@@ -901,6 +939,17 @@ impl HandleCollisionResponse {
 
     pub fn get_room_objects_to_remove(&self) -> &[RoomObjectRef] {
         self.room_objects_to_remove.as_slice()
+    }
+
+    pub fn add_room_obj(mut self, room_obj: Rc<RefCell<dyn RoomObject>>) -> Self {
+        self.room_objects_to_add.push(room_obj);
+        self
+    }
+
+    pub fn steal_room_objs_to_add(&mut self) -> Vec<Rc<RefCell<dyn RoomObject>>> {
+        let mut v = Vec::new();
+        std::mem::swap(&mut self.room_objects_to_add, &mut v);
+        v
     }
 }
 

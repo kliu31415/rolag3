@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use crate::{rolag3::floor::room_object::unit::player::MoveRooms, util::{lerp::lerp_f64, rng::Prng}};
 
-use super::{room_object::room_object_def::{Act1Context, HandleCollisionContext, RoomObjectRef}, floor_def::Floor, room::Room};
+use super::{room_object::room_object_def::{Act1Context, HandleCollisionContext, RoomObjectRef, RoomObjectId}, floor_def::Floor, room::Room};
 
 pub struct RunFloorContext<'a> {
     pub ticks_per_frame: u32,
@@ -106,6 +106,10 @@ fn run_floor_tick(ctx: RunFloorTickContext) -> RunFloorTickResponse {
     // function handle_if_room_just_cleared() is called. This means that if the run_floor_tick() flow isn't run
     // for a room before the room's RoomObjects are drawn, then for the first frame after entering a room, the
     // RoomConnections may appear as if the room was uncleared.
+    //
+    // NOTE: the above comment block actually only applies to RoomObjects that exist when the room is first initialized.
+    // If a RoomObject is added midway through the room, it's not guaranteed that act1() will be called on it before
+    // draw().
     let wtmr = player.borrow_mut().poll_wants_to_move_rooms();
     if let Some(rci) = wtmr {
         room.room_objects.remove_player();
@@ -123,7 +127,7 @@ fn run_floor_tick(ctx: RunFloorTickContext) -> RunFloorTickResponse {
     {
         room.room_time += ctx.tick_length;
         room.rofiz.start_new_tick(ctx.run_validation);
-        let mut act1_context = Act1Context::new(
+        let act1_context = Act1Context::new(
             ctx.player_input, 
             &mut room.rofiz, 
             id_counter,  
@@ -135,9 +139,9 @@ fn run_floor_tick(ctx: RunFloorTickContext) -> RunFloorTickResponse {
             room.height,
             &room.tiles,
         );
-        let roca_response = room.room_objects.act1(&mut act1_context);
+        let roca_response = room.room_objects.act1(act1_context);
         floor_finished |= roca_response.floor_finished;
-        detect_and_handle_collisions(room, ctx.rng, ctx.tick_length);
+        detect_and_handle_collisions(room, ctx.rng, id_counter, ctx.tick_length);
 
         let starcash_reward = room.ttc * ctx.starcash_room_clear_mult;
         room.room_objects.handle_if_room_just_cleared(&mut room.rofiz, room.room_time, starcash_reward);
@@ -158,9 +162,10 @@ fn run_floor_tick(ctx: RunFloorTickContext) -> RunFloorTickResponse {
 }
 
 #[inline(never)]
-fn detect_and_handle_collisions(room: &mut Room, rng: &mut Prng, tick_len: f64) {
+fn detect_and_handle_collisions(room: &mut Room, rng: &mut Prng, room_obj_id_counter: &mut RoomObjectId, tick_len: f64) {
     let collisions = room.rofiz.move_objects_and_find_collisions();
     let mut removed = HashSet::<RoomObjectRef>::new();
+    let mut room_objs_to_add = Vec::new();
     for collision in collisions.iter() {
         if collision.room_obj_ref1 == collision.room_obj_ref2 {
             // a collision between an object and itself can occur. In this case, we ignore the collision.
@@ -174,11 +179,29 @@ fn detect_and_handle_collisions(room: &mut Room, rng: &mut Prng, tick_len: f64) 
         let obj1 = room.room_objects.get(&collision.room_obj_ref1);
         let obj2 = room.room_objects.get(&collision.room_obj_ref2);
 
-        let mut hc_ctx = HandleCollisionContext::new(obj2.clone(), collision.is2_spectral, rng, room.room_time, tick_len, &room.rofiz);
-        let hc1r = obj1.borrow_mut().handle_collision(&mut hc_ctx);
+        let mut hc_ctx = HandleCollisionContext::new(
+            obj2.clone(), 
+            collision.is2_spectral, 
+            rng, 
+            room_obj_id_counter,
+            room.room_time, 
+            obj1.clone(), 
+            tick_len, 
+            &mut room.rofiz,
+        );
+        let mut hc1r = obj1.borrow_mut().handle_collision(&mut hc_ctx);
 
-        let mut hc_ctx = HandleCollisionContext::new(obj1.clone(), collision.is1_spectral, rng, room.room_time, tick_len, &room.rofiz);
-        let hc2r = obj2.borrow_mut().handle_collision(&mut hc_ctx);
+        let mut hc_ctx = HandleCollisionContext::new(
+            obj1.clone(), 
+            collision.is1_spectral, 
+            rng, 
+            room_obj_id_counter,
+            room.room_time, 
+            obj2.clone(), 
+            tick_len, 
+            &mut room.rofiz,
+        );
+        let mut hc2r = obj2.borrow_mut().handle_collision(&mut hc_ctx);
 
         // remove these objects immediately so that during future collisions, they're considered invalid.
         // This also prevents RoomObjects holding WeakRefs from accessing deleted objects during future
@@ -190,5 +213,10 @@ fn detect_and_handle_collisions(room: &mut Room, rng: &mut Prng, tick_len: f64) 
 
         removed.extend(hc1r.get_room_objects_to_remove());
         removed.extend(hc2r.get_room_objects_to_remove());
+
+        room_objs_to_add.append(&mut hc1r.steal_room_objs_to_add());
+        room_objs_to_add.append(&mut hc2r.steal_room_objs_to_add());
     }
+
+    room_objs_to_add.into_iter().for_each(|x| room.room_objects.add(x));
 }

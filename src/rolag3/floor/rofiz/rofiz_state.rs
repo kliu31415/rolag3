@@ -213,7 +213,13 @@ impl RofizState {
 
     #[inline(never)]
     fn moafc1(&mut self) {
+        // TODO: is Arc::strong_count guaranteed to be up-to-date? For example, if Arc::strong_count is decremented
+        // before moafc1(), is the decrement guaranteed to reflect here? 
+        // I think it is if the same thread creates, reads, and drops Arcs, but I'm not sure.
         self.basic_projectiles.retain(|x| {
+            if self.obj_pool.get_mo(x).room_object_ref.id == 17469 {
+                log::warn!("arc strong count = {}", Arc::strong_count(&self.obj_pool.get_mo_mut(x).external_ref_count));
+            }
             if matches!(self.obj_pool.get_mo_mut(x).movement, RofizObjectMovement::_Delete()) ||
             Arc::strong_count(&self.obj_pool.get_mo_mut(x).external_ref_count) == 1 {
                 self.obj_pool.del_mo(x);

@@ -66,6 +66,7 @@ impl RoomObject for StandardProjectile1 {
             if let Some(_owner) = self.data.owner.upgrade() {
                 // notify owner?
             }
+            // TODO: create explosion if Projectile2 wants to
             return Act1Response::new().remove_room_obj(self.get_metadata().get_ref());
         }
 

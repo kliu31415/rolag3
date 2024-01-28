@@ -4,7 +4,7 @@ use crate::{rolag3::floor::{room_object::{projectile::projectile2::{Projectile2B
 
 use super::weapon_def::{Weapon, WeaponHandleTickContext, WeaponHandleTickResponse, DrawWeaponHudContext, DrawWeaponHudResponse, DrawWeaponOnOwnerResponse, DrawWeaponOnOwnerContext, BuyAmmoInfo};
 
-/* Weapon3 shoots a wave of 3 red circles at intervals of 0.1s. It has no special attack.
+/* Crimson Shotgun shoots a wave of 3 red circles at intervals of 0.1s. It has no special attack.
 */
 
 const NAME: &str = "Crimson Shotgun";
@@ -21,7 +21,7 @@ struct Weapon3Data {
 }
 
 
-pub fn new_weapon3() -> Weapon {
+pub fn new_weapon_crimson_shotgun() -> Weapon {
     let ws_data = Box::new(Weapon3Data {
         since_last_primary_attack: PRIMARY_ATTACK_INTERVAL,
     });

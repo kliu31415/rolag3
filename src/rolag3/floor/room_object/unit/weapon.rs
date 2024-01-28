@@ -1,4 +1,5 @@
 pub mod weapon_def;
-pub mod weapon1;
-pub mod weapon2;
-pub mod weapon3;
+pub mod green_laser;
+pub mod lapis_trigun;
+pub mod crimson_shotgun;
+pub mod ruby_rockets;
