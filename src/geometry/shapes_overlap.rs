@@ -18,10 +18,10 @@ pub fn shapes_overlap(shape1: &Shape, bb1: &BoundingBox, shape2: &Shape, bb2: &B
                 }
                 return false;
             }
-            Shape::Circle(c2) => polygon_overlaps_circle(p1, c2),
+            Shape::Circle(c2) => polygon_overlaps_circle(p1, bb1, c2, bb2),
         }
         Shape::Circle(c1) => match shape2 {
-            Shape::Polygon(p2) => polygon_overlaps_circle(p2, c1),
+            Shape::Polygon(p2) => polygon_overlaps_circle(p2, bb2, c1, bb1),
             Shape::Circle(c2) => circles_overlaps_circle(c1, c2),
         }
     }
@@ -31,7 +31,7 @@ fn circles_overlaps_circle(c1: &Circle, c2: &Circle) -> bool {
     f32::hypot(c2.center.x - c1.center.x, c2.center.y - c1.center.y) < c1.r + c2.r
 }
 
-fn polygon_overlaps_circle(p1: &Polygon, c2: &Circle) -> bool {
+fn polygon_overlaps_circle(p1: &Polygon, bb1: &BoundingBox, c2: &Circle, bb2: &BoundingBox) -> bool {
     let rsq = f32::powi(c2.r, 2);
     // remember to iterate over the edge connecting vertexes with index n-1 and 0
     for i in 0..p1.vertexes.len() {
@@ -55,6 +55,30 @@ fn polygon_overlaps_circle(p1: &Polygon, c2: &Circle) -> bool {
             } 
         }
     }
+
+    if bb1.contains(bb2) {
+        let b1 = c2.center;
+        // 0.8 and 0.7 are arbitrary. We just need the other point to be outside the p1's bounding box
+        let b2 = Point::new(bb1.x2 + 0.8, bb1.y2 + 0.7);
+        let mut num_intersections = 0;
+        for i in 0..p1.vertexes.len() {
+            let a1 = if i == 0 {p1.vertexes[p1.vertexes.len()-1]} else {p1.vertexes[i-1]};
+            let a2 = p1.vertexes[i];
+    
+            if line_segments_overlap(a1, a2, b1, b2) {
+                num_intersections += 1;
+            }
+        }
+        if num_intersections % 2 == 1 {
+            return true;
+        }
+    } 
+    if bb2.contains(bb1) {
+        if f32::hypot(p1.vertexes[0].x - c2.center.x, p1.vertexes[0].y - c2.center.y) < c2.r {
+            return true;
+        }
+    }
+
     false
 }
 
@@ -83,15 +107,16 @@ fn polygon_contains_polygon(p1: &Polygon, bb1: &BoundingBox, p2: &Polygon, bb2: 
     let b1 = p2.vertexes[0];
     // 0.8 and 0.7 are arbitrary. We just need the other point to be outside the p1's bounding box
     let b2 = Point::new(bb1.x2 + 0.8, bb1.y2 + 0.7);
+    let mut num_intersections = 0;
     for i in 0..p1.vertexes.len() {
         let a1 = if i == 0 {p1.vertexes[p1.vertexes.len()-1]} else {p1.vertexes[i-1]};
         let a2 = p1.vertexes[i];
 
         if line_segments_overlap(a1, a2, b1, b2) {
-            return true;
+            num_intersections += 1;
         }
     }
-    return false;
+    return num_intersections % 2 == 1;
 }
 
 fn line_segments_overlap(a1: Point, a2: Point, b1: Point, b2: Point) -> bool {
