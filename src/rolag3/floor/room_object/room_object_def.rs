@@ -1,8 +1,8 @@
 use std::{rc::{Rc, Weak}, cell::RefCell, collections::{HashSet, HashMap, BTreeMap}, ops::Range};
 
-use crate::{rolag3::floor::{draw::DrawContext, run::PlayerInput, rofiz::{rofiz_state::{RofizState, RofizObjectRef}, rofiz_object::Hitbox}, room::{RoomConnectionInfo, RoomTile}, floor_def::Floor, floorgen::run::GenFloorRoomContext}, util::rng::Prng};
+use crate::{rolag3::{floor::{draw::DrawContext, run::PlayerInput, rofiz::{rofiz_state::{RofizState, RofizObjectRef}, rofiz_object::Hitbox}, room::{RoomConnectionInfo, RoomTile}, floor_def::Floor, floorgen::run::GenFloorRoomContext}, entry_point::SoundDb}, util::rng::Prng, sfx::sound_system::{SoundSystem, PlaySoundArgs}};
 
-use super::{damage::DamageColor, unit::standard_unit_common::{Budeb, StandardUnitCommon}};
+use super::{damage::DamageColor, unit::standard_unit_common::{Budeb, StandardUnitCommon}, sound::{RoomObjSound, RoomObjPlaySoundArgs, RoomObjSoundRef}};
 
 /* Rules:
    -act1() must be called at least once before any draw() calls. This allows initialization steps to be performed in
@@ -16,6 +16,7 @@ pub trait RoomObject {
     fn get_metadata(&self) -> &RoomObjectMetadata;
     fn act1(&mut self, ctx: &mut Act1Context) -> Act1Response;
     fn draw(&mut self, ctx: &mut DrawContext);
+
     fn handle_room_just_cleared(&mut self, _ctx: &mut HandleRoomJustClearedContext) {
         // nop
     }
@@ -173,7 +174,22 @@ pub struct RoomObjectCollection {
 }
 
 struct RoomObjectsByType {
-    room_objects: BTreeMap<RoomObjectRef, Rc<RefCell<dyn RoomObject>>>,
+    room_objects: BTreeMap<RoomObjectRef, RoomObjWithEmd>,
+}
+
+// Emd = "External" metadata. This is different from RoomObjectMetadata, which is "Internal" metadata
+struct RoomObjWithEmd {
+    room_obj: Rc<RefCell<dyn RoomObject>>,
+    playing_sounds: Vec<RoomObjSound>,
+}
+
+impl RoomObjWithEmd {
+    fn new(room_obj: Rc<RefCell<dyn RoomObject>>) -> Self {
+        Self {
+            room_obj,
+            playing_sounds: Vec::new(),
+        }
+    }
 }
 
 fn range_all_of_type(t: RoomObjectType) -> Range<RoomObjectRef> {
@@ -195,15 +211,15 @@ impl RoomObjectsByType {
 
     fn add(&mut self, obj: Rc<RefCell<dyn RoomObject>>) {
         let ref_ = obj.as_ref().borrow().get_metadata().get_ref();
-        let old = self.room_objects.insert(ref_, obj);
+        let old = self.room_objects.insert(ref_, RoomObjWithEmd::new(obj));
         assert!(old.is_none(), "tried to add RoomObject (id={:?}) to RoomObjectsByType when a RoomObject with the same id already exists", ref_);
     }
 
     fn remove(&mut self, r: &RoomObjectRef) {
         let removed = self.room_objects.remove(r);
         if let Some(removed) = removed {
-            if !removed.borrow().is_player() {
-                let v = Rc::strong_count(&removed);
+            if !removed.room_obj.borrow().is_player() {
+                let v = Rc::strong_count(&removed.room_obj);
                 assert_eq!(1, v,"after removing room object with id={:?}, Rc strong count is {} (expected 1)", r, v);
             }
         } else {
@@ -213,7 +229,7 @@ impl RoomObjectsByType {
 
     fn remove_wall_at(&mut self, x: u32, y: u32, expected: Range<usize>) {
         let to_remove = self.room_objects.range_mut(range_all_of_type(RoomObjectType::Wall)).filter_map(|(k, v)| {
-            let wall_loc = v.as_ref().borrow().get_as_wall_location();
+            let wall_loc = v.room_obj.as_ref().borrow().get_as_wall_location();
             match wall_loc {
                 Some((wx, wy)) => {
                     if x==wx && y==wy {
@@ -234,13 +250,13 @@ impl RoomObjectsByType {
 
     fn get_wall_locations(&self) -> Vec<(u32, u32)> {
         let mut locs = Vec::new();
-        self.room_objects.values().for_each(|x| x.borrow().add_as_wall_location_to(&mut locs));
+        self.room_objects.values().for_each(|x| x.room_obj.borrow().add_as_wall_location_to(&mut locs));
         locs
     }
 
     fn get_ground_locations(&self) -> Vec<(u32, u32)> {
         let mut locs = Vec::new();
-        self.room_objects.values().for_each(|x| x.borrow().add_as_ground_location_to(&mut locs));
+        self.room_objects.values().for_each(|x| x.room_obj.borrow().add_as_ground_location_to(&mut locs));
         locs
     }
 }
@@ -310,19 +326,52 @@ impl RoomObjectCollection {
 
     pub fn validate_start_room(&self) {
         let mut unique_locations = HashSet::new();
-        self.room_objects_by_type.room_objects.range(range_all_of_type(RoomObjectType::Wall)).filter_map(|(_, w)| w.as_ref().borrow().get_as_wall_location()).for_each( |loc| {
+        self.room_objects_by_type.room_objects.range(range_all_of_type(RoomObjectType::Wall)).filter_map(|(_, w)| w.room_obj.as_ref().borrow().get_as_wall_location()).for_each( |loc| {
             assert!(!unique_locations.contains(&loc), "multiple walls detected at location ({}, {})", loc.0, loc.1);
             unique_locations.insert(loc);
         });
     }
 
     #[inline(never)]
-    pub fn act1(&mut self, mut ctx: Act1Context) -> RocAct1Response {
+    pub fn act1(&mut self, mut ctx: Act1Context, sound_system: &mut dyn SoundSystem) -> RocAct1Response {
         self.cached_mem.reset();
 
-        for room_obj in self.room_objects_by_type.room_objects.values() {
-            ctx.self_as_rc = Some(room_obj.clone());
-            self.cached_mem.act1_responses.push(room_obj.borrow_mut().act1(&mut ctx));
+        for remd in self.room_objects_by_type.room_objects.values_mut() {
+            ctx.self_as_rc = Some(remd.room_obj.clone());
+            let mut response = remd.room_obj.borrow_mut().act1(&mut ctx);
+            let newly_played_sounds = response.take_newly_played_sounds();
+            let owned_sound_playback_speed_override = response.take_owned_sound_playback_speed_override();
+            self.cached_mem.act1_responses.push(response);
+
+            for (id, nps) in newly_played_sounds {
+                let r = sound_system.play_sound(PlaySoundArgs {
+                    sdr: nps.sound_data,
+                    panning: 0.5, // TODO: actually use panning rather than just centering at 0.5
+                });
+                
+                let spr = match r {
+                    Ok(v) => v,
+                    Err(e) => panic!("unable to play sound. Error = {}", e),
+                };
+
+                if nps.owned {
+                    remd.playing_sounds.push(RoomObjSound {
+                        id,
+                        location: nps.location,
+                        sound_ref: spr,
+                    });
+                } else {
+                    todo!("non-owned RoomObject sounds are not supported yet");
+                }
+            }
+
+            if let Some(_v) = owned_sound_playback_speed_override {
+                todo!("owned_sound_playback_speed_override not supported yet")
+            }
+
+            remd.playing_sounds.retain(|x| !sound_system.is_done_playing(&x.sound_ref));
+
+            // TODO: dynamically pan sound every frame based on the sound location and player location
         }
         // Set to None to be extra-safe about enforcing the invariant that the Rc strong count to a RoomObject is 
         // (almost) always 1. This will help prevent bugs.
@@ -347,13 +396,13 @@ impl RoomObjectCollection {
             };
             match op {
                 RoomObjOperation::BlackHoleForce { .. } => {
-                    self.room_objects_by_type.room_objects.range(range_all_of_type(RoomObjectType::Projectile)).for_each(|(_, v)| v.borrow_mut().apply_operation(&op_ctx))
+                    self.room_objects_by_type.room_objects.range(range_all_of_type(RoomObjectType::Projectile)).for_each(|(_, v)| v.room_obj.borrow_mut().apply_operation(&op_ctx))
                 },
                 RoomObjOperation::ClearProjectiles { .. } => {
-                    self.room_objects_by_type.room_objects.range(range_all_of_type(RoomObjectType::Projectile)).for_each(|(_, v)| v.borrow_mut().apply_operation(&op_ctx))
+                    self.room_objects_by_type.room_objects.range(range_all_of_type(RoomObjectType::Projectile)).for_each(|(_, v)| v.room_obj.borrow_mut().apply_operation(&op_ctx))
                 },
                 RoomObjOperation::UnitBudeb { .. } => {
-                    self.room_objects_by_type.room_objects.range(range_all_of_type(RoomObjectType::Unit)).for_each(|(_, v)| v.borrow_mut().apply_operation(&op_ctx));
+                    self.room_objects_by_type.room_objects.range(range_all_of_type(RoomObjectType::Unit)).for_each(|(_, v)| v.room_obj.borrow_mut().apply_operation(&op_ctx));
                 }
             }
         }
@@ -364,10 +413,10 @@ impl RoomObjectCollection {
                     let closest = self.room_objects_by_type.room_objects.range(range_all_of_type(RoomObjectType::Unit))
                         .map(|(_, v)| {
                             let rqui_ctx = RoQueryUnitInfoContext {
-                                self_as_weak: Rc::downgrade(v),
+                                self_as_weak: Rc::downgrade(&v.room_obj),
                                 rofiz: ctx.rofiz,
                             };
-                            v.as_ref().borrow().handle_query_unit_info(&rqui_ctx)
+                            v.room_obj.as_ref().borrow().handle_query_unit_info(&rqui_ctx)
                         })
                         .filter_map(|x| x)
                         .filter(|x| team_filter.is_none() || team_filter.unwrap() == x.team)
@@ -408,7 +457,7 @@ impl RoomObjectCollection {
 
     pub fn draw(&mut self, ctx: &mut DrawContext) {
         for fo in self.room_objects_by_type.room_objects.values() {
-            fo.borrow_mut().draw(ctx);
+            fo.room_obj.borrow_mut().draw(ctx);
         }
     }
 
@@ -424,7 +473,7 @@ impl RoomObjectCollection {
         }
 
         for fo in self.room_objects_by_type.room_objects.values() {
-            if fo.as_ref().borrow().blocks_room_clear() {
+            if fo.room_obj.as_ref().borrow().blocks_room_clear() {
                 return;
             }
         }
@@ -437,7 +486,7 @@ impl RoomObjectCollection {
             starcash_reward,
         };
         for fo in self.room_objects_by_type.room_objects.values() {
-            fo.borrow_mut().handle_room_just_cleared(&mut ctx);
+            fo.room_obj.borrow_mut().handle_room_just_cleared(&mut ctx);
         }
     }
 
@@ -460,7 +509,7 @@ impl RoomObjectCollection {
         }).collect::<Vec<_>>();
         for r in to_remove {
             let v = self.room_objects_by_type.room_objects.remove(&r).expect("unable to remove room object");
-            assert_eq!(Rc::strong_count(&v), 1, "Rc strong count for removed object with id {} isn't 1", v.borrow().get_metadata().get_ref().id);
+            assert_eq!(Rc::strong_count(&v.room_obj), 1, "Rc strong count for removed object with id {} isn't 1", v.room_obj.borrow().get_metadata().get_ref().id);
         }
     }
 
@@ -469,36 +518,36 @@ impl RoomObjectCollection {
         for id in ids {
             // TODO: if _get_multi is used in the future, the below line needs to be more efficient.
             // Right now, a new formatted string is allocated every loop, which the profiler shows is very slow.
-            res.insert(id, self.room_objects_by_type.room_objects.get(&id).expect(&format!("unable to get room object with id={:?}", id)).clone());
+            res.insert(id, self.room_objects_by_type.room_objects.get(&id).expect(&format!("unable to get room object with id={:?}", id)).room_obj.clone());
         }
         res
     }
 
     pub fn get(&self, id: &RoomObjectRef) -> Rc<RefCell<dyn RoomObject>> {
         let opt = self.room_objects_by_type.room_objects.get(id);
-        let Some(r) = opt.cloned() else {
+        let Some(r) = opt else {
             panic!("unable to get room object with id={:?}", *id);
         };
-        r
+        r.room_obj.clone()
     }
 
     #[inline(never)]
     pub fn validate_end_tick(&self) {
         for v in self.room_objects_by_type.room_objects.values() {
-            let ref_count = Rc::strong_count(v);
+            let ref_count = Rc::strong_count(&v.room_obj);
             // Player Rc strongs:
             // -One as field in r3run
             // -One as field in the current floor
             // -One in the RoomObjectsByType map of the room the player is in
             // -One as a local field in the calling function (run_floor_tick())
-            if v.borrow().is_player() {
+            if v.room_obj.borrow().is_player() {
                 // might not be worth the overhead of validating the player's Rc strong count, because that requires
                 // knowing all owners of Player, which is tough
                 /*if ref_count != 4 {
                     panic!("RoomObject Player Rc::strong_count()={}. Expected 4. Id={:?}", ref_count, v.borrow().get_metadata().get_ref());
                 }*/
             } else if ref_count != 1 {
-                panic!("RoomObject Rc::strong_count()={}. Expected 1. Id={:?}", ref_count, v.borrow().get_metadata().get_ref());
+                panic!("RoomObject Rc::strong_count()={}. Expected 1. Id={:?}", ref_count, v.room_obj.borrow().get_metadata().get_ref());
             }
         }
     }
@@ -612,6 +661,7 @@ pub struct Act1Context<'a> {
     room_time: f64,
     rng: &'a mut Prng,
     room_cleared_at_time: Option<f64>,
+    sound_db: &'a SoundDb,
     _room_width: u32,
     _room_height: u32,
     _room_tiles: &'a Vec<Vec<RoomTile>>,
@@ -626,6 +676,7 @@ impl<'a> Act1Context<'a> {
         room_time: f64,
         rng: &'a mut Prng,
         room_cleared_at_time: Option<f64>,
+        sound_db: &'a SoundDb,
         room_width: u32,
         room_height: u32,
         room_tiles: &'a Vec<Vec<RoomTile>>,
@@ -639,10 +690,21 @@ impl<'a> Act1Context<'a> {
             room_time,
             rng,
             room_cleared_at_time,
+            sound_db,
             _room_width: room_width,
             _room_height: room_height,
             _room_tiles: room_tiles,
         }
+    }
+
+    pub fn to_nro_ctx_and_sound_db(&mut self) -> (NewRoomObjectContext, &SoundDb) {
+        let nro_ctx = NewRoomObjectContext {
+            rofiz: self.rofiz,
+            room_object_id_counter: self.room_object_id_counter,
+            room_time: self.room_time,
+            rng: self.rng,
+        };
+        (nro_ctx, self.sound_db)
     }
 
     pub fn get_player_input(&self) -> &PlayerInput {
@@ -726,6 +788,10 @@ impl<'a> Act1Context<'a> {
             }
         }
     }
+
+    pub fn _get_sound_db(&self) -> &SoundDb {
+        self.sound_db
+    }
     
     pub fn _get_room_width(&self) -> u32 {
         self._room_width
@@ -765,6 +831,8 @@ pub struct Act1Response {
     act1_queries: Vec<(Act1QueryArgs, Rc<RefCell<Act1QueryResult>>)>,
     operations: Vec<RoomObjOperation>,
     floor_finished: bool,
+    owned_sound_playback_speed_override: Option<f64>,
+    newly_played_sounds: Vec<(u128, RoomObjPlaySoundArgs)>,
 }
 
 impl Act1Response {
@@ -775,6 +843,8 @@ impl Act1Response {
             act1_queries: Vec::new(),
             operations: Vec::new(),
             floor_finished: false,
+            owned_sound_playback_speed_override: None,
+            newly_played_sounds: Vec::new(),
         }
     }
 
@@ -819,6 +889,20 @@ impl Act1Response {
 
     pub fn get_is_floor_finished(&self) -> bool {
         self.floor_finished
+    }
+
+    pub fn play_sound(&mut self, rng: &mut Prng, args: RoomObjPlaySoundArgs) -> RoomObjSoundRef {
+        let id = rng.gen_u128_range(0..u128::MAX);
+        self.newly_played_sounds.push((id, args));
+        RoomObjSoundRef::new(id)
+    }
+
+    pub fn take_owned_sound_playback_speed_override(&mut self) -> Option<f64> {
+        self.owned_sound_playback_speed_override.take()
+    }
+
+    pub fn take_newly_played_sounds(&mut self) -> Vec<(u128, RoomObjPlaySoundArgs)> {
+        std::mem::take(&mut self.newly_played_sounds)
     }
 }
 

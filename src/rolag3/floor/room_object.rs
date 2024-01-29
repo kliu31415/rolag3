@@ -6,3 +6,4 @@ pub mod tiles;
 pub mod cosmetic;
 pub mod dummy;
 pub mod damage;
+pub mod sound;

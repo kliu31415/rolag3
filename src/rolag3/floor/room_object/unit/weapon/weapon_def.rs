@@ -1,6 +1,6 @@
 use std::{rc::{Rc, Weak}, cell::RefCell, any::Any};
 
-use crate::{rolag3::floor::{room_object::{room_object_def::{RoomObject, NewRoomObjectContext, Team}, damage::DamageColor}, rofiz::rofiz_object::Transformation, draw::{DrawContext, Color}}, gfx::{renderer::{DrawOp, DrawOpText, DrawTextPosition, DrawOpGroup, ColorRGBA32f}, draw_op_util::draw_op_rect, text::font::Font}};
+use crate::{rolag3::{floor::{room_object::{room_object_def::{RoomObject, NewRoomObjectContext, Team}, damage::DamageColor, sound::RoomObjPlaySoundArgs}, rofiz::rofiz_object::Transformation, draw::{DrawContext, Color}}, entry_point::SoundDb}, gfx::{renderer::{DrawOp, DrawOpText, DrawTextPosition, DrawOpGroup, ColorRGBA32f}, draw_op_util::draw_op_rect, text::font::Font}};
 
 type WeaponHandleTickFn = dyn Fn(&mut WeaponHandleTickContext) -> WeaponHandleTickResponse;
 type DrawWeaponHudFn = dyn Fn(&DrawWeaponHudContext) -> DrawWeaponHudResponse;
@@ -67,17 +67,24 @@ pub struct WeaponHandleTickContext<'a> {
     pub primary_attack: bool,
     pub special_attack: bool,
     pub owner_mana: f64,
+    pub sound_db: &'a SoundDb,
 }
 
 pub struct WeaponHandleTickResponse {
     pub new_room_objs: Vec<Rc<RefCell<dyn RoomObject>>>,
     pub mana_delta: f64,
     pub damage_color: DamageColor,
+    pub newly_played_sounds: Vec<RoomObjPlaySoundArgs>,
 }
 
 impl WeaponHandleTickResponse {
     pub fn new() -> Self {
-        WeaponHandleTickResponse { new_room_objs: Vec::new(), mana_delta: 0.0, damage_color: DamageColor::NotSet}
+        WeaponHandleTickResponse { 
+            new_room_objs: Vec::new(), 
+            mana_delta: 0.0, 
+            damage_color: DamageColor::NotSet,
+            newly_played_sounds: Vec::new(),
+        }
     }
 }
 

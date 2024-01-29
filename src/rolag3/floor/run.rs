@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use crate::{rolag3::floor::room_object::unit::player::MoveRooms, util::{lerp::lerp_f64, rng::Prng}};
+use crate::{rolag3::{floor::room_object::unit::player::MoveRooms, entry_point::SoundDb}, util::{lerp::lerp_f64, rng::Prng}, sfx::sound_system::SoundSystem};
 
 use super::{room_object::room_object_def::{Act1Context, HandleCollisionContext, RoomObjectRef, RoomObjectId}, floor_def::Floor, room::Room};
 
@@ -14,6 +14,8 @@ pub struct RunFloorContext<'a> {
     pub prev_mouse_y: f64,
     pub rng: &'a mut Prng,
     pub run_validation: bool,
+    pub sound_system: &'a mut dyn SoundSystem,
+    pub sound_db: &'a SoundDb,
 }
 
 pub struct RunFloorResponse {
@@ -38,6 +40,8 @@ pub fn run_floor_frame(mut ctx: RunFloorContext) -> RunFloorResponse {
             tick_length,
             rng: ctx.rng,
             run_validation: ctx.run_validation,
+            sound_system: ctx.sound_system,
+            sound_db: ctx.sound_db,
         };
         let rft_response = run_floor_tick(tick_ctx);
         response.floor_finished |= rft_response.floor_finished;
@@ -82,6 +86,8 @@ struct RunFloorTickContext<'a> {
     pub tick_length: f64,
     pub rng: &'a mut Prng,
     pub run_validation: bool,
+    pub sound_system: &'a mut dyn SoundSystem,
+    pub sound_db: &'a SoundDb,
 }
 
 struct RunFloorTickResponse {
@@ -135,11 +141,12 @@ fn run_floor_tick(ctx: RunFloorTickContext) -> RunFloorTickResponse {
             room.room_time, 
             ctx.rng, 
             room.room_cleared_at_time,
+            ctx.sound_db,
             room.width,
             room.height,
             &room.tiles,
         );
-        let roca_response = room.room_objects.act1(act1_context);
+        let roca_response = room.room_objects.act1(act1_context, ctx.sound_system);
         floor_finished |= roca_response.floor_finished;
         detect_and_handle_collisions(room, ctx.rng, id_counter, ctx.tick_length);
 

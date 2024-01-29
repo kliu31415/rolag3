@@ -1,4 +1,4 @@
-use crate::{rolag3::floor::{run::{PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, draw::DrawContext, room_object::{room_object_def::{RoomObject, Act1Context, FloorCoordinate, NewRoomObjectContext, RoomObjectMetadata, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse, RoQueryUnitInfoContext, RoQueryUnitInfoResponse, HcTileContext, HcTileEffect, HcTileResponse, RoomObjApplyOperationContext, RoomObjOperation, HcStandardUnitContext, HcStandardUnitResponse, HandleRoomJustClearedContext, HcTileEffectDuration}, tiles::room_connection::Direction, damage::DamageColor, unit::{standard_unit_common::{BudebExpiry, BudebTractionMult, BudebTractionCap}, weapon::crimson_shotgun::new_weapon_crimson_shotgun}}, rofiz::{rofiz_object::{Hitbox, Transformation}, rofiz_state::RofizState}, room::RoomConnectionInfo}, geometry::shape::{Shape, Point}, gfx::{renderer::{DrawOp, DrawOpGroup, ColorRGBA32f, DrawOpText, DrawTextPosition}, draw_op_util::draw_op_rect, text::font::Font}};
+use crate::{rolag3::floor::{run::{PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, draw::DrawContext, room_object::{room_object_def::{RoomObject, Act1Context, FloorCoordinate, RoomObjectMetadata, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse, RoQueryUnitInfoContext, RoQueryUnitInfoResponse, HcTileContext, HcTileEffect, HcTileResponse, RoomObjApplyOperationContext, RoomObjOperation, HcStandardUnitContext, HcStandardUnitResponse, HandleRoomJustClearedContext, HcTileEffectDuration}, tiles::room_connection::Direction, damage::DamageColor, unit::{standard_unit_common::{BudebExpiry, BudebTractionMult, BudebTractionCap}, weapon::crimson_shotgun::new_weapon_crimson_shotgun}}, rofiz::{rofiz_object::{Hitbox, Transformation}, rofiz_state::RofizState}, room::RoomConnectionInfo}, geometry::shape::{Shape, Point}, gfx::{renderer::{DrawOp, DrawOpGroup, ColorRGBA32f, DrawOpText, DrawTextPosition}, draw_op_util::draw_op_rect, text::font::Font}};
 
 use super::{Unit, standard_unit_common::{StandardUnitCommon, Budeb, BudebMaxSpeed, TranslateMove, PolarForce}, weapon::{weapon_def::{Weapon, WeaponHandleTickContext, DrawWeaponHudContext, DrawWeaponOnOwnerContext}, green_laser::new_weapon_green_laser, lapis_trigun::new_weapon_lapis_trigun, ruby_rockets::new_weapon_ruby_rockets}, active_item::{active_item_def::{ActiveItem, ActiveItemHandleTickContext}, clear_enemy_projectiles::new_active_item_clear_projectiles, slow_enemy_time::new_active_item_slow_enemy_time}};
 
@@ -124,12 +124,12 @@ impl RoomObject for Player {
         let mouse_y = ctx.get_player_input().mouse_y;
         let primary_attack = ctx.get_player_input().is_lmb_down;
         let special_attack = ctx.get_player_input().is_rmb_down;
-        let nro_ctx = &mut NewRoomObjectContext::from_act1_ctx(ctx);
-        let mut wht_ctx = WeaponHandleTickContext{
+        let (mut nro_ctx, sound_db) = ctx.to_nro_ctx_and_sound_db();
+        let mut wht_ctx = WeaponHandleTickContext {
             ws_data: weapon.ws_data.as_mut(),
             ammo: &mut weapon.ammo,
             tick_len,
-            nro_ctx,
+            nro_ctx: &mut nro_ctx,
             owner: self_as_weak,
             owner_team: Team::Player,
             owner_velocity_x: self.su_common.get_velocity_x(),
@@ -140,12 +140,14 @@ impl RoomObject for Player {
             primary_attack,
             special_attack,
             owner_mana: self.mana,
+            sound_db,
         };
         let mut wht_response = (weapon.handle_tick_fn)(&mut wht_ctx);
         assert!(wht_response.damage_color != DamageColor::NotSet, "Weapon handle tick returned a damage color of NotSet");
         self.damage_color = wht_response.damage_color;
         wht_response.new_room_objs.drain(..).for_each(|x| response.add_room_obj(x));
         self.mana += wht_response.mana_delta;
+        wht_response.newly_played_sounds.drain(..).for_each(|x| {response.play_sound(ctx.get_rng(), x);});
 
         // process main input
         let accel_x = match ctx.get_player_input().horizontal_move {

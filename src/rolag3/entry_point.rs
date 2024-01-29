@@ -70,7 +70,7 @@ struct Rolag3EventHandler {
 }
 
 pub struct SoundDb {
-    gun_pistol_shot: [SoundDataRef; 5],
+    pub gun_pistol_shot: [SoundDataRef; 5],
 }
 
 impl SoundDb {
@@ -274,6 +274,8 @@ impl Rolag3EventHandler {
             prev_mouse_y,
             rng: &mut self.rng,
             run_validation: self.config.get_opt_bool("run_validation_override").or(Some(true)).unwrap(),
+            sound_system: self.sound_system.as_mut(),
+            sound_db: &self.sound_db,
         };
         let rff_response = run_floor_frame(run_floor_ctx);
         self.prev_mouse_xy = Some((mouse_x, mouse_y));

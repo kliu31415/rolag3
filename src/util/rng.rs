@@ -23,6 +23,10 @@ impl Prng {
         self.state.gen_range(r)
     }
 
+    pub fn gen_u128_range(&mut self, r: Range<u128>) -> u128 {
+        self.state.gen_range(r)
+    }
+
     pub fn gen_usize_range(&mut self, r: Range<usize>) -> usize {
         self.state.gen_range(r)
     }

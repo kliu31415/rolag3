@@ -5,6 +5,7 @@ use kira::{manager::{AudioManagerSettings, AudioManager}, sound::{static_sound::
 pub trait SoundSystem {
     fn load_sound_data_file_into_db(&mut self, path: &str) -> Result<SoundDataRef, Box<dyn Error>>;
     fn play_sound(&mut self, args: PlaySoundArgs) -> Result<SoundPlayingRef, Box<dyn Error>>;
+    fn is_done_playing(&mut self, spr: &SoundPlayingRef) -> bool;
     // returns Ok(false) if the sound is done playing. The caller should then delete the SoundPlayingRef, because the
     // played sound associated with the SoundPlayingRef is deleted from the SoundSystem's internal data.
     fn modify_sound_playing_if_not_done(&mut self, spr: &SoundPlayingRef, modify: ModifySoundPlaying) -> Result<bool, Box<dyn Error>>;
@@ -25,7 +26,7 @@ pub struct SoundPlayingRef {
 }
 
 pub enum ModifySoundPlaying {
-    PlaybackRate {rate: f64},
+    _PlaybackRate {rate: f64},
 }
 
 struct KiraSoundSystem {
@@ -65,10 +66,23 @@ impl SoundSystem for KiraSoundSystem {
         })
     }
 
+    fn is_done_playing(&mut self, spr: &SoundPlayingRef) -> bool {
+        let sh = self.sound_playing.get_mut(&spr.id);
+        let Some(sh) = sh else {
+            panic!("unable to get StaticSoundHandle with id={}. It was likely deleted earlier.", &spr.id);
+        };
+
+        if sh.state() == PlaybackState::Stopped {
+            self.sound_playing.remove(&spr.id);
+            return false;
+        }
+        true
+    }
+
     fn modify_sound_playing_if_not_done(&mut self, spr: &SoundPlayingRef, modify: ModifySoundPlaying) -> Result<bool, Box<dyn Error>> {
         let sh = self.sound_playing.get_mut(&spr.id);
         let Some(sh) = sh else {
-            panic!("unable to get StaticSoundHandle with id={}. It was deleted in an earlier call to this function.", &spr.id);
+            panic!("unable to get StaticSoundHandle with id={}. It was likely deleted earlier.", &spr.id);
         };
 
         if sh.state() == PlaybackState::Stopped {
@@ -77,7 +91,7 @@ impl SoundSystem for KiraSoundSystem {
         }
 
         match modify {
-            ModifySoundPlaying::PlaybackRate { rate } => {
+            ModifySoundPlaying::_PlaybackRate { rate } => {
                 sh.set_playback_rate(rate, IMMEDIATE_TWEEN)?;
             }
         }
