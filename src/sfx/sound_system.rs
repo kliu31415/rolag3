@@ -13,6 +13,7 @@ pub trait SoundSystem {
 
 pub struct PlaySoundArgs {
     pub sdr: SoundDataRef,
+    pub volume: f64,
     pub panning: f64,
 }
 
@@ -57,8 +58,9 @@ impl SoundSystem for KiraSoundSystem {
 
     fn play_sound(&mut self, args: PlaySoundArgs) -> Result<SoundPlayingRef, Box<dyn Error>> {
         let sound_data = self.static_sound_db.get(&args.sdr.id).unwrap().clone();
-        let mut sound = self.audio_manager.play(sound_data)?;
-        sound.set_panning(args.panning, IMMEDIATE_TWEEN)?;
+        sound_data.settings.volume(kira::Volume::Amplitude(args.volume));
+        sound_data.settings.panning(args.panning);
+        let sound = self.audio_manager.play(sound_data)?;
         self.sound_playing_id_counter += 1;
         self.sound_playing.insert(self.sound_playing_id_counter, sound);
         Ok(SoundPlayingRef {

@@ -1,8 +1,8 @@
 use std::{rc::{Rc, Weak}, cell::RefCell, collections::{HashSet, HashMap, BTreeMap}, ops::Range};
 
-use crate::{rolag3::{floor::{draw::DrawContext, run::PlayerInput, rofiz::{rofiz_state::{RofizState, RofizObjectRef}, rofiz_object::Hitbox}, room::{RoomConnectionInfo, RoomTile}, floor_def::Floor, floorgen::run::GenFloorRoomContext}, entry_point::SoundDb}, util::rng::Prng, sfx::sound_system::{SoundSystem, PlaySoundArgs}};
+use crate::{rolag3::{floor::{draw::DrawContext, run::PlayerInput, rofiz::{rofiz_state::{RofizState, RofizObjectRef}, rofiz_object::Hitbox}, room::{RoomConnectionInfo, RoomTile}, floor_def::Floor, floorgen::run::GenFloorRoomContext}, sound_db::SoundDb}, util::rng::Prng, sfx::sound_system::{SoundSystem, PlaySoundArgs}};
 
-use super::{damage::DamageColor, unit::standard_unit_common::{Budeb, StandardUnitCommon}, sound::{RoomObjSound, RoomObjPlaySoundArgs, RoomObjSoundRef}};
+use super::{damage::DamageColor, unit::standard_unit_common::{Budeb, StandardUnitCommon}, sound::{RoomObjSound, RoomObjPlaySoundArgs, RoomObjSoundRef, RoomObjSoundIdT}};
 
 /* Rules:
    -act1() must be called at least once before any draw() calls. This allows initialization steps to be performed in
@@ -344,8 +344,13 @@ impl RoomObjectCollection {
             self.cached_mem.act1_responses.push(response);
 
             for (id, nps) in newly_played_sounds {
+                assert!(nps.volume >= 0.0, "sound volume ({}) is less than 0", nps.volume);
+                if nps.volume == 0.0 {
+                    continue;
+                }
                 let r = sound_system.play_sound(PlaySoundArgs {
                     sdr: nps.sound_data,
+                    volume: nps.volume,
                     panning: 0.5, // TODO: actually use panning rather than just centering at 0.5
                 });
                 
@@ -789,7 +794,7 @@ impl<'a> Act1Context<'a> {
         }
     }
 
-    pub fn _get_sound_db(&self) -> &SoundDb {
+    pub fn get_sound_db(&self) -> &SoundDb {
         self.sound_db
     }
     
@@ -832,7 +837,7 @@ pub struct Act1Response {
     operations: Vec<RoomObjOperation>,
     floor_finished: bool,
     owned_sound_playback_speed_override: Option<f64>,
-    newly_played_sounds: Vec<(u128, RoomObjPlaySoundArgs)>,
+    newly_played_sounds: Vec<(RoomObjSoundIdT, RoomObjPlaySoundArgs)>,
 }
 
 impl Act1Response {

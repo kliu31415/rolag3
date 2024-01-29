@@ -1,6 +1,6 @@
 use std::{rc::Weak, cell::RefCell};
 
-use crate::{rolag3::floor::{room_object::{room_object_def::{RoomObject, RoomObjectMetadata, Act1Response, Act1Context, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, NewRoomObjectContext, RoomObjectType}, damage::DamageColor}, draw::{DrawContext, Color}, rofiz::{rofiz_state::RofizObjectRef, rofiz_object::{Transformation, Hitbox}}}, geometry::shape::{Shape, Point}};
+use crate::{rolag3::floor::{room_object::{room_object_def::{RoomObject, RoomObjectMetadata, Act1Response, Act1Context, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, NewRoomObjectContext, RoomObjectType}, damage::DamageColor, sound::{RoomObjPlaySoundArgsBuilder, RoomObjPlaySoundArgsBuilderReq}}, draw::{DrawContext, Color}, rofiz::{rofiz_state::RofizObjectRef, rofiz_object::{Transformation, Hitbox}}}, geometry::shape::{Shape, Point}};
 
 pub struct Explosion1 {
     rofo_ref: RofizObjectRef,
@@ -14,6 +14,8 @@ pub struct Explosion1 {
     inner_color_fn: Box<dyn Fn(f64) -> Color>,
     radius_fn: Box<dyn Fn(f64) -> f64>,
     md: RoomObjectMetadata,
+    sound_volume_mult: f64,
+    sound_added: bool,
 }
 
 impl RoomObject for Explosion1 {
@@ -25,12 +27,22 @@ impl RoomObject for Explosion1 {
         if ctx.get_room_time() > self.creation_time + self.lifespan {
             return Act1Response::new().remove_room_obj(self.md.get_ref());
         }
+        let mut response = Act1Response::new();
+        if !self.sound_added {
+            let mut rng = ctx.get_rng().spawn_child();
+            let sound_data = rng.sample_slice_uniform(&ctx.get_sound_db().explosion_small);
+            response.play_sound(&mut rng, RoomObjPlaySoundArgsBuilder::new(RoomObjPlaySoundArgsBuilderReq {
+                sound_data,
+            }).volume(self.sound_volume_mult)
+                .build());
+            self.sound_added = true;
+        }
         let old_xform = ctx.get_rofiz().get_movable_object_xform(&self.rofo_ref);
         let radius = (self.radius_fn)(ctx.get_room_time() - self.creation_time) as f32;
         let shape: Shape = Shape::of_circle(Point::new(0.0, 0.0), radius);
         let hitbox = Hitbox::new(old_xform, shape);
         self.rofo_ref = ctx.get_rofiz().add_basic_projectile(self.md.get_ref(), hitbox);
-        Act1Response::new()
+        response
     }
 
     fn draw(&mut self, ctx: &mut DrawContext) {
@@ -69,6 +81,7 @@ pub fn new_explosion1(
     outer_color_fn: Box<dyn Fn(f64) -> Color>,
     inner_color_fn: Box<dyn Fn(f64) -> Color>,
     radius_fn: Box<dyn Fn(f64) -> f64>,
+    sound_volume_mult: f64,
 ) -> Explosion1 {
     let md = RoomObjectMetadata::new(ctx, RoomObjectType::Other);
     let xform = Transformation::new(x, y, 0.0);
@@ -86,5 +99,7 @@ pub fn new_explosion1(
         inner_color_fn,
         radius_fn,
         md,
+        sound_volume_mult,
+        sound_added: false,
     }
 }

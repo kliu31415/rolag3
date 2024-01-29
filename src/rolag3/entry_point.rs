@@ -10,7 +10,8 @@ use winit::{event::{Event, WindowEvent, KeyEvent, ElementState, MouseButton}, ev
 
 use crate::gfx::text::font::Font;
 use crate::rolag3::between_floors_shop::run::ShopState;
-use crate::sfx::sound_system::{new_sound_system, SoundSystem, SoundDataRef};
+use crate::rolag3::sound_db::SoundDb;
+use crate::sfx::sound_system::{new_sound_system, SoundSystem};
 use crate::util::rng::Prng;
 use crate::{gfx::{self, window::{Window, EventHandler}, renderer::{ColorRGBA32f, DrawTextPosition, DrawOpCCS, DrawOpText, DrawOpWithMetadata, DrawOp, Renderer}, input::PollableInput}, util::{time::now_unix, config::Config}};
 
@@ -67,32 +68,6 @@ struct Rolag3EventHandler {
     config: Config,
     sound_db: SoundDb,
     sound_system: Box<dyn SoundSystem>,
-}
-
-pub struct SoundDb {
-    pub gun_pistol_shot: [SoundDataRef; 5],
-}
-
-impl SoundDb {
-    pub fn new(ss: &mut dyn SoundSystem) -> SoundDb {
-        SoundDb {
-            gun_pistol_shot: Self::load_gm(ss, "gun_pistol_shot", 5)[..].try_into().unwrap(),
-        }
-    }
-
-    fn load_gm(ss: &mut dyn SoundSystem, name: &str, n: usize) -> Box<[SoundDataRef]> {
-        assert!(n < 100, "n({}) is too big", n);
-        let mut result = Vec::new();
-        result.reserve_exact(n);
-        for i in 1..=n {
-            let path = format!("audio/game_master_v1.3/{}/{}_{:0>2}.wav", name, name, i);
-            match ss.load_sound_data_file_into_db(&path) {
-                Ok(r) => result.push(r),
-                Err(e) => panic!("unable to load sound file \"{}\", err={}", path, e),
-            }
-        }
-        result.into()
-    }
 }
 
 impl EventHandler for Rolag3EventHandler {

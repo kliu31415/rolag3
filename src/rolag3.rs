@@ -3,3 +3,4 @@ mod floor;
 pub mod r3run;
 pub mod between_floors_shop;
 pub mod gui;
+pub mod sound_db;

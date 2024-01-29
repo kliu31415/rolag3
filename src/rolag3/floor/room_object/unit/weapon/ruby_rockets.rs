@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
-use crate::{rolag3::floor::{room_object::{projectile::{projectile2::{Projectile2BuilderReq, Proj2Shape, Projectile2Builder, Explosion1OnDeathFnArgs}, explosion1::{Explosion1, new_explosion1}}, damage::DamageColor, room_object_def::RoomObject}, draw::Color, rofiz::rofiz_object::Transformation}, gfx::renderer::{DrawOp, DrawOpTri, ColoredTriVertex, ColorRGBA32f, ViewSpaceCoordinate}, geometry::shape::{Point, Vector}};
+use crate::{rolag3::floor::{room_object::{projectile::{projectile2::{Projectile2BuilderReq, Proj2Shape, Projectile2Builder, Explosion1OnDeathFnArgs}, explosion1::{Explosion1, new_explosion1}}, damage::DamageColor, room_object_def::RoomObject, sound::{RoomObjPlaySoundArgsBuilder, RoomObjPlaySoundArgsBuilderReq}}, draw::Color, rofiz::rofiz_object::Transformation}, gfx::renderer::{DrawOp, DrawOpTri, ColoredTriVertex, ColorRGBA32f, ViewSpaceCoordinate}, geometry::shape::{Point, Vector}};
 
 use super::weapon_def::{Weapon, WeaponHandleTickContext, WeaponHandleTickResponse, DrawWeaponHudContext, DrawWeaponHudResponse, DrawWeaponOnOwnerResponse, DrawWeaponOnOwnerContext, BuyAmmoInfo};
 
@@ -59,8 +59,18 @@ fn handle_tick_fn(ctx: &mut WeaponHandleTickContext) -> WeaponHandleTickResponse
         let num_proj = 64;
         for i in 0..num_proj {
             let angle = (i as f64) / (num_proj as f64) * 2.0 * std::f64::consts::PI;
-            response.new_room_objs.push(spawn_projectile(ctx, angle, 3.0));
+            // only 1/8 of the explosions produce sound. This prevents us from overloading the sound system.
+            let sound_volume = if i % 8 == 0 {
+                0.2
+            } else {
+                0.0
+            };
+            response.new_room_objs.push(spawn_projectile(ctx, angle, 3.0, sound_volume));
         }
+        response.newly_played_sounds.push(RoomObjPlaySoundArgsBuilder::new(RoomObjPlaySoundArgsBuilderReq {
+            sound_data: ctx.nro_ctx.get_rng().sample_slice_uniform(&ctx.sound_db.gun_grenade_launcher_shot),
+        }).volume(1.2)
+            .build());
         return response;
     }
     if !ctx.primary_attack {
@@ -73,12 +83,20 @@ fn handle_tick_fn(ctx: &mut WeaponHandleTickContext) -> WeaponHandleTickResponse
     ws_data.since_last_primary_attack = 0.0;
 
     let angle = f64::atan2(ctx.mouse_y - ctx.owner_xform.dy, ctx.mouse_x - ctx.owner_xform.dx);
-    let proj = spawn_projectile(ctx, angle, 4.0);
+    let proj = spawn_projectile(ctx, angle, 4.0, 1.0);
     response.new_room_objs.push(proj);
+    response.newly_played_sounds.push(RoomObjPlaySoundArgsBuilder::new(RoomObjPlaySoundArgsBuilderReq {
+        sound_data: ctx.nro_ctx.get_rng().sample_slice_uniform(&ctx.sound_db.gun_grenade_launcher_shot),
+    }).build());
     response
 }
 
-fn spawn_projectile(ctx: &mut WeaponHandleTickContext, angle: f64, explosion_radius: f64) -> Rc<RefCell<dyn RoomObject>> {
+fn spawn_projectile(
+    ctx: &mut WeaponHandleTickContext, 
+    angle: f64, 
+    explosion_radius: f64,
+    sound_volume_mult: f64,
+) -> Rc<RefCell<dyn RoomObject>> {
     let velocity_x = ctx.owner_velocity_x + PROJ_VELOCITY * f64::cos(angle);
     let velocity_y = ctx.owner_velocity_y + PROJ_VELOCITY * f64::sin(angle);
     let shape = Proj2Shape::TriFan { center: Point::new(0.0, 0.0), vertexes: Box::new(PROJ_VERTEXES) };
@@ -114,6 +132,7 @@ fn spawn_projectile(ctx: &mut WeaponHandleTickContext, angle: f64, explosion_rad
             Box::new(outer_color_fn), 
             Box::new(inner_color_fn), 
             Box::new(radius_fn),
+            sound_volume_mult,
         )
     };
     let proj_xform: Transformation = Transformation::new(ctx.owner_xform.dx, ctx.owner_xform.dy, f64::atan2(velocity_y, velocity_x));
