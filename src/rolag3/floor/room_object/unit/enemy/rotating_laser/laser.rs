@@ -16,7 +16,7 @@ struct RotatingLaserBasic {
     xformed_rect_cache: Shape,
     angular_speed: f64,
 
-    rotating_laser_ro_ref: RofizObjectRef,
+    rotating_laser_rofo_ref: RofizObjectRef,
 }
 
 pub fn new_rotating_laser(
@@ -47,7 +47,7 @@ pub fn new_rotating_laser(
         tire_traction: 1.0, // dummy
     });
     let md = builder.get_room_obj_metadata(ctx);
-    let rotating_laser_ro_ref = ctx.add_basic_projectile(md.get_ref(), Hitbox::new(xform, rect.clone()));
+    let rotating_laser_rofo_ref = ctx.add_basic_projectile(md.get_ref(), Hitbox::new(xform, rect.clone()));
 
     let us_data = RotatingLaserBasic {
         laser_draw_color: draw_color,
@@ -55,7 +55,7 @@ pub fn new_rotating_laser(
         rect: rect.clone(),
         xformed_rect_cache: Shape::default(),
         angular_speed,
-        rotating_laser_ro_ref,
+        rotating_laser_rofo_ref,
     };
 
     builder.act1_fn(Box::new(act1))
@@ -71,13 +71,13 @@ pub fn new_rotating_laser(
 fn act1(ctx: &mut SuAct1Context) -> Act1Response {
     let us_data = ctx.su_ctx.us_data.downcast_mut::<RotatingLaserBasic>().unwrap();
     let move_xform = Transformation::new(0.0, 0.0, ctx.su_ctx.su_common.get_unit_tick_len() * us_data.angular_speed);
-    ctx.act1_ctx.get_rofiz().move_object(&us_data.rotating_laser_ro_ref, RofizObjectMovement::Move(move_xform));
+    ctx.act1_ctx.get_rofiz().move_object(&us_data.rotating_laser_rofo_ref, RofizObjectMovement::Move(move_xform));
     Act1Response::new()
 }
 
 fn draw(ctx: &mut SuDrawContext) {
     let us_data = ctx.su_ctx.us_data.downcast_mut::<RotatingLaserBasic>().unwrap();
-    let xform = ctx.draw_ctx.get_rofiz().get_movable_object_xform(&us_data.rotating_laser_ro_ref);
+    let xform = ctx.draw_ctx.get_rofiz().get_movable_object_xform(&us_data.rotating_laser_rofo_ref);
     xform.replace_shape_with_transformed(&mut us_data.xformed_rect_cache, &us_data.rect);
     let Shape::Polygon(xformed_rect) = &us_data.xformed_rect_cache else {panic!()};
     let circular_base = ctx.draw_ctx.do_concentric_circle(

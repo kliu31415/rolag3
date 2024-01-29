@@ -54,9 +54,9 @@ fn act1(ctx: &mut SpAct1Context) -> Act1Response {
         return Act1Response::new().remove_room_obj(ctx.sp_ctx.md.get_ref());
     }
     let room_time = ctx.act1_ctx.get_room_time();
-    let mut hitbox = ctx.act1_ctx.get_rofiz().steal_movable_object_hitbox(&ctx.sp_ctx.ro_ref);
+    let mut hitbox = ctx.act1_ctx.get_rofiz().steal_movable_object_hitbox(&ctx.sp_ctx.rofo_ref);
     (ps_data.hitbox_fn)(&mut hitbox, room_time);
-    ctx.act1_ctx.get_rofiz().move_object(&ctx.sp_ctx.ro_ref, RofizObjectMovement::NewHitbox(hitbox));
+    ctx.act1_ctx.get_rofiz().move_object(&ctx.sp_ctx.rofo_ref, RofizObjectMovement::NewHitbox(hitbox));
     Act1Response::new()
 }
 

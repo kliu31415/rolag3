@@ -371,20 +371,20 @@ impl StandardUnit1Builder {
 
     pub fn build(mut self, ctx: &mut NewRoomObjectContext) -> StandardUnit1 {
         self.get_room_obj_metadata(ctx);
-        let ro_ref = match self.hitbox {
+        let rofo_ref = match self.hitbox {
             Some((xform, shape)) => {
                 let hitbox = Hitbox::new(xform, shape);
-                let ro_ref = match self.rofiz_obj_type {
+                let rofo_ref = match self.rofiz_obj_type {
                     RofizObjType::NonspectralUnit => ctx.add_nonspectral_unit(self.room_obj_md.as_ref().unwrap().get_ref(), hitbox),
                     RofizObjType::SpectralUnit => ctx.add_spectral_unit(self.room_obj_md.as_ref().unwrap().get_ref(), hitbox),
                     RofizObjType::BasicProjectile => ctx.add_basic_projectile(self.room_obj_md.as_ref().unwrap().get_ref(), hitbox),
                 };
-                Some(ro_ref)
+                Some(rofo_ref)
             },
             None => None,
         };
         let su_common = StandardUnitCommon::new(
-            ro_ref, 
+            rofo_ref, 
             self.damageable,
             self.collision_damage,
             self.req.hp, 
@@ -400,12 +400,12 @@ impl StandardUnit1Builder {
         let mut secondary_hitboxes = Vec::new();
         for (xform, shape, typ) in self.secondary_hitboxes {
             let hitbox = Hitbox::new(xform, shape);
-            let ro_ref = match typ {
+            let rofo_ref = match typ {
                 RofizObjType::NonspectralUnit => ctx.add_nonspectral_unit(self.room_obj_md.as_ref().unwrap().get_ref(), hitbox),
                 RofizObjType::SpectralUnit => ctx.add_spectral_unit(self.room_obj_md.as_ref().unwrap().get_ref(), hitbox),
                 RofizObjType::BasicProjectile => ctx.add_basic_projectile(self.room_obj_md.as_ref().unwrap().get_ref(), hitbox),
             };
-            secondary_hitboxes.push(ro_ref);
+            secondary_hitboxes.push(rofo_ref);
         }
         
         let handle_collision_fn = match self.handle_collision_logic {

@@ -70,7 +70,7 @@ pub struct BudebTimeSpeedMult {
 const COLLISION_DAMAGE_INSTANT_MULT: f64 = 0.25;
 
 pub struct StandardUnitCommon {
-    ro_ref: Option<RofizObjectRef>,
+    rofo_ref: Option<RofizObjectRef>,
     engine_power: f64, // intuitively, equal to the max speed in tiles/s
     tire_traction: f64, // intuitively, proportional to how quickly the unit reaches its max speed
     angular_power: f64,
@@ -132,7 +132,7 @@ impl StandardUnitCommon {
     const EPSILON: f64 = 1e-20;
 
     pub fn new(
-        ro_ref: Option<RofizObjectRef>, 
+        rofo_ref: Option<RofizObjectRef>, 
         damageable: bool, 
         collision_damage: f64,
         hp: f64, 
@@ -145,7 +145,7 @@ impl StandardUnitCommon {
         min_effective_angular_velocity: f64,
     ) -> Self {
         Self {
-            ro_ref,
+            rofo_ref,
             engine_power,
             tire_traction,
             angular_power,
@@ -188,14 +188,14 @@ impl StandardUnitCommon {
     }
 
     pub fn try_get_rofiz_xform(&self, rofiz: &RofizState) -> Option<Transformation> {
-        if let Some(ro_ref) = &self.ro_ref {
-            return Some(rofiz.get_movable_object_xform(ro_ref));
+        if let Some(rofo_ref) = &self.rofo_ref {
+            return Some(rofiz.get_movable_object_xform(rofo_ref));
         }
         None
     }
 
     pub fn get_rofiz_xform(&self, rofiz: &RofizState) -> Transformation {
-        rofiz.get_movable_object_xform(self.ro_ref.as_ref().unwrap())
+        rofiz.get_movable_object_xform(self.rofo_ref.as_ref().unwrap())
     }
 
     fn decelerate_xy(&mut self, tick_length: f64, force: f64) {
@@ -274,7 +274,7 @@ impl StandardUnitCommon {
 
     pub fn set_translate_move(&mut self, translate: TranslateMove) {
         assert!(self.act1_started, "cannot call standard_unit_common::set_translate_move() before act1 starts");
-        assert!(self.ro_ref.is_some());
+        assert!(self.rofo_ref.is_some());
         self.translate = translate;
     }
 
@@ -285,13 +285,13 @@ impl StandardUnitCommon {
 
     pub fn set_rotate_move(&mut self, rotate: RotateMove) {
         assert!(self.act1_started, "cannot call standard_unit_common::set_rotate_move() before act1 starts");
-        assert!(self.ro_ref.is_some());
+        assert!(self.rofo_ref.is_some());
         self.rotate = rotate;
     }
 
     pub fn add_external_forces(&mut self, mut f: Vec<PolarForce>) {
         assert!(self.act1_started, "cannot call standard_unit_common::add_external_forces() before act1 starts");
-        assert!(self.ro_ref.is_some());
+        assert!(self.rofo_ref.is_some());
         self.external_forces.append(&mut f);
     }
 
@@ -305,8 +305,8 @@ impl StandardUnitCommon {
         self.unit_age
     }
 
-    pub fn player_move_rooms(&mut self, new_ro_ref: RofizObjectRef) {
-        self.ro_ref = Some(new_ro_ref);
+    pub fn player_move_rooms(&mut self, new_rofo_ref: RofizObjectRef) {
+        self.rofo_ref = Some(new_rofo_ref);
     }
 
     pub fn end_act1(&mut self, rofiz: &mut RofizState) {
@@ -386,14 +386,14 @@ impl StandardUnitCommon {
         let traction_mult = max_traction_mult * min_traction_mult;
         let traction = f64::min(traction_cap, traction_mult * self.tire_traction);
 
-        if self.ro_ref.is_some() {
-            self.move_primary_ro_ref(rofiz, tick_length, traction, speed_mult);
+        if self.rofo_ref.is_some() {
+            self.move_primary_rofo_ref(rofiz, tick_length, traction, speed_mult);
         }
 
         self.act1_started = false;
     }
 
-    fn move_primary_ro_ref(&mut self, rofiz: &mut RofizState, tick_length: f64, tire_traction: f64, speed_mult: f64) {
+    fn move_primary_rofo_ref(&mut self, rofiz: &mut RofizState, tick_length: f64, tire_traction: f64, speed_mult: f64) {
         let min_velocity = self.min_effective_velocity;
         let min_angular_velocity = self.min_effective_angular_velocity;
         match self.translate {
@@ -459,7 +459,7 @@ impl StandardUnitCommon {
             self.velocity_y += ay;
         }
 
-        let position = rofiz.get_movable_object_xform(&self.ro_ref.as_ref().unwrap());
+        let position = rofiz.get_movable_object_xform(&self.rofo_ref.as_ref().unwrap());
 
         if let Some(prev_position) = self.prev_position {
             let prev_desired_movement = self.prev_desired_movement.unwrap();
@@ -524,7 +524,7 @@ impl StandardUnitCommon {
         self.rotate = RotateMove::Nop;
         self.external_forces.clear();
 
-        rofiz.move_object(&self.ro_ref.as_ref().unwrap(), movement);
+        rofiz.move_object(&self.rofo_ref.as_ref().unwrap(), movement);
     }
 
     pub fn apply_budeb(&mut self, budeb: &Budeb) {

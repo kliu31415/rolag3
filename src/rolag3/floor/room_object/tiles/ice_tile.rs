@@ -3,7 +3,7 @@ use once_cell::sync::Lazy;
 
 pub struct IceTile {
     md: RoomObjectMetadata,
-    ro_ref: RofizObjectRef,
+    rofo_ref: RofizObjectRef,
     unit_last_affected_time: Option<f64>,
 }
 
@@ -29,7 +29,7 @@ impl RoomObject for IceTile {
     }
 
     fn draw(&mut self, ctx: &mut DrawContext) {
-        let xform = ctx.get_rofiz().get_movable_object_xform(&self.ro_ref);
+        let xform = ctx.get_rofiz().get_movable_object_xform(&self.rofo_ref);
         let translate = Vector::new(xform.dx as f32, xform.dy as f32);
 
         let (ice_border, ice_inner) = &(ICE_SHAPES.0, ICE_SHAPES.1);
@@ -69,6 +69,6 @@ pub fn new_ice_tile(ctx: &mut NewRoomObjectContext, x: u32, y: u32) -> IceTile {
     let shape = Shape::of_square(0.0, 0.0, 1.0);
     let xform = Transformation::new(x as f64, y as f64, 0.0);
     let hitbox = Hitbox::new(xform, shape);
-    let ro_ref = ctx.add_basic_projectile(md.get_ref(), hitbox);
-    IceTile { md, ro_ref, unit_last_affected_time: None}
+    let rofo_ref = ctx.add_basic_projectile(md.get_ref(), hitbox);
+    IceTile { md, rofo_ref, unit_last_affected_time: None}
 }

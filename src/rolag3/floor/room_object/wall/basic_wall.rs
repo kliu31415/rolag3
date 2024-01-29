@@ -6,7 +6,7 @@ use super::Wall;
  */
 pub struct BasicWall {
     md: RoomObjectMetadata,
-    _ro_ref: RofizObjectRef,
+    _rofo_ref: RofizObjectRef,
     // (x, y) is coordinate of the top left vertex of the wall. Note it's the corner of a vertex, not the wall's center.
     theme: WallTheme,
     x: u32,
@@ -124,8 +124,8 @@ impl Wall for BasicWall {
 impl BasicWall {
     pub fn new(ctx: &mut NewRoomObjectContext, theme: WallTheme, x: u32, y: u32) -> Self {
         let md = RoomObjectMetadata::new(ctx, RoomObjectType::Wall);
-        let _ro_ref = ctx.add_basic_wall(md.get_ref(), x, y);
-        Self {md, _ro_ref, theme, x, y}
+        let _rofo_ref = ctx.add_basic_wall(md.get_ref(), x, y);
+        Self {md, _rofo_ref, theme, x, y}
     }
 }
 

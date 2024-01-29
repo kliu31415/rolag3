@@ -33,7 +33,7 @@ struct ThinStar4RgbCircle {
     outer_color: Color,
     border_vertexes: [Point; 8],
     inner_vertexes: [Point; 8],
-    ro_ref: RofizObjectRef,
+    rofo_ref: RofizObjectRef,
 
     attack_style: AttackStyle,
 }
@@ -76,7 +76,7 @@ fn new_thinstar4_circle(ctx: &mut NewRoomObjectContext, damage_color: DamageColo
     });
 
     let room_obj_ref = builder.get_room_obj_metadata(ctx).get_ref();
-    let ro_ref = ctx.add_spectral_unit(room_obj_ref, hitbox);
+    let rofo_ref = ctx.add_spectral_unit(room_obj_ref, hitbox);
 
     let (border_color, outer_color, attack_style) = match damage_color {
         DamageColor::Red => (DrawContext::COLOR_SU_BORDER, RED_OUTER_COLOR, AttackStyle::Laser {query_result: None, info: None}),
@@ -91,7 +91,7 @@ fn new_thinstar4_circle(ctx: &mut NewRoomObjectContext, damage_color: DamageColo
         outer_color,
         border_vertexes,
         inner_vertexes,
-        ro_ref,
+        rofo_ref,
         attack_style,
     };
 
@@ -109,10 +109,10 @@ fn slave_act1(
 ) {
     let input_data = input.downcast_ref::<(f64, f64)>().unwrap();
     let us_data = ctx.su_ctx.us_data.downcast_mut::<ThinStar4RgbCircle>().unwrap();
-    let old_xform = ctx.act1_ctx.get_rofiz().get_movable_object_xform(&us_data.ro_ref);
+    let old_xform = ctx.act1_ctx.get_rofiz().get_movable_object_xform(&us_data.rofo_ref);
     let tick_len = ctx.act1_ctx.get_tick_length();
     let new_xform = Transformation::new(input_data.0, input_data.1, old_xform.dtheta + 1.5 * tick_len);
-    ctx.act1_ctx.get_rofiz().move_object(&us_data.ro_ref, RofizObjectMovement::SetXform(new_xform));
+    ctx.act1_ctx.get_rofiz().move_object(&us_data.rofo_ref, RofizObjectMovement::SetXform(new_xform));
 
     match &mut us_data.attack_style {
         AttackStyle::Laser { query_result, info } => {
@@ -256,7 +256,7 @@ fn draw(ctx: &mut SuDrawContext) {
     let us_data = ctx.su_ctx.us_data.downcast_mut::<ThinStar4RgbCircle>().unwrap();
     let border_color = ctx.su_ctx.su_common.get_draw_color(us_data.border_color);
     let outer_color = ctx.su_ctx.su_common.get_draw_color(us_data.outer_color);
-    let xform = ctx.draw_ctx.get_rofiz().get_movable_object_xform(&us_data.ro_ref);
+    let xform = ctx.draw_ctx.get_rofiz().get_movable_object_xform(&us_data.rofo_ref);
     let border_vertexes = us_data.border_vertexes
         .map(|v| v.rotated(xform.dtheta as f32))
         .map(|v| Point::new(xform.dx as f32 + v.x, xform.dy as f32 + v.y));

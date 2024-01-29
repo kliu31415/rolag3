@@ -3,7 +3,7 @@ use crate::{rolag3::floor::{room_object::{room_object_def::{RoomObject, RoomObje
 pub struct BlackHole {
     affects_projectiles_color_filter: Option<DamageColor>,
     md: RoomObjectMetadata,
-    ro_ref: RofizObjectRef,
+    rofo_ref: RofizObjectRef,
     last_absorbed_proj_at: Option<f64>,
 }
 
@@ -20,7 +20,7 @@ impl RoomObject for BlackHole {
     }
 
     fn act1(&mut self, ctx: &mut Act1Context) -> Act1Response {
-        let xform = ctx.get_rofiz().get_movable_object_xform(&self.ro_ref);
+        let xform = ctx.get_rofiz().get_movable_object_xform(&self.rofo_ref);
         let mut response = Act1Response::new();
         response.apply_operation(RoomObjOperation::BlackHoleForce { 
             x: xform.dx, 
@@ -39,7 +39,7 @@ impl RoomObject for BlackHole {
     }
 
     fn draw(&mut self, ctx: &mut DrawContext) {
-        let xform = ctx.get_rofiz().get_movable_object_xform(&self.ro_ref);
+        let xform = ctx.get_rofiz().get_movable_object_xform(&self.rofo_ref);
         let outer_color = match self.last_absorbed_proj_at {
             Some(t) => Color::lerp(OUTER_COLOR_ABSORB, OUTER_COLOR_NO_ABSORB, f64::min(1.0, 2.0 * (ctx.get_room_time() - t)) as f32),
             None => OUTER_COLOR_NO_ABSORB,
@@ -62,11 +62,11 @@ pub fn new_black_hole(ctx: &mut NewRoomObjectContext, color: Option<DamageColor>
     let md = RoomObjectMetadata::new(ctx, RoomObjectType::Other);
     let xform = Transformation::new(x, y, 0.0);
     let shape = Shape::of_circle(Point::new(0.0, 0.0), COLLISION_RADIUS);
-    let ro_ref = ctx.add_spectral_unit(md.get_ref(), Hitbox::new(xform, shape));
+    let rofo_ref = ctx.add_spectral_unit(md.get_ref(), Hitbox::new(xform, shape));
     BlackHole {
         affects_projectiles_color_filter: color,
         md,
-        ro_ref,
+        rofo_ref,
         last_absorbed_proj_at: None,
     }
 }

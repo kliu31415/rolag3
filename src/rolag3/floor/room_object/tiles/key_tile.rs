@@ -2,7 +2,7 @@ use crate::{rolag3::floor::{room_object::room_object_def::{RoomObject, RoomObjec
 
 pub struct KeyTile {
     md: RoomObjectMetadata,
-    ro_ref: RofizObjectRef,
+    rofo_ref: RofizObjectRef,
     charge_amount: f64,
     key_fully_charged_at: Option<f64>,
 }
@@ -35,7 +35,7 @@ impl RoomObject for KeyTile {
     }
 
     fn draw(&mut self, ctx: &mut DrawContext) {
-        let xform = ctx.get_rofiz().get_movable_object_xform(&self.ro_ref);
+        let xform = ctx.get_rofiz().get_movable_object_xform(&self.rofo_ref);
         let translate = Vector::new(xform.dx as f32, xform.dy as f32);
 
         let tile_border_outer = OUTER_SHAPE.map(|p| &p + translate);
@@ -109,10 +109,10 @@ pub fn new_key_tile(ctx: &mut NewRoomObjectContext, x: u32, y: u32) -> KeyTile {
     let shape = Shape::of_square(0.0, 0.0, 2.0);
     let xform = Transformation::new(x as f64, y as f64, 0.0);
     let hitbox = Hitbox::new(xform, shape);
-    let ro_ref = ctx.add_basic_projectile(md.get_ref(), hitbox);
+    let rofo_ref = ctx.add_basic_projectile(md.get_ref(), hitbox);
     KeyTile {
         md, 
-        ro_ref, 
+        rofo_ref, 
         charge_amount: 0.0,
         key_fully_charged_at: None,
     }

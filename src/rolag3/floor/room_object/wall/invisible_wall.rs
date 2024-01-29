@@ -7,7 +7,7 @@ use super::Wall;
 
 pub struct InvisibleWall {
     md: RoomObjectMetadata,
-    _ro_ref: RofizObjectRef,
+    _rofo_ref: RofizObjectRef,
 }
 
 impl RoomObject for InvisibleWall {
@@ -43,7 +43,7 @@ impl InvisibleWall {
             transformation: Transformation::new(0.0, 0.0, 0.0),
             shape: Shape::of_rect(rect),
         };
-        let _ro_ref = ctx.add_nonspectral_unit(md.get_ref(), hitbox);
-        Self {md, _ro_ref}
+        let _rofo_ref = ctx.add_nonspectral_unit(md.get_ref(), hitbox);
+        Self {md, _rofo_ref}
     }
 }

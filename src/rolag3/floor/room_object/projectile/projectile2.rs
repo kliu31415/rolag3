@@ -161,7 +161,7 @@ impl Projectile2Builder {
 
 fn act1(ctx: &mut SpAct1Context) -> Act1Response {
     let ps_data = ctx.sp_ctx.ps_data.downcast_mut::<Projectile2Data>().unwrap();
-    let xform = ctx.act1_ctx.get_rofiz().get_movable_object_xform(ctx.sp_ctx.ro_ref);
+    let xform = ctx.act1_ctx.get_rofiz().get_movable_object_xform(ctx.sp_ctx.rofo_ref);
     if ps_data.remove_me_next_tick {
         let mut response = Act1Response::new().remove_room_obj(ctx.sp_ctx.md.get_ref());
         if let Some(explosion_fn) = &ps_data.explosion1_on_death_fn {
@@ -297,7 +297,7 @@ fn act1(ctx: &mut SpAct1Context) -> Act1Response {
     let dx = ps_data.velocity_x * tick_len;
     let dy = ps_data.velocity_y * tick_len;
     let movement = RofizObjectMovement::Move(Transformation::new(dx, dy, theta_change));
-    ctx.act1_ctx.get_rofiz().move_object(ctx.sp_ctx.ro_ref, movement);
+    ctx.act1_ctx.get_rofiz().move_object(ctx.sp_ctx.rofo_ref, movement);
 
     ps_data.age += tick_len;
 
@@ -306,7 +306,7 @@ fn act1(ctx: &mut SpAct1Context) -> Act1Response {
 
 fn end_of_life(ctx: &mut SpAct1Context) -> Act1Response {
     let ps_data = ctx.sp_ctx.ps_data.downcast_mut::<Projectile2Data>().unwrap();
-    let xform = ctx.act1_ctx.get_rofiz().get_movable_object_xform(ctx.sp_ctx.ro_ref);
+    let xform = ctx.act1_ctx.get_rofiz().get_movable_object_xform(ctx.sp_ctx.rofo_ref);
     let mut response = Act1Response::new();
     if let Some(explosion_fn) = &ps_data.explosion1_on_death_fn {
         let self_as_weak = ctx.act1_ctx.get_self_as_weak();
@@ -325,9 +325,9 @@ fn end_of_life(ctx: &mut SpAct1Context) -> Act1Response {
 
 fn draw(ctx: &mut SpDrawContext) {
     let ps_data = ctx.sp_ctx.ps_data.downcast_mut::<Projectile2Data>().unwrap();
-    let xform = ctx.draw_ctx.get_rofiz().get_movable_object_xform(ctx.sp_ctx.ro_ref);
+    let xform = ctx.draw_ctx.get_rofiz().get_movable_object_xform(ctx.sp_ctx.rofo_ref);
 
-    match ctx.draw_ctx.get_rofiz().get_movable_object_xformed_shape(ctx.sp_ctx.ro_ref) {
+    match ctx.draw_ctx.get_rofiz().get_movable_object_xformed_shape(ctx.sp_ctx.rofo_ref) {
         Shape::Polygon(p) => {
             if let Proj2Shape::TriFan{center, ..} = ps_data.shape {
                 let xformed_center = center.rotated(xform.dtheta as f32).translated(Vector::new(xform.dx as f32, xform.dy as f32));
@@ -350,7 +350,7 @@ fn draw(ctx: &mut SpDrawContext) {
 
 fn handle_collision(ctx: &mut SpHandleCollisionContext) -> HandleCollisionResponse {
     let ps_data = ctx.sp_ctx.ps_data.downcast_mut::<Projectile2Data>().unwrap();
-    let xform = ctx.hc_ctx.get_rofiz().get_movable_object_xform(ctx.sp_ctx.ro_ref);
+    let xform = ctx.hc_ctx.get_rofiz().get_movable_object_xform(ctx.sp_ctx.rofo_ref);
     if ctx.hc_ctx.get_other().borrow().blocks_projectiles() {
         let mut response = HandleCollisionResponse::new().remove_room_obj(ctx.sp_ctx.md.get_ref());
         if let Some(explosion_fn) = &ps_data.explosion1_on_death_fn {
@@ -400,7 +400,7 @@ fn handle_collision(ctx: &mut SpHandleCollisionContext) -> HandleCollisionRespon
 
 fn apply_operation(ctx: &mut SpApplyOperationContext) {
     let ps_data = ctx.sp_ctx.ps_data.downcast_mut::<Projectile2Data>().unwrap();
-    let xform = ctx.ao_ctx.get_rofiz().get_movable_object_xform(ctx.sp_ctx.ro_ref);
+    let xform = ctx.ao_ctx.get_rofiz().get_movable_object_xform(ctx.sp_ctx.rofo_ref);
     match ctx.ao_ctx.get_operation() {
         RoomObjOperation::BlackHoleForce { x, y, colors, accel_fn } => {
             if !colors.contains(&ctx.sp_ctx.damage_color) {

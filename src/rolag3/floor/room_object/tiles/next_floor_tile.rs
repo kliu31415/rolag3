@@ -2,7 +2,7 @@ use crate::{rolag3::floor::{rofiz::{rofiz_state::RofizObjectRef, rofiz_object::{
 
 pub struct NextFloorTile {
     md: RoomObjectMetadata,
-    ro_ref: RofizObjectRef,
+    rofo_ref: RofizObjectRef,
     charge_amount: f64,
     fully_charged_at: Option<f64>,
     activated_at: Option<f64>,
@@ -51,7 +51,7 @@ impl RoomObject for NextFloorTile {
         }
         let mut all_draw_ops = Vec::new();
 
-        let xform = ctx.get_rofiz().get_movable_object_xform(&self.ro_ref);
+        let xform = ctx.get_rofiz().get_movable_object_xform(&self.rofo_ref);
         let translate = Vector::new(xform.dx as f32, xform.dy as f32);
 
         let tile_border_outer = BORDER_OUTER.map(|p| &p + translate);
@@ -104,10 +104,10 @@ pub fn new_next_floor_tile(ctx: &mut NewRoomObjectContext, x: u32, y: u32) -> Ne
     let shape = Shape::of_square(0.0, 0.0, 2.0);
     let xform = Transformation::new(x as f64, y as f64, 0.0);
     let hitbox = Hitbox::new(xform, shape);
-    let ro_ref = ctx.add_basic_projectile(md.get_ref(), hitbox);
+    let rofo_ref = ctx.add_basic_projectile(md.get_ref(), hitbox);
     NextFloorTile {
         md, 
-        ro_ref, 
+        rofo_ref, 
         charge_amount: 0.0,
         fully_charged_at: None,
         activated_at: None,

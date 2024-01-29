@@ -7,7 +7,7 @@ use super::chunked_brownian_bridge::ChunkedBrownianBridge;
 // Code for lightning that arcs between orbs
 struct Lightning {
     draw_color: Color,
-    ro_refs: Vec<RofizObjectRef>,
+    rofo_refs: Vec<RofizObjectRef>,
     cbb_quad_cache: Vec<[Point; 4]>,
     bridge1: ChunkedBrownianBridge,
     bridge2: ChunkedBrownianBridge,
@@ -36,7 +36,7 @@ pub fn new_lightning(
     let lerped_bridge = ChunkedBrownianBridge::lerp(&bridge1, &bridge2, 1.0);
     let lightning = Lightning {
         draw_color,
-        ro_refs: Vec::new(),
+        rofo_refs: Vec::new(),
         cbb_quad_cache: Vec::new(),
         bridge1,
         bridge2,
@@ -81,8 +81,8 @@ fn lightning_custom_act1(ctx: &mut SuAct1Context, _: &mut Act1Response, input: &
     }
     us_data.lerped_bridge = ChunkedBrownianBridge::lerp(&us_data.bridge1, &us_data.bridge2, us_data.lerp_t);
     us_data.lerped_bridge.to_quads(&mut us_data.cbb_quad_cache, us_data.quad_thickness, start, end);
-    if us_data.ro_refs.len() > us_data.cbb_quad_cache.len() {
-        us_data.ro_refs.truncate(us_data.cbb_quad_cache.len());
+    if us_data.rofo_refs.len() > us_data.cbb_quad_cache.len() {
+        us_data.rofo_refs.truncate(us_data.cbb_quad_cache.len());
     }
     for (i, q) in us_data.cbb_quad_cache.drain(..).enumerate() {
         // shift the quad so that its non-transformed hitbox is around the origin. This isn't useful now but may be
@@ -91,15 +91,15 @@ fn lightning_custom_act1(ctx: &mut SuAct1Context, _: &mut Act1Response, input: &
         let shifted_q = q.map(|p| Point::new(p.x - q[0].x, p.y - q[0].y));
         let xform = Transformation::new(q[0].x as f64, q[0].y as f64, 0.0);
         // TODO: optimize this allocation
-        if i < us_data.ro_refs.len() {
-            let mut stolen_hitbox = ctx.act1_ctx.get_rofiz().steal_movable_object_hitbox(&us_data.ro_refs[i]);
+        if i < us_data.rofo_refs.len() {
+            let mut stolen_hitbox = ctx.act1_ctx.get_rofiz().steal_movable_object_hitbox(&us_data.rofo_refs[i]);
             stolen_hitbox.transformation = xform;
             stolen_hitbox.shape.replace_with_polygon(&shifted_q);
             let movement = RofizObjectMovement::NewHitbox(stolen_hitbox);
-            ctx.act1_ctx.get_rofiz().move_object(&us_data.ro_refs[i], movement);
+            ctx.act1_ctx.get_rofiz().move_object(&us_data.rofo_refs[i], movement);
         } else {
             let shape = Shape::of_polygon(Box::new(shifted_q));
-            us_data.ro_refs.push(ctx.act1_ctx.get_rofiz().add_basic_projectile(ctx.su_ctx.md.get_ref(), Hitbox::new(xform, shape)));
+            us_data.rofo_refs.push(ctx.act1_ctx.get_rofiz().add_basic_projectile(ctx.su_ctx.md.get_ref(), Hitbox::new(xform, shape)));
         }
     }
 }

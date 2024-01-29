@@ -344,9 +344,9 @@ impl Player {
             Transformation::new(x as f64, y as f64, 0.0),
             Shape::of_square(-Self::PLAYER_S / 2.0, - Self::PLAYER_S / 2.0, Self::PLAYER_S),
         );
-        let ro_ref = new_room_rofiz.add_nonspectral_unit(self.md.get_ref(), hitbox);
+        let rofo_ref = new_room_rofiz.add_nonspectral_unit(self.md.get_ref(), hitbox);
 
-        self.su_common.player_move_rooms(ro_ref);
+        self.su_common.player_move_rooms(rofo_ref);
     }
 
     pub fn get_center_point(&self, rofiz: &RofizState) -> FloorCoordinate {

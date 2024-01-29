@@ -39,7 +39,7 @@ const PROJ_DAMAGE_COLORS: [DamageColor; 3] = [
 ];
 
 struct StarEmperor {
-    ro_ref: RofizObjectRef,
+    rofo_ref: RofizObjectRef,
     stage: i32,
     stage_start_unit_age: [Option<f64>; 3],
     action_ended_at: f64,
@@ -91,9 +91,9 @@ pub fn new_boss_star_king(ctx: &mut NewRoomObjectContext, x: f64, y: f64) -> Sta
     let hitbox = Hitbox::new(xform, shape);
     let room_obj_ref = builder.get_room_obj_metadata(ctx).get_ref();
     // StarKing increases in size from stage 0 to 1, so it needs to be spectral or else NSU collisions will bug out
-    let ro_ref = ctx.add_spectral_unit(room_obj_ref, hitbox);
+    let rofo_ref = ctx.add_spectral_unit(room_obj_ref, hitbox);
     let us_data = StarEmperor {
-        ro_ref,
+        rofo_ref,
         stage: 0,
         stage_start_unit_age: [Some(0.0), None, None],
         action_ended_at: 0.0,
@@ -140,11 +140,11 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
         },
         _ => panic!("unexpected star_emperor.stage={}", star_emperor.stage),
     };
-    let old_xform = ctx.act1_ctx.get_rofiz().get_movable_object_xform(&star_emperor.ro_ref);
+    let old_xform = ctx.act1_ctx.get_rofiz().get_movable_object_xform(&star_emperor.rofo_ref);
     let xform = Transformation::new(old_xform.dx, old_xform.dy, 0.0);
     let shape = Shape::of_circle(Point::new(0.0, 0.0), se_radius);
     let movement = RofizObjectMovement::NewHitbox(Hitbox::new(xform, shape));
-    ctx.act1_ctx.get_rofiz().move_object(&star_emperor.ro_ref, movement);
+    ctx.act1_ctx.get_rofiz().move_object(&star_emperor.rofo_ref, movement);
 
     let poisson_lambda = COSMIC_RAY_PROJ_PER_S
                          * ctx.su_ctx.su_common.get_unit_tick_len()
@@ -458,7 +458,7 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
 
 fn draw(ctx: &mut SuDrawContext) {
     let star_emperor = ctx.su_ctx.us_data.downcast_mut::<StarEmperor>().unwrap();
-    let xform = ctx.draw_ctx.get_rofiz().get_movable_object_xform(&star_emperor.ro_ref);
+    let xform = ctx.draw_ctx.get_rofiz().get_movable_object_xform(&star_emperor.rofo_ref);
     let unit_age = ctx.su_ctx.su_common.get_unit_time();
     let (radius, color) = match star_emperor.stage {
         0 => {

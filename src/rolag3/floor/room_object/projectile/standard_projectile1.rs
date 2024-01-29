@@ -18,7 +18,7 @@ pub struct StandardProjectile1 {
 struct Sp1Data {
     ps_data: Box<dyn Any>,
     md: RoomObjectMetadata,
-    ro_ref: RofizObjectRef,
+    rofo_ref: RofizObjectRef,
     team: Team,
     owner: Weak<RefCell<dyn RoomObject>>,
     damage_color: DamageColor,
@@ -47,7 +47,7 @@ impl Sp1Data {
             team: self.team,
             damage_color: self.damage_color,
             damage: self.damage,
-            ro_ref: &mut self.ro_ref,
+            rofo_ref: &mut self.rofo_ref,
         }
     }
 }
@@ -213,12 +213,12 @@ impl Sp1Builder {
     pub fn build(self, ctx: &mut NewRoomObjectContext) -> StandardProjectile1 {
         let md = RoomObjectMetadata::new(ctx, RoomObjectType::Projectile);
         let hitbox = Hitbox::new(self.req.xform, self.req.shape);
-        let ro_ref = ctx.add_basic_projectile(md.get_ref(), hitbox);
+        let rofo_ref = ctx.add_basic_projectile(md.get_ref(), hitbox);
         StandardProjectile1 {
             data: Sp1Data { 
                 ps_data: self.ps_data, 
                 md,
-                ro_ref,
+                rofo_ref,
                 team: self.req.team,
                 damage_color: self.req.damage_color,
                 damage: self.req.damage,
@@ -242,7 +242,7 @@ pub struct SpContext<'a> {
     pub team: Team,
     pub damage_color: DamageColor,
     pub damage: f64,
-    pub ro_ref: &'a mut RofizObjectRef,
+    pub rofo_ref: &'a mut RofizObjectRef,
 }
 
 pub struct SpAct1Context<'a, 'b> {

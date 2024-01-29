@@ -3,7 +3,7 @@ use std::{rc::Weak, cell::RefCell};
 use crate::{rolag3::floor::{room_object::{room_object_def::{RoomObject, RoomObjectMetadata, Act1Response, Act1Context, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, NewRoomObjectContext, RoomObjectType}, damage::DamageColor}, draw::{DrawContext, Color}, rofiz::{rofiz_state::RofizObjectRef, rofiz_object::{Transformation, Hitbox}}}, geometry::shape::{Shape, Point}};
 
 pub struct Explosion1 {
-    ro_ref: RofizObjectRef,
+    rofo_ref: RofizObjectRef,
     team: Team,
     _owner: Weak<RefCell<dyn RoomObject>>,
     damage_color: DamageColor,
@@ -25,16 +25,16 @@ impl RoomObject for Explosion1 {
         if ctx.get_room_time() > self.creation_time + self.lifespan {
             return Act1Response::new().remove_room_obj(self.md.get_ref());
         }
-        let old_xform = ctx.get_rofiz().get_movable_object_xform(&self.ro_ref);
+        let old_xform = ctx.get_rofiz().get_movable_object_xform(&self.rofo_ref);
         let radius = (self.radius_fn)(ctx.get_room_time() - self.creation_time) as f32;
         let shape: Shape = Shape::of_circle(Point::new(0.0, 0.0), radius);
         let hitbox = Hitbox::new(old_xform, shape);
-        self.ro_ref = ctx.get_rofiz().add_basic_projectile(self.md.get_ref(), hitbox);
+        self.rofo_ref = ctx.get_rofiz().add_basic_projectile(self.md.get_ref(), hitbox);
         Act1Response::new()
     }
 
     fn draw(&mut self, ctx: &mut DrawContext) {
-        let xform = ctx.get_rofiz().get_movable_object_xform(&self.ro_ref);
+        let xform = ctx.get_rofiz().get_movable_object_xform(&self.rofo_ref);
         let age = ctx.get_room_time() - self.creation_time;
         let outer_radius = (self.radius_fn)(age) as f32;
         let inner_radius = f32::max(0.0, outer_radius - 0.1);
@@ -73,9 +73,9 @@ pub fn new_explosion1(
     let md = RoomObjectMetadata::new(ctx, RoomObjectType::Other);
     let xform = Transformation::new(x, y, 0.0);
     let shape = Shape::of_circle(Point::new(0.0, 0.0), (radius_fn)(0.0) as f32);
-    let ro_ref = ctx.add_basic_projectile(md.get_ref(), Hitbox::new(xform, shape));
+    let rofo_ref = ctx.add_basic_projectile(md.get_ref(), Hitbox::new(xform, shape));
     Explosion1 {
-        ro_ref,
+        rofo_ref,
         team,
         _owner: owner,
         damage_color,

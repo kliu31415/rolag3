@@ -4,7 +4,7 @@ use crate::{rolag3::floor::{room_object::room_object_def::{RoomObjectMetadata, R
 
 pub struct DamageTile {
     md: RoomObjectMetadata,
-    ro_ref: RofizObjectRef,
+    rofo_ref: RofizObjectRef,
     unit_last_affected_time: Option<f64>,
     unit_damage_token_buckets: HashMap<RoomObjectId, TokenBucket>,
     x_shape: Box<[Point]>,
@@ -29,7 +29,7 @@ impl RoomObject for DamageTile {
     }
 
     fn draw(&mut self, ctx: &mut DrawContext) {
-        let xform = ctx.get_rofiz().get_movable_object_xform(&self.ro_ref);
+        let xform = ctx.get_rofiz().get_movable_object_xform(&self.rofo_ref);
         let translate = Vector::new(xform.dx as f32, xform.dy as f32);
         let o1 = OUTER_SHAPE.iter();
         let o2 = OUTER_SHAPE[1..].iter().chain(OUTER_SHAPE[..1].iter());
@@ -122,11 +122,11 @@ pub fn new_damage_tile(ctx: &mut NewRoomObjectContext, x: u32, y: u32) -> Damage
     let shape = Shape::of_square(0.0, 0.0, 1.0);
     let xform = Transformation::new(x as f64, y as f64, 0.0);
     let hitbox = Hitbox::new(xform, shape);
-    let ro_ref = ctx.add_basic_projectile(md.get_ref(), hitbox);
+    let rofo_ref = ctx.add_basic_projectile(md.get_ref(), hitbox);
     let x_shape: Box<[Point]> = get_star_shape(4, 0.1, 0.4, std::f32::consts::FRAC_PI_4);
     DamageTile { 
         md, 
-        ro_ref, 
+        rofo_ref, 
         unit_last_affected_time: None, 
         unit_damage_token_buckets: HashMap::new(), 
         x_shape, 
@@ -147,11 +147,11 @@ pub fn new_damage_tile_with_is_active_fn(
     let shape = Shape::of_square(0.0, 0.0, 1.0);
     let xform = Transformation::new(x as f64, y as f64, 0.0);
     let hitbox = Hitbox::new(xform, shape);
-    let ro_ref = ctx.add_basic_projectile(md.get_ref(), hitbox);
+    let rofo_ref = ctx.add_basic_projectile(md.get_ref(), hitbox);
     let x_shape: Box<[Point]> = get_star_shape(4, 0.1, 0.4, std::f32::consts::FRAC_PI_4);
     DamageTile { 
         md, 
-        ro_ref, 
+        rofo_ref, 
         unit_last_affected_time: None, 
         unit_damage_token_buckets: HashMap::new(), 
         x_shape, 

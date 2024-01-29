@@ -3,7 +3,7 @@ use std::any::Any;
 use crate::{rolag3::floor::{rofiz::{rofiz_state::RofizObjectRef, rofiz_object::{Transformation, Hitbox, RofizObjectMovement}}, room_object::{room_object_def::{NewRoomObjectContext, Team, Act1Response}, unit::standard_unit1::{StandardUnit1Builder, StandardUnit1BuilderReq, StandardUnit1, RofizObjType, SuAct1Context}, damage::DamageColor}}, geometry::shape::{Point, Shape}};
 
 pub struct Orb {
-    pub ro_ref: RofizObjectRef,
+    pub rofo_ref: RofizObjectRef,
 }
 
 pub fn new_orb(ctx: &mut NewRoomObjectContext, x: f64, y: f64, radius: f32) -> StandardUnit1 {
@@ -18,9 +18,9 @@ pub fn new_orb(ctx: &mut NewRoomObjectContext, x: f64, y: f64, radius: f32) -> S
     let shape = Shape::of_circle(Point::new(0.0, 0.0), radius);
     let hitbox = Hitbox::new(xform, shape);
     let room_obj_ref = builder.get_room_obj_metadata(ctx).get_ref();
-    let ro_ref = ctx.add_spectral_unit(room_obj_ref, hitbox);
+    let rofo_ref = ctx.add_spectral_unit(room_obj_ref, hitbox);
     let us_data = Orb { 
-        ro_ref,
+        rofo_ref,
     };
 
     builder.slave_act1_fn(Box::new(orb_custom_act1))
@@ -35,5 +35,5 @@ fn orb_custom_act1(ctx: &mut SuAct1Context, _: &mut Act1Response, input: &dyn An
     let us_data = ctx.su_ctx.us_data.downcast_mut::<Orb>().unwrap();
     let orb_movement = *input.downcast_ref::<(f64, f64)>().unwrap();
     let xform = Transformation::new(orb_movement.0, orb_movement.1, 0.0);
-    ctx.act1_ctx.get_rofiz().move_object(&us_data.ro_ref, RofizObjectMovement::SetXform(xform));
+    ctx.act1_ctx.get_rofiz().move_object(&us_data.rofo_ref, RofizObjectMovement::SetXform(xform));
 }

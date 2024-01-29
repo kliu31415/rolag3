@@ -2,7 +2,7 @@ use crate::{rolag3::floor::{room_object::{room_object_def::{RoomObject, RoomObje
 
 pub struct AccelTile {
     md: RoomObjectMetadata,
-    ro_ref: RofizObjectRef,
+    rofo_ref: RofizObjectRef,
     unit_last_affected_time: Option<f64>,
     theta_fn: Box<dyn Fn(f64) -> f64>,
 }
@@ -25,7 +25,7 @@ impl RoomObject for AccelTile {
     }
 
     fn draw(&mut self, ctx: &mut DrawContext) {
-        let xform = ctx.get_rofiz().get_movable_object_xform(&self.ro_ref);
+        let xform = ctx.get_rofiz().get_movable_object_xform(&self.rofo_ref);
         let translate = Vector::new(xform.dx as f32, xform.dy as f32);
         let o1 = OUTER_SHAPE.iter();
         let o2 = OUTER_SHAPE[1..].iter().chain(OUTER_SHAPE[..1].iter());
@@ -84,6 +84,6 @@ pub fn new_accel_tile(ctx: &mut NewRoomObjectContext, x: u32, y: u32, theta_fn: 
     let shape = Shape::of_square(0.0, 0.0, SIDE_LEN);
     let xform = Transformation::new(x as f64, y as f64, 0.0);
     let hitbox = Hitbox::new(xform, shape);
-    let ro_ref = ctx.add_basic_projectile(md.get_ref(), hitbox);
-    AccelTile { md, ro_ref, unit_last_affected_time: None, theta_fn}
+    let rofo_ref = ctx.add_basic_projectile(md.get_ref(), hitbox);
+    AccelTile { md, rofo_ref, unit_last_affected_time: None, theta_fn}
 }

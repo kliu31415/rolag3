@@ -59,12 +59,12 @@ impl LightningOrbGroup {
                 let orb1_rc = self.orbs[i].upgrade().unwrap();
                 let orb1_ref = orb1_rc.borrow();
                 let orb1 = orb1_ref.get_us_data().downcast_ref::<Orb>().unwrap();
-                let orb1_pos = ctx.get_rofiz().get_movable_object_xform(&orb1.ro_ref);
+                let orb1_pos = ctx.get_rofiz().get_movable_object_xform(&orb1.rofo_ref);
     
                 let orb2_rc = self.orbs[j].upgrade().unwrap();
                 let orb2_ref = orb2_rc.borrow();
                 let orb2 = orb2_ref.get_us_data().downcast_ref::<Orb>().unwrap();
-                let orb2_pos = ctx.get_rofiz().get_movable_object_xform(&orb2.ro_ref);
+                let orb2_pos = ctx.get_rofiz().get_movable_object_xform(&orb2.rofo_ref);
     
                 let mut output = Empty {};
                 lightning.slave_act1_fn(ctx, response, &(orb1_pos, orb2_pos, y_sd), &mut output);
@@ -85,7 +85,7 @@ impl LightningOrbGroup {
             let orb_rc = orb_weak.upgrade().unwrap();
             let orb_ref = orb_rc.as_ref().borrow();
             let orb = orb_ref.get_us_data().downcast_ref::<Orb>().unwrap();
-            let orb_xform = ctx.get_rofiz().get_movable_object_xform(&orb.ro_ref);
+            let orb_xform = ctx.get_rofiz().get_movable_object_xform(&orb.rofo_ref);
     
             self.orb_centers_cache[i] = Point::new(orb_xform.dx as f32, orb_xform.dy as f32);
             let center = Point::new(orb_xform.dx as f32, orb_xform.dy as f32);
