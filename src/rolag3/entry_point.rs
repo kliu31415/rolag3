@@ -1,4 +1,5 @@
 use std::cell::RefCell;
+use std::error::Error;
 use std::rc::Rc;
 use std::{collections::VecDeque, time::SystemTime};
 use std::io::Write;
@@ -9,6 +10,7 @@ use winit::{event::{Event, WindowEvent, KeyEvent, ElementState, MouseButton}, ev
 
 use crate::gfx::text::font::Font;
 use crate::rolag3::between_floors_shop::run::ShopState;
+use crate::sfx::sound_system::{new_sound_system, SoundSystem, SoundDataRef};
 use crate::util::rng::Prng;
 use crate::{gfx::{self, window::{Window, EventHandler}, renderer::{ColorRGBA32f, DrawTextPosition, DrawOpCCS, DrawOpText, DrawOpWithMetadata, DrawOp, Renderer}, input::PollableInput}, util::{time::now_unix, config::Config}};
 
@@ -18,7 +20,7 @@ use super::floor::room_object::unit::weapon::crimson_shotgun::new_weapon_crimson
 use super::floor::{draw::{DrawFloorContext, get_draw_floor_ops}, run::{RunFloorContext, run_floor_frame, PlayerInput, PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, floor_def::Floor};
 use super::r3run::{R3Run, R3RunState};
 
-pub fn run() {
+pub fn run() -> Result<(), Box<dyn Error>> {
     std::env::set_var("RUST_BACKTRACE", "full");
     std::env::set_var("RUST_LOG", "warn");
     let time_format = time::format_description::parse("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond digits:3]").unwrap();
@@ -46,10 +48,14 @@ pub fn run() {
         .filter(None, log::LevelFilter::Warn)
         .init();
 
+    let mut sound_system = new_sound_system()?;
+    let sound_db = SoundDb::new(sound_system.as_mut());
+
     let mut window = gfx::window::make_window_and_renderer("Rolag3", 640, 360, 2560, 1440);
-    let mut event_handler = Rolag3EventHandler::new_test1(window.get_renderer());
+    let mut event_handler = Rolag3EventHandler::new_test1(window.get_renderer(), sound_system, sound_db);
     window.run_event_loop(&mut event_handler);
     log::info!("exiting");
+    Ok(())
 }
 
 struct Rolag3EventHandler {
@@ -59,6 +65,34 @@ struct Rolag3EventHandler {
     prev_mouse_xy: Option<(f64, f64)>,
     cached_mem_draw_ops: Vec<DrawOpWithMetadata>,
     config: Config,
+    sound_db: SoundDb,
+    sound_system: Box<dyn SoundSystem>,
+}
+
+pub struct SoundDb {
+    gun_pistol_shot: [SoundDataRef; 5],
+}
+
+impl SoundDb {
+    pub fn new(ss: &mut dyn SoundSystem) -> SoundDb {
+        SoundDb {
+            gun_pistol_shot: Self::load_gm(ss, "gun_pistol_shot", 5)[..].try_into().unwrap(),
+        }
+    }
+
+    fn load_gm(ss: &mut dyn SoundSystem, name: &str, n: usize) -> Box<[SoundDataRef]> {
+        assert!(n < 100, "n({}) is too big", n);
+        let mut result = Vec::new();
+        result.reserve_exact(n);
+        for i in 1..=n {
+            let path = format!("audio/game_master_v1.3/{}/{}_{:0>2}.wav", name, name, i);
+            match ss.load_sound_data_file_into_db(&path) {
+                Ok(r) => result.push(r),
+                Err(e) => panic!("unable to load sound file \"{}\", err={}", path, e),
+            }
+        }
+        result.into()
+    }
 }
 
 impl EventHandler for Rolag3EventHandler {
@@ -113,7 +147,7 @@ const PLAYER_ACTIVE_ITEM1: PhysicalKey = PhysicalKey::Code(KeyCode::Space);
 const PLAYER_TAB_OVERLAY: PhysicalKey = PhysicalKey::Code(KeyCode::Tab);
 
 impl Rolag3EventHandler {
-    fn new_test1(renderer: &mut dyn Renderer) -> Rolag3EventHandler {
+    fn new_test1(renderer: &mut dyn Renderer, sound_system: Box<dyn SoundSystem>, sound_db: SoundDb) -> Rolag3EventHandler {
         let mut rng = Prng::new_seed_u64(123);
         let player = Rc::new(RefCell::new(Player::new_test1()));
 
@@ -143,6 +177,8 @@ impl Rolag3EventHandler {
             prev_mouse_xy: None,
             cached_mem_draw_ops: Vec::new(),
             config: Config::new_no_validation(),
+            sound_db,
+            sound_system,
         }
     }
 
