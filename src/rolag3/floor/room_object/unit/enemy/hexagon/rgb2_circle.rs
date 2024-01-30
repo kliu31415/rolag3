@@ -2,13 +2,13 @@ use std::{rc::Rc, cell::RefCell};
 
 use crate::{geometry::{shape::{Point, Shape}, util::{regular_polygon, get_inner_polygon}}, rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Team, Act1Response, HandleCollisionResponse}, unit::{standard_unit1::{StandardUnit1, StandardUnit1BuilderReq, StandardUnit1Builder, HandleCollisionLogic, SuAct1Context, SuDrawContext, SuHandleCollisionContext}, standard_unit_common::TranslateMove}, damage::DamageColor, projectile::projectile2::{Projectile2BuilderReq, Projectile2Builder, Proj2Shape}}, rofiz::rofiz_object::Transformation, draw::{Color, DrawContext}}};
 
-/* HexagonRgb2Circle randomly translates in one of 6 directions and periodically shoots a radial wave of 32 projectiles.
+/* HexagonRgb2Circle randomly translates in one of 6 directions and periodically shoots a radial wave of 16 projectiles.
 */
 
 const OUTER_COLORS: [Color; 3] = [
-    Color::new(0.2, 0.1, 0.1, 1.0),
-    Color::new(0.1, 0.2, 0.1, 1.0),
-    Color::new(0.1, 0.1, 0.2, 1.0),
+    Color::new(0.2, 0.05, 0.05, 1.0),
+    Color::new(0.05, 0.2, 0.05, 1.0),
+    Color::new(0.05, 0.05, 0.2, 1.0),
 ];
 
 const INNER_COLORS: [Color; 3] = [
@@ -95,7 +95,7 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
         let xform = ctx.su_ctx.su_common.get_rofiz_xform(ctx.act1_ctx.get_rofiz());
         let self_as_weak = ctx.act1_ctx.get_self_as_weak();
         let mut nfo_ctx = NewRoomObjectContext::from_act1_ctx(ctx.act1_ctx);
-        let num_proj = 32;
+        let num_proj = 16;
         for i in 0..num_proj {
             let angle = (i as f64) / (num_proj as f64) * 2.0 * std::f64::consts::PI;
             let proj = Projectile2Builder::new(
