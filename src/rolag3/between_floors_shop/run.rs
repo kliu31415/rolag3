@@ -25,6 +25,7 @@ pub struct RunFrameBfshopContext<'a> {
 
 pub struct RunFrameBfshopResponse {
     pub move_to_next_floor: bool,
+    pub draw_ops: Vec<DrawOpWithMetadata>,
 }
 
 pub fn run_frame_between_floors_shop(ctx: RunFrameBfshopContext) -> RunFrameBfshopResponse {
@@ -36,6 +37,7 @@ pub fn run_frame_between_floors_shop(ctx: RunFrameBfshopContext) -> RunFrameBfsh
         // in calculations later on in this function.
         return RunFrameBfshopResponse {
             move_to_next_floor: false,
+            draw_ops: Vec::new(),
         };
     }
 
@@ -120,12 +122,10 @@ pub fn run_frame_between_floors_shop(ctx: RunFrameBfshopContext) -> RunFrameBfsh
 
     let mut draw_ops = Vec::new();
     draw_ops.push(kui_response.draw_op);
-    ctx.window.get_renderer().draw(DrawOpWithMetadata::new(0.0, DrawOp::Group(DrawOpGroup::new(draw_ops.into()))));
-    let res = ctx.window.get_renderer().present(ColorRGBA32f{r: 0.0, g: 0.0, b: 0.0, a: 1.0});
-    if let Err(e) = res { log::error!("error when calling renderer.present(): {}", e) }
 
     RunFrameBfshopResponse {
         move_to_next_floor: start_floor,
+        draw_ops: vec![DrawOpWithMetadata::new(0.0, DrawOp::Group(DrawOpGroup::new(draw_ops.into())))],
     }
 }
 

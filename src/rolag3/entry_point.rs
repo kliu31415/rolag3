@@ -158,13 +158,20 @@ impl Rolag3EventHandler {
     }
 
     fn run_frame(&mut self, window: &mut dyn Window) {
+        let mut draw_ops_dst = Vec::new();
+        assert!(self.cached_mem_draw_ops.is_empty(), "cached_mem_draw_ops should've been drained on the previous frame");
+        std::mem::swap(&mut draw_ops_dst, &mut self.cached_mem_draw_ops);
         match &self.r3run.state {
-            R3RunState::InFloor { .. } => self.run_frame_in_floor(window),
-            R3RunState::BetweenFloorsShop{ .. } => self.run_frame_between_floors_shop(window),
+            R3RunState::InFloor { .. } => self.run_frame_in_floor(&mut draw_ops_dst, window),
+            R3RunState::BetweenFloorsShop{ .. } => self.run_frame_between_floors_shop(&mut draw_ops_dst, window),
         };
+        draw_ops_dst.drain(..).for_each(|x| window.get_renderer().draw(x));
+        std::mem::swap(&mut draw_ops_dst, &mut self.cached_mem_draw_ops);
+        let res = window.get_renderer().present(ColorRGBA32f{r: 0.0, g: 0.0, b: 0.0, a: 1.0});
+        if let Err(e) = res { log::error!("error when calling renderer.present(): {}", e) }
     }
 
-    fn run_frame_in_floor(&mut self, window: &mut dyn Window) {
+    fn run_frame_in_floor(&mut self, draw_ops_dst: &mut Vec<DrawOpWithMetadata>, window: &mut dyn Window) {
         let R3RunState::InFloor { floor: cur_floor } = &mut self.r3run.state else {panic!("R3RunState is not InFloor")};
 
         let window_width = window.get_width() as f64;
@@ -264,10 +271,9 @@ impl Rolag3EventHandler {
             mouse_y_px: input_state.get_mouse_y(),
             pixels_per_tile,
             show_tab_overlay,
-            draw_ops: &mut self.cached_mem_draw_ops,
+            draw_ops: draw_ops_dst,
         };
         get_draw_floor_ops(draw_floor_ctx);
-        self.cached_mem_draw_ops.drain(..).for_each(|x| window.get_renderer().draw(x));
 
         let rofiz_stats = cur_floor.get_current_room().rofiz.get_stats();
         let text = [
@@ -278,7 +284,7 @@ impl Rolag3EventHandler {
             format!("num_spectral_units={}", rofiz_stats.num_spectral_units),
         ];
         for (i, text) in text.iter().enumerate() {
-            window.get_renderer().draw(DrawOpWithMetadata {
+            draw_ops_dst.push(DrawOpWithMetadata {
                 z: 100.0, 
                 op: DrawOp::Text(DrawOpText { 
                     text: text.clone(), 
@@ -290,8 +296,6 @@ impl Rolag3EventHandler {
                     position: DrawTextPosition::TopLeft,
             })});
         }
-        let res = window.get_renderer().present(ColorRGBA32f{r: 0.0, g: 0.0, b: 0.0, a: 1.0});
-        if let Err(e) = res { log::error!("error when calling renderer.present(): {}", e) }
 
         if rff_response.floor_finished {
             log::warn!("finished floor. Moving to shop");
@@ -304,7 +308,7 @@ impl Rolag3EventHandler {
         }
     }
 
-    fn run_frame_between_floors_shop(&mut self, window: &mut dyn Window) {
+    fn run_frame_between_floors_shop(&mut self, draw_ops_dst: &mut Vec<DrawOpWithMetadata>, window: &mut dyn Window) {
         let R3RunState::BetweenFloorsShop { 
             prev_lmb_down_xy, 
             shop_state, 
@@ -313,7 +317,7 @@ impl Rolag3EventHandler {
 
         // enclose this block in its own scope to ensure all borrows it uses are dropped. In particular, the borrow
         // of player needs to be dropped, because Floor::new...() borrows the player mutably.
-        let response: RunFrameBfshopResponse;
+        let mut response: RunFrameBfshopResponse;
         {
             let mut lmb_input = Vec::new();
             for input in window.get_input_state_mut().poll_all_pollable_input() {
@@ -346,5 +350,7 @@ impl Rolag3EventHandler {
             // passing the player into the fn Floor::new...() should automatically move the player to the new
             // floor. No manual work is required.
         }
+
+        draw_ops_dst.append(&mut response.draw_ops);
     }
 }
