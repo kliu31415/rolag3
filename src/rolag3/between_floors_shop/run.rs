@@ -28,8 +28,16 @@ pub struct RunFrameBfshopResponse {
 }
 
 pub fn run_frame_between_floors_shop(ctx: RunFrameBfshopContext) -> RunFrameBfshopResponse {
-    let _w = ctx.window.get_width() as f32;
+    let w = ctx.window.get_width() as f32;
     let h = ctx.window.get_height() as f32;
+
+    if w < 1.0 || h < 1.0 {
+        // The window is likely minimized. The dimensions may be 0x0, which leads to panics from unexpected values
+        // in calculations later on in this function.
+        return RunFrameBfshopResponse {
+            move_to_next_floor: false,
+        };
+    }
 
     let mut start_floor = false;
 

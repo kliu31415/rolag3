@@ -13,7 +13,7 @@ use crate::rolag3::between_floors_shop::run::ShopState;
 use crate::rolag3::sound_db::SoundDb;
 use crate::sfx::sound_system::{new_sound_system, SoundSystem};
 use crate::util::rng::Prng;
-use crate::{gfx::{self, window::{Window, EventHandler}, renderer::{ColorRGBA32f, DrawTextPosition, DrawOpCCS, DrawOpText, DrawOpWithMetadata, DrawOp, Renderer}, input::PollableInput}, util::{time::now_unix, config::Config}};
+use crate::{gfx::{self, window::{Window, EventHandler}, renderer::{ColorRGBA32f, DrawTextPosition, DrawOpText, DrawOpWithMetadata, DrawOp, Renderer}, input::PollableInput}, util::{time::now_unix, config::Config}};
 
 use super::between_floors_shop::run::{RunFrameBfshopContext, run_frame_between_floors_shop, MouseButtonAction, RunFrameBfshopResponse};
 use super::floor::room_object::unit::player::Player;
@@ -269,18 +269,6 @@ impl Rolag3EventHandler {
         get_draw_floor_ops(draw_floor_ctx);
         self.cached_mem_draw_ops.drain(..).for_each(|x| window.get_renderer().draw(x));
 
-        window.get_renderer().draw(DrawOpWithMetadata {
-            z: 100.0,
-            op: DrawOp::ConcentricCircleSector(DrawOpCCS{
-                x: 300.0,
-                y: 300.0,
-                inner_radius: 100.0,
-                outer_radius: 200.0,
-                viewport: None,
-                inner_color: ColorRGBA32f::new(1.0, 0.0, 0.0, 1.0),
-                outer_color: ColorRGBA32f::new(0.0, 1.0, 0.0, 1.0),
-                angle_range: Some((3.4, 4.7)),
-        })});
         let rofiz_stats = cur_floor.get_current_room().rofiz.get_stats();
         let text = [
             format!("fps={}", window.get_renderer().get_fps()),

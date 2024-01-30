@@ -16,6 +16,11 @@ pub struct DrawFloorContext<'a> {
 }
 
 pub fn get_draw_floor_ops(ctx: DrawFloorContext) {
+    if ctx.window_width < 1.0 || ctx.window_height < 1.0 {
+        // The window is likely minimized. The dimensions may be 0x0, which leads to panics from unexpected values
+        // in calculations later on in this function.
+        return;
+    }
     let player_position = ctx.floor.get_player_center();
 
     let mut extra_draw_ops = Vec::new();
