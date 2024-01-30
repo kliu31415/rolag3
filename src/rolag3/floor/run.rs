@@ -96,7 +96,7 @@ struct RunFloorTickResponse {
 
 #[inline(never)]
 fn run_floor_tick(ctx: RunFloorTickContext) -> RunFloorTickResponse {
-    let (player, room, _) = ctx.floor.get_player_and_current_room_and_id_counter();
+    let (player, room, _, _) = ctx.floor.get_player_and_current_room_and_id_counters();
 
     // The wtmr logic must occur before act1() is called on RoomObjects.
     // Why: Otherwise, if wtmr is Some on the last tick of a frame, then the player will move rooms, and no more 
@@ -128,7 +128,7 @@ fn run_floor_tick(ctx: RunFloorTickContext) -> RunFloorTickResponse {
     }
 
     let mut floor_finished = false;
-    let (_, room, id_counter) = ctx.floor.get_player_and_current_room_and_id_counter();
+    let (_, room, room_obj_id_counter, sound_id_counter) = ctx.floor.get_player_and_current_room_and_id_counters();
 
     {
         room.room_time += ctx.tick_length;
@@ -136,19 +136,20 @@ fn run_floor_tick(ctx: RunFloorTickContext) -> RunFloorTickResponse {
         let act1_context = Act1Context::new(
             ctx.player_input, 
             &mut room.rofiz, 
-            id_counter,  
+            room_obj_id_counter,  
             ctx.tick_length, 
             room.room_time, 
             ctx.rng, 
             room.room_cleared_at_time,
             ctx.sound_db,
+            sound_id_counter,
             room.width,
             room.height,
             &room.tiles,
         );
         let roca_response = room.room_objects.act1(act1_context, ctx.sound_system);
         floor_finished |= roca_response.floor_finished;
-        detect_and_handle_collisions(room, ctx.rng, id_counter, ctx.tick_length);
+        detect_and_handle_collisions(room, ctx.rng, room_obj_id_counter, ctx.tick_length);
 
         let starcash_reward = room.ttc * ctx.starcash_room_clear_mult;
         room.room_objects.handle_if_room_just_cleared(&mut room.rofiz, room.room_time, starcash_reward);

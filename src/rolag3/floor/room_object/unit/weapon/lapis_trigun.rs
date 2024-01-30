@@ -1,6 +1,6 @@
 use std::{rc::Rc, cell::RefCell};
 
-use crate::{rolag3::floor::{draw::Color, room_object::{room_object_def::RoomObject, projectile::projectile2::{Proj2Shape, Projectile2BuilderReq, Projectile2Builder}, damage::DamageColor, sound::{RoomObjPlaySoundArgsBuilder, RoomObjPlaySoundArgsBuilderReq}}}, geometry::{shape::{Point, Vector}, util::translate_polygon}, gfx::draw_op_util::draw_op_rect};
+use crate::{rolag3::floor::{draw::Color, room_object::{room_object_def::{RoomObject, new_play_sound_builder}, projectile::projectile2::{Proj2Shape, Projectile2BuilderReq, Projectile2Builder}, damage::DamageColor}}, geometry::{shape::{Point, Vector}, util::translate_polygon}, gfx::draw_op_util::draw_op_rect};
 
 use super::weapon_def::{Weapon, WeaponHandleTickResponse, WeaponHandleTickContext, DrawWeaponHudContext, DrawWeaponHudResponse, DrawWeaponOnOwnerContext, DrawWeaponOnOwnerResponse, BuyAmmoInfo};
 
@@ -78,9 +78,8 @@ fn handle_tick_fn(ctx: &mut WeaponHandleTickContext) -> WeaponHandleTickResponse
         let angle_adjust = (i as f64) * std::f64::consts::FRAC_PI_6;
         response.new_room_objs.push(spawn_projectile(ctx, angle_adjust));
     }
-    response.newly_played_sounds.push(RoomObjPlaySoundArgsBuilder::new(RoomObjPlaySoundArgsBuilderReq {
-        sound_data: ctx.nro_ctx.get_rng().sample_slice_uniform(&ctx.sound_db.gun_pistol_shot),
-    }).build());
+    let sound_data = ctx.nro_ctx.get_rng().sample_slice_uniform(&ctx.sound_db.gun_pistol_shot);
+    response.newly_played_sounds.push(new_play_sound_builder(ctx.sound_id_counter, sound_data).build());
     response
 }
 

@@ -1,6 +1,6 @@
 use std::{rc::{Rc, Weak}, cell::RefCell, any::Any};
 
-use crate::{rolag3::{floor::{room_object::{room_object_def::{RoomObject, NewRoomObjectContext, Team}, damage::DamageColor, sound::RoomObjPlaySoundArgs}, rofiz::rofiz_object::Transformation, draw::{DrawContext, Color}}, sound_db::SoundDb}, gfx::{renderer::{DrawOp, DrawOpText, DrawTextPosition, DrawOpGroup, ColorRGBA32f}, draw_op_util::draw_op_rect, text::font::Font}};
+use crate::{rolag3::{floor::{room_object::{room_object_def::{RoomObject, NewRoomObjectContext, Team}, damage::DamageColor, sound::{RoomObjPlaySoundArgs, RoomObjSoundIdT}}, rofiz::rofiz_object::Transformation, draw::{DrawContext, Color}}, sound_db::SoundDb}, gfx::{renderer::{DrawOp, DrawOpText, DrawTextPosition, DrawOpGroup, ColorRGBA32f}, draw_op_util::draw_op_rect, text::font::Font}};
 
 type WeaponHandleTickFn = dyn Fn(&mut WeaponHandleTickContext) -> WeaponHandleTickResponse;
 type DrawWeaponHudFn = dyn Fn(&DrawWeaponHudContext) -> DrawWeaponHudResponse;
@@ -68,6 +68,7 @@ pub struct WeaponHandleTickContext<'a> {
     pub special_attack: bool,
     pub owner_mana: f64,
     pub sound_db: &'a SoundDb,
+    pub sound_id_counter: &'a mut RoomObjSoundIdT,
 }
 
 pub struct WeaponHandleTickResponse {

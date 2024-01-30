@@ -1,6 +1,6 @@
 use std::{rc::Weak, cell::RefCell};
 
-use crate::{rolag3::floor::{room_object::{room_object_def::{RoomObject, RoomObjectMetadata, Act1Response, Act1Context, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, NewRoomObjectContext, RoomObjectType}, damage::DamageColor, sound::{RoomObjPlaySoundArgsBuilder, RoomObjPlaySoundArgsBuilderReq}}, draw::{DrawContext, Color}, rofiz::{rofiz_state::RofizObjectRef, rofiz_object::{Transformation, Hitbox}}}, geometry::shape::{Shape, Point}};
+use crate::{rolag3::floor::{room_object::{room_object_def::{RoomObject, RoomObjectMetadata, Act1Response, Act1Context, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, NewRoomObjectContext, RoomObjectType}, damage::DamageColor}, draw::{DrawContext, Color}, rofiz::{rofiz_state::RofizObjectRef, rofiz_object::{Transformation, Hitbox}}}, geometry::shape::{Shape, Point}};
 
 pub struct Explosion1 {
     rofo_ref: RofizObjectRef,
@@ -31,10 +31,8 @@ impl RoomObject for Explosion1 {
         if !self.sound_added {
             let mut rng = ctx.get_rng().spawn_child();
             let sound_data = rng.sample_slice_uniform(&ctx.get_sound_db().explosion_small);
-            response.play_sound(&mut rng, RoomObjPlaySoundArgsBuilder::new(RoomObjPlaySoundArgsBuilderReq {
-                sound_data,
-            }).volume(self.sound_volume_mult)
-                .build());
+            let psb = ctx.new_play_sound_builder(sound_data);
+            response.play_sound(psb.volume(self.sound_volume_mult).build());
             self.sound_added = true;
         }
         let old_xform = ctx.get_rofiz().get_movable_object_xform(&self.rofo_ref);

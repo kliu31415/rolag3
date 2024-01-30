@@ -124,7 +124,7 @@ impl RoomObject for Player {
         let mouse_y = ctx.get_player_input().mouse_y;
         let primary_attack = ctx.get_player_input().is_lmb_down;
         let special_attack = ctx.get_player_input().is_rmb_down;
-        let (mut nro_ctx, sound_db) = ctx.to_nro_ctx_and_sound_db();
+        let (mut nro_ctx, sound_db, sound_id_counter) = ctx.get_handle_weapon_info();
         let mut wht_ctx = WeaponHandleTickContext {
             ws_data: weapon.ws_data.as_mut(),
             ammo: &mut weapon.ammo,
@@ -141,13 +141,14 @@ impl RoomObject for Player {
             special_attack,
             owner_mana: self.mana,
             sound_db,
+            sound_id_counter,
         };
         let mut wht_response = (weapon.handle_tick_fn)(&mut wht_ctx);
         assert!(wht_response.damage_color != DamageColor::NotSet, "Weapon handle tick returned a damage color of NotSet");
         self.damage_color = wht_response.damage_color;
         wht_response.new_room_objs.drain(..).for_each(|x| response.add_room_obj(x));
         self.mana += wht_response.mana_delta;
-        wht_response.newly_played_sounds.drain(..).for_each(|x| {response.play_sound(ctx.get_rng(), x);});
+        wht_response.newly_played_sounds.drain(..).for_each(|x| {response.play_sound(x);});
 
         // process main input
         let accel_x = match ctx.get_player_input().horizontal_move {

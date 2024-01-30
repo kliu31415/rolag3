@@ -2,7 +2,7 @@ use std::{collections::HashMap, cell::RefCell, rc::Rc};
 
 use crate::{gfx::renderer::Renderer, rolag3::floor::{roomgen::{empty1::get_gen_room_fn_empty1, common::_100::{_100::get_gen_room_fn_common100, _101::get_gen_room_fn_common101, _102::get_gen_room_fn_common102a, _103::get_gen_room_fn_common103, _104::get_gen_room_fn_common104, _105::get_gen_room_fn_common105, _106::get_gen_room_fn_common106, _107::{get_gen_room_fn_common107a, get_gen_room_fn_common107b}, _108::get_gen_room_fn_common108}}, floorgen::run::{GenFloorRoomFn, GenFloorRoomReqInfo}, room_object::{cosmetic::ground1::GroundTheme, wall::basic_wall::WallTheme, unit::enemy::{thinstar4::rgb_circle::new_thinstar4_group, square::rgb_star4or8::{new_square_rgb_star4, new_square_rgb_star8}, boss::{chromatic_wheel::new_boss_chromatic_wheel, mystic_prism::new_boss_mystic_prism, prismatic_prism::new_boss_prismatic_prism}, hexagon::rgb2_circle::new_hexagon_rgb2_circle}, damage::DamageColor}, draw::Color, rofiz::rofiz_state::RofizState}, util::rng::Prng};
 
-use super::{room::{Room, RoomConnectionInfo}, room_object::{unit::{player::{Player, MoveRooms}, enemy::boss::{star_king::new_boss_star_king, circle_mage1::new_boss_circle_mage1, star_soldier::new_boss_star_soldier}}, room_object_def::{FloorCoordinate, RoomObjectId, RoomObjectRef, RoomObjectType, NewRoomObjectContext, RoomObject}, tiles::room_connection::Direction}, roomgen::{boss_room1::get_gen_room_fn_boss1, test_room1::get_gen_room_fn_test_room1, test_room2::get_gen_room_fn_test_room2, maze1::get_gen_room_fn_maze1, boss::generic_rect::get_gen_room_fn_boss_generic_rect}, floorgen::run::{gen_floor, GenFloorArgs, GenFloorRoomContext}};
+use super::{room::{Room, RoomConnectionInfo}, room_object::{unit::{player::{Player, MoveRooms}, enemy::boss::{star_king::new_boss_star_king, circle_mage1::new_boss_circle_mage1, star_soldier::new_boss_star_soldier}}, room_object_def::{FloorCoordinate, RoomObjectId, RoomObjectRef, RoomObjectType, NewRoomObjectContext, RoomObject}, tiles::room_connection::Direction, sound::RoomObjSoundIdT}, roomgen::{boss_room1::get_gen_room_fn_boss1, test_room1::get_gen_room_fn_test_room1, test_room2::get_gen_room_fn_test_room2, maze1::get_gen_room_fn_maze1, boss::generic_rect::get_gen_room_fn_boss_generic_rect}, floorgen::run::{gen_floor, GenFloorArgs, GenFloorRoomContext}};
 
 pub struct Floor {
     pub rooms: HashMap<RoomId, Room>,
@@ -14,6 +14,7 @@ pub struct Floor {
     // This has caused bugs when the player (id=1) and the first wall constructed in a room (id=1) collide.
     // TODO: in the future, make all room objects across all floors in a run share the same counter.
     pub room_object_id_counter: RoomObjectId,
+    pub play_sound_id_counter: RoomObjSoundIdT,
     pub floor_w: u32,
     pub floor_h: u32,
 }
@@ -86,6 +87,7 @@ impl Floor {
             player_room_id: 1,
             floor_time_left: 600.0,
             room_object_id_counter,
+            play_sound_id_counter: 0,
             floor_w: 200,
             floor_h: 200,
         }
@@ -174,6 +176,7 @@ impl Floor {
             player_room_id: 0,
             floor_time_left: 600.0,
             room_object_id_counter,
+            play_sound_id_counter: 0,
             floor_w: gf_result.floor_w,
             floor_h: gf_result.floor_h,
         }
@@ -220,6 +223,7 @@ impl Floor {
             player_room_id: 1,
             floor_time_left: 600.0,
             room_object_id_counter,
+            play_sound_id_counter: 0,
             floor_w: 200,
             floor_h: 200,
         }
@@ -273,6 +277,7 @@ impl Floor {
             player_room_id: 0,
             floor_time_left: 600.0,
             room_object_id_counter,
+            play_sound_id_counter: 0,
             floor_w: gf_result.floor_w,
             floor_h: gf_result.floor_h,
         }
@@ -286,8 +291,13 @@ impl Floor {
         (self.player.clone(), self.rooms.get_mut(&self.player_room_id).unwrap())
     }
 
-    pub fn get_player_and_current_room_and_id_counter(&mut self) -> (Rc<RefCell<Player>>, &mut Room, &mut RoomObjectId) {
-        (self.player.clone(), self.rooms.get_mut(&self.player_room_id).unwrap(), &mut self.room_object_id_counter)
+    pub fn get_player_and_current_room_and_id_counters(
+        &mut self,
+    ) -> (Rc<RefCell<Player>>, &mut Room, &mut RoomObjectId, &mut RoomObjSoundIdT) {
+        (self.player.clone(), 
+        self.rooms.get_mut(&self.player_room_id).unwrap(), 
+        &mut self.room_object_id_counter,
+        &mut self.play_sound_id_counter)
     }
 
     pub fn get_player_center(&self) -> FloorCoordinate {

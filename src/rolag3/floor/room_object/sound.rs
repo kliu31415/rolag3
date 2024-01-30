@@ -1,6 +1,7 @@
 use crate::sfx::sound_system::{SoundPlayingRef, SoundDataRef};
 
 pub struct RoomObjPlaySoundArgs {
+    pub id: RoomObjSoundIdT,
     pub sound_data: SoundDataRef,
     pub location: Option<(f64, f64)>,
     pub volume: f64,
@@ -8,6 +9,7 @@ pub struct RoomObjPlaySoundArgs {
 }
 
 pub struct RoomObjPlaySoundArgsBuilderReq {
+    pub id: RoomObjSoundIdT,
     pub sound_data: SoundDataRef,
 }
 
@@ -39,6 +41,7 @@ impl RoomObjPlaySoundArgsBuilder {
 
     pub fn build(self) -> RoomObjPlaySoundArgs {
         RoomObjPlaySoundArgs {
+            id: self.req.id,
             sound_data: self.req.sound_data,
             location: self.location,
             volume: self.volume,
@@ -47,7 +50,7 @@ impl RoomObjPlaySoundArgsBuilder {
     }
 }
 
-pub type RoomObjSoundIdT = u128;
+pub type RoomObjSoundIdT = u64;
 
 pub struct RoomObjSoundRef {
     _id: RoomObjSoundIdT,

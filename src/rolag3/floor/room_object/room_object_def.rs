@@ -1,8 +1,8 @@
 use std::{rc::{Rc, Weak}, cell::RefCell, collections::{HashSet, HashMap, BTreeMap}, ops::Range};
 
-use crate::{rolag3::{floor::{draw::DrawContext, run::PlayerInput, rofiz::{rofiz_state::{RofizState, RofizObjectRef}, rofiz_object::Hitbox}, room::{RoomConnectionInfo, RoomTile}, floor_def::Floor, floorgen::run::GenFloorRoomContext}, sound_db::SoundDb}, util::rng::Prng, sfx::sound_system::{SoundSystem, PlaySoundArgs}};
+use crate::{rolag3::{floor::{draw::DrawContext, run::PlayerInput, rofiz::{rofiz_state::{RofizState, RofizObjectRef}, rofiz_object::Hitbox}, room::{RoomConnectionInfo, RoomTile}, floor_def::Floor, floorgen::run::GenFloorRoomContext}, sound_db::SoundDb}, util::rng::Prng, sfx::sound_system::{SoundSystem, PlaySoundArgs, SoundDataRef}};
 
-use super::{damage::DamageColor, unit::standard_unit_common::{Budeb, StandardUnitCommon}, sound::{RoomObjSound, RoomObjPlaySoundArgs, RoomObjSoundRef, RoomObjSoundIdT}};
+use super::{damage::DamageColor, unit::standard_unit_common::{Budeb, StandardUnitCommon}, sound::{RoomObjSound, RoomObjPlaySoundArgs, RoomObjSoundRef, RoomObjSoundIdT, RoomObjPlaySoundArgsBuilder, RoomObjPlaySoundArgsBuilderReq}};
 
 /* Rules:
    -act1() must be called at least once before any draw() calls. This allows initialization steps to be performed in
@@ -343,7 +343,7 @@ impl RoomObjectCollection {
             let owned_sound_playback_speed_override = response.take_owned_sound_playback_speed_override();
             self.cached_mem.act1_responses.push(response);
 
-            for (id, nps) in newly_played_sounds {
+            for nps in newly_played_sounds {
                 assert!(nps.volume >= 0.0, "sound volume ({}) is less than 0", nps.volume);
                 if nps.volume == 0.0 {
                     continue;
@@ -361,7 +361,7 @@ impl RoomObjectCollection {
 
                 if nps.owned {
                     remd.playing_sounds.push(RoomObjSound {
-                        id,
+                        id: nps.id,
                         location: nps.location,
                         sound_ref: spr,
                     });
@@ -667,6 +667,7 @@ pub struct Act1Context<'a> {
     rng: &'a mut Prng,
     room_cleared_at_time: Option<f64>,
     sound_db: &'a SoundDb,
+    sound_id_counter: &'a mut RoomObjSoundIdT,
     _room_width: u32,
     _room_height: u32,
     _room_tiles: &'a Vec<Vec<RoomTile>>,
@@ -682,6 +683,7 @@ impl<'a> Act1Context<'a> {
         rng: &'a mut Prng,
         room_cleared_at_time: Option<f64>,
         sound_db: &'a SoundDb,
+        sound_id_counter: &'a mut RoomObjSoundIdT,
         room_width: u32,
         room_height: u32,
         room_tiles: &'a Vec<Vec<RoomTile>>,
@@ -696,20 +698,21 @@ impl<'a> Act1Context<'a> {
             rng,
             room_cleared_at_time,
             sound_db,
+            sound_id_counter,
             _room_width: room_width,
             _room_height: room_height,
             _room_tiles: room_tiles,
         }
     }
 
-    pub fn to_nro_ctx_and_sound_db(&mut self) -> (NewRoomObjectContext, &SoundDb) {
+    pub fn get_handle_weapon_info(&mut self) -> (NewRoomObjectContext, &SoundDb, &mut RoomObjSoundIdT) {
         let nro_ctx = NewRoomObjectContext {
             rofiz: self.rofiz,
             room_object_id_counter: self.room_object_id_counter,
             room_time: self.room_time,
             rng: self.rng,
         };
-        (nro_ctx, self.sound_db)
+        (nro_ctx, self.sound_db, self.sound_id_counter)
     }
 
     pub fn get_player_input(&self) -> &PlayerInput {
@@ -797,6 +800,10 @@ impl<'a> Act1Context<'a> {
     pub fn get_sound_db(&self) -> &SoundDb {
         self.sound_db
     }
+
+    pub fn new_play_sound_builder(&mut self, sound_data: SoundDataRef) -> RoomObjPlaySoundArgsBuilder {
+        new_play_sound_builder(self.sound_id_counter, sound_data)
+    }
     
     pub fn _get_room_width(&self) -> u32 {
         self._room_width
@@ -809,6 +816,14 @@ impl<'a> Act1Context<'a> {
     pub fn _get_room_tiles(&self) -> &Vec<Vec<RoomTile>> {
         self._room_tiles
     }
+}
+
+pub fn new_play_sound_builder(id_counter: &mut RoomObjSoundIdT, sound_data: SoundDataRef) -> RoomObjPlaySoundArgsBuilder {
+    *id_counter += 1;
+    RoomObjPlaySoundArgsBuilder::new(RoomObjPlaySoundArgsBuilderReq {
+        id: *id_counter,
+        sound_data,
+    })
 }
 
 pub enum Act1QueryArgs {
@@ -837,7 +852,7 @@ pub struct Act1Response {
     operations: Vec<RoomObjOperation>,
     floor_finished: bool,
     owned_sound_playback_speed_override: Option<f64>,
-    newly_played_sounds: Vec<(RoomObjSoundIdT, RoomObjPlaySoundArgs)>,
+    newly_played_sounds: Vec<RoomObjPlaySoundArgs>,
 }
 
 impl Act1Response {
@@ -896,9 +911,9 @@ impl Act1Response {
         self.floor_finished
     }
 
-    pub fn play_sound(&mut self, rng: &mut Prng, args: RoomObjPlaySoundArgs) -> RoomObjSoundRef {
-        let id = rng.gen_u128_range(0..u128::MAX);
-        self.newly_played_sounds.push((id, args));
+    pub fn play_sound(&mut self, args: RoomObjPlaySoundArgs) -> RoomObjSoundRef {
+        let id = args.id;
+        self.newly_played_sounds.push(args);
         RoomObjSoundRef::new(id)
     }
 
@@ -906,7 +921,7 @@ impl Act1Response {
         self.owned_sound_playback_speed_override.take()
     }
 
-    pub fn take_newly_played_sounds(&mut self) -> Vec<(u128, RoomObjPlaySoundArgs)> {
+    pub fn take_newly_played_sounds(&mut self) -> Vec<RoomObjPlaySoundArgs> {
         std::mem::take(&mut self.newly_played_sounds)
     }
 }
