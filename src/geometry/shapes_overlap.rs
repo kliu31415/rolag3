@@ -11,17 +11,17 @@ pub fn shapes_overlap(shape1: &Shape, bb1: &BoundingBox, shape2: &Shape, bb2: &B
                 if polygon_edges_overlap(p1, p2) {
                     return true;
                 }
-                if polygon_contains_polygon(p1, bb1, p2, bb2) {
+                if bb1.contains(bb2) && polygon_contains_point(p1, bb1, p2.vertexes[0]) {
                     return true;
-                } else if polygon_contains_polygon(p2, bb2, p1, bb1) {
+                } else if bb2.contains(bb1) && polygon_contains_point(p2, bb2, p1.vertexes[0]) {
                     return true;
                 }
                 return false;
             }
-            Shape::Circle(c2) => polygon_overlaps_circle(p1, c2),
+            Shape::Circle(c2) => polygon_overlaps_circle(p1, bb1, c2),
         }
         Shape::Circle(c1) => match shape2 {
-            Shape::Polygon(p2) => polygon_overlaps_circle(p2, c1),
+            Shape::Polygon(p2) => polygon_overlaps_circle(p2, bb2, c1),
             Shape::Circle(c2) => circles_overlaps_circle(c1, c2),
         }
     }
@@ -31,9 +31,9 @@ fn circles_overlaps_circle(c1: &Circle, c2: &Circle) -> bool {
     f32::hypot(c2.center.x - c1.center.x, c2.center.y - c1.center.y) < c1.r + c2.r
 }
 
-fn polygon_overlaps_circle(p1: &Polygon, c2: &Circle) -> bool {
+fn polygon_overlaps_circle(p1: &Polygon, bb1: &BoundingBox, c2: &Circle) -> bool {
     let rsq = f32::powi(c2.r, 2);
-    // remember to iterate over the edge connecting vertexes with index n-1 and 0
+    // this loop checks if the circle intersects a polygon edge or the circle contains the polygon
     for i in 0..p1.vertexes.len() {
         let v1 = if i == 0 {p1.vertexes[p1.vertexes.len()-1]} else {p1.vertexes[i-1]};
         let v2 = p1.vertexes[i];
@@ -42,7 +42,8 @@ fn polygon_overlaps_circle(p1: &Polygon, c2: &Circle) -> bool {
         }
     }
 
-    false
+    // remember to also check if the polygon contains the circle
+    polygon_contains_point(p1, bb1, c2.center)
 }
 
 fn line_segment_to_point_dist_sq(v1: Point, v2: Point, p: Point) -> f32 {
@@ -73,18 +74,14 @@ fn polygon_edges_overlap(p1: &Polygon, p2: &Polygon) -> bool {
 }
 
 // TODO: verify this function works
-fn polygon_contains_polygon(p1: &Polygon, bb1: &BoundingBox, p2: &Polygon, bb2: &BoundingBox) -> bool {
-    if !bb1.contains(bb2) {
-        return false;
-    }
-
-    let b1 = p2.vertexes[0];
+fn polygon_contains_point(polygon: &Polygon, bb: &BoundingBox, point: Point) -> bool {
+    let b1 = point;
     // 0.8 and 0.7 are arbitrary. We just need the other point to be outside the p1's bounding box
-    let b2 = Point::new(bb1.x2 + 0.8, bb1.y2 + 0.7);
+    let b2 = Point::new(bb.x2 + 0.8, bb.y2 + 0.7);
     let mut num_intersections = 0;
-    for i in 0..p1.vertexes.len() {
-        let a1 = if i == 0 {p1.vertexes[p1.vertexes.len()-1]} else {p1.vertexes[i-1]};
-        let a2 = p1.vertexes[i];
+    for i in 0..polygon.vertexes.len() {
+        let a1 = if i == 0 {polygon.vertexes[polygon.vertexes.len()-1]} else {polygon.vertexes[i-1]};
+        let a2 = polygon.vertexes[i];
 
         if line_segments_overlap(a1, a2, b1, b2) {
             num_intersections += 1;

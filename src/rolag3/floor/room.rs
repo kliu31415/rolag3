@@ -160,6 +160,8 @@ impl RoomBuilder {
     }
 
     pub fn build(self) -> Room {
+        assert!(!self.req.connection_candidates.is_empty());
+        
         Room {
             upper_left_x: 0,
             upper_left_y: 0,

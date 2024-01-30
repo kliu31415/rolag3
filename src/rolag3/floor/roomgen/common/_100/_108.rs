@@ -38,7 +38,7 @@ fn make_room(ctx: &mut GenFloorRoomContext, w: u32, h: u32) -> GenFloorRoomRespo
         let enemy = new_square_rgb_2tri(
             nro_ctx, 
             rng.sample_slice_uniform(&damage_colors), 
-            std::array::from_fn(|_| rng.sample_slice_uniform(&damage_colors)), 
+            std::array::from_fn(|_| Some(rng.sample_slice_uniform(&damage_colors))), 
             position_fn_between_two_points(time1to2, (x, y1), (x, y2)), 
             0.0,
         );

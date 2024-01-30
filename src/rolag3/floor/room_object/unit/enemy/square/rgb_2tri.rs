@@ -50,7 +50,7 @@ struct SquareRgb2Tri {
     border_vertexes: [Point; 4],
     inner_vertexes: [Point; 4],
     outer_color: usize,
-    inner_colors: [usize; 2],
+    inner_colors: [Option<usize>; 2],
     position_fn: Box<dyn Fn(f64) -> (f64, f64)>,
     fired_proj_time_ago: f64,
 }
@@ -58,7 +58,7 @@ struct SquareRgb2Tri {
 pub fn new_square_rgb_2tri(
     ctx: &mut NewRoomObjectContext, 
     outer_color: DamageColor,
-    inner_colors: [DamageColor; 2],
+    inner_colors: [Option<DamageColor>; 2],
     position_fn: Box<dyn Fn(f64) -> (f64, f64)>,
     theta: f64,
 ) -> StandardUnit1 {
@@ -72,7 +72,7 @@ pub fn new_square_rgb_2tri(
         border_vertexes,
         inner_vertexes,
         outer_color: damage_color_to_idx(outer_color),
-        inner_colors: inner_colors.map(|x| damage_color_to_idx(x)),
+        inner_colors: inner_colors.map(|x| x.map(|y| damage_color_to_idx(y))),
         position_fn,
         fired_proj_time_ago: 0.0,
     };
@@ -104,6 +104,7 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
         us_data.fired_proj_time_ago -= FIRE_PROJ_INTERVAL;
         let xform = ctx.su_ctx.su_common.get_rofiz_xform(ctx.act1_ctx.get_rofiz());
         for i in 0..2 {
+            let Some(inner_color) = us_data.inner_colors[i] else {continue;};
             let self_as_weak = ctx.act1_ctx.get_self_as_weak();
             let proj_speed = 10.0;
             let inner_tri_offset = INNER_TRI_OFFSETS[i].rotated(xform.dtheta as f32);
@@ -117,14 +118,14 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
             });
             let proj = Projectile2Builder::new(Projectile2BuilderReq {
                 team: Team::Enemy,
-                damage_color: IDX_TO_DAMAGE_COLOR[us_data.inner_colors[i]],
+                damage_color: IDX_TO_DAMAGE_COLOR[inner_color],
                 damage: 3.0,
                 owner: self_as_weak,
                 velocity_x: proj_speed * f64::cos(xform.dtheta),
                 velocity_y: proj_speed * f64::sin(xform.dtheta),
                 xform: proj_xform,
                 shape: Proj2Shape::TriFan{center: Point::new(0.0, 0.0), vertexes: Box::new(INNER_TRI_VERTEXES) },
-                color: IDX_TO_INNER_DRAW_COLOR[us_data.inner_colors[i]],
+                color: IDX_TO_INNER_DRAW_COLOR[inner_color],
             }).homing_rotate_to_enemies_speed_fn(Box::new(rotate_homing_fn))
                 .build(&mut NewRoomObjectContext::from_act1_ctx(ctx.act1_ctx));
             response.add_room_obj(Rc::new(RefCell::new(proj)));
@@ -146,7 +147,10 @@ fn draw(ctx: &mut SuDrawContext) {
     let outer_dop = ctx.draw_ctx.do_quad_fan(outer_color, outer_vertexes);
 
     let inner_dops: [_; 2] = std::array::from_fn(|i| {
-        let color = IDX_TO_INNER_DRAW_COLOR[us_data.inner_colors[i]];
+        let color = match us_data.inner_colors[i] {
+            Some(color) => IDX_TO_INNER_DRAW_COLOR[color],
+            None => Color::new(0.0, 0.0, 0.0, 0.0),
+        };
         let vertexes = INNER_TRI_VERTEXES
             .map(|v| v.translated(INNER_TRI_OFFSETS[i]).rotated(xform.dtheta as f32).translated(xlate_vec));
         ctx.draw_ctx.do_tri(color, vertexes)
