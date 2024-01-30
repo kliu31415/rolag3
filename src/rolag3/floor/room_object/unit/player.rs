@@ -135,6 +135,7 @@ impl RoomObject for Player {
             owner_velocity_x: self.su_common.get_velocity_x(),
             owner_velocity_y: self.su_common.get_velocity_y(),
             owner_xform: xform,
+            owner_age: self.su_common.get_unit_time(),
             mouse_x,
             mouse_y,
             primary_attack,

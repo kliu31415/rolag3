@@ -32,6 +32,22 @@ impl TokenBucket {
         }
     }
 
+    // Attempt to take up some amount of tokens from the token bucket. fok = "Fill or Kill", i.e. either take the
+    // whole requested amount or none
+    pub fn try_take_fok(&mut self, cur_time: f64, tokens: f64) -> bool {
+        assert!(tokens >= 0.0);
+        assert!(cur_time >= self.last_used);
+        let cur_token_count = f64::min(self.capacity, self.last_token_count + (cur_time - self.last_used) * self.regen);
+        if cur_token_count >= tokens {
+            // there are sufficient tokens to satisfy the entire request
+            self.last_used = cur_time;
+            self.last_token_count = cur_token_count - tokens;
+            true
+        } else {
+            false
+        }
+    }
+
     pub fn take_all(&mut self, cur_time: f64) -> f64 {
         return self.try_take(cur_time, f64::MAX);
     }

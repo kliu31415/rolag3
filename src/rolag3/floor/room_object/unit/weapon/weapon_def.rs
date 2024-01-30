@@ -62,6 +62,7 @@ pub struct WeaponHandleTickContext<'a> {
     pub owner_velocity_x: f64,
     pub owner_velocity_y: f64,
     pub owner_xform: Transformation,
+    pub owner_age: f64,
     pub mouse_x: f64,
     pub mouse_y: f64,
     pub primary_attack: bool,

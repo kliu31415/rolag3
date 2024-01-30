@@ -1,6 +1,6 @@
 use std::{rc::Rc, cell::RefCell};
 
-use crate::{rolag3::floor::{room_object::{projectile::projectile2::{Proj2Shape, Projectile2BuilderReq, Projectile2Builder}, damage::DamageColor}, draw::Color, rofiz::rofiz_object::Transformation}, geometry::{shape::{Point, Vector}, util::translate_polygon}, gfx::draw_op_util::draw_op_rect};
+use crate::{rolag3::floor::{room_object::{projectile::projectile2::{Proj2Shape, Projectile2BuilderReq, Projectile2Builder}, damage::DamageColor, room_object_def::new_play_sound_builder}, draw::Color, rofiz::rofiz_object::Transformation}, geometry::{shape::{Point, Vector}, util::translate_polygon}, gfx::draw_op_util::draw_op_rect, util::token_bucket::TokenBucket};
 
 use super::weapon_def::{WeaponHandleTickContext, Weapon, WeaponHandleTickResponse, DrawWeaponHudContext, DrawWeaponHudResponse, DrawWeaponOnOwnerContext, DrawWeaponOnOwnerResponse, BuyAmmoInfo};
 
@@ -10,7 +10,7 @@ const NAME: &str = "Green Laser";
 const SHOP_DESCRIPTION: &str = "Shoots a rapid, continuous laser beam";
 const SHOP_COST: u64 = 50;
 const STARTING_AMMO: f64 = 1e4;
-const BUY_AMMO_INFO: BuyAmmoInfo = BuyAmmoInfo { ammo_amount: 1000.0, starcash_cost: 5.0 };
+const BUY_AMMO_INFO: BuyAmmoInfo = BuyAmmoInfo { ammo_amount: 1000.0, starcash_cost: 8.0 };
 
 const PRIMARY_ATTACK_INTERVAL: f64 = 0.0025;
 const PROJ_COLOR: Color = Color::new(0.0, 1.6, 0.0, 1.0);
@@ -18,11 +18,13 @@ const PROJ_VERTEXES: [Point; 4] = [Point::new(-0.2, -0.2), Point::new(0.2, -0.2)
 
 struct Weapon1Data {
     since_last_primary_attack: f64,
+    sound_token_bucken: TokenBucket,
 }
 
 pub fn new_weapon_green_laser() -> Weapon {
     let ws_data = Box::new(Weapon1Data {
         since_last_primary_attack: PRIMARY_ATTACK_INTERVAL,
+        sound_token_bucken: TokenBucket::new(1.0, 5.0),
     });
     Weapon::new(
         DamageColor::Green,
@@ -81,6 +83,11 @@ fn handle_tick_fn(ctx: &mut WeaponHandleTickContext) -> WeaponHandleTickResponse
         ).lifespan(2.0)
             .build(ctx.nro_ctx);
         response.new_room_objs.push(Rc::new(RefCell::new(proj)));
+    }
+
+    if ws_data.sound_token_bucken.try_take_fok(ctx.owner_age, 1.0) {
+        let sound_data = ctx.nro_ctx.get_rng().sample_slice_uniform(&ctx.sound_db.sci_fi_weapon_laser_small);
+        response.newly_played_sounds.push(new_play_sound_builder(ctx.sound_id_counter, sound_data).build());
     }
 
     response
