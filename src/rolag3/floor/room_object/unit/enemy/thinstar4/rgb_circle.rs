@@ -114,6 +114,11 @@ fn slave_act1(
     let new_xform = Transformation::new(input_data.0, input_data.1, old_xform.dtheta + 1.5 * tick_len);
     ctx.act1_ctx.get_rofiz().move_object(&us_data.rofo_ref, RofizObjectMovement::SetXform(new_xform));
 
+    if ctx.su_ctx.su_common.get_unit_time() < 1.0 {
+        // don't attack in the first 1s of a room
+        return;
+    }
+
     match &mut us_data.attack_style {
         AttackStyle::Laser { query_result, info } => {
             if let Some(fliqr) = query_result.take() {
@@ -427,6 +432,7 @@ pub fn new_thinstar4_group(
     y: f64,
 ) -> Box<[Rc<RefCell<dyn RoomObject>>]> {
     let count = colors.len();
+    assert!(count > 0, "can't create thinstar4 group with 0 count");
     let md = RoomObjectMetadata::new(ctx, RoomObjectType::Other);
     let radius = get_orbital_radius(count);
     let units = colors.iter().enumerate().map(|(i, color)| {

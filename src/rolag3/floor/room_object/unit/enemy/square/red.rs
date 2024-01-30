@@ -2,6 +2,9 @@ use std::{cell::RefCell, rc::Rc};
 
 use crate::{rolag3::floor::{room_object::{room_object_def::{Act1QueryResult, NewRoomObjectContext, Team, Act1Response, Act1QueryArgs}, unit::{standard_unit1::{StandardUnit1, StandardUnit1Builder, StandardUnit1BuilderReq, SuAct1Context, SuDrawContext}, standard_unit_common::TranslateMove}, damage::DamageColor}, rofiz::rofiz_object::Transformation, draw::{Color, DrawContext}}, geometry::{shape::{Shape, Point}, util::{rotate_polygon, regular_polygon, get_inner_polygon}}};
 
+/* SquareRed periodically charges at the player
+ */
+
 const INNER_COLOR_INACTIVE: Color = Color::new(2.0, 0.0, 0.0, 1.0);
 const INNER_COLOR_ACTIVE: Color = Color::new(5.0, 0.1, 0.1, 1.0);
 
