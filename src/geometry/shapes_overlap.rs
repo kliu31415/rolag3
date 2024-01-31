@@ -74,7 +74,7 @@ fn polygon_edges_overlap(p1: &Polygon, p2: &Polygon) -> bool {
 }
 
 // TODO: verify this function works
-fn polygon_contains_point(polygon: &Polygon, bb: &BoundingBox, point: Point) -> bool {
+pub fn polygon_contains_point(polygon: &Polygon, bb: &BoundingBox, point: Point) -> bool {
     let b1 = point;
     // 0.8 and 0.7 are arbitrary. We just need the other point to be outside the p1's bounding box
     let b2 = Point::new(bb.x2 + 0.8, bb.y2 + 0.7);

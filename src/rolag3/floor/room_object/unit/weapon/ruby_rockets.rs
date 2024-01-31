@@ -1,8 +1,8 @@
 use std::{cell::RefCell, rc::Rc};
 
-use crate::{rolag3::floor::{room_object::{projectile::{projectile2::{Projectile2BuilderReq, Proj2Shape, Projectile2Builder, Explosion1OnDeathFnArgs}, explosion1::{Explosion1, new_explosion1}}, damage::DamageColor, room_object_def::{RoomObject, new_play_sound_builder}}, draw::Color, rofiz::rofiz_object::Transformation}, gfx::renderer::{DrawOp, DrawOpTri, ColoredTriVertex, ColorRGBA32f, ViewSpaceCoordinate}, geometry::shape::{Point, Vector}};
+use crate::{rolag3::floor::{room_object::{projectile::{projectile2::{Projectile2BuilderReq, Proj2Shape, Projectile2Builder, Explosion1OnDeathFnArgs}, explosion1::{Explosion1, new_explosion1}}, damage::DamageColor, room_object_def::{RoomObject, NewRoomObjectContext}}, draw::Color, rofiz::rofiz_object::Transformation}, gfx::renderer::{DrawOp, DrawOpTri, ColoredTriVertex, ColorRGBA32f, ViewSpaceCoordinate}, geometry::shape::{Point, Vector, Shape, Circle}};
 
-use super::weapon_def::{Weapon, WeaponHandleTickContext, WeaponHandleTickResponse, DrawWeaponHudContext, DrawWeaponHudResponse, DrawWeaponOnOwnerResponse, DrawWeaponOnOwnerContext, BuyAmmoInfo};
+use super::weapon_def::{Weapon, WeaponHandleTickContext, WeaponHandleTickResponse, DrawWeaponHudContext, DrawWeaponHudResponse, DrawWeaponOnOwnerResponse, DrawWeaponOnOwnerContext, BuyAmmoInfo, SwitchOutWeaponResponse};
 
 /* Ruby Rockets shoots a red rocket that explodes
 */
@@ -40,6 +40,7 @@ pub fn new_weapon_ruby_rockets() -> Weapon {
         Some(BUY_AMMO_INFO),
         ws_data, 
         Box::new(handle_tick_fn), 
+        Box::new(|_| SwitchOutWeaponResponse::new()),
         Box::new(draw_hud), 
         Box::new(draw_on_owner),
     )
@@ -67,8 +68,10 @@ fn handle_tick_fn(ctx: &mut WeaponHandleTickContext) -> WeaponHandleTickResponse
             };
             response.new_room_objs.push(spawn_projectile(ctx, angle, 3.0, sound_volume));
         }
-        let sound_data = ctx.nro_ctx.get_rng().sample_slice_uniform(&ctx.sound_db.gun_grenade_launcher_shot);
-        response.newly_played_sounds.push(new_play_sound_builder(ctx.sound_id_counter, sound_data).volume(1.2).build());
+        let mut rng = ctx.act1_ctx.get_rng().spawn_child();
+        let sound_candidates = &ctx.act1_ctx.get_sound_db().gun_grenade_launcher_shot;
+        let sound_data = rng.sample_slice_uniform(sound_candidates);
+        response.newly_played_sounds.push(ctx.act1_ctx.new_play_sound_builder(sound_data).volume(1.2).build());
         return response;
     }
     if !ctx.primary_attack {
@@ -83,8 +86,12 @@ fn handle_tick_fn(ctx: &mut WeaponHandleTickContext) -> WeaponHandleTickResponse
     let angle = f64::atan2(ctx.mouse_y - ctx.owner_xform.dy, ctx.mouse_x - ctx.owner_xform.dx);
     let proj = spawn_projectile(ctx, angle, 4.0, 1.0);
     response.new_room_objs.push(proj);
-    let sound_data = ctx.nro_ctx.get_rng().sample_slice_uniform(&ctx.sound_db.gun_grenade_launcher_shot);
-    response.newly_played_sounds.push(new_play_sound_builder(ctx.sound_id_counter, sound_data).build());
+
+    let mut rng = ctx.act1_ctx.get_rng().spawn_child();
+    let sound_candidates = &ctx.act1_ctx.get_sound_db().gun_grenade_launcher_shot;
+    let sound_data = rng.sample_slice_uniform(sound_candidates);
+    response.newly_played_sounds.push(ctx.act1_ctx.new_play_sound_builder(sound_data).build());
+
     response
 }
 
@@ -101,8 +108,9 @@ fn spawn_projectile(
         let stop_expand_at = 0.5;
         let lifespan = 0.65;
         assert!(stop_expand_at < lifespan);
-        let radius_fn = move |age: f64| {
-            explosion_radius * f64::cbrt(f64::min(1.0, age / stop_expand_at))
+        let shape_fn = move |age: f64, shape_dst: &mut Shape| {
+            let radius = explosion_radius * f64::cbrt(f64::min(1.0, age / stop_expand_at));
+            shape_dst.replace_with_circle(&Circle::new(Point::new(0.0, 0.0), radius as f32));
         };
         let outer_color_fn = move |age| {
             let mut color = Color::new(10.0, 0.1, 0.1, 0.6);
@@ -128,11 +136,13 @@ fn spawn_projectile(
             lifespan, 
             Box::new(outer_color_fn), 
             Box::new(inner_color_fn), 
-            Box::new(radius_fn),
+            Box::new(shape_fn),
             sound_volume_mult,
+            0.0,
         )
     };
     let proj_xform: Transformation = Transformation::new(ctx.owner_xform.dx, ctx.owner_xform.dy, f64::atan2(velocity_y, velocity_x));
+    let nro_ctx = &mut NewRoomObjectContext::from_act1_ctx(ctx.act1_ctx);
     let proj = Projectile2Builder::new(
         Projectile2BuilderReq{
             team: ctx.owner_team,
@@ -146,7 +156,7 @@ fn spawn_projectile(
             color: PROJ_COLOR,
         }
     ).explosion1_on_death_fn(Box::new(new_explosion1_fn))
-        .build(ctx.nro_ctx);
+        .build(nro_ctx);
     Rc::new(RefCell::new(proj))
 }
 

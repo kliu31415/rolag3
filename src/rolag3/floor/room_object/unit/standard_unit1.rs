@@ -293,6 +293,11 @@ impl StandardUnit1Builder {
         self.room_obj_md.as_ref().unwrap()
     }
 
+    pub fn collision_damage(mut self, collision_damage: f64) -> Self {
+        self.collision_damage = collision_damage;
+        self
+    }
+
     pub fn angular_power(mut self, angular_power: f64) -> Self {
         self.angular_power = angular_power;
         self

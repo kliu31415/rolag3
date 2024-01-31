@@ -2,7 +2,7 @@ use std::{collections::BTreeSet, cell::RefCell, rc::Rc};
 
 use crate::rolag3::floor::{floorgen::run::{GenFloorRoomContext, GenFloorRoomResponse}, roomgen::util::{connection_candidates::all_borders_as_connection_candidates, square_room::init_basic_square_room}, room_object::{room_object_def::NewRoomObjectContext, unit::enemy::thinstar4::rgb_circle::new_thinstar4_group, damage::DamageColor, tiles::ice_tile::new_ice_tile}, room::{RoomBuilder, RoomBuilderReq}};
 
-/* Common106 contains starflies and ice tiles
+/* Common111 contains starflies and ice tiles
  */
 
 pub fn get_gen_room_fn_common111(

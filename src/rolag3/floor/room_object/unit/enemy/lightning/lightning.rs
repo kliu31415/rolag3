@@ -92,10 +92,10 @@ fn lightning_custom_act1(ctx: &mut SuAct1Context, _: &mut Act1Response, input: &
         let xform = Transformation::new(q[0].x as f64, q[0].y as f64, 0.0);
         // TODO: optimize this allocation
         if i < us_data.rofo_refs.len() {
-            let mut stolen_hitbox = ctx.act1_ctx.get_rofiz().steal_movable_object_hitbox(&us_data.rofo_refs[i]);
-            stolen_hitbox.transformation = xform;
-            stolen_hitbox.shape.replace_with_polygon(&shifted_q);
-            let movement = RofizObjectMovement::NewHitbox(stolen_hitbox);
+            let mut stolen_shape = ctx.act1_ctx.get_rofiz().steal_movable_object_shape(&us_data.rofo_refs[i]);
+            stolen_shape.replace_with_polygon(&shifted_q);
+            let hitbox = Hitbox::new(xform, stolen_shape);
+            let movement = RofizObjectMovement::NewHitbox(hitbox);
             ctx.act1_ctx.get_rofiz().move_object(&us_data.rofo_refs[i], movement);
         } else {
             let shape = Shape::of_polygon(Box::new(shifted_q));

@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Weak};
 
-use crate::{rolag3::floor::{room_object::{room_object_def::{RoomObject, NewRoomObjectContext, Act1Response, HandleCollisionResponse, HcProjectileContext, Team, RoomObjOperation}, damage::DamageColor}, draw::{DrawContext, Color}, rofiz::rofiz_object::{Hitbox, RofizObjectMovement}}, geometry::shape::Point};
+use crate::{rolag3::floor::{room_object::{room_object_def::{RoomObject, NewRoomObjectContext, Act1Response, HandleCollisionResponse, HcProjectileContext, Team, RoomObjOperation}, damage::DamageColor}, draw::{DrawContext, Color}, rofiz::rofiz_object::{Hitbox, RofizObjectMovement, Transformation}}, geometry::shape::Point};
 
 use super::standard_projectile1::{Sp1Builder, Sp1BuilderReq, StandardProjectile1, SpAct1Context, SpDrawContext, SpHandleCollisionContext, SpApplyOperationContext};
 
@@ -54,7 +54,8 @@ fn act1(ctx: &mut SpAct1Context) -> Act1Response {
         return Act1Response::new().remove_room_obj(ctx.sp_ctx.md.get_ref());
     }
     let room_time = ctx.act1_ctx.get_room_time();
-    let mut hitbox = ctx.act1_ctx.get_rofiz().steal_movable_object_hitbox(&ctx.sp_ctx.rofo_ref);
+    let shape = ctx.act1_ctx.get_rofiz().steal_movable_object_shape(&ctx.sp_ctx.rofo_ref);
+    let mut hitbox = Hitbox::new(Transformation::new(0.0, 0.0, 0.0), shape);
     (ps_data.hitbox_fn)(&mut hitbox, room_time);
     ctx.act1_ctx.get_rofiz().move_object(&ctx.sp_ctx.rofo_ref, RofizObjectMovement::NewHitbox(hitbox));
     Act1Response::new()

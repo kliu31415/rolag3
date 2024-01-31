@@ -705,16 +705,6 @@ impl<'a> Act1Context<'a> {
         }
     }
 
-    pub fn get_handle_weapon_info(&mut self) -> (NewRoomObjectContext, &SoundDb, &mut RoomObjSoundIdT) {
-        let nro_ctx = NewRoomObjectContext {
-            rofiz: self.rofiz,
-            room_object_id_counter: self.room_object_id_counter,
-            room_time: self.room_time,
-            rng: self.rng,
-        };
-        (nro_ctx, self.sound_db, self.sound_id_counter)
-    }
-
     pub fn get_player_input(&self) -> &PlayerInput {
         self.player_input
     }

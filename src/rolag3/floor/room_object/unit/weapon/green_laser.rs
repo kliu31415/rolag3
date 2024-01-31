@@ -1,8 +1,8 @@
 use std::{rc::Rc, cell::RefCell};
 
-use crate::{rolag3::floor::{room_object::{projectile::projectile2::{Proj2Shape, Projectile2BuilderReq, Projectile2Builder}, damage::DamageColor, room_object_def::new_play_sound_builder}, draw::Color, rofiz::rofiz_object::Transformation}, geometry::{shape::{Point, Vector}, util::translate_polygon}, gfx::draw_op_util::draw_op_rect, util::token_bucket::TokenBucket};
+use crate::{rolag3::floor::{room_object::{projectile::projectile2::{Proj2Shape, Projectile2BuilderReq, Projectile2Builder}, damage::DamageColor, room_object_def::NewRoomObjectContext}, draw::Color, rofiz::rofiz_object::Transformation}, geometry::{shape::{Point, Vector}, util::translate_polygon}, gfx::draw_op_util::draw_op_rect, util::token_bucket::TokenBucket};
 
-use super::weapon_def::{WeaponHandleTickContext, Weapon, WeaponHandleTickResponse, DrawWeaponHudContext, DrawWeaponHudResponse, DrawWeaponOnOwnerContext, DrawWeaponOnOwnerResponse, BuyAmmoInfo};
+use super::weapon_def::{WeaponHandleTickContext, Weapon, WeaponHandleTickResponse, DrawWeaponHudContext, DrawWeaponHudResponse, DrawWeaponOnOwnerContext, DrawWeaponOnOwnerResponse, BuyAmmoInfo, SwitchOutWeaponResponse};
 
 /* Green Laser rapidly shoots green squares, like a laser. It has no special attack. */
 
@@ -35,6 +35,7 @@ pub fn new_weapon_green_laser() -> Weapon {
         Some(BUY_AMMO_INFO),
         ws_data, 
         Box::new(handle_tick_fn), 
+        Box::new(|_| SwitchOutWeaponResponse::new()),
         Box::new(draw_hud), 
         Box::new(draw_on_owner),
     )
@@ -68,6 +69,7 @@ fn handle_tick_fn(ctx: &mut WeaponHandleTickContext) -> WeaponHandleTickResponse
             ctx.owner_xform.dy + ws_data.since_last_primary_attack * velocity_y,
             0.0,
         );
+        let nro_ctx = &mut NewRoomObjectContext::from_act1_ctx(ctx.act1_ctx);
         let proj = Projectile2Builder::new(
             Projectile2BuilderReq {
                 team: ctx.owner_team,
@@ -81,13 +83,15 @@ fn handle_tick_fn(ctx: &mut WeaponHandleTickContext) -> WeaponHandleTickResponse
                 color: PROJ_COLOR,
             }
         ).lifespan(2.0)
-            .build(ctx.nro_ctx);
+            .build(nro_ctx);
         response.new_room_objs.push(Rc::new(RefCell::new(proj)));
     }
 
     if ws_data.sound_token_bucken.try_take_fok(ctx.owner_age, 1.0) {
-        let sound_data = ctx.nro_ctx.get_rng().sample_slice_uniform(&ctx.sound_db.sci_fi_weapon_laser_small);
-        response.newly_played_sounds.push(new_play_sound_builder(ctx.sound_id_counter, sound_data).build());
+        let mut rng = ctx.act1_ctx.get_rng().spawn_child();
+        let sound_candidates = &ctx.act1_ctx.get_sound_db().sci_fi_weapon_laser_small;
+        let sound_data = rng.sample_slice_uniform(sound_candidates);
+        response.newly_played_sounds.push(ctx.act1_ctx.new_play_sound_builder(sound_data).build());
     }
 
     response

@@ -1,8 +1,9 @@
 use std::{rc::{Rc, Weak}, cell::RefCell, any::Any};
 
-use crate::{rolag3::{floor::{room_object::{room_object_def::{RoomObject, NewRoomObjectContext, Team}, damage::DamageColor, sound::{RoomObjPlaySoundArgs, RoomObjSoundIdT}}, rofiz::rofiz_object::Transformation, draw::{DrawContext, Color}}, sound_db::SoundDb}, gfx::{renderer::{DrawOp, DrawOpText, DrawTextPosition, DrawOpGroup, ColorRGBA32f}, draw_op_util::draw_op_rect, text::font::Font}};
+use crate::{rolag3::floor::{room_object::{room_object_def::{RoomObject, Team, Act1Context, RoomObjectRef}, damage::DamageColor, sound::RoomObjPlaySoundArgs}, rofiz::rofiz_object::Transformation, draw::{DrawContext, Color}}, gfx::{renderer::{DrawOp, DrawOpText, DrawTextPosition, DrawOpGroup, ColorRGBA32f}, draw_op_util::draw_op_rect, text::font::Font}};
 
 type WeaponHandleTickFn = dyn Fn(&mut WeaponHandleTickContext) -> WeaponHandleTickResponse;
+type SwitchOutWeaponFn = dyn Fn(&mut SwitchOutWeaponContext) -> SwitchOutWeaponResponse;
 type DrawWeaponHudFn = dyn Fn(&DrawWeaponHudContext) -> DrawWeaponHudResponse;
 type DrawWeaponOnOwnerFn = dyn Fn(&DrawWeaponOnOwnerContext) -> DrawWeaponOnOwnerResponse;
 
@@ -15,6 +16,7 @@ pub struct Weapon {
     pub buy_ammo_info: Option<BuyAmmoInfo>,
     pub ws_data: Box<dyn Any>,
     pub handle_tick_fn: Box<WeaponHandleTickFn>,
+    pub switch_out_weapon_fn: Box<SwitchOutWeaponFn>,
     pub draw_hud_fn: Box<DrawWeaponHudFn>,
     pub draw_on_owner_fn: Box<DrawWeaponOnOwnerFn>,
 }
@@ -34,6 +36,7 @@ impl Weapon {
         buy_ammo_info: Option<BuyAmmoInfo>,
         ws_data: Box<dyn Any>, 
         handle_tick_fn: Box<WeaponHandleTickFn>, 
+        switch_out_weapon_fn: Box<SwitchOutWeaponFn>,
         draw_hud_fn: Box<DrawWeaponHudFn>, 
         draw_on_owner_fn: Box<DrawWeaponOnOwnerFn>,
     ) -> Self {
@@ -46,17 +49,18 @@ impl Weapon {
             buy_ammo_info,
             ws_data,
             handle_tick_fn,
+            switch_out_weapon_fn,
             draw_hud_fn,
             draw_on_owner_fn,
         }
     }
 }
 
-pub struct WeaponHandleTickContext<'a> {
+pub struct WeaponHandleTickContext<'a, 'b> {
+    pub act1_ctx: &'a mut Act1Context<'b>,
     pub ws_data: &'a mut dyn Any,
     pub ammo: &'a mut f64,
     pub tick_len: f64,
-    pub nro_ctx: &'a mut NewRoomObjectContext<'a>,
     pub owner: Weak<RefCell<dyn RoomObject>>,
     pub owner_team: Team,
     pub owner_velocity_x: f64,
@@ -68,12 +72,11 @@ pub struct WeaponHandleTickContext<'a> {
     pub primary_attack: bool,
     pub special_attack: bool,
     pub owner_mana: f64,
-    pub sound_db: &'a SoundDb,
-    pub sound_id_counter: &'a mut RoomObjSoundIdT,
 }
 
 pub struct WeaponHandleTickResponse {
     pub new_room_objs: Vec<Rc<RefCell<dyn RoomObject>>>,
+    pub room_objs_to_remove: Vec<RoomObjectRef>,
     pub mana_delta: f64,
     pub damage_color: DamageColor,
     pub newly_played_sounds: Vec<RoomObjPlaySoundArgs>,
@@ -83,9 +86,29 @@ impl WeaponHandleTickResponse {
     pub fn new() -> Self {
         WeaponHandleTickResponse { 
             new_room_objs: Vec::new(), 
+            room_objs_to_remove: Vec::new(),
             mana_delta: 0.0, 
             damage_color: DamageColor::NotSet,
             newly_played_sounds: Vec::new(),
+        }
+    }
+}
+
+pub struct SwitchOutWeaponContext<'a, 'b> {
+    pub act1_ctx: &'a mut Act1Context<'b>,
+    pub ws_data: &'a mut dyn Any,
+}
+
+pub struct SwitchOutWeaponResponse {
+    pub new_room_objs: Vec<Rc<RefCell<dyn RoomObject>>>,
+    pub room_objs_to_remove: Vec<RoomObjectRef>,
+}
+
+impl SwitchOutWeaponResponse {
+    pub fn new() -> Self {
+        Self {
+            new_room_objs: Vec::new(),
+            room_objs_to_remove: Vec::new(),
         }
     }
 }

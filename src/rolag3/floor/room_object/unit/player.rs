@@ -1,6 +1,6 @@
-use crate::{rolag3::floor::{run::{PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, draw::DrawContext, room_object::{room_object_def::{RoomObject, Act1Context, FloorCoordinate, RoomObjectMetadata, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse, RoQueryUnitInfoContext, RoQueryUnitInfoResponse, HcTileContext, HcTileEffect, HcTileResponse, RoomObjApplyOperationContext, RoomObjOperation, HcStandardUnitContext, HcStandardUnitResponse, HandleRoomJustClearedContext, HcTileEffectDuration}, tiles::room_connection::Direction, damage::DamageColor, unit::{standard_unit_common::{BudebExpiry, BudebTractionMult, BudebTractionCap}, weapon::crimson_shotgun::new_weapon_crimson_shotgun}}, rofiz::{rofiz_object::{Hitbox, Transformation}, rofiz_state::RofizState}, room::RoomConnectionInfo}, geometry::shape::{Shape, Point}, gfx::{renderer::{DrawOp, DrawOpGroup, ColorRGBA32f, DrawOpText, DrawTextPosition}, draw_op_util::draw_op_rect, text::font::Font}};
+use crate::{rolag3::floor::{run::{PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, draw::DrawContext, room_object::{room_object_def::{RoomObject, Act1Context, FloorCoordinate, RoomObjectMetadata, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse, RoQueryUnitInfoContext, RoQueryUnitInfoResponse, HcTileContext, HcTileEffect, HcTileResponse, RoomObjApplyOperationContext, RoomObjOperation, HcStandardUnitContext, HcStandardUnitResponse, HandleRoomJustClearedContext, HcTileEffectDuration}, tiles::room_connection::Direction, damage::DamageColor, unit::{standard_unit_common::{BudebExpiry, BudebTractionMult, BudebTractionCap}, weapon::{crimson_shotgun::new_weapon_crimson_shotgun, shock_chain::new_weapon_shock_chain, weapon_def::SwitchOutWeaponContext}}}, rofiz::{rofiz_object::{Hitbox, Transformation}, rofiz_state::RofizState}, room::RoomConnectionInfo}, geometry::shape::{Shape, Point}, gfx::{renderer::{DrawOp, DrawOpGroup, ColorRGBA32f, DrawOpText, DrawTextPosition}, draw_op_util::draw_op_rect, text::font::Font}};
 
-use super::{Unit, standard_unit_common::{StandardUnitCommon, Budeb, BudebMaxSpeed, TranslateMove, PolarForce}, weapon::{weapon_def::{Weapon, WeaponHandleTickContext, DrawWeaponHudContext, DrawWeaponOnOwnerContext}, green_laser::new_weapon_green_laser, lapis_trigun::new_weapon_lapis_trigun, ruby_rockets::new_weapon_ruby_rockets}, active_item::{active_item_def::{ActiveItem, ActiveItemHandleTickContext}, clear_enemy_projectiles::new_active_item_clear_projectiles, slow_enemy_time::new_active_item_slow_enemy_time}};
+use super::{Unit, standard_unit_common::{StandardUnitCommon, Budeb, BudebMaxSpeed, TranslateMove, PolarForce}, weapon::{weapon_def::{Weapon, WeaponHandleTickContext, DrawWeaponHudContext, DrawWeaponOnOwnerContext}, green_laser::new_weapon_green_laser, lapis_trigun::new_weapon_lapis_trigun, ruby_rockets::new_weapon_ruby_rockets}, active_item::{active_item_def::{ActiveItem, ActiveItemHandleTickContext}, clear_enemy_projectiles::new_active_item_clear_projectiles, slow_enemy_time::new_active_item_slow_enemy_time, freedom_flare::new_active_item_freedom_flare, true_freedom_flare::new_active_item_true_freedom_flare}};
 
 pub const DEFAULT_TIRE_TRACTION: f64 = 500.0;
 
@@ -81,6 +81,7 @@ impl RoomObject for Player {
         */
 
         // logic that uses the mouse wheel events to move to a weapon immediately
+        let prev_weapon_idx = self.weapon_idx;
         for (_, y) in ctx.get_player_input().mouse_wheel_line_deltas.iter() {
             if *y != 0.0 {
                 if *y > 0.0 {
@@ -88,6 +89,20 @@ impl RoomObject for Player {
                 } else {
                     self.weapon_idx = 2;
                 }
+            }
+        }
+        if self.weapon_idx != prev_weapon_idx {
+            let weapon = &mut self.weapons[prev_weapon_idx];
+            let swoc = &mut SwitchOutWeaponContext {
+                act1_ctx: ctx,
+                ws_data: weapon.ws_data.as_mut(),
+            };
+            let swoc_response = (weapon.switch_out_weapon_fn)(swoc);
+            for x in swoc_response.new_room_objs {
+                response.add_room_obj(x);
+            }
+            for x in swoc_response.room_objs_to_remove {
+                response = response.remove_room_obj(x);
             }
         }
         // todo: only set the weapon idx to 1 if the MMB is newly down. If the MMB is held down from a previous tick,
@@ -101,35 +116,39 @@ impl RoomObject for Player {
 
         // process active items
         let xform = self.su_common.get_rofiz_xform(ctx.get_rofiz());
+        let mouse_x = ctx.get_player_input().mouse_x;
+        let mouse_y = ctx.get_player_input().mouse_y;
         if self.active_items.len() >= 1 {
             let active_item = &mut self.active_items[0];
+            let use_this_item = ctx.get_player_input().use_active_item_1;
             let mut aihc_ctx = ActiveItemHandleTickContext {
                 ais_data: active_item.ais_data.as_mut(),
+                act1_ctx: ctx,
                 owner_team: Team::Player,
                 owner_x: xform.dx,
                 owner_y: xform.dy,
                 owner_mana: self.mana,
                 tick_len,
-                use_this_item: ctx.get_player_input().use_active_item_1,
+                use_this_item,
+                mouse_x,
+                mouse_y,
             };
             let aihc_response = (active_item.handle_tick_fn)(&mut aihc_ctx);
             aihc_response.ops.into_iter().for_each(|x| response.apply_operation(x));
+            aihc_response.room_objs_to_add.into_iter().for_each(|x| response.add_room_obj(x));
             self.mana += aihc_response.mana_delta;
         }
 
         // process weapons
         let weapon = &mut self.weapons[self.weapon_idx];
         let self_as_weak = ctx.get_self_as_weak();
-        let mouse_x = ctx.get_player_input().mouse_x;
-        let mouse_y = ctx.get_player_input().mouse_y;
         let primary_attack = ctx.get_player_input().is_lmb_down;
         let special_attack = ctx.get_player_input().is_rmb_down;
-        let (mut nro_ctx, sound_db, sound_id_counter) = ctx.get_handle_weapon_info();
         let mut wht_ctx = WeaponHandleTickContext {
+            act1_ctx: ctx,
             ws_data: weapon.ws_data.as_mut(),
             ammo: &mut weapon.ammo,
             tick_len,
-            nro_ctx: &mut nro_ctx,
             owner: self_as_weak,
             owner_team: Team::Player,
             owner_velocity_x: self.su_common.get_velocity_x(),
@@ -141,13 +160,14 @@ impl RoomObject for Player {
             primary_attack,
             special_attack,
             owner_mana: self.mana,
-            sound_db,
-            sound_id_counter,
         };
         let mut wht_response = (weapon.handle_tick_fn)(&mut wht_ctx);
         assert!(wht_response.damage_color != DamageColor::NotSet, "Weapon handle tick returned a damage color of NotSet");
         self.damage_color = wht_response.damage_color;
         wht_response.new_room_objs.drain(..).for_each(|x| response.add_room_obj(x));
+        for x in wht_response.room_objs_to_remove {
+            response = response.remove_room_obj(x);
+        }
         self.mana += wht_response.mana_delta;
         wht_response.newly_played_sounds.drain(..).for_each(|x| {response.play_sound(x);});
 
@@ -316,7 +336,7 @@ impl Player {
             vec![new_weapon_ruby_rockets(), new_weapon_green_laser(), new_weapon_lapis_trigun()]
         } else {
             // prevent the linter from warning about unused weapon code
-            vec![new_weapon_crimson_shotgun()]
+            vec![new_weapon_crimson_shotgun(), new_weapon_shock_chain()]
         };
         Player {
             md,
@@ -324,7 +344,11 @@ impl Player {
             change_rooms: None,
             weapons,
             weapon_idx: 0,
-            active_items: vec![new_active_item_slow_enemy_time(), new_active_item_clear_projectiles()],
+            active_items: vec![
+                new_active_item_freedom_flare(), 
+                new_active_item_true_freedom_flare(),
+                new_active_item_slow_enemy_time(), 
+                new_active_item_clear_projectiles()],
             hc_tile_effects: Vec::new(),
             mana: 20.0,
             max_mana: 20.0,

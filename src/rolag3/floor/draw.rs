@@ -377,6 +377,7 @@ impl DrawContext<'_> {
     }
 
     pub fn do_annular_sector(&self, color: Color, center: Point, inner_radius: f32, outer_radius: f32, angle_range: Option<(f32, f32)>) -> DrawOp {
+        assert!(inner_radius <= outer_radius, "expected inner_radius({}) <= outer_radius({})", inner_radius, outer_radius);
         let transparent = ColorRGBA32f::new(0.0, 0.0, 0.0, 0.0);
         DrawOp::ConcentricCircleSector(
             DrawOpCCS {
@@ -392,11 +393,13 @@ impl DrawContext<'_> {
     }
 
     pub fn do_annulus(&self, color: Color, center: Point, inner_radius: f32, outer_radius: f32) -> DrawOp {
+        assert!(inner_radius <= outer_radius, "expected inner_radius({}) <= outer_radius({})", inner_radius, outer_radius);
         let transparent = Color::new(0.0, 0.0, 0.0, 0.0);
         self.do_concentric_circle(transparent, color, center, inner_radius, outer_radius)
     }
 
     pub fn do_concentric_circle(&self, inner_color: Color, outer_color: Color, center: Point, inner_radius: f32, outer_radius: f32) -> DrawOp {
+        assert!(inner_radius <= outer_radius, "expected inner_radius({}) <= outer_radius({})", inner_radius, outer_radius);
         let inner_color = Self::color_to_rdr(&inner_color);
         let outer_color = Self::color_to_rdr(&outer_color);
         let x = self.x_to_vsc(center.x);

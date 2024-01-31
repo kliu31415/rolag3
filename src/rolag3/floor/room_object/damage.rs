@@ -20,4 +20,13 @@ impl DamageColor {
         }
         0.0
     }
+
+    pub fn _to_rgb_idx(&self) -> usize {
+        match self {
+            DamageColor::Red => 0,
+            DamageColor::Green => 1,
+            DamageColor::Blue => 2,
+            _ => panic!("can't convert DamageColor({:?}) to rgb index", self),
+        }
+    }
 }

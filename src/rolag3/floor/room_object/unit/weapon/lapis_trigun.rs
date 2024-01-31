@@ -1,8 +1,8 @@
 use std::{rc::Rc, cell::RefCell};
 
-use crate::{rolag3::floor::{draw::Color, room_object::{room_object_def::{RoomObject, new_play_sound_builder}, projectile::projectile2::{Proj2Shape, Projectile2BuilderReq, Projectile2Builder}, damage::DamageColor}}, geometry::{shape::{Point, Vector}, util::translate_polygon}, gfx::draw_op_util::draw_op_rect};
+use crate::{rolag3::floor::{draw::Color, room_object::{room_object_def::{RoomObject, NewRoomObjectContext}, projectile::projectile2::{Proj2Shape, Projectile2BuilderReq, Projectile2Builder}, damage::DamageColor}}, geometry::{shape::{Point, Vector}, util::translate_polygon}, gfx::draw_op_util::draw_op_rect};
 
-use super::weapon_def::{Weapon, WeaponHandleTickResponse, WeaponHandleTickContext, DrawWeaponHudContext, DrawWeaponHudResponse, DrawWeaponOnOwnerContext, DrawWeaponOnOwnerResponse, BuyAmmoInfo};
+use super::weapon_def::{Weapon, WeaponHandleTickResponse, WeaponHandleTickContext, DrawWeaponHudContext, DrawWeaponHudResponse, DrawWeaponOnOwnerContext, DrawWeaponOnOwnerResponse, BuyAmmoInfo, SwitchOutWeaponResponse};
 
 /* Lapis Trigun shoots a wave of 3 blue squares at intervals of 0.3s.
    It has a special attack, which when used, causes it to shoot a radial wave of 128 projectiles.
@@ -42,6 +42,7 @@ pub fn new_weapon_lapis_trigun() -> Weapon {
         Some(BUY_AMMO_INFO),
         ws_data, 
         Box::new(handle_tick_fn), 
+        Box::new(|_| SwitchOutWeaponResponse::new()),
         Box::new(draw_hud), 
         Box::new(draw_on_owner),
     )
@@ -78,8 +79,11 @@ fn handle_tick_fn(ctx: &mut WeaponHandleTickContext) -> WeaponHandleTickResponse
         let angle_adjust = (i as f64) * std::f64::consts::FRAC_PI_6;
         response.new_room_objs.push(spawn_projectile(ctx, angle_adjust));
     }
-    let sound_data = ctx.nro_ctx.get_rng().sample_slice_uniform(&ctx.sound_db.gun_pistol_shot);
-    response.newly_played_sounds.push(new_play_sound_builder(ctx.sound_id_counter, sound_data).build());
+    let mut rng = ctx.act1_ctx.get_rng().spawn_child();
+    let sound_candidates = &ctx.act1_ctx.get_sound_db().gun_pistol_shot;
+    let sound_data = rng.sample_slice_uniform(sound_candidates);
+    response.newly_played_sounds.push(ctx.act1_ctx.new_play_sound_builder(sound_data).build());
+
     response
 }
 
@@ -93,6 +97,7 @@ fn spawn_projectile(ctx: &mut WeaponHandleTickContext, angle_adjust: f64) -> Rc<
         center: Point::new(0.0, 0.0), 
         vertexes: Box::new(PROJ_VERTEXES),
     };
+    let nro_ctx = &mut NewRoomObjectContext::from_act1_ctx(ctx.act1_ctx);
     let proj = Projectile2Builder::new(
         Projectile2BuilderReq {
             team: ctx.owner_team,
@@ -105,7 +110,7 @@ fn spawn_projectile(ctx: &mut WeaponHandleTickContext, angle_adjust: f64) -> Rc<
             shape,
             color: PROJ_COLOR,
         }
-    ).build(ctx.nro_ctx);
+    ).build(nro_ctx);
     Rc::new(RefCell::new(proj))
 }
 

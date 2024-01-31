@@ -2,33 +2,40 @@ use std::{cell::RefCell, rc::Rc};
 
 use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Act1Response, Team, Act1QueryArgs, Act1QueryResult}, damage::DamageColor, unit::{standard_unit1::{StandardUnit1Builder, StandardUnit1BuilderReq, SuAct1Context, SuDrawContext, StandardUnit1}, standard_unit_common::TranslateMove}}, rofiz::rofiz_object::Transformation, draw::{Color, DrawContext}}, geometry::{shape::{Shape, Point}, util::{regular_polygon, get_inner_polygon, rotate_polygon}}};
 
-/* SquareGreen is a green square that continuously moves in the direction of the player.
+/* SquareSmallRgb is continuously moves in the direction of the player.
 */
 
-const INNER_COLOR: Color = Color::new(0.05, 0.8, 0.05, 1.0);
-
-pub struct SquareGreen {
+pub struct SquareSmallRgb {
     query_result: Option<Rc<RefCell<Act1QueryResult>>>,
+
     border_vertexes: [Point; 4],
     inner_vertexes: [Point; 4],
+    inner_color: Color,
 }
 
-pub fn new_square_green(ctx: &mut NewRoomObjectContext, x: f64, y: f64) -> StandardUnit1 {
+pub fn new_square_rgb(ctx: &mut NewRoomObjectContext, damage_color: DamageColor, x: f64, y: f64) -> StandardUnit1 {
     let mut border_vertexes: [Point; 4] = regular_polygon(4, 0.8)[..].try_into().unwrap();
     rotate_polygon(std::f32::consts::FRAC_PI_4, &mut border_vertexes);
     let inner_vertexes: [Point; 4] = get_inner_polygon(0.1, &border_vertexes)[..].try_into().unwrap();
     let xform = Transformation::new(x, y, 0.0);
     let shape = Shape::of_polygon(Box::new(border_vertexes));
-    let us_data = SquareGreen { 
-        query_result: None,
+    let inner_color = match damage_color {
+        DamageColor::Red => Color::new(0.8, 0.02, 0.02, 1.0),
+        DamageColor::Green => Color::new(0.02, 0.8, 0.02, 1.0),
+        DamageColor::Blue => Color::new(0.02, 0.02, 0.8, 1.0),
+        _ => panic!("unexpected damage_color {:?}", damage_color),
+    };
+    let us_data = SquareSmallRgb { 
         border_vertexes,
         inner_vertexes,
+        inner_color,
+        query_result: None,
     };
 
     StandardUnit1Builder::new(StandardUnit1BuilderReq {
         team: Team::Enemy,
-        damage_color: DamageColor::Green,
-        hp: 30.0,
+        damage_color,
+        hp: 10.0,
         engine_power: 10.0,
         tire_traction: 50.0,
     }).act1_fn(Box::new(act1))
@@ -39,7 +46,7 @@ pub fn new_square_green(ctx: &mut NewRoomObjectContext, x: f64, y: f64) -> Stand
 }
 
 fn act1(ctx: &mut SuAct1Context) -> Act1Response {
-    let us_data = ctx.su_ctx.us_data.downcast_mut::<SquareGreen>().unwrap();
+    let us_data = ctx.su_ctx.us_data.downcast_mut::<SquareSmallRgb>().unwrap();
     let xform = ctx.su_ctx.su_common.get_rofiz_xform(ctx.act1_ctx.get_rofiz());
     if let Some(ref qr) = us_data.query_result {
         match &*qr.borrow() {
@@ -62,9 +69,9 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
 }
 
 fn draw(ctx: &mut SuDrawContext) {
-    let us_data = ctx.su_ctx.us_data.downcast_mut::<SquareGreen>().unwrap();
+    let us_data = ctx.su_ctx.us_data.downcast_mut::<SquareSmallRgb>().unwrap();
     let border_color = ctx.su_ctx.su_common.get_draw_color(DrawContext::COLOR_NSU_BORDER);
-    let inner_color = ctx.su_ctx.su_common.get_draw_color(INNER_COLOR);
+    let inner_color = ctx.su_ctx.su_common.get_draw_color(us_data.inner_color);
     let xform = ctx.su_ctx.su_common.get_rofiz_xform(ctx.draw_ctx.get_rofiz());
     let border_vertexes = us_data.border_vertexes.map(|v| Point::new(xform.dx as f32 + v.x, xform.dy as f32 + v.y));
     let inner_vertexes = us_data.inner_vertexes.map(|v| Point::new(xform.dx as f32 + v.x, xform.dy as f32 + v.y));

@@ -157,13 +157,13 @@ impl RofizState {
         RofizObjectRef::new(ref_count, pool_ref)
     }
 
-    pub fn steal_movable_object_hitbox(&mut self, obj_ref: &RofizObjectRef) -> Hitbox {
+    pub fn steal_movable_object_shape(&mut self, obj_ref: &RofizObjectRef) -> Shape {
         if obj_ref.pool_ref.is_bw {
             unimplemented!();
         }
         let rom = self.obj_pool.get_mo_mut(&obj_ref.pool_ref);
-        let mut stolen = Hitbox::default();
-        std::mem::swap(&mut stolen, &mut rom.cached_mem_hitbox);
+        let mut stolen = Shape::default();
+        std::mem::swap(&mut stolen, &mut rom.cached_mem_hitbox.shape);
         stolen
     }
 

@@ -24,6 +24,21 @@ pub fn draw_op_circle(color: ColorRGBA32f, center: (f32, f32), r: f32) -> DrawOp
     })
 }
 
+pub fn draw_op_annulus(color: ColorRGBA32f, center: (f32, f32), r1: f32, r2: f32) -> DrawOp {
+    assert!(r1 <= r2, "expected r1({}) <= r2({})", r1, r2);
+    DrawOp::ConcentricCircleSector(DrawOpCCS {
+        x: center.0,
+        y: center.1,
+        inner_radius: r1,
+        outer_radius: r2,
+        viewport: None,
+        inner_color: ColorRGBA32f::new(0.0, 0.0, 0.0, 0.0),
+        outer_color: color,
+        angle_range: None,
+    })
+}
+
+
 pub fn draw_op_concentric_circles(inner_color: ColorRGBA32f, outer_color: ColorRGBA32f, center: (f32, f32), inner_radius: f32, outer_radius: f32) -> DrawOp {
     DrawOp::ConcentricCircleSector(DrawOpCCS {
         x: center.0,

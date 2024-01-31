@@ -1,8 +1,8 @@
 use std::{cell::RefCell, rc::Rc};
 
-use crate::{rolag3::floor::{room_object::{projectile::projectile2::{Projectile2BuilderReq, Proj2Shape, Projectile2Builder}, damage::DamageColor}, draw::Color}, gfx::draw_op_util::draw_op_circle, geometry::shape::Point};
+use crate::{rolag3::floor::{room_object::{projectile::projectile2::{Projectile2BuilderReq, Proj2Shape, Projectile2Builder}, damage::DamageColor, room_object_def::NewRoomObjectContext}, draw::Color}, gfx::draw_op_util::draw_op_circle, geometry::shape::Point};
 
-use super::weapon_def::{Weapon, WeaponHandleTickContext, WeaponHandleTickResponse, DrawWeaponHudContext, DrawWeaponHudResponse, DrawWeaponOnOwnerResponse, DrawWeaponOnOwnerContext, BuyAmmoInfo};
+use super::weapon_def::{Weapon, WeaponHandleTickContext, WeaponHandleTickResponse, DrawWeaponHudContext, DrawWeaponHudResponse, DrawWeaponOnOwnerResponse, DrawWeaponOnOwnerContext, BuyAmmoInfo, SwitchOutWeaponResponse};
 
 /* Crimson Shotgun shoots a wave of 3 red circles at intervals of 0.1s. It has no special attack.
 */
@@ -35,6 +35,7 @@ pub fn new_weapon_crimson_shotgun() -> Weapon {
         Some(BUY_AMMO_INFO),
         ws_data, 
         Box::new(handle_tick_fn), 
+        Box::new(|_| SwitchOutWeaponResponse::new()),
         Box::new(draw_hud), 
         Box::new(draw_on_owner),
     )
@@ -62,6 +63,7 @@ fn handle_tick_fn(ctx: &mut WeaponHandleTickContext) -> WeaponHandleTickResponse
         let velocity_x = ctx.owner_velocity_x + proj_velocity * f64::cos(angle);
         let velocity_y = ctx.owner_velocity_y + proj_velocity * f64::sin(angle);
         let shape = Proj2Shape::Circle {x: 0.0, y: 0.0, r: PROJ_RADIUS};
+        let nro_ctx = &mut NewRoomObjectContext::from_act1_ctx(ctx.act1_ctx);
         let proj = Projectile2Builder::new(
             Projectile2BuilderReq{
                 team: ctx.owner_team,
@@ -74,7 +76,7 @@ fn handle_tick_fn(ctx: &mut WeaponHandleTickContext) -> WeaponHandleTickResponse
                 shape,
                 color: PROJ_COLOR,
             }
-        ).build(ctx.nro_ctx);
+        ).build(nro_ctx);
         response.new_room_objs.push(Rc::new(RefCell::new(proj)));
     }
     response

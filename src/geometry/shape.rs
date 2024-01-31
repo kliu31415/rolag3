@@ -113,6 +113,10 @@ impl Shape {
             Shape::Circle(_) => *self = Shape::Polygon(Polygon::new_from_slice(vertexes)),
         };
     }
+
+    pub fn replace_with_circle(&mut self, c: &Circle) {
+        *self = Shape::Circle(*c);
+    }
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -328,5 +332,11 @@ pub struct Circle {
 impl Circle {
     pub const fn new(center: Point, r: f32) -> Self {
         Self {center, r}
+    }
+}
+
+impl Circle {
+    pub fn contains(&self, point: Point) -> bool {
+        (self.center - point).norm_sq() <= f32::powi(self.r, 2)
     }
 }
