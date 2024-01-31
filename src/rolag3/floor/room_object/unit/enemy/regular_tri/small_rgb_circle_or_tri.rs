@@ -8,14 +8,14 @@ use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext
 
 const OUTER_COLORS: [Color; 3] = [
     Color::new(0.1, 0.001, 0.001, 1.0),
-    Color::new(0.001, 0.1, 0.001, 1.0),
+    Color::new(0.001, 0.07, 0.001, 1.0),
     Color::new(0.001, 0.001, 0.1, 1.0),
 ];
 
 const INNER_COLORS: [Color; 3] = [
-    Color::new(1.0, 0.01, 0.01, 1.0),
-    Color::new(0.01, 1.0, 0.01, 1.0),
-    Color::new(0.01, 0.01, 1.0, 1.0),
+    Color::new(0.4, 0.01, 0.01, 1.0),
+    Color::new(0.01, 0.25, 0.01, 1.0),
+    Color::new(0.01, 0.01, 0.4, 1.0),
 ];
 
 const PROJ_COLORS: [Color; 3] = [
@@ -24,7 +24,13 @@ const PROJ_COLORS: [Color; 3] = [
     Color::new(0.06, 0.06, 14.0, 1.0),
 ];
 
-const PROJ_RADIUS: f32 = 0.25;
+const CIRCLE_PROJ_RADIUS: f32 = 0.25;
+const TRI_PROJ_VERTEXES: [Point; 3] = [
+    Point::new(0.3, 0.0),
+    Point::new(-0.3, -0.2),
+    Point::new(-0.3, 0.2),
+];
+const TRI_PROJ_OFFSET: Vector = Vector::new(0.15, 0.0);
 
 pub struct RegtriSmallRgbCircle {
     xlate_dir_qr: Option<Rc<RefCell<Act1QueryResult>>>,
@@ -33,9 +39,34 @@ pub struct RegtriSmallRgbCircle {
     translate_dir: Option<i64>,
     last_fired_at: Option<f64>,
     next_fire_at: Option<f64>,
+    is_circle_proj: bool,
 }
 
-pub fn new_regtri_small_rgb_circle(ctx: &mut NewRoomObjectContext, damage_color: DamageColor, x: f64, y: f64) -> StandardUnit1 {
+pub fn new_regtri_small_rgb_circle(
+    ctx: &mut NewRoomObjectContext, 
+    damage_color: DamageColor, 
+    x: f64, 
+    y: f64,
+) -> StandardUnit1 {
+    new_regtri_small_rgb_circle_or_tri(ctx, damage_color, x, y, true)
+}
+
+pub fn new_regtri_small_rgb_tri(
+    ctx: &mut NewRoomObjectContext, 
+    damage_color: DamageColor, 
+    x: f64, 
+    y: f64,
+) -> StandardUnit1 {
+    new_regtri_small_rgb_circle_or_tri(ctx, damage_color, x, y, false)
+}
+
+fn new_regtri_small_rgb_circle_or_tri(
+    ctx: &mut NewRoomObjectContext, 
+    damage_color: DamageColor, 
+    x: f64, 
+    y: f64,
+    is_circle_proj: bool,
+) -> StandardUnit1 {
     let border_vertexes: [Point; 3] = regular_polygon(3, 0.9)[..].try_into().unwrap();
     let outer_vertexes: [Point; 3] = get_inner_polygon(0.1, &border_vertexes)[..].try_into().unwrap();
     let xform = Transformation::new(x, y, ctx.get_rng().gen_f64_range(0.0 .. (2.0 * std::f64::consts::PI)));
@@ -47,6 +78,7 @@ pub fn new_regtri_small_rgb_circle(ctx: &mut NewRoomObjectContext, damage_color:
         translate_dir: None,
         last_fired_at: None,
         next_fire_at: None,
+        is_circle_proj,
     };
 
     StandardUnit1Builder::new(StandardUnit1BuilderReq {
@@ -98,30 +130,52 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
         if unit_age >= nfa {
             let self_as_weak = ctx.act1_ctx.get_self_as_weak();
             for i in 0..3 {
-                let proj_velocity = 10.0;
-                let angle = i as f64 * 2.0 / 3.0 * std::f64::consts::PI;
-                let proj = Projectile2Builder::new(Projectile2BuilderReq {
-                    team: Team::Enemy,
-                    damage_color: *ctx.su_ctx.damage_color,
-                    damage: 3.0,
-                    owner: self_as_weak.clone(),
-                    velocity_x: proj_velocity * f64::cos(angle),
-                    velocity_y: proj_velocity * f64::sin(angle),
-                    xform,
-                    shape: Proj2Shape::Circle { x: 0.0, y: 0.0, r: PROJ_RADIUS },
-                    color: PROJ_COLORS[ctx.su_ctx.damage_color.to_rgb_idx()],
-                }).build(&mut NewRoomObjectContext::from_act1_ctx(ctx.act1_ctx));
-                response.add_room_obj(Rc::new(RefCell::new(proj)));
+                if us_data.is_circle_proj {
+                    let proj_velocity = 10.0;
+                    let angle = i as f64 * 2.0 / 3.0 * std::f64::consts::PI;
+                    let proj = Projectile2Builder::new(Projectile2BuilderReq {
+                        team: Team::Enemy,
+                        damage_color: *ctx.su_ctx.damage_color,
+                        damage: 3.0,
+                        owner: self_as_weak.clone(),
+                        velocity_x: proj_velocity * f64::cos(angle),
+                        velocity_y: proj_velocity * f64::sin(angle),
+                        xform,
+                        shape: Proj2Shape::Circle { x: 0.0, y: 0.0, r: CIRCLE_PROJ_RADIUS },
+                        color: PROJ_COLORS[ctx.su_ctx.damage_color.to_rgb_idx()],
+                    }).build(&mut NewRoomObjectContext::from_act1_ctx(ctx.act1_ctx));
+                    response.add_room_obj(Rc::new(RefCell::new(proj)));
+                } else {
+                    let proj_velocity = 10.0;
+                    let angle = i as f64 * 2.0 / 3.0 * std::f64::consts::PI;
+                    let vertexes = TRI_PROJ_VERTEXES.map(|p| p + TRI_PROJ_OFFSET);
+                    let proj_xform = Transformation::new(xform.dx, xform.dy, angle);
+                    let homing_fn = |age| if age < 3.0 {0.5} else {0.0};
+                    let proj = Projectile2Builder::new(Projectile2BuilderReq {
+                        team: Team::Enemy,
+                        damage_color: *ctx.su_ctx.damage_color,
+                        damage: 3.0,
+                        owner: self_as_weak.clone(),
+                        velocity_x: proj_velocity * f64::cos(angle),
+                        velocity_y: proj_velocity * f64::sin(angle),
+                        xform: proj_xform,
+                        shape: Proj2Shape::TriFan { center: vertexes[0], vertexes: Box::new(vertexes) },
+                        color: PROJ_COLORS[ctx.su_ctx.damage_color.to_rgb_idx()],
+                    }).homing_rotate_to_enemies_speed_fn(Box::new(homing_fn))
+                        .build(&mut NewRoomObjectContext::from_act1_ctx(ctx.act1_ctx));
+                    response.add_room_obj(Rc::new(RefCell::new(proj)));  
+                }
             }
             us_data.last_fired_at = Some(nfa);
             us_data.next_fire_at = None;
         }
     } else if ctx.act1_ctx.get_rng().gen_bernoulli(1.0 * tick_len) {
-        us_data.next_fire_at = Some(unit_age + 0.3);
+        us_data.next_fire_at = Some(unit_age + 0.4);
     }
 
     if let Some(td) = us_data.translate_dir {
-        if us_data.last_fired_at.is_none() || (unit_age - us_data.last_fired_at.unwrap()) > 0.2 {
+        if (us_data.last_fired_at.is_none() || (unit_age - us_data.last_fired_at.unwrap()) > 0.2) &&
+           (us_data.next_fire_at.is_none() || (us_data.next_fire_at.unwrap() - unit_age > 0.2)) {
             let angle = xform.dtheta + td as f64 * 2.0 / 3.0 * std::f64::consts::PI;
             let movement = TranslateMove::Accelerate { ax: f64::cos(angle), ay: f64::sin(angle) };
             ctx.su_ctx.su_common.set_translate_move(movement);
@@ -143,10 +197,10 @@ fn draw(ctx: &mut SuDrawContext) {
     let outer_color = ctx.su_ctx.su_common.get_draw_color(OUTER_COLORS[color_idx]);
     let mut lerp_t = 1.0;
     if let Some(lfa) = us_data.last_fired_at {
-        lerp_t = f64::min(lerp_t, 5.0 * (unit_age - lfa));
+        lerp_t = f64::min(lerp_t, 3.0 * (unit_age - lfa));
     }
     if let Some(nfa) = us_data.next_fire_at {
-        lerp_t = f64::min(lerp_t, 5.0 * (nfa - unit_age));
+        lerp_t = f64::min(lerp_t, 3.0 * (nfa - unit_age));
     }
     let inner_color = Color::lerp(PROJ_COLORS[color_idx], INNER_COLORS[color_idx], lerp_t as f32);
     let inner_color = ctx.su_ctx.su_common.get_draw_color(inner_color);
@@ -154,8 +208,20 @@ fn draw(ctx: &mut SuDrawContext) {
     let xlate = Vector::new(xform.dx as f32, xform.dy as f32);
     let border_vertexes = us_data.border_vertexes.map(|p| p.rotated(xform.dtheta as f32).translated(xlate));
     let outer_vertexes = us_data.outer_vertexes.map(|p| p.rotated(xform.dtheta as f32).translated(xlate));
-    let border_dop = ctx.draw_ctx.do_thick_border(border_color, &border_vertexes, &outer_vertexes);
-    let outer_dop = ctx.draw_ctx.do_tri(outer_color, outer_vertexes);
-    let inner_dop = ctx.draw_ctx.do_circle(inner_color, Point::new(xform.dx as f32, xform.dy as f32), PROJ_RADIUS);
-    ctx.draw_ctx.add_draw_op(DrawContext::Z_UNIT, ctx.draw_ctx.dop_group(Box::new([border_dop, outer_dop, inner_dop])));
+
+    let mut draw_ops = Vec::new();
+    draw_ops.push(ctx.draw_ctx.do_thick_border(border_color, &border_vertexes, &outer_vertexes));
+    draw_ops.push(ctx.draw_ctx.do_tri(outer_color, outer_vertexes));
+    if us_data.is_circle_proj {
+       draw_ops.push(ctx.draw_ctx.do_circle(inner_color, Point::new(xform.dx as f32, xform.dy as f32), CIRCLE_PROJ_RADIUS));
+    } else {
+        for i in 0..3 {
+            let angle = xform.dtheta + i as f64 * 2.0 / 3.0 * std::f64::consts::PI;
+            let vertexes = TRI_PROJ_VERTEXES
+                .map(|p| p + TRI_PROJ_OFFSET)
+                .map(|p| p.rotated(angle as f32).translated(xlate));
+            draw_ops.push(ctx.draw_ctx.do_tri(inner_color, vertexes));
+        }
+    };
+    ctx.draw_ctx.add_draw_op(DrawContext::Z_UNIT, ctx.draw_ctx.dop_group(draw_ops.into()));
 }
