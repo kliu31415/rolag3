@@ -1,6 +1,6 @@
 use std::any::Any;
 
-use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Team, Act1Response}, unit::standard_unit1::{StandardUnit1Builder, StandardUnit1BuilderReq, StandardUnit1, RofizObjType, SuAct1Context}, damage::DamageColor}, rofiz::{rofiz_object::{Transformation, Hitbox}, rofiz_state::RofizObjectRef}}, geometry::shape::{Shape, Point}};
+use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Team, Act1Response}, unit::{standard_unit1::{StandardUnit1Builder, StandardUnit1BuilderReq, StandardUnit1, RofizObjType, SuAct1Context}, standard_unit_common::{Budeb, BudebSpeedMult, BudebExpiry}}, damage::DamageColor}, rofiz::{rofiz_object::{Transformation, Hitbox}, rofiz_state::RofizObjectRef}}, geometry::shape::{Shape, Point}};
 
 
 struct ShockChainLink {
@@ -39,6 +39,7 @@ pub fn new_shock_chain_link(
         .us_data(Box::new(us_data))
         .damageable(false)
         .blocks_room_clear(false)
+        .add_budeb_on_collision_damage(Budeb::SpeedMult(BudebSpeedMult::new(0.5, BudebExpiry::Duration(0.1))))
         .build(ctx)
 }
 

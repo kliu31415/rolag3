@@ -4,11 +4,11 @@ use crate::{rolag3::floor::{room_object::{damage::DamageColor, unit::standard_un
 
 use super::{weapon_def::{Weapon, WeaponHandleTickContext, WeaponHandleTickResponse, DrawWeaponHudContext, DrawWeaponHudResponse, DrawWeaponOnOwnerResponse, DrawWeaponOnOwnerContext, BuyAmmoInfo, SwitchOutWeaponResponse, SwitchOutWeaponContext, WeaponExitRoomResponse, WeaponExitRoomContext}, shock_chain_link::new_shock_chain_link};
 
-/* Shock Harpoon shoots 
+/* Shock Chain shoots a low-range melee chain
 */
 
 const NAME: &str = "Shock Chain";
-const SHOP_DESCRIPTION: &str = "Launches a short-range chain that damages and slows enemies it touches";
+const SHOP_DESCRIPTION: &str = "Launches a short-range chain that damages and briefly slows enemies it touches";
 const SHOP_COST: u64 = 20;
 const STARTING_AMMO: f64 = 1e3;
 const BUY_AMMO_INFO: BuyAmmoInfo = BuyAmmoInfo { ammo_amount: 50.0, starcash_cost: 2.0 };

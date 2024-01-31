@@ -2,7 +2,7 @@ use std::any::Any;
 
 use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, RoomObject, RoomObjectMetadata, Act1Context, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse, RoomObjectType, RoQueryUnitInfoContext, RoQueryUnitInfoResponse, RoomObjApplyOperationContext, RoomObjOperation, HcStandardUnitContext, HcStandardUnitResponse, BossHp}, damage::DamageColor}, draw::DrawContext, rofiz::rofiz_object::{Transformation, Hitbox}}, geometry::shape::Shape};
 
-use super::{Unit, standard_unit_common::StandardUnitCommon};
+use super::{Unit, standard_unit_common::{StandardUnitCommon, Budeb}};
 
 type Act1FnT = dyn Fn(&mut SuAct1Context) -> Act1Response;
 type DrawFnT = dyn Fn(&mut SuDrawContext);
@@ -217,6 +217,7 @@ pub struct StandardUnit1Builder {
     req: StandardUnit1BuilderReq,
 
     collision_damage: f64,
+    budeb_on_collision_damage: Vec<Budeb>,
 
     angular_power: f64,
     angular_traction: f64,
@@ -267,6 +268,7 @@ impl StandardUnit1Builder {
         Self {
             req,
             collision_damage: 8.0, /* good default for most enemies */
+            budeb_on_collision_damage: Vec::new(),
             angular_power: 0.0,
             angular_traction: 0.0,
             us_data: Box::new(UsDataDummy{}),
@@ -295,6 +297,11 @@ impl StandardUnit1Builder {
 
     pub fn collision_damage(mut self, collision_damage: f64) -> Self {
         self.collision_damage = collision_damage;
+        self
+    }
+
+    pub fn add_budeb_on_collision_damage(mut self, budeb: Budeb) -> Self {
+        self.budeb_on_collision_damage.push(budeb);
         self
     }
 
@@ -392,6 +399,7 @@ impl StandardUnit1Builder {
             rofo_ref, 
             self.damageable,
             self.collision_damage,
+            self.budeb_on_collision_damage,
             self.req.hp, 
             self.req.engine_power, 
             self.req.tire_traction, 

@@ -105,7 +105,7 @@ fn use_fn(ctx: &mut UseStandardActiveItem1Context) -> ActiveItemHandleTickRespon
                 lifespan, 
                 Box::new(blue_outer_color_fn), 
                 Box::new(blue_inner_color_fn), 
-                    Box::new(move |age, shape_dst| circle_shape_fn(max_radius, age, shape_dst)), 
+                Box::new(move |age, shape_dst| circle_shape_fn(max_radius, age, shape_dst)), 
                 sound_volume_mult,
                 0.03 * (x - top_left_x),
             );
@@ -133,7 +133,7 @@ fn use_fn(ctx: &mut UseStandardActiveItem1Context) -> ActiveItemHandleTickRespon
                 lifespan, 
                 Box::new(white_outer_color_fn), 
                 Box::new(white_inner_color_fn), 
-                    Box::new(move |age, shape_dst| circle_shape_fn(max_radius, age, shape_dst)), 
+                Box::new(move |age, shape_dst| circle_shape_fn(max_radius, age, shape_dst)), 
                 sound_volume_mult,
                 0.03 * (x - top_left_x),
             );

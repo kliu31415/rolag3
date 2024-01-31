@@ -1,6 +1,6 @@
 use crate::{rolag3::floor::{run::{PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, draw::DrawContext, room_object::{room_object_def::{RoomObject, Act1Context, FloorCoordinate, RoomObjectMetadata, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse, RoQueryUnitInfoContext, RoQueryUnitInfoResponse, HcTileContext, HcTileEffect, HcTileResponse, RoomObjApplyOperationContext, RoomObjOperation, HcStandardUnitContext, HcStandardUnitResponse, HandleRoomJustClearedContext, HcTileEffectDuration, RoomObjectRef}, tiles::room_connection::Direction, damage::DamageColor, unit::{standard_unit_common::{BudebExpiry, BudebTractionMult, BudebTractionCap}, weapon::{crimson_shotgun::new_weapon_crimson_shotgun, shock_chain::new_weapon_shock_chain, weapon_def::SwitchOutWeaponContext}}}, rofiz::{rofiz_object::{Hitbox, Transformation}, rofiz_state::RofizState}, room::RoomConnectionInfo}, geometry::shape::{Shape, Point}, gfx::{renderer::{DrawOp, DrawOpGroup, ColorRGBA32f, DrawOpText, DrawTextPosition}, draw_op_util::draw_op_rect, text::font::Font}};
 
-use super::{Unit, standard_unit_common::{StandardUnitCommon, Budeb, BudebMaxSpeed, TranslateMove, PolarForce}, weapon::{weapon_def::{Weapon, WeaponHandleTickContext, DrawWeaponHudContext, DrawWeaponOnOwnerContext, WeaponExitRoomContext}, green_laser::new_weapon_green_laser, lapis_trigun::new_weapon_lapis_trigun, ruby_rockets::new_weapon_ruby_rockets}, active_item::{active_item_def::{ActiveItem, ActiveItemHandleTickContext}, clear_enemy_projectiles::new_active_item_clear_projectiles, slow_enemy_time::new_active_item_slow_enemy_time, freedom_flare::new_active_item_freedom_flare, true_freedom_flare::new_active_item_true_freedom_flare}};
+use super::{Unit, standard_unit_common::{StandardUnitCommon, Budeb, BudebSpeedMult, TranslateMove, PolarForce}, weapon::{weapon_def::{Weapon, WeaponHandleTickContext, DrawWeaponHudContext, DrawWeaponOnOwnerContext, WeaponExitRoomContext}, green_laser::new_weapon_green_laser, lapis_trigun::new_weapon_lapis_trigun, ruby_rockets::new_weapon_ruby_rockets}, active_item::{active_item_def::{ActiveItem, ActiveItemHandleTickContext}, clear_enemy_projectiles::new_active_item_clear_projectiles, slow_enemy_time::new_active_item_slow_enemy_time, freedom_flare::new_active_item_freedom_flare, true_freedom_flare::new_active_item_true_freedom_flare}};
 
 pub const DEFAULT_TIRE_TRACTION: f64 = 500.0;
 
@@ -62,7 +62,7 @@ impl RoomObject for Player {
 
         // process test input
         if ctx.get_player_input().test_input1 {
-            self.su_common.apply_budeb(&Budeb::SpeedMult(BudebMaxSpeed::new(1.0, BudebExpiry::Duration(1.5))));
+            self.su_common.apply_budeb(&Budeb::SpeedMult(BudebSpeedMult::new(1.0, BudebExpiry::Duration(1.5))));
         }
 
         // process changing weapons. Note that the wheel deltas are only provided the first tick of a frame. act1()
@@ -323,6 +323,7 @@ impl Player {
             None, 
             true, 
             10.0, /* keep this a nonzero value for now to make visually verifying the unit-unit collision stack works properly easier */
+            Vec::new(),
             1e3, 
             15.0, 
             DEFAULT_TIRE_TRACTION, 

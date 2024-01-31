@@ -4,7 +4,7 @@ use crate::{rolag3::floor::{rofiz::{rofiz_object::{RofizObjectMovement, Transfor
 
 #[derive(Debug, Clone, Copy)]
 pub enum Budeb {
-    SpeedMult(BudebMaxSpeed),
+    SpeedMult(BudebSpeedMult),
     TimeSpeedMult(BudebTimeSpeedMult),
     TractionMult(BudebTractionMult),
     TractionCap(BudebTractionCap),
@@ -17,12 +17,12 @@ pub enum BudebExpiry {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct BudebMaxSpeed {
+pub struct BudebSpeedMult {
     pub multiplier: f64,
     pub expiry: BudebExpiry,
 }
 
-impl BudebMaxSpeed {
+impl BudebSpeedMult {
     pub fn new(multiplier: f64, expiry: BudebExpiry) -> Self {
         Self {
             multiplier,
@@ -95,6 +95,7 @@ pub struct StandardUnitCommon {
 
     damageable: bool,
     collision_damage: f64,
+    budeb_on_collision_damage: Vec<Budeb>,
     collision_damage_token_buckets: HashMap<RoomObjectRef /* self is dealer, other was dealt damage */, TokenBucket>,
     max_hp: f64,
     hp: f64,
@@ -135,6 +136,7 @@ impl StandardUnitCommon {
         rofo_ref: Option<RofizObjectRef>, 
         damageable: bool, 
         collision_damage: f64,
+        budeb_on_collision_damage: Vec<Budeb>,
         hp: f64, 
         engine_power: f64, 
         tire_traction: f64, 
@@ -169,6 +171,7 @@ impl StandardUnitCommon {
 
             damageable,
             collision_damage,
+            budeb_on_collision_damage,
             collision_damage_token_buckets: HashMap::new(),
             max_hp: hp,
             hp,
@@ -554,7 +557,11 @@ impl StandardUnitCommon {
         // means that if OTHER has its time speed doubled and SELF has no time multiplier, SELF takes 2x collision dmg.
         // No need to multiply by self.floor_take_damage_mult because take_damage() already does that.
         let damage = tb.take_all(other.unit_age) * color_damage_mult;
-        self.take_damage(damage)
+        let response = self.take_damage(damage);
+        if response.damage_taken > 0.0 {
+            other.budeb_on_collision_damage.clone().into_iter().for_each(|x| self.budebs.push(x));
+        }
+        response
     }
 
     pub fn take_damage(&mut self, damage: f64) -> TakeDamageResponse {

@@ -1,4 +1,4 @@
-use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Act1Response, HandleCollisionResponse, Team}, damage::DamageColor, unit::{standard_unit1::{StandardUnit1, StandardUnit1BuilderReq, StandardUnit1Builder, HandleCollisionLogic, SuAct1Context, SuDrawContext, SuHandleCollisionContext}, standard_unit_common::{RotateMove, TranslateMove, Budeb, BudebMaxSpeed, BudebExpiry}}}, rofiz::rofiz_object::Transformation, draw::{Color, DrawContext}}, geometry::{shape::{Shape, Polygon}, util::{regular_polygon, get_inner_polygon}}};
+use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Act1Response, HandleCollisionResponse, Team}, damage::DamageColor, unit::{standard_unit1::{StandardUnit1, StandardUnit1BuilderReq, StandardUnit1Builder, HandleCollisionLogic, SuAct1Context, SuDrawContext, SuHandleCollisionContext}, standard_unit_common::{RotateMove, TranslateMove, Budeb, BudebSpeedMult, BudebExpiry}}}, rofiz::rofiz_object::Transformation, draw::{Color, DrawContext}}, geometry::{shape::{Shape, Polygon}, util::{regular_polygon, get_inner_polygon}}};
 
 /* RegtriRed randomly rotates and translates in the direction of one of its vertices. When it's damaged, it moves
    faster temporarily.
@@ -72,7 +72,7 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
     ctx.su_ctx.su_common.set_translate_move(TranslateMove::Accelerate { ax: f64::cos(theta), ay: f64::sin(theta)});
     ctx.su_ctx.su_common.set_rotate_move(RotateMove::Accelerate { atheta: us_data.rotate_dir as f64 });
     let speed_mult = f64::cbrt(1.0 + us_data.excitement);
-    ctx.su_ctx.su_common.apply_budeb(&Budeb::SpeedMult(BudebMaxSpeed::new(speed_mult, BudebExpiry::OneTick)));
+    ctx.su_ctx.su_common.apply_budeb(&Budeb::SpeedMult(BudebSpeedMult::new(speed_mult, BudebExpiry::OneTick)));
 
     if us_data.should_reset_velocity {
         us_data.should_reset_velocity = false;

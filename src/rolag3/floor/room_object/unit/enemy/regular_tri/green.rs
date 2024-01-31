@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
-use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Act1Response, Team, Act1QueryArgs, Act1QueryResult}, damage::DamageColor, unit::{standard_unit1::{StandardUnit1Builder, StandardUnit1BuilderReq, SuAct1Context, SuDrawContext, StandardUnit1}, standard_unit_common::{TranslateMove, Budeb, BudebMaxSpeed, BudebExpiry}}}, rofiz::rofiz_object::Transformation, draw::{Color, DrawContext}}, geometry::{shape::{Shape, Point}, util::{regular_polygon, get_inner_polygon, rotate_polygon}}};
+use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Act1Response, Team, Act1QueryArgs, Act1QueryResult}, damage::DamageColor, unit::{standard_unit1::{StandardUnit1Builder, StandardUnit1BuilderReq, SuAct1Context, SuDrawContext, StandardUnit1}, standard_unit_common::{TranslateMove, Budeb, BudebSpeedMult, BudebExpiry}}}, rofiz::rofiz_object::Transformation, draw::{Color, DrawContext}}, geometry::{shape::{Shape, Point}, util::{regular_polygon, get_inner_polygon, rotate_polygon}}};
 
 /* RegtriGreen is a green triangle that continuously moves in the direction of the player.
    It slows down when it takes damage. The slow factor is represented by "excitement".
@@ -71,7 +71,7 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
     }
     assert!(us_data.excitement >= 0.0);
     let speed_mult = f64::recip(f64::cbrt(1.0 + us_data.excitement));
-    ctx.su_ctx.su_common.apply_budeb(&Budeb::SpeedMult(BudebMaxSpeed::new(speed_mult, BudebExpiry::OneTick)));
+    ctx.su_ctx.su_common.apply_budeb(&Budeb::SpeedMult(BudebSpeedMult::new(speed_mult, BudebExpiry::OneTick)));
 
     // x and y in the query shouldn't matter because there's usually one player. I set them anyway in case there are
     // multiple players in the future
