@@ -63,7 +63,7 @@ fn handle_tick_fn(ctx: &mut WeaponHandleTickContext) -> WeaponHandleTickResponse
             let angle = (i as f64) / (num_proj as f64) * 2.0 * std::f64::consts::PI;
             // only 1/8 of the explosions produce sound. This prevents us from overloading the sound system.
             let sound_volume = if i % 8 == 0 {
-                0.2
+                0.5
             } else {
                 0.0
             };
@@ -85,7 +85,7 @@ fn handle_tick_fn(ctx: &mut WeaponHandleTickContext) -> WeaponHandleTickResponse
     ws_data.since_last_primary_attack = 0.0;
 
     let angle = f64::atan2(ctx.mouse_y - ctx.owner_xform.dy, ctx.mouse_x - ctx.owner_xform.dx);
-    let proj = spawn_projectile(ctx, angle, 4.0, 1.0);
+    let proj = spawn_projectile(ctx, angle, 4.0, 0.7);
     response.new_room_objs.push(proj);
 
     let mut rng = ctx.act1_ctx.get_rng().spawn_child();

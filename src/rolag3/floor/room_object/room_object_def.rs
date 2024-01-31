@@ -351,6 +351,7 @@ impl RoomObjectCollection {
                 let r = sound_system.play_sound(PlaySoundArgs {
                     sdr: nps.sound_data,
                     volume: nps.volume,
+                    playback_speed: nps.playback_speed,
                     panning: 0.5, // TODO: actually use panning rather than just centering at 0.5
                 });
                 

@@ -129,6 +129,11 @@ fn handle_tick_fn(ctx: &mut WeaponHandleTickContext) -> WeaponHandleTickResponse
         target: (target_x, target_y),
     });
 
+    let mut rng = ctx.act1_ctx.get_rng().spawn_child();
+    let sound_candidates = &ctx.act1_ctx.get_sound_db().taser_stun_gun_zap_electricity;
+    let sound_data = rng.sample_slice_uniform(sound_candidates);
+    response.newly_played_sounds.push(ctx.act1_ctx.new_play_sound_builder(sound_data).playback_speed(0.5).build());
+
     response
 }
 

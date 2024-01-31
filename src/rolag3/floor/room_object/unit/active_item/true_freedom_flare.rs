@@ -88,7 +88,7 @@ fn use_fn(ctx: &mut UseStandardActiveItem1Context) -> ActiveItemHandleTickRespon
             let y = top_left_y + dy;
 
             let sound_volume_mult = if (i%4==0 && j==0) || (i%4==2 && j==5) {
-                0.1
+                0.4
             } else {
                 0.0
             };

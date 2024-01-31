@@ -107,7 +107,7 @@ fn use_fn(ctx: &mut UseStandardActiveItem1Context) -> ActiveItemHandleTickRespon
             let x = top_left_x + 0.4 * flag_w * (j as f64) / 11.0;
 
             let sound_volume_mult = if i==0 && j%2==0 {
-                0.2
+                0.5
             } else {
                 0.0
             };
@@ -158,7 +158,7 @@ fn use_fn(ctx: &mut UseStandardActiveItem1Context) -> ActiveItemHandleTickRespon
             let x = top_left_x + stripe_height * (j as f64);
 
             let sound_volume_mult = if (i==0 && j%2==0) || (i==12 && j%2==1) {
-                0.2
+                0.5
             } else {
                 0.0
             };

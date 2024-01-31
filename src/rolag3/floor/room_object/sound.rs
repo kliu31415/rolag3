@@ -5,6 +5,7 @@ pub struct RoomObjPlaySoundArgs {
     pub sound_data: SoundDataRef,
     pub location: Option<(f64, f64)>,
     pub volume: f64,
+    pub playback_speed: f64,
     pub owned: bool,
 }
 
@@ -18,6 +19,7 @@ pub struct RoomObjPlaySoundArgsBuilder {
 
     location: Option<(f64, f64)>,
     volume: f64,
+    playback_speed: f64,
 
     // if owned is false, then the played sound is unaffected by the parent RoomObject's modifiers, e.g. if the parent
     // RoomObjects wants the playback speed of all sounds it owned to be halved, unowned sounds won't be affected.
@@ -30,6 +32,7 @@ impl RoomObjPlaySoundArgsBuilder {
             req,
             location: None,
             volume: 1.0,
+            playback_speed: 1.0,
             owned: true,
         }
     }
@@ -39,12 +42,18 @@ impl RoomObjPlaySoundArgsBuilder {
         self
     }
 
+    pub fn playback_speed(mut self, playback_speed: f64) -> Self {
+        self.playback_speed = playback_speed;
+        self
+    }
+
     pub fn build(self) -> RoomObjPlaySoundArgs {
         RoomObjPlaySoundArgs {
             id: self.req.id,
             sound_data: self.req.sound_data,
             location: self.location,
             volume: self.volume,
+            playback_speed: self.playback_speed,
             owned: self.owned,
         }
     }

@@ -1,6 +1,6 @@
 use std::{error::Error, collections::BTreeMap};
 
-use kira::{manager::{AudioManagerSettings, AudioManager}, sound::{static_sound::{StaticSoundSettings, StaticSoundData, StaticSoundHandle}, PlaybackState}, tween::Tween};
+use kira::{manager::{AudioManagerSettings, AudioManager}, sound::{static_sound::{StaticSoundSettings, StaticSoundData, StaticSoundHandle}, PlaybackState, PlaybackRate}, tween::Tween};
 
 pub trait SoundSystem {
     fn load_sound_data_file_into_db(&mut self, path: &str) -> Result<SoundDataRef, Box<dyn Error>>;
@@ -14,6 +14,7 @@ pub trait SoundSystem {
 pub struct PlaySoundArgs {
     pub sdr: SoundDataRef,
     pub volume: f64,
+    pub playback_speed: f64,
     pub panning: f64,
 }
 
@@ -58,9 +59,13 @@ impl SoundSystem for KiraSoundSystem {
 
     fn play_sound(&mut self, args: PlaySoundArgs) -> Result<SoundPlayingRef, Box<dyn Error>> {
         let sound_data = self.static_sound_db.get(&args.sdr.id).unwrap().clone();
-        sound_data.settings.volume(kira::Volume::Amplitude(args.volume));
-        sound_data.settings.panning(args.panning);
-        let sound = self.audio_manager.play(sound_data)?;
+        // NOTE: changing sound_data.settings doesn't seem to affect the played sound, e.g. bumping up the volume
+        // on sound_data.settings does nothing. Instead, configure the sound after it starts playing, which actually
+        // works.
+        let mut sound = self.audio_manager.play(sound_data)?;
+        sound.set_volume(kira::Volume::Amplitude(args.volume), IMMEDIATE_TWEEN)?;
+        sound.set_panning(args.panning, IMMEDIATE_TWEEN)?;
+        sound.set_playback_rate(PlaybackRate::Factor(args.playback_speed), IMMEDIATE_TWEEN)?;
         self.sound_playing_id_counter += 1;
         self.sound_playing.insert(self.sound_playing_id_counter, sound);
         Ok(SoundPlayingRef {
