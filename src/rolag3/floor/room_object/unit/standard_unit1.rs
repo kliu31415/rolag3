@@ -406,7 +406,7 @@ impl StandardUnit1Builder {
             self.angular_power, 
             self.angular_traction, 
             100.0, 
-            2.0,
+            1.0,
             0.2,
         );
 

@@ -344,7 +344,7 @@ impl Rolag3EventHandler {
 
         if response.move_to_next_floor {
             self.r3run.state = R3RunState::InFloor {
-                floor: Floor::new_test4(window.get_renderer(), &mut self.rng, self.r3run.player.clone()),
+                floor: Floor::new_test2(window.get_renderer(), &mut self.rng, self.r3run.player.clone()),
             }; 
             let damage_mult = (3.0 + self.r3run.cur_floor_num as f64) / 3.0;
             self.r3run.player.borrow_mut().set_floor_take_damage_mult(damage_mult);

@@ -21,7 +21,7 @@ impl DamageColor {
         0.0
     }
 
-    pub fn _to_rgb_idx(&self) -> usize {
+    pub fn to_rgb_idx(&self) -> usize {
         match self {
             DamageColor::Red => 0,
             DamageColor::Green => 1,

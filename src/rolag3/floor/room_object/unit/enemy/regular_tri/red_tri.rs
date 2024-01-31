@@ -29,7 +29,7 @@ struct SpitProjectileInfo {
 pub fn new_regtri_red_tri(ctx: &mut NewRoomObjectContext, x: f64, y: f64) -> StandardUnit1 {
     let xform = Transformation::new(x, y, 2.0 * std::f64::consts::PI * ctx.get_randf64());
     let border = Polygon::new(regular_polygon(3, 1.5));
-    let outer = Polygon::new(regular_polygon(3, 1.3));
+    let outer = Polygon::new(regular_polygon(3, 1.4));
     let inner = Polygon::new(regular_polygon(3, 0.5));
     let shape = Shape::Polygon(border.clone());
     let us_data = RegtriRedTri {
