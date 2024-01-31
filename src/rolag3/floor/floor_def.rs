@@ -73,7 +73,7 @@ impl Floor {
 
         room4.finalize_with_connections(renderer, vec![], rng, &mut room_object_id_counter, ground_theme);
 
-        player.borrow_mut().move_rooms(&mut room1.rofiz, MoveRooms::Teleport { x: 3.0, y: 3.0 });
+        player.borrow_mut().enter_room(&mut room1.rofiz, MoveRooms::Teleport { x: 3.0, y: 3.0 });
         room1.room_objects.add(player.clone());
         let mut rooms = HashMap::new();
         rooms.insert(1, room1);
@@ -164,7 +164,7 @@ impl Floor {
         //gf_result.rooms.iter_mut().for_each(|room| room.finalize_with_connections(renderer, vec![], rng, &mut room_object_id_counter));
         let mut rooms = gf_result.rooms.drain(..).enumerate().collect::<HashMap<_, _>>();
         assert!(rooms.len() >= 1);
-        player.borrow_mut().move_rooms(&mut rooms.get_mut(&0).unwrap().rofiz, MoveRooms::Teleport { x: 3.0, y: 3.0 });
+        player.borrow_mut().enter_room(&mut rooms.get_mut(&0).unwrap().rofiz, MoveRooms::Teleport { x: 3.0, y: 3.0 });
         rooms.get_mut(&0).unwrap().room_objects.add(player.clone());
         gf_result.connections.drain(..).enumerate().for_each(|(rid, rci)| {
             rooms.get_mut(&rid).unwrap().finalize_with_connections(renderer, rci, rng, &mut room_object_id_counter, ground_theme);
@@ -212,7 +212,7 @@ impl Floor {
         room1.upper_left_y = 0;
         room1.finalize_with_connections(renderer, Vec::new(), rng, &mut room_object_id_counter, ground_theme);
 
-        player.borrow_mut().move_rooms(&mut room1.rofiz, MoveRooms::Teleport { x: 3.0, y: 3.0 });
+        player.borrow_mut().enter_room(&mut room1.rofiz, MoveRooms::Teleport { x: 3.0, y: 3.0 });
         room1.room_objects.add(player.clone());
         let mut rooms = HashMap::new();
         rooms.insert(1, room1);
@@ -270,7 +270,7 @@ impl Floor {
         //gf_result.rooms.iter_mut().for_each(|room| room.finalize_with_connections(renderer, vec![], rng, &mut room_object_id_counter));
         let mut rooms = gf_result.rooms.drain(..).enumerate().collect::<HashMap<_, _>>();
         assert!(rooms.len() >= 1);
-        player.borrow_mut().move_rooms(&mut rooms.get_mut(&0).unwrap().rofiz, MoveRooms::Teleport { x: 3.0, y: 3.0 });
+        player.borrow_mut().enter_room(&mut rooms.get_mut(&0).unwrap().rofiz, MoveRooms::Teleport { x: 3.0, y: 3.0 });
         rooms.get_mut(&0).unwrap().room_objects.add(player.clone());
         gf_result.connections.drain(..).enumerate().for_each(|(rid, rci)| {
             rooms.get_mut(&rid).unwrap().finalize_with_connections(renderer, rci, rng, &mut room_object_id_counter, ground_theme);

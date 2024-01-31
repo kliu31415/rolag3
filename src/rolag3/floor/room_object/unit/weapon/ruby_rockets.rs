@@ -2,7 +2,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use crate::{rolag3::floor::{room_object::{projectile::{projectile2::{Projectile2BuilderReq, Proj2Shape, Projectile2Builder, Explosion1OnDeathFnArgs}, explosion1::{Explosion1, new_explosion1}}, damage::DamageColor, room_object_def::{RoomObject, NewRoomObjectContext}}, draw::Color, rofiz::rofiz_object::Transformation}, gfx::renderer::{DrawOp, DrawOpTri, ColoredTriVertex, ColorRGBA32f, ViewSpaceCoordinate}, geometry::shape::{Point, Vector, Shape, Circle}};
 
-use super::weapon_def::{Weapon, WeaponHandleTickContext, WeaponHandleTickResponse, DrawWeaponHudContext, DrawWeaponHudResponse, DrawWeaponOnOwnerResponse, DrawWeaponOnOwnerContext, BuyAmmoInfo, SwitchOutWeaponResponse};
+use super::weapon_def::{Weapon, WeaponHandleTickContext, WeaponHandleTickResponse, DrawWeaponHudContext, DrawWeaponHudResponse, DrawWeaponOnOwnerResponse, DrawWeaponOnOwnerContext, BuyAmmoInfo, SwitchOutWeaponResponse, WeaponExitRoomResponse};
 
 /* Ruby Rockets shoots a red rocket that explodes
 */
@@ -41,6 +41,7 @@ pub fn new_weapon_ruby_rockets() -> Weapon {
         ws_data, 
         Box::new(handle_tick_fn), 
         Box::new(|_| SwitchOutWeaponResponse::new()),
+        Box::new(|_| WeaponExitRoomResponse::new()),
         Box::new(draw_hud), 
         Box::new(draw_on_owner),
     )

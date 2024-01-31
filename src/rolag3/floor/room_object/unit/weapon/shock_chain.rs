@@ -2,7 +2,7 @@ use std::{cell::RefCell, rc::{Rc, Weak}};
 
 use crate::{rolag3::floor::{room_object::{damage::DamageColor, unit::standard_unit1::StandardUnit1, room_object_def::{NewRoomObjectContext, Act1Response, RoomObject}}, draw::Color}, gfx::{draw_op_util::draw_op_annulus, renderer::{DrawOpGroup, DrawOp}}, geometry::shape::Point, util::lerp::lerp_f64};
 
-use super::{weapon_def::{Weapon, WeaponHandleTickContext, WeaponHandleTickResponse, DrawWeaponHudContext, DrawWeaponHudResponse, DrawWeaponOnOwnerResponse, DrawWeaponOnOwnerContext, BuyAmmoInfo, SwitchOutWeaponResponse, SwitchOutWeaponContext}, shock_chain_link::new_shock_chain_link};
+use super::{weapon_def::{Weapon, WeaponHandleTickContext, WeaponHandleTickResponse, DrawWeaponHudContext, DrawWeaponHudResponse, DrawWeaponOnOwnerResponse, DrawWeaponOnOwnerContext, BuyAmmoInfo, SwitchOutWeaponResponse, SwitchOutWeaponContext, WeaponExitRoomResponse, WeaponExitRoomContext}, shock_chain_link::new_shock_chain_link};
 
 /* Shock Harpoon shoots 
 */
@@ -48,6 +48,7 @@ pub fn new_weapon_shock_chain() -> Weapon {
         ws_data, 
         Box::new(handle_tick_fn), 
         Box::new(switch_out),
+        Box::new(exit_room),
         Box::new(draw_hud), 
         Box::new(draw_on_owner),
     )
@@ -134,6 +135,19 @@ fn handle_tick_fn(ctx: &mut WeaponHandleTickContext) -> WeaponHandleTickResponse
 fn switch_out(ctx: &mut SwitchOutWeaponContext) -> SwitchOutWeaponResponse {
     let mut response = SwitchOutWeaponResponse::new();
     let ws_data = ctx.ws_data.downcast_mut::<ShockChainData>().unwrap();
+    if let Some(attack) = ws_data.attack.take() {
+        for link_weak in attack.links {
+            let link_rc = link_weak.upgrade().unwrap();
+            let link = link_rc.borrow();
+            response.room_objs_to_remove.push(link.get_metadata().get_ref());
+        }
+    }
+    response
+}
+
+fn exit_room(ctx: &mut WeaponExitRoomContext) -> WeaponExitRoomResponse {
+    let ws_data = ctx.ws_data.downcast_mut::<ShockChainData>().unwrap();
+    let mut response = WeaponExitRoomResponse::new();
     if let Some(attack) = ws_data.attack.take() {
         for link_weak in attack.links {
             let link_rc = link_weak.upgrade().unwrap();

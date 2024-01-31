@@ -1,6 +1,6 @@
-use crate::{rolag3::floor::{run::{PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, draw::DrawContext, room_object::{room_object_def::{RoomObject, Act1Context, FloorCoordinate, RoomObjectMetadata, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse, RoQueryUnitInfoContext, RoQueryUnitInfoResponse, HcTileContext, HcTileEffect, HcTileResponse, RoomObjApplyOperationContext, RoomObjOperation, HcStandardUnitContext, HcStandardUnitResponse, HandleRoomJustClearedContext, HcTileEffectDuration}, tiles::room_connection::Direction, damage::DamageColor, unit::{standard_unit_common::{BudebExpiry, BudebTractionMult, BudebTractionCap}, weapon::{crimson_shotgun::new_weapon_crimson_shotgun, shock_chain::new_weapon_shock_chain, weapon_def::SwitchOutWeaponContext}}}, rofiz::{rofiz_object::{Hitbox, Transformation}, rofiz_state::RofizState}, room::RoomConnectionInfo}, geometry::shape::{Shape, Point}, gfx::{renderer::{DrawOp, DrawOpGroup, ColorRGBA32f, DrawOpText, DrawTextPosition}, draw_op_util::draw_op_rect, text::font::Font}};
+use crate::{rolag3::floor::{run::{PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, draw::DrawContext, room_object::{room_object_def::{RoomObject, Act1Context, FloorCoordinate, RoomObjectMetadata, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse, RoQueryUnitInfoContext, RoQueryUnitInfoResponse, HcTileContext, HcTileEffect, HcTileResponse, RoomObjApplyOperationContext, RoomObjOperation, HcStandardUnitContext, HcStandardUnitResponse, HandleRoomJustClearedContext, HcTileEffectDuration, RoomObjectRef}, tiles::room_connection::Direction, damage::DamageColor, unit::{standard_unit_common::{BudebExpiry, BudebTractionMult, BudebTractionCap}, weapon::{crimson_shotgun::new_weapon_crimson_shotgun, shock_chain::new_weapon_shock_chain, weapon_def::SwitchOutWeaponContext}}}, rofiz::{rofiz_object::{Hitbox, Transformation}, rofiz_state::RofizState}, room::RoomConnectionInfo}, geometry::shape::{Shape, Point}, gfx::{renderer::{DrawOp, DrawOpGroup, ColorRGBA32f, DrawOpText, DrawTextPosition}, draw_op_util::draw_op_rect, text::font::Font}};
 
-use super::{Unit, standard_unit_common::{StandardUnitCommon, Budeb, BudebMaxSpeed, TranslateMove, PolarForce}, weapon::{weapon_def::{Weapon, WeaponHandleTickContext, DrawWeaponHudContext, DrawWeaponOnOwnerContext}, green_laser::new_weapon_green_laser, lapis_trigun::new_weapon_lapis_trigun, ruby_rockets::new_weapon_ruby_rockets}, active_item::{active_item_def::{ActiveItem, ActiveItemHandleTickContext}, clear_enemy_projectiles::new_active_item_clear_projectiles, slow_enemy_time::new_active_item_slow_enemy_time, freedom_flare::new_active_item_freedom_flare, true_freedom_flare::new_active_item_true_freedom_flare}};
+use super::{Unit, standard_unit_common::{StandardUnitCommon, Budeb, BudebMaxSpeed, TranslateMove, PolarForce}, weapon::{weapon_def::{Weapon, WeaponHandleTickContext, DrawWeaponHudContext, DrawWeaponOnOwnerContext, WeaponExitRoomContext}, green_laser::new_weapon_green_laser, lapis_trigun::new_weapon_lapis_trigun, ruby_rockets::new_weapon_ruby_rockets}, active_item::{active_item_def::{ActiveItem, ActiveItemHandleTickContext}, clear_enemy_projectiles::new_active_item_clear_projectiles, slow_enemy_time::new_active_item_slow_enemy_time, freedom_flare::new_active_item_freedom_flare, true_freedom_flare::new_active_item_true_freedom_flare}};
 
 pub const DEFAULT_TIRE_TRACTION: f64 = 500.0;
 
@@ -358,7 +358,19 @@ impl Player {
         }
     }
 
-    pub fn move_rooms(&mut self, new_room_rofiz: &mut RofizState, mr: MoveRooms) {
+    pub fn exit_room(&mut self) -> Vec<RoomObjectRef> {
+        let mut to_remove = Vec::new();
+        for w in self.weapons.iter_mut() {
+            let er_ctx = &mut WeaponExitRoomContext { 
+                ws_data: w.ws_data.as_mut(),
+            };
+            let mut er_response = (w.exit_room_fn)(er_ctx);
+            to_remove.append(&mut er_response.room_objs_to_remove);
+        }
+        to_remove
+    }
+
+    pub fn enter_room(&mut self, new_room_rofiz: &mut RofizState, mr: MoveRooms) {
         let (x, y) = match mr {
             MoveRooms::Connection(rci) => match rci.direction {
                 Direction::Up => (rci.connects_to_x as f32 + 0.5, rci.connects_to_y as f32 - 0.0001 - 0.5 * Self::PLAYER_S),

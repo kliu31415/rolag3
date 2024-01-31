@@ -2,7 +2,7 @@ use std::{rc::Rc, cell::RefCell};
 
 use crate::{rolag3::floor::{room_object::{projectile::projectile2::{Proj2Shape, Projectile2BuilderReq, Projectile2Builder}, damage::DamageColor, room_object_def::NewRoomObjectContext}, draw::Color, rofiz::rofiz_object::Transformation}, geometry::{shape::{Point, Vector}, util::translate_polygon}, gfx::draw_op_util::draw_op_rect, util::token_bucket::TokenBucket};
 
-use super::weapon_def::{WeaponHandleTickContext, Weapon, WeaponHandleTickResponse, DrawWeaponHudContext, DrawWeaponHudResponse, DrawWeaponOnOwnerContext, DrawWeaponOnOwnerResponse, BuyAmmoInfo, SwitchOutWeaponResponse};
+use super::weapon_def::{WeaponHandleTickContext, Weapon, WeaponHandleTickResponse, DrawWeaponHudContext, DrawWeaponHudResponse, DrawWeaponOnOwnerContext, DrawWeaponOnOwnerResponse, BuyAmmoInfo, SwitchOutWeaponResponse, WeaponExitRoomResponse};
 
 /* Green Laser rapidly shoots green squares, like a laser. It has no special attack. */
 
@@ -36,6 +36,7 @@ pub fn new_weapon_green_laser() -> Weapon {
         ws_data, 
         Box::new(handle_tick_fn), 
         Box::new(|_| SwitchOutWeaponResponse::new()),
+        Box::new(|_| WeaponExitRoomResponse::new()),
         Box::new(draw_hud), 
         Box::new(draw_on_owner),
     )

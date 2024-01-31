@@ -2,7 +2,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use crate::{rolag3::floor::{room_object::{projectile::projectile2::{Projectile2BuilderReq, Proj2Shape, Projectile2Builder}, damage::DamageColor, room_object_def::NewRoomObjectContext}, draw::Color}, gfx::draw_op_util::draw_op_circle, geometry::shape::Point};
 
-use super::weapon_def::{Weapon, WeaponHandleTickContext, WeaponHandleTickResponse, DrawWeaponHudContext, DrawWeaponHudResponse, DrawWeaponOnOwnerResponse, DrawWeaponOnOwnerContext, BuyAmmoInfo, SwitchOutWeaponResponse};
+use super::weapon_def::{Weapon, WeaponHandleTickContext, WeaponHandleTickResponse, DrawWeaponHudContext, DrawWeaponHudResponse, DrawWeaponOnOwnerResponse, DrawWeaponOnOwnerContext, BuyAmmoInfo, SwitchOutWeaponResponse, WeaponExitRoomResponse};
 
 /* Crimson Shotgun shoots a wave of 3 red circles at intervals of 0.1s. It has no special attack.
 */
@@ -36,6 +36,7 @@ pub fn new_weapon_crimson_shotgun() -> Weapon {
         ws_data, 
         Box::new(handle_tick_fn), 
         Box::new(|_| SwitchOutWeaponResponse::new()),
+        Box::new(|_| WeaponExitRoomResponse::new()),
         Box::new(draw_hud), 
         Box::new(draw_on_owner),
     )

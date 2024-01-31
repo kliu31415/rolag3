@@ -118,13 +118,16 @@ fn run_floor_tick(ctx: RunFloorTickContext) -> RunFloorTickResponse {
     // draw().
     let wtmr = player.borrow_mut().poll_wants_to_move_rooms();
     if let Some(rci) = wtmr {
+        let to_del = player.borrow_mut().exit_room();
+        room.room_objects.remove_by_id(to_del.into_iter().collect::<HashSet<_>>());
+
         room.room_objects.remove_player();
         ctx.floor.player_room_id = rci.connects_to_room_id;
         assert!(ctx.floor.rooms.contains_key(&rci.connects_to_room_id), "player is moving to nonexistent room");
         let err_msg = format!("player is moving to nonexistent room {}", rci.connects_to_room_id);
         let rofiz = &mut ctx.floor.rooms.get_mut(&rci.connects_to_room_id).expect(&err_msg).rofiz;
-        player.borrow_mut().move_rooms(rofiz, MoveRooms::Connection(rci));
-        ctx.floor.rooms.get_mut(&rci.connects_to_room_id).expect(&err_msg).room_objects.add(player);
+        player.borrow_mut().enter_room(rofiz, MoveRooms::Connection(rci));
+        ctx.floor.rooms.get_mut(&rci.connects_to_room_id).expect(&err_msg).room_objects.add(player.clone());
     }
 
     let mut floor_finished = false;
@@ -157,10 +160,17 @@ fn run_floor_tick(ctx: RunFloorTickContext) -> RunFloorTickResponse {
             room.room_cleared_at_time = Some(room.room_time)
         }
     }
+    
+    if floor_finished {
+        let to_del = player.borrow_mut().exit_room();
+        room.room_objects.remove_by_id(to_del.into_iter().collect::<HashSet<_>>());
+    }
 
     if ctx.run_validation {
+        drop(player); // drop the local Rc to player so Rc::strong_count(player) isn't impacted
         room.room_objects.validate_end_tick();
     }
+
 
     ctx.floor.floor_time_left -= ctx.tick_length;
 

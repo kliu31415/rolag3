@@ -2,7 +2,7 @@ use std::{rc::Rc, cell::RefCell};
 
 use crate::{rolag3::floor::{draw::Color, room_object::{room_object_def::{RoomObject, NewRoomObjectContext}, projectile::projectile2::{Proj2Shape, Projectile2BuilderReq, Projectile2Builder}, damage::DamageColor}}, geometry::{shape::{Point, Vector}, util::translate_polygon}, gfx::draw_op_util::draw_op_rect};
 
-use super::weapon_def::{Weapon, WeaponHandleTickResponse, WeaponHandleTickContext, DrawWeaponHudContext, DrawWeaponHudResponse, DrawWeaponOnOwnerContext, DrawWeaponOnOwnerResponse, BuyAmmoInfo, SwitchOutWeaponResponse};
+use super::weapon_def::{Weapon, WeaponHandleTickResponse, WeaponHandleTickContext, DrawWeaponHudContext, DrawWeaponHudResponse, DrawWeaponOnOwnerContext, DrawWeaponOnOwnerResponse, BuyAmmoInfo, SwitchOutWeaponResponse, WeaponExitRoomResponse};
 
 /* Lapis Trigun shoots a wave of 3 blue squares at intervals of 0.3s.
    It has a special attack, which when used, causes it to shoot a radial wave of 128 projectiles.
@@ -43,6 +43,7 @@ pub fn new_weapon_lapis_trigun() -> Weapon {
         ws_data, 
         Box::new(handle_tick_fn), 
         Box::new(|_| SwitchOutWeaponResponse::new()),
+        Box::new(|_| WeaponExitRoomResponse::new()),
         Box::new(draw_hud), 
         Box::new(draw_on_owner),
     )

@@ -2,10 +2,11 @@ use std::{rc::{Rc, Weak}, cell::RefCell, any::Any};
 
 use crate::{rolag3::floor::{room_object::{room_object_def::{RoomObject, Team, Act1Context, RoomObjectRef}, damage::DamageColor, sound::RoomObjPlaySoundArgs}, rofiz::rofiz_object::Transformation, draw::{DrawContext, Color}}, gfx::{renderer::{DrawOp, DrawOpText, DrawTextPosition, DrawOpGroup, ColorRGBA32f}, draw_op_util::draw_op_rect, text::font::Font}};
 
-type WeaponHandleTickFn = dyn Fn(&mut WeaponHandleTickContext) -> WeaponHandleTickResponse;
-type SwitchOutWeaponFn = dyn Fn(&mut SwitchOutWeaponContext) -> SwitchOutWeaponResponse;
-type DrawWeaponHudFn = dyn Fn(&DrawWeaponHudContext) -> DrawWeaponHudResponse;
-type DrawWeaponOnOwnerFn = dyn Fn(&DrawWeaponOnOwnerContext) -> DrawWeaponOnOwnerResponse;
+type WeaponHandleTickFnT = dyn Fn(&mut WeaponHandleTickContext) -> WeaponHandleTickResponse;
+type SwitchOutWeaponFnT = dyn Fn(&mut SwitchOutWeaponContext) -> SwitchOutWeaponResponse;
+type WeaponExitRoomFnT = dyn Fn(&mut WeaponExitRoomContext) -> WeaponExitRoomResponse;
+type DrawWeaponHudFnT = dyn Fn(&DrawWeaponHudContext) -> DrawWeaponHudResponse;
+type DrawWeaponOnOwnerFnT = dyn Fn(&DrawWeaponOnOwnerContext) -> DrawWeaponOnOwnerResponse;
 
 pub struct Weapon {
     pub damage_color: DamageColor,
@@ -15,10 +16,11 @@ pub struct Weapon {
     pub ammo: f64,
     pub buy_ammo_info: Option<BuyAmmoInfo>,
     pub ws_data: Box<dyn Any>,
-    pub handle_tick_fn: Box<WeaponHandleTickFn>,
-    pub switch_out_weapon_fn: Box<SwitchOutWeaponFn>,
-    pub draw_hud_fn: Box<DrawWeaponHudFn>,
-    pub draw_on_owner_fn: Box<DrawWeaponOnOwnerFn>,
+    pub handle_tick_fn: Box<WeaponHandleTickFnT>,
+    pub switch_out_weapon_fn: Box<SwitchOutWeaponFnT>,
+    pub exit_room_fn: Box<WeaponExitRoomFnT>,
+    pub draw_hud_fn: Box<DrawWeaponHudFnT>,
+    pub draw_on_owner_fn: Box<DrawWeaponOnOwnerFnT>,
 }
 
 pub struct BuyAmmoInfo {
@@ -35,10 +37,11 @@ impl Weapon {
         ammo: f64,
         buy_ammo_info: Option<BuyAmmoInfo>,
         ws_data: Box<dyn Any>, 
-        handle_tick_fn: Box<WeaponHandleTickFn>, 
-        switch_out_weapon_fn: Box<SwitchOutWeaponFn>,
-        draw_hud_fn: Box<DrawWeaponHudFn>, 
-        draw_on_owner_fn: Box<DrawWeaponOnOwnerFn>,
+        handle_tick_fn: Box<WeaponHandleTickFnT>, 
+        switch_out_weapon_fn: Box<SwitchOutWeaponFnT>,
+        exit_room_fn: Box<WeaponExitRoomFnT>,
+        draw_hud_fn: Box<DrawWeaponHudFnT>, 
+        draw_on_owner_fn: Box<DrawWeaponOnOwnerFnT>,
     ) -> Self {
         Self {
             damage_color,
@@ -50,6 +53,7 @@ impl Weapon {
             ws_data,
             handle_tick_fn,
             switch_out_weapon_fn,
+            exit_room_fn,
             draw_hud_fn,
             draw_on_owner_fn,
         }
@@ -108,6 +112,22 @@ impl SwitchOutWeaponResponse {
     pub fn new() -> Self {
         Self {
             new_room_objs: Vec::new(),
+            room_objs_to_remove: Vec::new(),
+        }
+    }
+}
+
+pub struct WeaponExitRoomContext<'a> {
+    pub ws_data: &'a mut dyn Any,
+}
+
+pub struct WeaponExitRoomResponse {
+    pub room_objs_to_remove: Vec<RoomObjectRef>,
+}
+
+impl WeaponExitRoomResponse {
+    pub fn new() -> Self {
+        Self {
             room_objs_to_remove: Vec::new(),
         }
     }
