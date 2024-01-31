@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use rand::{SeedableRng, Rng, seq::SliceRandom};
+use rand::{SeedableRng, Rng, seq::{SliceRandom, IteratorRandom}};
 
 use rand_distr::{Distribution, Poisson, Bernoulli};
 
@@ -55,6 +55,17 @@ impl Prng {
     pub fn sample_slice_uniform<T: Copy>(&mut self, values: &[T]) -> T {
         assert!(values.len() > 0);
         values[self.state.gen_range(0..values.len())]
+    }
+
+    // note: this function is O(len(values)). It could be made O(len(dst)) if choose_multiple_filled() had a different
+    // API.
+    pub fn choose_multiple_fill<T: Copy>(&mut self, dst: &mut [T], values: &[T]) {
+        assert!(dst.len() <= values.len());
+        values.iter().copied().choose_multiple_fill(&mut self.state, dst);
+    }
+
+    pub fn choose_multiple<T: Copy>(&mut self, values: &[T], k: usize) -> Vec<T> {
+        values.iter().choose_multiple(&mut self.state, k).into_iter().map(|x| *x).collect()
     }
 
     // [0..1)

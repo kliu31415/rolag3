@@ -2,7 +2,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Act1Response, Team, Act1QueryArgs, Act1QueryResult}, damage::DamageColor, unit::{standard_unit1::{StandardUnit1Builder, StandardUnit1BuilderReq, SuAct1Context, SuDrawContext, StandardUnit1}, standard_unit_common::TranslateMove}, projectile::projectile2::{Projectile2Builder, Projectile2BuilderReq, Proj2Shape}}, rofiz::rofiz_object::Transformation, draw::{Color, DrawContext}}, geometry::{shape::{Shape, Point, Vector}, util::{regular_polygon, get_inner_polygon}}};
 
-/* RegtriSmallRgbCircle sprays out waves of three projectiles that mildly rotate home towards the player.
+/* RegtriSmallRgbCircle sprays out waves of three projectiles.
    It erratically moves, biased towards the player's direction
 */
 
@@ -20,7 +20,7 @@ const INNER_COLORS: [Color; 3] = [
 
 const PROJ_COLORS: [Color; 3] = [
     Color::new(5.0, 0.06, 0.06, 1.0),
-    Color::new(0.06, 1.4, 0.06, 1.0),
+    Color::new(0.06, 1.5, 0.06, 1.0),
     Color::new(0.06, 0.06, 14.0, 1.0),
 ];
 
@@ -97,7 +97,6 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
     if let Some(nfa) = us_data.next_fire_at {
         if unit_age >= nfa {
             let self_as_weak = ctx.act1_ctx.get_self_as_weak();
-            let rotate_home_fn = |age| if age < 3.0 {1.0} else {0.0};
             for i in 0..3 {
                 let proj_velocity = 10.0;
                 let angle = i as f64 * 2.0 / 3.0 * std::f64::consts::PI;
@@ -111,8 +110,7 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
                     xform,
                     shape: Proj2Shape::Circle { x: 0.0, y: 0.0, r: PROJ_RADIUS },
                     color: PROJ_COLORS[ctx.su_ctx.damage_color.to_rgb_idx()],
-                }).homing_rotate_to_enemies_speed_fn(Box::new(rotate_home_fn))
-                    .build(&mut NewRoomObjectContext::from_act1_ctx(ctx.act1_ctx));
+                }).build(&mut NewRoomObjectContext::from_act1_ctx(ctx.act1_ctx));
                 response.add_room_obj(Rc::new(RefCell::new(proj)));
             }
             us_data.last_fired_at = Some(nfa);
