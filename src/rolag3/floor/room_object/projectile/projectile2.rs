@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::{Weak, Rc}};
 
-use crate::{rolag3::floor::{room_object::{room_object_def::{RoomObject, NewRoomObjectContext, Act1Response, HandleCollisionResponse, HcProjectileContext, Team, RoomObjOperation, Act1QueryResult, Act1QueryArgs}, damage::DamageColor}, draw::{DrawContext, Color}, rofiz::rofiz_object::{Transformation, RofizObjectMovement}}, geometry::shape::{Shape, Point, Vector}};
+use crate::{rolag3::floor::{room_object::{room_object_def::{RoomObject, NewRoomObjectContext, Act1Response, HandleCollisionResponse, HcProjectileContext, Team, RoomObjOperation, Act1QueryResult, Act1QueryArgs}, damage::DamageColor, unit::standard_unit_common::SuccEwmaAction}, draw::{DrawContext, Color}, rofiz::rofiz_object::{Transformation, RofizObjectMovement}}, geometry::shape::{Shape, Point, Vector}};
 
 use super::{standard_projectile1::{Sp1Builder, Sp1BuilderReq, StandardProjectile1, SpAct1Context, SpDrawContext, SpHandleCollisionContext, SpApplyOperationContext}, explosion1::Explosion1};
 
@@ -25,6 +25,8 @@ pub struct Projectile2Data {
     external_power_fn: Option<ExternalPowerFnT>,
 
     explosion1_on_death_fn: Option<Explosion1OnDeathFnT>,
+
+    succ_ewma: Vec<SuccEwmaAction>,
 }
 
 type NefPositionFnT = Box<dyn Fn(f64) -> (f64, f64)>;
@@ -74,9 +76,9 @@ pub struct Projectile2Builder {
     external_power_fn: Option<ExternalPowerFnT>,
 
     explosion1_on_death_fn: Option<Explosion1OnDeathFnT>,
+
+    succ_ewma: Vec<SuccEwmaAction>,
 }
-
-
 
 impl Projectile2Builder {
     pub fn new(req: Projectile2BuilderReq) -> Self {
@@ -88,6 +90,7 @@ impl Projectile2Builder {
             nef_position_fn: None,
             external_power_fn: None,
             explosion1_on_death_fn: None,
+            succ_ewma: Vec::new(),
         }
     }
 
@@ -121,6 +124,11 @@ impl Projectile2Builder {
         self
     }
 
+    pub fn add_succ_ewma(mut self, succ_ewma: SuccEwmaAction) -> Self {
+        self.succ_ewma.push(succ_ewma);
+        self
+    }
+
     pub fn build(self, ctx: &mut NewRoomObjectContext) -> StandardProjectile1 {
         let ps_data = Projectile2Data {
             remove_me_next_tick: false,
@@ -136,6 +144,7 @@ impl Projectile2Builder {
             nef_position_fn: self.nef_position_fn,
             external_power_fn: self.external_power_fn,
             explosion1_on_death_fn: self.explosion1_on_death_fn,
+            succ_ewma: self.succ_ewma,
             age: 0.0,
         };
         let shape = match self.req.shape {
@@ -369,11 +378,17 @@ fn handle_collision(ctx: &mut SpHandleCollisionContext) -> HandleCollisionRespon
         return response;
     }
 
-    let hcp_response = ctx.hc_ctx.get_other().borrow_mut().handle_collision_projectile(&HcProjectileContext{
+    let room_time = ctx.hc_ctx.get_room_time();
+    let (rofiz, rng, room_object_id_counter, other) = ctx.hc_ctx.get_hcp_ctx_fields();
+    let hcp_response = other.borrow_mut().handle_collision_projectile(&mut HcProjectileContext{
         team: ctx.sp_ctx.team,
         damage_color: ctx.sp_ctx.damage_color,
         damage: ctx.sp_ctx.damage,
-        room_time: ctx.hc_ctx.get_room_time(),
+        room_time,
+        succ_ewma_actions: ps_data.succ_ewma.clone(),
+        rofiz,
+        room_object_id_counter,
+        rng,
     });
     let mut response = HandleCollisionResponse::new();
     let mut to_remove = hcp_response.room_objects_to_delete;
@@ -393,11 +408,12 @@ fn handle_collision(ctx: &mut SpHandleCollisionContext) -> HandleCollisionRespon
         }
     }
 
-    response = response.remove_room_objs(to_remove.as_slice());
-    return response;
+    let mut response = response.remove_room_objs(to_remove.as_slice());
+    for x in hcp_response.room_objs_to_add {
+        response = response.add_room_obj(x);
+    }
+    response
 }
-
-
 
 fn apply_operation(ctx: &mut SpApplyOperationContext) {
     let ps_data = ctx.sp_ctx.ps_data.downcast_mut::<Projectile2Data>().unwrap();

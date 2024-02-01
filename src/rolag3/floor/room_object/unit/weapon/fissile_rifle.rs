@@ -1,10 +1,10 @@
 use std::{rc::Rc, cell::RefCell};
 
-use crate::{rolag3::floor::{room_object::{projectile::projectile2::{Proj2Shape, Projectile2BuilderReq, Projectile2Builder}, damage::DamageColor, room_object_def::NewRoomObjectContext}, draw::Color, rofiz::rofiz_object::Transformation}, geometry::shape::{Point, Vector}, gfx::renderer::{ColoredTriVertex, ColorRGBA32f, ViewSpaceCoordinate, DrawOp, DrawOpQuadFan}, util::token_bucket::TokenBucket};
+use crate::{rolag3::floor::{room_object::{projectile::projectile2::{Proj2Shape, Projectile2BuilderReq, Projectile2Builder}, damage::DamageColor, room_object_def::NewRoomObjectContext, unit::standard_unit_common::{SuccEwmaAction, SuccEwmaActionEnum}}, draw::Color, rofiz::rofiz_object::Transformation}, geometry::shape::{Point, Vector, Circle, Shape}, gfx::renderer::{ColoredTriVertex, ColorRGBA32f, ViewSpaceCoordinate, DrawOp, DrawOpQuadFan}, util::token_bucket::TokenBucket};
 
 use super::weapon_def::{WeaponHandleTickContext, Weapon, WeaponHandleTickResponse, DrawWeaponHudContext, DrawWeaponHudResponse, DrawWeaponOnOwnerContext, DrawWeaponOnOwnerResponse, BuyAmmoInfo, SwitchOutWeaponResponse, WeaponExitRoomResponse};
 
-/* Fissile Rifle shoots homing porjectiles that cause an explosion when enough hit the same target in a short timespan */
+/* Fissile Rifle shoots homing projectiles that cause an explosion when enough hit the same target in a short timespan */
 
 const NAME: &str = "Fissile Rifle";
 const SHOP_DESCRIPTION: &str = "Shoots homing rays of fissile material";
@@ -12,7 +12,9 @@ const SHOP_COST: u64 = 20;
 const STARTING_AMMO: f64 = 1e4;
 const BUY_AMMO_INFO: BuyAmmoInfo = BuyAmmoInfo { ammo_amount: 100.0, starcash_cost: 2.0 };
 
-const PRIMARY_ATTACK_INTERVAL: f64 = 0.3;
+const SUCC_EWMA_KEY: u128 = 0xe13c5b0e12a644d1852c55abb3d10605;
+
+const PRIMARY_ATTACK_INTERVAL: f64 = 0.2;
 const PROJ_COLOR: Color = Color::new(0.0, 1.6, 0.2, 1.0);
 const PROJ_VERTEXES: [Point; 4] = [
     Point::new(0.4, 0.0), 
@@ -92,6 +94,48 @@ fn handle_tick_fn(ctx: &mut WeaponHandleTickContext) -> WeaponHandleTickResponse
         }
         0.0
     };
+
+    let explosion_radius = 2.0;
+    let stop_expand_at = 0.5;
+    let lifespan = 0.65;
+    assert!(stop_expand_at < lifespan);
+    let shape_fn = move |age: f64, shape_dst: &mut Shape| {
+        let radius = explosion_radius * f64::cbrt(f64::min(1.0, age / stop_expand_at));
+        shape_dst.replace_with_circle(&Circle::new(Point::new(0.0, 0.0), radius as f32));
+    };
+    let outer_color_fn = move |age| {
+        let mut color = Color::new(0.1, 3.0, 0.1, 0.6);
+        if age > stop_expand_at {
+            color.a *= ((lifespan - age) / (lifespan - stop_expand_at)) as f32;
+        }
+        color
+    };
+    let inner_color_fn = move |age| {
+        let mut color = Color::new(0.1, 3.0, 1.0, 0.02);
+        if age > stop_expand_at {
+            color.a *= ((lifespan - age) / (lifespan - stop_expand_at)) as f32;
+        }
+        color
+    };
+
+    let succ_ewma = SuccEwmaAction {
+        key: SUCC_EWMA_KEY,
+        threshold: 2.0,
+        to_add: 1.0,
+        decay_mult: 0.5,
+        new_ewma_v_on_action: Rc::new(|| Box::new(|v| 0.5 * v)),
+        e: SuccEwmaActionEnum::Explosion {
+            team: ctx.owner_team,
+            owner: ctx.act1_ctx.get_self_as_weak(),
+            damage_color: DamageColor::Green,
+            dps: 10.0,
+            lifespan,
+            outer_color_fn: Rc::new(move || Box::new(outer_color_fn)),
+            inner_color_fn: Rc::new(move || Box::new(inner_color_fn)),
+            shape_fn: Rc::new(move || Box::new(shape_fn)),
+            sound_volume_mult: 0.1,
+        },
+    };
     let nro_ctx = &mut NewRoomObjectContext::from_act1_ctx(ctx.act1_ctx);
     let proj = Projectile2Builder::new(
         Projectile2BuilderReq {
@@ -105,7 +149,8 @@ fn handle_tick_fn(ctx: &mut WeaponHandleTickContext) -> WeaponHandleTickResponse
             shape,
             color: PROJ_COLOR,
         }
-    ).homing_rotate_to_enemies_speed_fn(Box::new(homing_rotate_f))
+    ).add_succ_ewma(succ_ewma)
+        .homing_rotate_to_enemies_speed_fn(Box::new(homing_rotate_f))
         .build(nro_ctx);
     response.new_room_objs.push(Rc::new(RefCell::new(proj)));
 

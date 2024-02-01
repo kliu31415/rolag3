@@ -76,12 +76,17 @@ impl RoomObject for StandardUnit1 {
         if self.data.is_dead {
             return HandleCollisionResponse::new();
         }
+        let (rofiz, rng, room_object_id_counter, other, room_time) = ctx.get_hcsu_ctx_fields();
         let hcsu_ctx = &mut HcStandardUnitContext {
             suc: &mut self.data.su_common,
             team: self.data.team,
             damage_color: self.data.damage_color,
+            room_time,
+            rofiz,
+            room_object_id_counter,
+            rng,
         };
-        let hcsu_resp = ctx.get_other().borrow_mut().handle_collision_standard_unit(hcsu_ctx);
+        let hcsu_resp = other.borrow_mut().handle_collision_standard_unit(hcsu_ctx);
 
         let mut su_ctx= self.data.get_su_ctx();
         let su_hc_ctx = &mut SuHandleCollisionContext {
@@ -93,7 +98,7 @@ impl RoomObject for StandardUnit1 {
         resp.remove_room_objs(&hcsu_resp.room_objects_to_delete)
     }
 
-    fn handle_collision_projectile(&mut self, ctx: &HcProjectileContext) -> HcProjectileResponse {
+    fn handle_collision_projectile(&mut self, ctx: &mut HcProjectileContext) -> HcProjectileResponse {
         let mut su_ctx= self.data.get_su_ctx();
         let su_hcp_ctx = &mut SuHcProjectileContext {
             su_ctx: &mut su_ctx,
@@ -112,7 +117,14 @@ impl RoomObject for StandardUnit1 {
             }
         }
         let damage_mult = DamageColor::get_damage_mult(ctx.damage_color, self.data.damage_color);
-        let td_resp = self.data.su_common.take_collision_damage_from(self.data.md.get_ref(), damage_mult, ctx.suc);
+        let (mut nro_ctx, suc) = ctx.get_nro_ctx_and_suc();
+        let td_resp = self.data.su_common.take_collision_damage_from(
+            self.data.md.get_ref(), 
+            damage_mult, 
+            suc,
+            &mut nro_ctx,
+        );
+        assert!(td_resp.new_room_objects.is_empty(), "adding new room objects here isn't supported yet");
         let mut room_objects_to_delete = Vec::new();
         if td_resp.dead {
             if self.data.remove_immediately_on_death {
@@ -496,9 +508,9 @@ fn handle_collision_nop(_ctx: &mut SuHandleCollisionContext) -> HandleCollisionR
     HandleCollisionResponse::new()
 }
 
-struct SuHcProjectileContext<'a> {
+struct SuHcProjectileContext<'a, 'b> {
     su_ctx: &'a mut SuContext<'a>,
-    hcp_ctx: &'a HcProjectileContext,
+    hcp_ctx: &'a mut HcProjectileContext<'b>,
 }
 
 fn hc_projectile_default(ctx: &mut SuHcProjectileContext) -> HcProjectileResponse {
@@ -511,7 +523,11 @@ fn hc_projectile_default(ctx: &mut SuHcProjectileContext) -> HcProjectileRespons
         return HcProjectileResponse::nop();
     }
     let damage_mult = DamageColor::get_damage_mult(ctx.hcp_ctx.damage_color, *ctx.su_ctx.damage_color);
-    let td_response = ctx.su_ctx.su_common.take_damage(ctx.hcp_ctx.damage * damage_mult);
+    let td_response = ctx.su_ctx.su_common.take_damage(
+        ctx.hcp_ctx.damage * damage_mult, 
+        ctx.hcp_ctx.succ_ewma_actions.clone(),
+        &mut ctx.hcp_ctx.get_nro_ctx(),
+    );
     let mut room_objects_to_delete = Vec::new();
     if td_response.dead {
         if ctx.su_ctx.remove_immediately_on_death {
@@ -520,10 +536,13 @@ fn hc_projectile_default(ctx: &mut SuHcProjectileContext) -> HcProjectileRespons
             *ctx.su_ctx.is_dead = true;
         }
     }
+    let mut room_objs_to_add = Vec::new();
+    td_response.new_room_objects.into_iter().for_each(|x| room_objs_to_add.push(x));
     HcProjectileResponse { 
         projectile_consumed: true,
         damage_dealt: td_response.damage_taken,
         room_objects_to_delete,
+        room_objs_to_add,
     }
 }
 

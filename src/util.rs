@@ -4,3 +4,4 @@ pub mod lerp;
 pub mod config;
 pub mod disjoint_set_union;
 pub mod rng;
+pub mod ewma;

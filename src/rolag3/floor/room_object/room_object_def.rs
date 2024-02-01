@@ -2,7 +2,7 @@ use std::{rc::{Rc, Weak}, cell::RefCell, collections::{HashSet, HashMap, BTreeMa
 
 use crate::{rolag3::{floor::{draw::DrawContext, run::PlayerInput, rofiz::{rofiz_state::{RofizState, RofizObjectRef}, rofiz_object::Hitbox}, room::{RoomConnectionInfo, RoomTile}, floor_def::Floor, floorgen::run::GenFloorRoomContext}, sound_db::SoundDb}, util::rng::Prng, sfx::sound_system::{SoundSystem, PlaySoundArgs, SoundDataRef}};
 
-use super::{damage::DamageColor, unit::{standard_unit_common::{Budeb, StandardUnitCommon}, player::Player}, sound::{RoomObjSound, RoomObjPlaySoundArgs, RoomObjSoundRef, RoomObjSoundIdT, RoomObjPlaySoundArgsBuilder, RoomObjPlaySoundArgsBuilderReq}};
+use super::{damage::DamageColor, unit::{standard_unit_common::{Budeb, StandardUnitCommon, SuccEwmaAction}, player::Player}, sound::{RoomObjSound, RoomObjPlaySoundArgs, RoomObjSoundRef, RoomObjSoundIdT, RoomObjPlaySoundArgsBuilder, RoomObjPlaySoundArgsBuilderReq}};
 
 /* Rules:
    -act1() must be called at least once before any draw() calls. This allows initialization steps to be performed in
@@ -22,11 +22,12 @@ pub trait RoomObject {
     }
 
     fn handle_collision(&mut self, ctx: &mut HandleCollisionContext) -> HandleCollisionResponse;
-    fn handle_collision_projectile(&mut self, _: &HcProjectileContext) -> HcProjectileResponse {
+    fn handle_collision_projectile(&mut self, _: &mut HcProjectileContext) -> HcProjectileResponse {
         HcProjectileResponse {
             projectile_consumed: false,
             damage_dealt: 0.0,
             room_objects_to_delete: Vec::new(),
+            room_objs_to_add: Vec::new(),
         }
     }
     fn handle_collision_standard_unit<'a>(&mut self, _: &mut HcStandardUnitContext<'a>) -> HcStandardUnitResponse {
@@ -657,6 +658,10 @@ impl<'a> NewRoomObjectContext<'a> {
     pub fn add_basic_projectile(&mut self, room_obj_ref: RoomObjectRef, hitbox: Hitbox) -> RofizObjectRef {
         self.rofiz.add_basic_projectile(room_obj_ref, hitbox)
     }
+
+    pub fn get_rofiz(&self) -> &RofizState {
+        self.rofiz
+    }
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -1020,6 +1025,14 @@ impl<'a> HandleCollisionContext<'a> {
     pub fn get_rofiz(&self) -> &RofizState {
         self.rofiz
     }
+
+    pub fn get_hcp_ctx_fields(&mut self) -> (&mut RofizState, &mut Prng, &mut RoomObjectId, Rc<RefCell<dyn RoomObject>>) {
+        (self.rofiz, self.rng, self.room_object_id_counter, self.other.clone())
+    }
+
+    pub fn get_hcsu_ctx_fields(&mut self) -> (&mut RofizState, &mut Prng, &mut RoomObjectId, Rc<RefCell<dyn RoomObject>>, f64) {
+        (self.rofiz, self.rng, self.room_object_id_counter, self.other.clone(), self.room_time)
+    }
 }
 
 pub struct HandleCollisionResponse {
@@ -1076,17 +1089,29 @@ impl Team {
     }
 }
 
-pub struct HcProjectileContext {
+pub struct HcProjectileContext<'a> {
     pub team: Team,
     pub damage_color: DamageColor,
     pub damage: f64,
     pub room_time: f64,
+    pub succ_ewma_actions: Vec<SuccEwmaAction>,
+
+    pub rofiz: &'a mut RofizState,
+    pub room_object_id_counter: &'a mut RoomObjectId,
+    pub rng: &'a mut Prng,
+}
+
+impl<'a> HcProjectileContext<'a> {
+    pub fn get_nro_ctx(&mut self) -> NewRoomObjectContext {
+        NewRoomObjectContext::new(self.rofiz, self.room_object_id_counter, self.room_time, self.rng)
+    }
 }
 
 pub struct HcProjectileResponse {
     pub projectile_consumed: bool,
     pub damage_dealt: f64,
     pub room_objects_to_delete: Vec<RoomObjectRef>,
+    pub room_objs_to_add: Vec<Rc<RefCell<dyn RoomObject>>>,
 }
 
 impl HcProjectileResponse {
@@ -1095,6 +1120,7 @@ impl HcProjectileResponse {
             projectile_consumed: false,
             damage_dealt: 0.0,
             room_objects_to_delete: Vec::new(),
+            room_objs_to_add: Vec::new(),
         }
     }
 }
@@ -1103,7 +1129,19 @@ pub struct HcStandardUnitContext<'a> {
     pub suc: &'a mut StandardUnitCommon,
     pub team: Team,
     pub damage_color: DamageColor,
+
+    pub room_time: f64,
+    pub rofiz: &'a mut RofizState,
+    pub room_object_id_counter: &'a mut RoomObjectId,
+    pub rng: &'a mut Prng,
 }
+
+impl<'a> HcStandardUnitContext<'a> {
+    pub fn get_nro_ctx_and_suc(&mut self) -> (NewRoomObjectContext, &mut StandardUnitCommon) {
+        (NewRoomObjectContext::new(self.rofiz, self.room_object_id_counter, self.room_time, self.rng), self.suc)
+    }
+}
+
 
 pub struct HcStandardUnitResponse {
     pub room_objects_to_delete: Vec<RoomObjectRef>,

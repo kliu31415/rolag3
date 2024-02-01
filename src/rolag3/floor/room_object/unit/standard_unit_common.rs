@@ -1,6 +1,6 @@
-use std::collections::HashMap;
+use std::{collections::{HashMap, BTreeMap}, rc::{Rc, Weak}, cell::RefCell};
 
-use crate::{rolag3::floor::{rofiz::{rofiz_object::{RofizObjectMovement, Transformation}, rofiz_state::{RofizState, RofizObjectRef}}, draw::Color, room_object::room_object_def::RoomObjectRef}, util::token_bucket::TokenBucket};
+use crate::{rolag3::floor::{rofiz::{rofiz_object::{RofizObjectMovement, Transformation}, rofiz_state::{RofizState, RofizObjectRef}}, draw::Color, room_object::{room_object_def::{RoomObjectRef, Team, RoomObject, NewRoomObjectContext}, projectile::explosion1::new_explosion1, damage::DamageColor}}, util::{token_bucket::TokenBucket, ewma::Ewma}, geometry::shape::Shape};
 
 #[derive(Debug, Clone, Copy)]
 pub enum Budeb {
@@ -96,13 +96,41 @@ pub struct StandardUnitCommon {
     damageable: bool,
     collision_damage: f64,
     budeb_on_collision_damage: Vec<Budeb>,
-    collision_damage_token_buckets: HashMap<RoomObjectRef /* self is dealer, other was dealt damage */, TokenBucket>,
+    /* self is damage dealer, other (map key) was dealt damage */
+    collision_damage_token_buckets: HashMap<RoomObjectRef, TokenBucket>,
     max_hp: f64,
     hp: f64,
     last_damaged_age: f64,
     floor_take_damage_mult: f64, /* 1 for all units except the player */
 
     budebs: Vec<Budeb>,
+
+    custom_ewmas: BTreeMap<u128, Ewma>,
+}
+
+#[derive(Clone)]
+pub struct SuccEwmaAction {
+    pub key: u128,
+    pub threshold: f64,
+    pub to_add: f64,
+    pub decay_mult: f64,
+    pub new_ewma_v_on_action: Rc<dyn Fn() -> Box<dyn Fn(f64) -> f64>>,
+    pub e: SuccEwmaActionEnum
+}
+
+#[derive(Clone)]
+pub enum SuccEwmaActionEnum {
+    Explosion {
+        team: Team,
+        owner: Weak<RefCell<dyn RoomObject>>,
+        damage_color: DamageColor,
+        dps: f64,
+        lifespan: f64, 
+        outer_color_fn: Rc<dyn Fn() -> Box<dyn Fn(f64) -> Color>>,
+        inner_color_fn: Rc<dyn Fn() -> Box<dyn Fn(f64) -> Color>>,
+        shape_fn: Rc<dyn Fn() -> Box<dyn Fn(f64, &mut Shape)>>,
+        sound_volume_mult: f64,
+    },
 }
 
 pub struct PolarForce {
@@ -179,6 +207,8 @@ impl StandardUnitCommon {
             floor_take_damage_mult: 1.0,
 
             budebs: Vec::new(),
+            
+            custom_ewmas: BTreeMap::new(),
         }
     }
 
@@ -547,6 +577,7 @@ impl StandardUnitCommon {
         self_id: RoomObjectRef, 
         color_damage_mult: f64, 
         other: &mut StandardUnitCommon,
+        nro_ctx: &mut NewRoomObjectContext,
     ) -> TakeDamageResponse {
         if !other.collision_damage_token_buckets.contains_key(&self_id) {
             let tb = TokenBucket::new(other.collision_damage * COLLISION_DAMAGE_INSTANT_MULT, other.collision_damage);
@@ -557,14 +588,19 @@ impl StandardUnitCommon {
         // means that if OTHER has its time speed doubled and SELF has no time multiplier, SELF takes 2x collision dmg.
         // No need to multiply by self.floor_take_damage_mult because take_damage() already does that.
         let damage = tb.take_all(other.unit_age) * color_damage_mult;
-        let response = self.take_damage(damage);
+        let response = self.take_damage(damage, Vec::new(), nro_ctx);
         if response.damage_taken > 0.0 {
             other.budeb_on_collision_damage.clone().into_iter().for_each(|x| self.budebs.push(x));
         }
         response
     }
 
-    pub fn take_damage(&mut self, damage: f64) -> TakeDamageResponse {
+    pub fn take_damage(
+        &mut self, 
+        damage: f64, 
+        succ_ewma_actions: Vec<SuccEwmaAction>,
+        nro_ctx: &mut NewRoomObjectContext,
+    ) -> TakeDamageResponse {
         if damage < 0.0 {
             panic!("damage < 0. Expected positive damage.");
         }
@@ -573,6 +609,7 @@ impl StandardUnitCommon {
             return TakeDamageResponse {
                 dead: false,
                 damage_taken: 0.0,
+                new_room_objects: Vec::new(),
             };
         }
         
@@ -585,10 +622,58 @@ impl StandardUnitCommon {
             damage_taken = damage;
             self.hp -= damage;
         }
+
+        let mut new_room_objects = Vec::new();
+        if damage_taken > 0.0 {
+            for action in succ_ewma_actions {
+                let map_v = self.custom_ewmas.entry(action.key).or_insert(Ewma::new(action.decay_mult));
+                assert_eq!(map_v.get_decay_mult(), action.decay_mult, "SuccEwma existing and new decay mults differ");
+                map_v.add(self.unit_age, action.to_add);
+                let ewma_val = map_v.get(self.unit_age);
+                if ewma_val >= action.threshold {
+                    *map_v = Ewma::new(action.decay_mult);
+                    map_v.add(self.unit_age, (action.new_ewma_v_on_action)()(ewma_val));
+                    match action.e {
+                        SuccEwmaActionEnum::Explosion { 
+                            team,
+                            owner,
+                            damage_color,
+                            dps,
+                            lifespan,
+                            outer_color_fn,
+                            inner_color_fn,
+                            shape_fn,
+                            sound_volume_mult,
+                        } => {
+                            let xform = self.get_rofiz_xform(nro_ctx.get_rofiz());
+                            let explosion = new_explosion1(
+                                nro_ctx, 
+                                team, 
+                                owner, 
+                                damage_color, 
+                                xform.dx,
+                                xform.dy,
+                                dps, 
+                                lifespan, 
+                                (outer_color_fn)(), 
+                                (inner_color_fn)(), 
+                                (shape_fn)(), 
+                                sound_volume_mult, 
+                                0.0,
+                            );
+                            new_room_objects.push(Rc::new(RefCell::new(explosion)) as _);
+                        }
+                    }
+                }
+            }
+        }
+
         self.last_damaged_age = self.unit_age;
+
         TakeDamageResponse { 
             dead: self.hp <= 0.0,
             damage_taken,
+            new_room_objects,
          }
     }
 
@@ -610,6 +695,7 @@ impl StandardUnitCommon {
 pub struct TakeDamageResponse {
     pub dead: bool,
     pub damage_taken: f64,
+    pub new_room_objects: Vec<Rc<RefCell<dyn RoomObject>>>,
 }
 
 fn lerp_no_alpha(v: f32, a: Color, b: Color) -> Color {

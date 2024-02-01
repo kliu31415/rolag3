@@ -72,17 +72,27 @@ fn handle_collision(ctx: &mut SpHandleCollisionContext) -> HandleCollisionRespon
     if ctx.hc_ctx.get_other().borrow().blocks_projectiles() {
         return HandleCollisionResponse::new().remove_room_obj(ctx.sp_ctx.md.get_ref());
     }
-    let hcp_response = ctx.hc_ctx.get_other().borrow_mut().handle_collision_projectile(&HcProjectileContext{
+    let room_time = ctx.hc_ctx.get_room_time();
+    let (rofiz, rng, room_object_id_counter, other) = ctx.hc_ctx.get_hcp_ctx_fields();
+    let hcp_response = other.borrow_mut().handle_collision_projectile(&mut HcProjectileContext {
         team: ctx.sp_ctx.team,
         damage_color: ctx.sp_ctx.damage_color,
         damage: ctx.sp_ctx.damage,
-        room_time: ctx.hc_ctx.get_room_time(),
+        room_time,
+        succ_ewma_actions: Vec::new(),
+        rofiz,
+        room_object_id_counter,
+        rng,
     });
     let mut to_remove = hcp_response.room_objects_to_delete;
     if hcp_response.projectile_consumed {
         to_remove.push(ctx.sp_ctx.md.get_ref());
     }
-    HandleCollisionResponse::new().remove_room_objs(to_remove.as_slice())
+    let mut response = HandleCollisionResponse::new().remove_room_objs(to_remove.as_slice());
+    for x in hcp_response.room_objs_to_add {
+        response = response.add_room_obj(x);
+    }
+    response
 }
 
 fn apply_operation(ctx: &mut SpApplyOperationContext) {

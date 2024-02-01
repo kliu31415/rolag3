@@ -93,14 +93,26 @@ impl RoomObject for Explosion1 {
     }
 
     fn handle_collision(&mut self, ctx: &mut HandleCollisionContext) -> HandleCollisionResponse {
-        let hcp_response = ctx.get_other().borrow_mut().handle_collision_projectile(&HcProjectileContext{
+        let damage = self.dps * ctx.get_tick_length();
+        let room_time = ctx.get_room_time();
+        let (rofiz, rng, room_object_id_counter, other) = ctx.get_hcp_ctx_fields();
+        let hcp_response = other.borrow_mut().handle_collision_projectile(&mut HcProjectileContext{
             team: self.team,
             damage_color: self.damage_color,
-            damage: self.dps * ctx.get_tick_length(),
-            room_time: ctx.get_room_time(),
+            damage,
+            room_time,
+            succ_ewma_actions: Vec::new(),
+            rofiz,
+            room_object_id_counter,
+            rng,
         });
+
         let to_remove = hcp_response.room_objects_to_delete;
-        HandleCollisionResponse::new().remove_room_objs(to_remove.as_slice())
+        let mut response = HandleCollisionResponse::new().remove_room_objs(to_remove.as_slice());
+        for x in hcp_response.room_objs_to_add {
+            response = response.add_room_obj(x);
+        }
+        response
     }
 }
 

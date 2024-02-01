@@ -1,4 +1,4 @@
-use crate::{rolag3::floor::{run::{PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, draw::DrawContext, room_object::{room_object_def::{RoomObject, Act1Context, FloorCoordinate, RoomObjectMetadata, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse, RoQueryUnitInfoContext, RoQueryUnitInfoResponse, HcTileContext, HcTileEffect, HcTileResponse, RoomObjApplyOperationContext, RoomObjOperation, HcStandardUnitContext, HcStandardUnitResponse, HandleRoomJustClearedContext, HcTileEffectDuration, RoomObjectRef}, tiles::room_connection::Direction, damage::DamageColor, unit::{standard_unit_common::{BudebExpiry, BudebTractionMult, BudebTractionCap}, weapon::{crimson_shotgun::new_weapon_crimson_shotgun, shock_chain::new_weapon_shock_chain, weapon_def::SwitchOutWeaponContext}}}, rofiz::{rofiz_object::{Hitbox, Transformation}, rofiz_state::RofizState}, room::RoomConnectionInfo}, geometry::shape::{Shape, Point}, gfx::{renderer::{DrawOp, DrawOpGroup, ColorRGBA32f, DrawOpText, DrawTextPosition}, draw_op_util::draw_op_rect, text::font::Font}};
+use crate::{rolag3::floor::{run::{PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, draw::DrawContext, room_object::{room_object_def::{RoomObject, Act1Context, FloorCoordinate, RoomObjectMetadata, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse, RoQueryUnitInfoContext, RoQueryUnitInfoResponse, HcTileContext, HcTileEffect, HcTileResponse, RoomObjApplyOperationContext, RoomObjOperation, HcStandardUnitContext, HcStandardUnitResponse, HandleRoomJustClearedContext, HcTileEffectDuration, RoomObjectRef, NewRoomObjectContext}, tiles::room_connection::Direction, damage::DamageColor, unit::{standard_unit_common::{BudebExpiry, BudebTractionMult, BudebTractionCap}, weapon::{crimson_shotgun::new_weapon_crimson_shotgun, shock_chain::new_weapon_shock_chain, weapon_def::SwitchOutWeaponContext}}}, rofiz::{rofiz_object::{Hitbox, Transformation}, rofiz_state::RofizState}, room::RoomConnectionInfo}, geometry::shape::{Shape, Point}, gfx::{renderer::{DrawOp, DrawOpGroup, ColorRGBA32f, DrawOpText, DrawTextPosition}, draw_op_util::draw_op_rect, text::font::Font}};
 
 use super::{Unit, standard_unit_common::{StandardUnitCommon, Budeb, BudebSpeedMult, TranslateMove, PolarForce}, weapon::{weapon_def::{Weapon, WeaponHandleTickContext, DrawWeaponHudContext, DrawWeaponOnOwnerContext, WeaponExitRoomContext}, green_laser::new_weapon_green_laser, lapis_trigun::new_weapon_lapis_trigun, ruby_rockets::new_weapon_ruby_rockets}, active_item::{active_item_def::{ActiveItem, ActiveItemHandleTickContext}, clear_enemy_projectiles::new_active_item_clear_projectiles, slow_enemy_time::new_active_item_slow_enemy_time, freedom_flare::new_active_item_freedom_flare, true_freedom_flare::new_active_item_true_freedom_flare}};
 
@@ -39,7 +39,13 @@ impl RoomObject for Player {
         self.hc_tile_effects.drain(..).for_each(|x| {
             match x {
                 HcTileEffect::Accelerate { force, theta } => additional_force.push(PolarForce{r: force, theta}),
-                HcTileEffect::DealDamage { damage } => {self.su_common.take_damage(damage);},
+                HcTileEffect::DealDamage { damage } => {
+                    self.su_common.take_damage(
+                        damage, 
+                        Vec::new(),
+                        &mut NewRoomObjectContext::from_act1_ctx(ctx),
+                    );
+                },
                 HcTileEffect::TractionMult { mult, duration } => {
                     let expiry = match duration {
                         HcTileEffectDuration::OneTick => BudebExpiry::OneTick,
@@ -235,29 +241,41 @@ impl RoomObject for Player {
     }
 
     fn handle_collision(&mut self, ctx: &mut HandleCollisionContext) -> HandleCollisionResponse {
+        let (rofiz, rng, room_object_id_counter, other, room_time) = ctx.get_hcsu_ctx_fields();
         let hcsu_ctx = &mut HcStandardUnitContext {
             suc: &mut self.su_common,
             team: Team::Player,
             damage_color: self.damage_color,
+            room_time,
+            rofiz,
+            room_object_id_counter,
+            rng,
         };
-        let hcsu_resp = ctx.get_other().borrow_mut().handle_collision_standard_unit(hcsu_ctx);
+        let hcsu_resp = other.borrow_mut().handle_collision_standard_unit(hcsu_ctx);
         HandleCollisionResponse::new().remove_room_objs(&hcsu_resp.room_objects_to_delete)
     }
 
-    fn handle_collision_projectile(&mut self, ctx: &HcProjectileContext) -> HcProjectileResponse {
+    fn handle_collision_projectile(&mut self, ctx: &mut HcProjectileContext) -> HcProjectileResponse {
         if ctx.team == Team::Player {
             return HcProjectileResponse::nop();
         }
         let damage_mult = DamageColor::get_damage_mult(ctx.damage_color, self.damage_color);
-        let td_response = self.su_common.take_damage(ctx.damage * damage_mult);
+        let td_response = self.su_common.take_damage(
+            ctx.damage * damage_mult, 
+            ctx.succ_ewma_actions.clone(),
+            &mut ctx.get_nro_ctx(),
+        );
         let mut room_objects_to_delete = Vec::new();
         if td_response.dead {
             room_objects_to_delete.push(self.md.get_ref());
         }
+        let mut room_objs_to_add = Vec::new();
+        td_response.new_room_objects.into_iter().for_each(|x| room_objs_to_add.push(x));
         HcProjectileResponse { 
             projectile_consumed: true,
             damage_dealt: td_response.damage_taken,
             room_objects_to_delete,
+            room_objs_to_add,
         }
     }
 
@@ -268,7 +286,14 @@ impl RoomObject for Player {
             }
         }
         let damage_mult = DamageColor::get_damage_mult(ctx.damage_color, self.damage_color);
-        let td_resp = self.su_common.take_collision_damage_from(self.md.get_ref(), damage_mult, ctx.suc);
+        let (mut nro_ctx, suc) = ctx.get_nro_ctx_and_suc();
+        let td_resp = self.su_common.take_collision_damage_from(
+            self.md.get_ref(), 
+            damage_mult, 
+            suc,
+            &mut nro_ctx,
+        );
+        assert!(td_resp.new_room_objects.is_empty(), "adding new room objects here isn't supported yet");
         let mut room_objects_to_delete = Vec::new();
         if td_resp.dead {
             room_objects_to_delete.push(self.md.get_ref());
