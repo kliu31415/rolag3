@@ -17,7 +17,8 @@ pub struct Projectile2Data {
     age: f64,
 
     homing_xlate_to_enemies_power_fn: Option<Box<dyn Fn(f64) -> f64>>,
-    homing_rotate_to_enemies_speed_fn: Option<Box<dyn Fn(f64) -> f64>>,
+    // fn(age, proj_xform, closest_enemy_xy) -> rotate_homing_angular_speed
+    homing_rotate_to_enemies_speed_fn: Option<Box<dyn Fn(f64, Transformation, (f64, f64)) -> f64>>,
     homing_query_result: Option<Rc<RefCell<Act1QueryResult>>>,
 
     nef_position_fn: Option<NefPositionFnT>,
@@ -60,7 +61,7 @@ pub struct Projectile2Builder {
     req: Projectile2BuilderReq,
     lifespan: f64,
     homing_xlate_to_enemies_power_fn: Option<Box<dyn Fn(f64) -> f64>>,
-    homing_rotate_to_enemies_speed_fn: Option<Box<dyn Fn(f64) -> f64>>,
+    homing_rotate_to_enemies_speed_fn: Option<Box<dyn Fn(f64, Transformation, (f64, f64)) -> f64>>,
     // nef = no external force, i.e. this function returns what the position of the projectile would be if
     // -the projectile starts at the origin
     // -no external forces are acting on the projectile
@@ -100,7 +101,7 @@ impl Projectile2Builder {
         self
     }
 
-    pub fn homing_rotate_to_enemies_speed_fn(mut self, f: Box<dyn Fn(f64) -> f64>) -> Self {
+    pub fn homing_rotate_to_enemies_speed_fn(mut self, f: Box<dyn Fn(f64, Transformation, (f64, f64)) -> f64>) -> Self {
         self.homing_rotate_to_enemies_speed_fn = Some(f);
         self
     }
@@ -209,12 +210,12 @@ fn act1(ctx: &mut SpAct1Context) -> Act1Response {
     }
 
     if let Some(ref homing_rotate_fn) = ps_data.homing_rotate_to_enemies_speed_fn {
-        let power = (homing_rotate_fn)(ps_data.age);
-        assert!(power >= 0.0, "expected non-negative rotate homing power, got {}", power);
-        if power > 0.0 {
-            if let Some(ref a1qr) = ps_data.homing_query_result {
-                let Act1QueryResult::ClosestUnit(cu_opt) = &*a1qr.borrow() else {panic!()};
-                if let Some(cu) = cu_opt {
+        if let Some(ref a1qr) = ps_data.homing_query_result {
+            let Act1QueryResult::ClosestUnit(cu_opt) = &*a1qr.borrow() else {panic!()};
+            if let Some(cu) = cu_opt {
+                let power = (homing_rotate_fn)(ps_data.age, xform, (cu.x, cu.y));
+                assert!(power >= 0.0, "expected non-negative rotate homing power, got {}", power);
+                if power > 0.0 {
                     let dx = cu.x - xform.dx;
                     let dy = cu.y - xform.dy;
                     let dxy_norm = f64::hypot(dx, dy);

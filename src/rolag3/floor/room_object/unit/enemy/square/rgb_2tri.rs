@@ -113,7 +113,7 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
                 xform.dy + inner_tri_offset.y as f64, 
                 xform.dtheta,
             );
-            let rotate_homing_fn = Box::new(|_: f64| -> f64 {
+            let rotate_homing_fn = Box::new(|_, _, _| -> f64 {
                 0.3
             });
             let proj = Projectile2Builder::new(Projectile2BuilderReq {

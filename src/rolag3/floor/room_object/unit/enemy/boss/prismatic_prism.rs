@@ -153,7 +153,7 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
                         if home_to_enemies {
                             let hr_start = 0.5;
                             let hr_end = 1.0;
-                            let homing_f = move |age: f64| {
+                            let homing_f = move |age, _, _| {
                                 if !(hr_start..hr_end).contains(&age) {
                                     0.0
                                 } else {
@@ -243,7 +243,7 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
                         if home_to_enemies {
                             let hr_start = expand1_until;
                             let hr_end = expand1_until + 0.3;
-                            let homing_f = move |age: f64| {
+                            let homing_f = move |age, _, _| {
                                 if !(hr_start..hr_end).contains(&age) {
                                     0.0
                                 } else {
@@ -310,7 +310,7 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
                         if home_to_enemies {
                             let hr_start = 0.5;
                             let hr_end = 1.5;
-                            let homing_f = move |age: f64| {
+                            let homing_f = move |age, _, _| {
                                 if !(hr_start..hr_end).contains(&age) {
                                     0.0
                                 } else {

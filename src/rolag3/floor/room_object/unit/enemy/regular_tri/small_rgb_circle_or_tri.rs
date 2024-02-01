@@ -150,7 +150,7 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
                     let angle = i as f64 * 2.0 / 3.0 * std::f64::consts::PI;
                     let vertexes = TRI_PROJ_VERTEXES.map(|p| p + TRI_PROJ_OFFSET);
                     let proj_xform = Transformation::new(xform.dx, xform.dy, angle);
-                    let homing_fn = |age| if age < 3.0 {0.5} else {0.0};
+                    let homing_fn = |age, _, _| if age < 3.0 {0.5} else {0.0};
                     let proj = Projectile2Builder::new(Projectile2BuilderReq {
                         team: Team::Enemy,
                         damage_color: *ctx.su_ctx.damage_color,

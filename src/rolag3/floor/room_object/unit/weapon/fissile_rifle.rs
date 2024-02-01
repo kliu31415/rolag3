@@ -75,7 +75,23 @@ fn handle_tick_fn(ctx: &mut WeaponHandleTickContext) -> WeaponHandleTickResponse
         ctx.owner_xform.dy + ws_data.since_last_primary_attack * velocity_y,
         proj_angle,
     );
-    let homing_rotate_f = |_| 1.5;
+    let homing_rotate_f = |_, proj_xform: Transformation, (enemy_x, enemy_y)| -> f64 {
+        let dx = enemy_x - proj_xform.dx;
+        let dy = enemy_y - proj_xform.dy;
+        let dxy_norm = f64::hypot(dx, dy);
+        // don't home if the projectile is too close or far to effectively home
+        if !(0.1 .. 6.0).contains(&dxy_norm) {
+            return 0.0;
+        }
+
+        let dx_normed = dx / dxy_norm;
+        let dy_normed = dy / dx_normed;
+        let dot = dx_normed * f64::cos(proj_xform.dtheta) + dy_normed * f64::sin(proj_xform.dtheta);
+        if dot > 0.8 {
+            return 4.0;
+        }
+        0.0
+    };
     let nro_ctx = &mut NewRoomObjectContext::from_act1_ctx(ctx.act1_ctx);
     let proj = Projectile2Builder::new(
         Projectile2BuilderReq {
