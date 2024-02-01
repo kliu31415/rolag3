@@ -131,7 +131,7 @@ fn run_floor_tick(ctx: RunFloorTickContext) -> RunFloorTickResponse {
     }
 
     let mut floor_finished = false;
-    let (_, room, room_obj_id_counter, sound_id_counter) = ctx.floor.get_player_and_current_room_and_id_counters();
+    let (player, room, room_obj_id_counter, sound_id_counter) = ctx.floor.get_player_and_current_room_and_id_counters();
 
     {
         room.room_time += ctx.tick_length;
@@ -150,7 +150,7 @@ fn run_floor_tick(ctx: RunFloorTickContext) -> RunFloorTickResponse {
             room.height,
             &room.tiles,
         );
-        let roca_response = room.room_objects.act1(act1_context, ctx.sound_system);
+        let roca_response = room.room_objects.act1(act1_context, player.clone(), ctx.sound_system);
         floor_finished |= roca_response.floor_finished;
         detect_and_handle_collisions(room, ctx.rng, room_obj_id_counter, ctx.tick_length);
 

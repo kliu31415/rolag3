@@ -38,7 +38,7 @@ impl RoomObject for Explosion1 {
             let mut rng = ctx.get_rng().spawn_child();
             let sound_data = rng.sample_slice_uniform(&ctx.get_sound_db().explosion_small);
             let psb = ctx.new_play_sound_builder(sound_data);
-            response.play_sound(psb.volume(self.sound_volume_mult).build());
+            response.play_sound(psb.volume(self.sound_volume_mult).location(self.xform.dx, self.xform.dy).build());
             self.sound_added = true;
         }
         (self.shape_fn)(ctx.get_room_time() - self.creation_time, &mut self.cached_shape);

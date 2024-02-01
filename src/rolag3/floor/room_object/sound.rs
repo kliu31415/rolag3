@@ -37,6 +37,11 @@ impl RoomObjPlaySoundArgsBuilder {
         }
     }
 
+    pub fn location(mut self, x: f64, y: f64) -> Self {
+        self.location = Some((x, y));
+        self
+    }
+
     pub fn volume(mut self, volume: f64) -> Self {
         self.volume = volume;
         self

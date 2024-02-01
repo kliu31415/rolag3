@@ -2,7 +2,7 @@ use std::{rc::{Rc, Weak}, cell::RefCell, collections::{HashSet, HashMap, BTreeMa
 
 use crate::{rolag3::{floor::{draw::DrawContext, run::PlayerInput, rofiz::{rofiz_state::{RofizState, RofizObjectRef}, rofiz_object::Hitbox}, room::{RoomConnectionInfo, RoomTile}, floor_def::Floor, floorgen::run::GenFloorRoomContext}, sound_db::SoundDb}, util::rng::Prng, sfx::sound_system::{SoundSystem, PlaySoundArgs, SoundDataRef}};
 
-use super::{damage::DamageColor, unit::standard_unit_common::{Budeb, StandardUnitCommon}, sound::{RoomObjSound, RoomObjPlaySoundArgs, RoomObjSoundRef, RoomObjSoundIdT, RoomObjPlaySoundArgsBuilder, RoomObjPlaySoundArgsBuilderReq}};
+use super::{damage::DamageColor, unit::{standard_unit_common::{Budeb, StandardUnitCommon}, player::Player}, sound::{RoomObjSound, RoomObjPlaySoundArgs, RoomObjSoundRef, RoomObjSoundIdT, RoomObjPlaySoundArgsBuilder, RoomObjPlaySoundArgsBuilderReq}};
 
 /* Rules:
    -act1() must be called at least once before any draw() calls. This allows initialization steps to be performed in
@@ -333,8 +333,10 @@ impl RoomObjectCollection {
     }
 
     #[inline(never)]
-    pub fn act1(&mut self, mut ctx: Act1Context, sound_system: &mut dyn SoundSystem) -> RocAct1Response {
+    pub fn act1(&mut self, mut ctx: Act1Context, player: Rc<RefCell<Player>>, sound_system: &mut dyn SoundSystem) -> RocAct1Response {
         self.cached_mem.reset();
+
+        let player_center = player.borrow().get_center_point(ctx.rofiz);
 
         for remd in self.room_objects_by_type.room_objects.values_mut() {
             ctx.self_as_rc = Some(remd.room_obj.clone());
@@ -348,11 +350,22 @@ impl RoomObjectCollection {
                 if nps.volume == 0.0 {
                     continue;
                 }
+
+                // TODO: improve panning
+                let panning = if let Some((sx, sy)) = nps.location {
+                    let dy = f64::abs(player_center.y - sy);
+                    let lpan = 5.0 + f64::max(player_center.x - sx, 0.0) + dy;
+                    let rpan = 5.0 + f64::max(sx - player_center.x, 0.0) + dy;
+                    rpan / (lpan + rpan)
+                } else {
+                    0.5
+                };
+                
                 let r = sound_system.play_sound(PlaySoundArgs {
                     sdr: nps.sound_data,
                     volume: nps.volume,
                     playback_speed: nps.playback_speed,
-                    panning: 0.5, // TODO: actually use panning rather than just centering at 0.5
+                    panning,
                 });
                 
                 let spr = match r {
@@ -809,7 +822,7 @@ impl<'a> Act1Context<'a> {
     }
 }
 
-pub fn new_play_sound_builder(id_counter: &mut RoomObjSoundIdT, sound_data: SoundDataRef) -> RoomObjPlaySoundArgsBuilder {
+fn new_play_sound_builder(id_counter: &mut RoomObjSoundIdT, sound_data: SoundDataRef) -> RoomObjPlaySoundArgsBuilder {
     *id_counter += 1;
     RoomObjPlaySoundArgsBuilder::new(RoomObjPlaySoundArgsBuilderReq {
         id: *id_counter,
