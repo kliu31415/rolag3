@@ -1,4 +1,4 @@
-use std::{sync::Arc, ops::Range};
+use std::{sync::{Arc, atomic::AtomicU32}, ops::Range};
 
 use crate::{rolag3::floor::{room_object::room_object_def::RoomObjectRef, rofiz::rofiz_object::RofizObjectMovement}, geometry::shape::{Shape, BoundingBox}};
 
@@ -7,19 +7,25 @@ use super::{rofiz_object::{RofizObjBasicWall, RofizObjMovable, Hitbox, Transform
 #[derive(Debug, Clone)]
 pub struct RofizObjectRef {
     _ref_count: Arc<()>,
-    pool_ref: RofizObjPoolRef // purely used to hide the actual ref from external callers
+    pool_ref: RofizObjPoolRef, // purely used to hide the actual ref from external callers
+    rofiz_state_id: RofizStateId, // purely used for bug-checking
 }
 
 impl RofizObjectRef {
-    fn new(_ref_count: Arc<()>, pool_ref: RofizObjPoolRef) -> Self {
+    fn new(_ref_count: Arc<()>, pool_ref: RofizObjPoolRef, rofiz_state_id: RofizStateId) -> Self {
         Self {
             _ref_count,
             pool_ref,
+            rofiz_state_id,
         }
     }
 }
 
+type RofizStateId = u32;
+
 pub struct RofizState {
+    rs_id: RofizStateId,
+
     // only used before floor start
     floor_started: bool,
 
@@ -39,10 +45,18 @@ pub struct RofizState {
 }
 
 impl RofizState {
-    const MAX_XY_WARN: u32 = 1000; 
+    const MAX_XY_WARN: u32 = 1000;
 
     pub fn new() -> Self {
+        static ID_COUNTER: AtomicU32 = AtomicU32::new(0);
+        let rs_id = ID_COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        if rs_id == u32::MAX {
+            log::warn!("Rofiz State ID is u32::MAX. \
+                        This won't cause bugs, but it will make catching certain rofiz-related bugs harder");
+        }
+
         Self {
+            rs_id,
             floor_started: false,
             obj_pool: RofizObjPool::new(),
             basic_walls: Vec::new(),
@@ -128,7 +142,7 @@ impl RofizState {
         let ref_count = new_wall.external_ref_count.clone();
         let pool_ref = self.obj_pool.add_bw(new_wall);
         self.basic_walls.push(pool_ref);
-        RofizObjectRef::new(ref_count, pool_ref)
+        RofizObjectRef::new(ref_count, pool_ref, self.rs_id)
     }
 
     pub fn add_nonspectral_unit(&mut self, floor_object_id: RoomObjectRef, hitbox: Hitbox) -> RofizObjectRef {
@@ -138,7 +152,7 @@ impl RofizState {
         let ref_count = obj.external_ref_count.clone();
         let pool_ref = self.obj_pool.add_mo(obj);
         self.nonspectral_units.push(pool_ref);
-        RofizObjectRef::new(ref_count, pool_ref)
+        RofizObjectRef::new(ref_count, pool_ref, self.rs_id)
     }
 
     pub fn add_spectral_unit(&mut self, floor_object_id: RoomObjectRef, hitbox: Hitbox) -> RofizObjectRef {
@@ -146,7 +160,7 @@ impl RofizState {
         let ref_count = obj.external_ref_count.clone();
         let pool_ref = self.obj_pool.add_mo(obj);
         self.spectral_units.push(pool_ref);
-        RofizObjectRef::new(ref_count, pool_ref)
+        RofizObjectRef::new(ref_count, pool_ref, self.rs_id)
     }
 
     pub fn add_basic_projectile(&mut self, floor_object_id: RoomObjectRef, hitbox: Hitbox) -> RofizObjectRef {
@@ -154,10 +168,11 @@ impl RofizState {
         let ref_count = obj.external_ref_count.clone();
         let pool_ref = self.obj_pool.add_mo(obj);
         self.basic_projectiles.push(pool_ref);
-        RofizObjectRef::new(ref_count, pool_ref)
+        RofizObjectRef::new(ref_count, pool_ref, self.rs_id)
     }
 
     pub fn steal_movable_object_shape(&mut self, obj_ref: &RofizObjectRef) -> Shape {
+        assert_eq!(self.rs_id, obj_ref.rofiz_state_id);
         if obj_ref.pool_ref.is_bw {
             unimplemented!();
         }
@@ -168,16 +183,19 @@ impl RofizState {
     }
 
     pub fn move_object(&mut self, obj_ref: &RofizObjectRef, movement: RofizObjectMovement) {
+        assert_eq!(self.rs_id, obj_ref.rofiz_state_id);
         assert!(!obj_ref.pool_ref.is_bw);
         self.obj_pool.get_mo_mut(&obj_ref.pool_ref).movement = movement;
     }
 
     pub fn get_movable_object_xform(&self, obj_ref: &RofizObjectRef) -> Transformation {
+        assert_eq!(self.rs_id, obj_ref.rofiz_state_id);
         assert!(!obj_ref.pool_ref.is_bw);
         self.obj_pool.get_mo(&obj_ref.pool_ref).current.transformation
     }
 
     pub fn get_movable_object_xformed_shape(&self, obj_ref: &RofizObjectRef) -> Shape {
+        assert_eq!(self.rs_id, obj_ref.rofiz_state_id);
         assert!(!obj_ref.pool_ref.is_bw);
         let hitbox = &self.obj_pool.get_mo(&obj_ref.pool_ref).current;
         let mut ret = Shape::dummy();
