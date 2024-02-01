@@ -18,6 +18,7 @@ use crate::{gfx::{self, window::{Window, EventHandler}, renderer::{ColorRGBA32f,
 use super::between_floors_shop::run::{RunFrameBfshopContext, run_frame_between_floors_shop, MouseButtonAction, RunFrameBfshopResponse};
 use super::floor::room_object::unit::player::Player;
 use super::floor::room_object::unit::weapon::crimson_shotgun::new_weapon_crimson_shotgun;
+use super::floor::room_object::unit::weapon::fissile_rifle::new_weapon_fissile_rifle;
 use super::floor::room_object::unit::weapon::shock_chain::new_weapon_shock_chain;
 use super::floor::{draw::{DrawFloorContext, get_draw_floor_ops}, run::{RunFloorContext, run_floor_frame, PlayerInput, PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, floor_def::Floor};
 use super::r3run::{R3Run, R3RunState};
@@ -145,7 +146,7 @@ impl Rolag3EventHandler {
                 state: R3RunState::BetweenFloorsShop {
                     prev_lmb_down_xy: None,
                     shop_state: ShopState::Root,
-                    shop_weapons: vec![new_weapon_crimson_shotgun(), new_weapon_shock_chain()],
+                    shop_weapons: vec![new_weapon_crimson_shotgun(), new_weapon_shock_chain(), new_weapon_fissile_rifle()],
                 },
                 cur_floor_num: 0,
             },
@@ -304,7 +305,7 @@ impl Rolag3EventHandler {
             self.r3run.state = R3RunState::BetweenFloorsShop {
                 prev_lmb_down_xy: None, 
                 shop_state: ShopState::Root,
-                shop_weapons: vec![new_weapon_crimson_shotgun(), new_weapon_shock_chain()],
+                shop_weapons: vec![new_weapon_crimson_shotgun(), new_weapon_shock_chain(), new_weapon_fissile_rifle()],
             };
         }
     }

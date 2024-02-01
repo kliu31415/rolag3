@@ -5,6 +5,7 @@ pub struct SoundDb {
     pub explosion_small: [SoundDataRef; 4],
     pub gun_grenade_launcher_shot: [SoundDataRef; 4],
     pub sci_fi_weapon_laser_small: [SoundDataRef; 6],
+    pub sci_fi_weapon_laser_small_fun: [SoundDataRef; 5],
     pub taser_stun_gun_zap_electricity: [SoundDataRef; 4],
 }
 
@@ -15,6 +16,7 @@ impl SoundDb {
             explosion_small: Self::load_gm(ss, "explosion_small", 4)[..].try_into().unwrap(),
             gun_grenade_launcher_shot: Self::load_gm(ss, "gun_grenade_launcher_shot", 4)[..].try_into().unwrap(),
             sci_fi_weapon_laser_small: Self::load_gm(ss, "sci-fi_weapon_laser_small", 6)[..].try_into().unwrap(),
+            sci_fi_weapon_laser_small_fun: Self::load_gm(ss, "sci-fi_weapon_laser_small_fun", 5)[..].try_into().unwrap(),
             taser_stun_gun_zap_electricity: Self::load_gm(ss, "taser_stun_gun_zap_electricity", 4)[..].try_into().unwrap(),
         }
     }

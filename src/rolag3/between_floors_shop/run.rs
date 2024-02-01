@@ -430,7 +430,7 @@ fn get_shop_ui_shop_weapons(ctx: &RunFrameBfshopContext, y: f32) -> KuiElement {
 
         let mut children = Vec::new();
         let background_color = ColorRGBA32f::new(0.0, 0.0, 0.0, 0.0);
-        let ammo_text_color = colors[i];
+        let ammo_text_color = colors[weapon.damage_color.to_rgb_idx()];
         let buffer_px = 0.1 * weapon_rects[i].h;
         let dop = weapon.draw(
             background_color, 
@@ -499,7 +499,7 @@ fn get_shop_ui_description_box(ctx: &RunFrameBfshopContext, y: f32) -> KuiElemen
                 },
                 ButtonId::ShopWeapon { idx } => {
                     let name = ctx.shop_weapons[*idx].name.to_owned();
-                    let color = colors[*idx];
+                    let color = colors[ctx.shop_weapons[*idx].damage_color.to_rgb_idx()];
                     let description = ctx.shop_weapons[*idx].shop_description.to_owned();
                     Some((name, color, description))
                 }

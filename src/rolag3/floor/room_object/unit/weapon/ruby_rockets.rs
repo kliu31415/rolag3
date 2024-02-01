@@ -142,7 +142,7 @@ fn spawn_projectile(
             0.0,
         )
     };
-    let proj_xform: Transformation = Transformation::new(ctx.owner_xform.dx, ctx.owner_xform.dy, f64::atan2(velocity_y, velocity_x));
+    let proj_xform: Transformation = Transformation::new(ctx.owner_xform.dx, ctx.owner_xform.dy, angle);
     let nro_ctx = &mut NewRoomObjectContext::from_act1_ctx(ctx.act1_ctx);
     let proj = Projectile2Builder::new(
         Projectile2BuilderReq{
