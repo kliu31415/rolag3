@@ -1,11 +1,10 @@
 use std::any::Any;
 
-use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Team, Act1Response}, unit::{standard_unit1::{StandardUnit1Builder, StandardUnit1BuilderReq, StandardUnit1, RofizObjType, SuAct1Context}, standard_unit_common::{Budeb, BudebSpeedMult, BudebExpiry}}, damage::DamageColor}, rofiz::{rofiz_object::{Transformation, Hitbox}, rofiz_state::RofizObjectRef}}, geometry::shape::{Shape, Point}};
+use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Team, Act1Response}, unit::{standard_unit1::{StandardUnit1Builder, StandardUnit1BuilderReq, StandardUnit1, RofizObjType, SuAct1Context}, standard_unit_common::{Budeb, BudebSpeedMult, BudebExpiry}}, damage::DamageColor}, rofiz::{rofiz_object::{Transformation, Hitbox, RofizObjectMovement}, rofiz_state::RofizObjectRef}}, geometry::shape::{Shape, Point}};
 
 
 struct ShockChainLink {
     rofo_ref: RofizObjectRef,
-    radius: f32,
 }
 
 pub fn new_shock_chain_link(
@@ -30,7 +29,6 @@ pub fn new_shock_chain_link(
     let rofo_ref = ctx.add_basic_projectile(room_obj_ref, hitbox);
     let us_data = ShockChainLink { 
         rofo_ref,
-        radius
     };
 
     builder.slave_act1_fn(Box::new(slave_act1))
@@ -47,9 +45,5 @@ fn slave_act1(ctx: &mut SuAct1Context, _: &mut Act1Response, input: &dyn Any, _o
     let us_data = ctx.su_ctx.us_data.downcast_mut::<ShockChainLink>().unwrap();
     let (x, y) = *input.downcast_ref::<(f64, f64)>().unwrap();
     let xform = Transformation::new(x, y, 0.0);
-    let shape = Shape::of_circle(Point::new(0.0, 0.0), us_data.radius);
-    let hitbox = Hitbox::new(xform, shape);
-    // recreate the Rofiz object every tick. Otherwise, if the player moves rooms from R1 to R2, the rofo_ref will
-    // still reference R1's Rofiz, which causes bugs.
-    us_data.rofo_ref = ctx.act1_ctx.get_rofiz().add_basic_projectile(ctx.su_ctx.md.get_ref(), hitbox);
+    ctx.act1_ctx.get_rofiz().move_object(&us_data.rofo_ref, RofizObjectMovement::SetXform(xform));
 }
