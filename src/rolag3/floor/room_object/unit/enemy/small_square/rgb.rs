@@ -2,7 +2,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Act1Response, Team, Act1QueryArgs, Act1QueryResult}, damage::DamageColor, unit::{standard_unit1::{StandardUnit1Builder, StandardUnit1BuilderReq, SuAct1Context, SuDrawContext, StandardUnit1}, standard_unit_common::TranslateMove}}, rofiz::rofiz_object::Transformation, draw::{Color, DrawContext}}, geometry::{shape::{Shape, Point}, util::{regular_polygon, get_inner_polygon, rotate_polygon}}};
 
-/* SquareSmallRgb is continuously moves in the direction of the player.
+/* SquareSmallRgb continuously moves in the direction of the player.
 */
 
 pub struct SquareSmallRgb {

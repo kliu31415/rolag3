@@ -5,7 +5,7 @@ use crate::{rolag3::floor::{draw::{Color, DrawContext}, room_object::{room_objec
 /* SquareBlueDiamond randomly translates. It occasionally spits 4 projectiles in the semicardinal directions.
 */
 
-pub const RADIUS: f64 = 1.0;
+pub const RADIUS: f64 = 1.3;
 
 const OUTER_COLOR: Color = Color::new(0.0, 0.0, 1.0, 1.0);
 const INNER_COLOR: Color = Color::new(0.1, 0.1, 2.0, 1.0);

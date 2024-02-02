@@ -13,7 +13,7 @@ pub trait SoundSystem {
 
 pub struct PlaySoundArgs {
     pub sdr: SoundDataRef,
-    pub volume: f64,
+    pub volume_db_shift: f64,
     pub playback_speed: f64,
     pub panning: f64,
 }
@@ -63,7 +63,8 @@ impl SoundSystem for KiraSoundSystem {
         // on sound_data.settings does nothing. Instead, configure the sound after it starts playing, which actually
         // works.
         let mut sound = self.audio_manager.play(sound_data)?;
-        sound.set_volume(kira::Volume::Amplitude(args.volume), IMMEDIATE_TWEEN)?;
+        assert!(args.volume_db_shift >= -40.0 && args.volume_db_shift <= 40.0, "args.volume_db_shift({}) is too extreme", args.volume_db_shift);
+        sound.set_volume(kira::Volume::Decibels(args.volume_db_shift), IMMEDIATE_TWEEN)?;
         sound.set_panning(args.panning, IMMEDIATE_TWEEN)?;
         sound.set_playback_rate(PlaybackRate::Factor(args.playback_speed), IMMEDIATE_TWEEN)?;
         self.sound_playing_id_counter += 1;

@@ -17,7 +17,7 @@ struct Movement {
 }
 
 pub fn new_square_blue(ctx: &mut NewRoomObjectContext, x: f64, y: f64) -> StandardUnit1 {
-    let mut border_vertexes: [Point; 4] = regular_polygon(4, 1.2)[..].try_into().unwrap();
+    let mut border_vertexes: [Point; 4] = regular_polygon(4, 1.3)[..].try_into().unwrap();
     rotate_polygon(std::f32::consts::FRAC_PI_4, &mut border_vertexes);
     let inner_vertexes: [Point; 4] = get_inner_polygon(0.1, &border_vertexes)[..].try_into().unwrap();
     let xform = Transformation::new(x, y, 0.0);

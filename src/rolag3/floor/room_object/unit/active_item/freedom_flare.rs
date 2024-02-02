@@ -106,10 +106,10 @@ fn use_fn(ctx: &mut UseStandardActiveItem1Context) -> ActiveItemHandleTickRespon
         for j in 0..11 {
             let x = top_left_x + 0.4 * flag_w * (j as f64) / 11.0;
 
-            let sound_volume_mult = if i==0 && j%2==0 {
-                0.5
+            let if_play_sound_db_shift = if i==0 && j%2==0 {
+                Some(-2.0)
             } else {
-                0.0
+                None
             };
 
             let max_radius = 6.0 / 13.0 * flag_h / 9.0 / 2.0;
@@ -125,7 +125,7 @@ fn use_fn(ctx: &mut UseStandardActiveItem1Context) -> ActiveItemHandleTickRespon
                     Box::new(white_outer_color_fn), 
                     Box::new(white_inner_color_fn), 
                         Box::new(move |age, shape_dst| star_shape_fn(max_radius, age, shape_dst)), 
-                    sound_volume_mult,
+                    if_play_sound_db_shift,
                     0.05 * (x - top_left_x),
                 )
             } else {
@@ -140,7 +140,7 @@ fn use_fn(ctx: &mut UseStandardActiveItem1Context) -> ActiveItemHandleTickRespon
                     Box::new(blue_outer_color_fn), 
                     Box::new(blue_inner_color_fn), 
                     Box::new(move |age, shape_dst| circle_shape_fn(max_radius, age, shape_dst)), 
-                    sound_volume_mult,
+                    if_play_sound_db_shift,
                     0.05 * (x - top_left_x),
                 )
             };
@@ -157,10 +157,10 @@ fn use_fn(ctx: &mut UseStandardActiveItem1Context) -> ActiveItemHandleTickRespon
             }
             let x = top_left_x + stripe_height * (j as f64);
 
-            let sound_volume_mult = if (i==0 && j%2==0) || (i==12 && j%2==1) {
-                0.5
+            let if_play_sound_db_shift = if (i==0 && j%2==0) || (i==12 && j%2==1) {
+                Some(-2.0)
             } else {
-                0.0
+                None
             };
 
             let max_radius = stripe_height / 2.0;
@@ -176,7 +176,7 @@ fn use_fn(ctx: &mut UseStandardActiveItem1Context) -> ActiveItemHandleTickRespon
                     Box::new(red_outer_color_fn), 
                     Box::new(red_inner_color_fn), 
                     Box::new(move |age, shape_dst| circle_shape_fn(max_radius, age, shape_dst)), 
-                    sound_volume_mult,
+                    if_play_sound_db_shift,
                     0.05 * (x - top_left_x),
                 )
             } else {
@@ -191,7 +191,7 @@ fn use_fn(ctx: &mut UseStandardActiveItem1Context) -> ActiveItemHandleTickRespon
                     Box::new(white_outer_color_fn), 
                     Box::new(white_inner_color_fn), 
                     Box::new(move |age, shape_dst| circle_shape_fn(max_radius, age, shape_dst)), 
-                    sound_volume_mult,
+                    if_play_sound_db_shift,
                     0.05 * (x - top_left_x),
                 )
             };

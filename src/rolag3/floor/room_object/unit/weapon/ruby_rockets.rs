@@ -62,17 +62,17 @@ fn handle_tick_fn(ctx: &mut WeaponHandleTickContext) -> WeaponHandleTickResponse
         for i in 0..num_proj {
             let angle = (i as f64) / (num_proj as f64) * 2.0 * std::f64::consts::PI;
             // only 1/8 of the explosions produce sound. This prevents us from overloading the sound system.
-            let sound_volume = if i % 8 == 0 {
-                0.5
+            let if_play_sound_db_shift = if i % 8 == 0 {
+                Some(-3.0)
             } else {
-                0.0
+                None
             };
-            response.new_room_objs.push(spawn_projectile(ctx, angle, 3.0, sound_volume));
+            response.new_room_objs.push(spawn_projectile(ctx, angle, 3.0, if_play_sound_db_shift));
         }
         let mut rng = ctx.act1_ctx.get_rng().spawn_child();
         let sound_candidates = &ctx.act1_ctx.get_sound_db().gun_grenade_launcher_shot;
         let sound_data = rng.sample_slice_uniform(sound_candidates);
-        response.newly_played_sounds.push(ctx.act1_ctx.new_play_sound_builder(sound_data).volume(1.2).build());
+        response.newly_played_sounds.push(ctx.act1_ctx.new_play_sound_builder(sound_data).volume_db_shift(3.0).build());
         return response;
     }
     if !ctx.primary_attack {
@@ -85,7 +85,7 @@ fn handle_tick_fn(ctx: &mut WeaponHandleTickContext) -> WeaponHandleTickResponse
     ws_data.since_last_primary_attack = 0.0;
 
     let angle = f64::atan2(ctx.mouse_y - ctx.owner_xform.dy, ctx.mouse_x - ctx.owner_xform.dx);
-    let proj = spawn_projectile(ctx, angle, 4.0, 0.7);
+    let proj = spawn_projectile(ctx, angle, 4.0, Some(-1.5));
     response.new_room_objs.push(proj);
 
     let mut rng = ctx.act1_ctx.get_rng().spawn_child();
@@ -100,7 +100,7 @@ fn spawn_projectile(
     ctx: &mut WeaponHandleTickContext, 
     angle: f64, 
     explosion_radius: f64,
-    sound_volume_mult: f64,
+    if_play_sound_db_shift: Option<f64>,
 ) -> Rc<RefCell<dyn RoomObject>> {
     let velocity_x = ctx.owner_velocity_x + PROJ_VELOCITY * f64::cos(angle);
     let velocity_y = ctx.owner_velocity_y + PROJ_VELOCITY * f64::sin(angle);
@@ -138,7 +138,7 @@ fn spawn_projectile(
             Box::new(outer_color_fn), 
             Box::new(inner_color_fn), 
             Box::new(shape_fn),
-            sound_volume_mult,
+            if_play_sound_db_shift,
             0.0,
         )
     };

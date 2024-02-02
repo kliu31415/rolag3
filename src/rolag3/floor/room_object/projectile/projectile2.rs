@@ -385,6 +385,7 @@ fn handle_collision(ctx: &mut SpHandleCollisionContext) -> HandleCollisionRespon
         damage_color: ctx.sp_ctx.damage_color,
         damage: ctx.sp_ctx.damage,
         room_time,
+        // use clone() over mem::take() because a projectile may collide with an enemy multiple times
         succ_ewma_actions: ps_data.succ_ewma.clone(),
         rofiz,
         room_object_id_counter,

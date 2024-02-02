@@ -16,7 +16,7 @@ pub struct Explosion1 {
     cached_shape: Shape,
     shape_fn: Box<dyn Fn(f64, &mut Shape)>,
     md: RoomObjectMetadata,
-    sound_volume_mult: f64,
+    if_play_sound_db_shift: Option<f64>,
     sound_added: bool,
 }
 
@@ -35,11 +35,13 @@ impl RoomObject for Explosion1 {
         }
         let mut response = Act1Response::new();
         if !self.sound_added {
-            let mut rng = ctx.get_rng().spawn_child();
-            let sound_data = rng.sample_slice_uniform(&ctx.get_sound_db().explosion_small);
-            let psb = ctx.new_play_sound_builder(sound_data);
-            response.play_sound(psb.volume(self.sound_volume_mult).location(self.xform.dx, self.xform.dy).build());
-            self.sound_added = true;
+            if let Some(sds) = self.if_play_sound_db_shift {
+                let mut rng = ctx.get_rng().spawn_child();
+                let sound_data = rng.sample_slice_uniform(&ctx.get_sound_db().explosion_small);
+                let psb = ctx.new_play_sound_builder(sound_data);
+                response.play_sound(psb.volume_db_shift(sds).location(self.xform.dx, self.xform.dy).build());
+                self.sound_added = true;
+            }
         }
         (self.shape_fn)(ctx.get_room_time() - self.creation_time, &mut self.cached_shape);
         match &self.cached_shape {
@@ -128,7 +130,7 @@ pub fn new_explosion1(
     outer_color_fn: Box<dyn Fn(f64) -> Color>,
     inner_color_fn: Box<dyn Fn(f64) -> Color>,
     shape_fn: Box<dyn Fn(f64, &mut Shape)>, /* if polygon, must be a tri fan centered at the origin (or else rendering won't work) */
-    sound_volume_mult: f64,
+    if_play_sound_db_shift: Option<f64>,
     delay: f64,
 ) -> Explosion1 {
     assert!(delay >= 0.0, "expected delay({}) > 0", delay);
@@ -147,7 +149,7 @@ pub fn new_explosion1(
         cached_shape: Shape::default(),
         shape_fn,
         md,
-        sound_volume_mult,
+        if_play_sound_db_shift,
         sound_added: false,
     }
 }

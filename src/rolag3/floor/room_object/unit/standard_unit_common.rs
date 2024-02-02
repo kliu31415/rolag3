@@ -129,7 +129,7 @@ pub enum SuccEwmaActionEnum {
         outer_color_fn: Rc<dyn Fn() -> Box<dyn Fn(f64) -> Color>>,
         inner_color_fn: Rc<dyn Fn() -> Box<dyn Fn(f64) -> Color>>,
         shape_fn: Rc<dyn Fn() -> Box<dyn Fn(f64, &mut Shape)>>,
-        sound_volume_mult: f64,
+        if_play_sound_db_shift: Option<f64>,
     },
 }
 
@@ -643,7 +643,7 @@ impl StandardUnitCommon {
                             outer_color_fn,
                             inner_color_fn,
                             shape_fn,
-                            sound_volume_mult,
+                            if_play_sound_db_shift,
                         } => {
                             let xform = self.get_rofiz_xform(nro_ctx.get_rofiz());
                             let explosion = new_explosion1(
@@ -658,7 +658,7 @@ impl StandardUnitCommon {
                                 (outer_color_fn)(), 
                                 (inner_color_fn)(), 
                                 (shape_fn)(), 
-                                sound_volume_mult, 
+                                if_play_sound_db_shift, 
                                 0.0,
                             );
                             new_room_objects.push(Rc::new(RefCell::new(explosion)) as _);

@@ -18,13 +18,13 @@ const PROJ_VERTEXES: [Point; 4] = [Point::new(-0.2, -0.2), Point::new(0.2, -0.2)
 
 struct Weapon1Data {
     since_last_primary_attack: f64,
-    sound_token_bucken: TokenBucket,
+    sound_token_bucket: TokenBucket,
 }
 
 pub fn new_weapon_green_laser() -> Weapon {
     let ws_data = Box::new(Weapon1Data {
         since_last_primary_attack: PRIMARY_ATTACK_INTERVAL,
-        sound_token_bucken: TokenBucket::new(1.0, 5.0),
+        sound_token_bucket: TokenBucket::new(1.0, 5.0),
     });
     Weapon::new(
         DamageColor::Green,
@@ -88,7 +88,7 @@ fn handle_tick_fn(ctx: &mut WeaponHandleTickContext) -> WeaponHandleTickResponse
         response.new_room_objs.push(Rc::new(RefCell::new(proj)));
     }
 
-    if ws_data.sound_token_bucken.try_take_fok(ctx.owner_age, 1.0) {
+    if ws_data.sound_token_bucket.try_take_fok(ctx.owner_age, 1.0) {
         let mut rng = ctx.act1_ctx.get_rng().spawn_child();
         let sound_candidates = &ctx.act1_ctx.get_sound_db().sci_fi_weapon_laser_small;
         let sound_data = rng.sample_slice_uniform(sound_candidates);

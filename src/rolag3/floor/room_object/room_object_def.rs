@@ -347,11 +347,6 @@ impl RoomObjectCollection {
             self.cached_mem.act1_responses.push(response);
 
             for nps in newly_played_sounds {
-                assert!(nps.volume >= 0.0, "sound volume ({}) is less than 0", nps.volume);
-                if nps.volume == 0.0 {
-                    continue;
-                }
-
                 // TODO: improve panning
                 let panning = if let Some((sx, sy)) = nps.location {
                     let dy = f64::abs(player_center.y - sy);
@@ -364,7 +359,7 @@ impl RoomObjectCollection {
                 
                 let r = sound_system.play_sound(PlaySoundArgs {
                     sdr: nps.sound_data,
-                    volume: nps.volume,
+                    volume_db_shift: nps.volume_db_shift,
                     playback_speed: nps.playback_speed,
                     panning,
                 });

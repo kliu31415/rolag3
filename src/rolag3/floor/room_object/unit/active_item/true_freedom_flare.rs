@@ -87,10 +87,10 @@ fn use_fn(ctx: &mut UseStandardActiveItem1Context) -> ActiveItemHandleTickRespon
         for (j, dy) in [0.5, 1.5, 2.5, flag_h - 0.5, flag_h - 1.5, flag_h - 2.5].into_iter().enumerate() {
             let y = top_left_y + dy;
 
-            let sound_volume_mult = if (i%4==0 && j==0) || (i%4==2 && j==5) {
-                0.4
+            let if_play_sound_db_shift = if (i%4==0 && j==0) || (i%4==2 && j==5) {
+                Some(-3.0)
             } else {
-                0.0
+                None
             };
 
             let max_radius = 0.5;
@@ -106,7 +106,7 @@ fn use_fn(ctx: &mut UseStandardActiveItem1Context) -> ActiveItemHandleTickRespon
                 Box::new(blue_outer_color_fn), 
                 Box::new(blue_inner_color_fn), 
                 Box::new(move |age, shape_dst| circle_shape_fn(max_radius, age, shape_dst)), 
-                sound_volume_mult,
+                if_play_sound_db_shift,
                 0.03 * (x - top_left_x),
             );
             response.room_objs_to_add.push(Rc::new(RefCell::new(explosion)));
@@ -119,7 +119,7 @@ fn use_fn(ctx: &mut UseStandardActiveItem1Context) -> ActiveItemHandleTickRespon
         for dy in [3.5, flag_h - 3.5] {
             let y = top_left_y + dy;
 
-            let sound_volume_mult = 0.0;
+            let if_play_sound_db_shift = None;
 
             let max_radius = 0.5;
             let explosion = new_explosion1(
@@ -134,7 +134,7 @@ fn use_fn(ctx: &mut UseStandardActiveItem1Context) -> ActiveItemHandleTickRespon
                 Box::new(white_outer_color_fn), 
                 Box::new(white_inner_color_fn), 
                 Box::new(move |age, shape_dst| circle_shape_fn(max_radius, age, shape_dst)), 
-                sound_volume_mult,
+                if_play_sound_db_shift,
                 0.03 * (x - top_left_x),
             );
             response.room_objs_to_add.push(Rc::new(RefCell::new(explosion)));
@@ -155,7 +155,7 @@ fn use_fn(ctx: &mut UseStandardActiveItem1Context) -> ActiveItemHandleTickRespon
         for j in 4..17 {
             let y = top_left_y + (j as f64) + 0.5;
 
-            let sound_volume_mult = 0.0;
+            let if_play_sound_db_shift = None;
 
             let max_radius = 0.5;
             let explosion = if star_circle.contains(Point::new(x as f32, y as f32)) {
@@ -172,7 +172,7 @@ fn use_fn(ctx: &mut UseStandardActiveItem1Context) -> ActiveItemHandleTickRespon
                         Box::new(red_outer_color_fn), 
                         Box::new(red_inner_color_fn), 
                         Box::new(move |age, shape_dst| circle_shape_fn(max_radius, age, shape_dst)), 
-                        sound_volume_mult,
+                        if_play_sound_db_shift,
                         0.03 * (x - top_left_x),
                     )
                 } else {
@@ -188,7 +188,7 @@ fn use_fn(ctx: &mut UseStandardActiveItem1Context) -> ActiveItemHandleTickRespon
                         Box::new(white_outer_color_fn), 
                         Box::new(white_inner_color_fn), 
                         Box::new(move |age, shape_dst| circle_shape_fn(max_radius, age, shape_dst)), 
-                        sound_volume_mult,
+                        if_play_sound_db_shift,
                         0.03 * (x - top_left_x),
                     )
                 }
@@ -205,7 +205,7 @@ fn use_fn(ctx: &mut UseStandardActiveItem1Context) -> ActiveItemHandleTickRespon
                     Box::new(red_outer_color_fn), 
                     Box::new(red_inner_color_fn), 
                     Box::new(move |age, shape_dst| circle_shape_fn(max_radius, age, shape_dst)), 
-                    sound_volume_mult,
+                    if_play_sound_db_shift,
                     0.03 * (x - top_left_x),
                 )
             };
