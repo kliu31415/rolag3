@@ -9,6 +9,7 @@ use crate::{rolag3::floor::{draw::{Color, DrawContext}, room_object::{room_objec
 
 const MAX_HP: f64 = 25.0;
 const FIRE_PROJ_EWMA_THRESHOLD: f64 = 5.0;
+const EWMA_MULT_AFTER_FIRE_PROJ: f64 = 0.6;
 
 pub struct SquareRgbSquare2 {
     border_vertexes: [Point; 4],
@@ -33,9 +34,9 @@ pub fn new_square_rgb_square2(ctx: &mut NewRoomObjectContext, damage_color: Dama
     let shape = Shape::of_polygon(Box::new(border_vertexes));
 
     let outer_color = match damage_color {
-        DamageColor::Red => Color::new(0.3, 0.1, 0.1, 1.0),
-        DamageColor::Green => Color::new(0.1, 0.3, 0.1, 1.0),
-        DamageColor::Blue => Color::new(0.1, 0.1, 0.3, 1.0),
+        DamageColor::Red => Color::new(0.3, 0.07, 0.07, 1.0),
+        DamageColor::Green => Color::new(0.07, 0.3, 0.07, 1.0),
+        DamageColor::Blue => Color::new(0.07, 0.07, 0.3, 1.0),
         _ => panic!("unexpected damage_color {:?}", damage_color),
     };
         
@@ -108,7 +109,7 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
                 response.add_room_obj(Rc::new(RefCell::new(proj)));
             }
         }
-        us_data.damage_taken_ewma *= 0.5;
+        us_data.damage_taken_ewma *= EWMA_MULT_AFTER_FIRE_PROJ;
     }
 
     us_data.reset_translate_dir |= ctx.act1_ctx.get_rng().gen_bernoulli(tick_len);
@@ -146,7 +147,7 @@ fn draw(ctx: &mut SuDrawContext) {
     let border_color = ctx.su_ctx.su_common.get_draw_color(DrawContext::COLOR_NSU_BORDER);
     let outer_color = ctx.su_ctx.su_common.get_draw_color(us_data.outer_color);
     assert!(us_data.damage_taken_ewma >= 0.0);
-    let lerp_t = us_data.damage_taken_ewma / FIRE_PROJ_EWMA_THRESHOLD;
+    let lerp_t = f64::min(1.0, us_data.damage_taken_ewma / FIRE_PROJ_EWMA_THRESHOLD / EWMA_MULT_AFTER_FIRE_PROJ);
     let inner_color = Color::lerp(us_data.outer_color, us_data.proj_color, lerp_t as f32);
     let inner_color = ctx.su_ctx.su_common.get_draw_color(inner_color);
     let xform = ctx.su_ctx.su_common.get_rofiz_xform(ctx.draw_ctx.get_rofiz());
