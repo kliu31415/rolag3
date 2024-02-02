@@ -5,7 +5,20 @@ use crate::rolag3::floor::{floorgen::run::{GenFloorRoomContext, GenFloorRoomResp
 /* Common114 contains two HexagonRgb2Circles and two SquareRgbSquare2s
  */
 
-pub fn get_gen_room_fn_common114(
+ pub fn get_gen_room_fn_common114a(
+    w: u32, 
+    h: u32,
+) -> Box<dyn Fn(&mut GenFloorRoomContext) -> GenFloorRoomResponse> {
+    Box::new(move |ctx: &mut GenFloorRoomContext| {
+        let colors = [DamageColor::Red, DamageColor::Green, DamageColor::Blue];
+        let chosen = ctx.rng.choose_multiple(&colors, 2);
+        let hexagon_colors = [chosen[0], chosen[0]];
+        let square_colors = [chosen[1], chosen[1]];
+        make_room(ctx, w, h, hexagon_colors, square_colors)
+    })
+}
+
+pub fn get_gen_room_fn_common114b(
     w: u32, 
     h: u32,
 ) -> Box<dyn Fn(&mut GenFloorRoomContext) -> GenFloorRoomResponse> {
@@ -16,6 +29,7 @@ pub fn get_gen_room_fn_common114(
         make_room(ctx, w, h, hexagon_colors, square_colors)
     })
 }
+
 
 fn make_room(
     ctx: &mut GenFloorRoomContext, 
