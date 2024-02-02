@@ -245,7 +245,6 @@ pub struct StandardUnit1Builder {
     rofiz_obj_type: RofizObjType,
     damageable: bool,
     blocks_room_clear: bool,
-    secondary_hitboxes: Vec<(Transformation, Shape, RofizObjType)>,
     room_obj_md: Option<RoomObjectMetadata>,
     remove_immediately_on_death: bool,
 }
@@ -253,7 +252,7 @@ pub struct StandardUnit1Builder {
 pub enum RofizObjType {
     NonspectralUnit,
     SpectralUnit,
-    BasicProjectile,
+    _BasicProjectile,
 }
 
 pub enum HandleCollisionLogic {
@@ -294,7 +293,6 @@ impl StandardUnit1Builder {
             rofiz_obj_type: RofizObjType::NonspectralUnit,
             damageable: true,
             blocks_room_clear: true,
-            secondary_hitboxes: Vec::new(),
             room_obj_md: None,
             remove_immediately_on_death: true,
         }
@@ -383,11 +381,6 @@ impl StandardUnit1Builder {
         self
     }
 
-    pub fn add_secondary_hitbox(mut self, xform: Transformation, shape: Shape, rofiz_obj_type: RofizObjType) -> Self {
-        self.secondary_hitboxes.push((xform, shape, rofiz_obj_type));
-        self
-    }
-
     pub fn remove_immediately_on_death(mut self, v: bool) -> Self {
         self.remove_immediately_on_death = v;
         self
@@ -401,7 +394,7 @@ impl StandardUnit1Builder {
                 let rofo_ref = match self.rofiz_obj_type {
                     RofizObjType::NonspectralUnit => ctx.add_nonspectral_unit(self.room_obj_md.as_ref().unwrap().get_ref(), hitbox),
                     RofizObjType::SpectralUnit => ctx.add_spectral_unit(self.room_obj_md.as_ref().unwrap().get_ref(), hitbox),
-                    RofizObjType::BasicProjectile => ctx.add_basic_projectile(self.room_obj_md.as_ref().unwrap().get_ref(), hitbox),
+                    RofizObjType::_BasicProjectile => ctx.add_basic_projectile(self.room_obj_md.as_ref().unwrap().get_ref(), hitbox),
                 };
                 Some(rofo_ref)
             },
@@ -421,17 +414,6 @@ impl StandardUnit1Builder {
             1.0,
             0.2,
         );
-
-        let mut secondary_hitboxes = Vec::new();
-        for (xform, shape, typ) in self.secondary_hitboxes {
-            let hitbox = Hitbox::new(xform, shape);
-            let rofo_ref = match typ {
-                RofizObjType::NonspectralUnit => ctx.add_nonspectral_unit(self.room_obj_md.as_ref().unwrap().get_ref(), hitbox),
-                RofizObjType::SpectralUnit => ctx.add_spectral_unit(self.room_obj_md.as_ref().unwrap().get_ref(), hitbox),
-                RofizObjType::BasicProjectile => ctx.add_basic_projectile(self.room_obj_md.as_ref().unwrap().get_ref(), hitbox),
-            };
-            secondary_hitboxes.push(rofo_ref);
-        }
         
         let handle_collision_fn = match self.handle_collision_logic {
             HandleCollisionLogic::Nop => Box::new(handle_collision_nop),

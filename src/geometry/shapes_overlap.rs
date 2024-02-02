@@ -53,7 +53,7 @@ fn line_segment_to_point_dist_sq(v1: Point, v2: Point, p: Point) -> f32 {
     }
 
     let t = f32::clamp(Vector::dot(v2 - v1, p - v1) / segment_len_sq, 0.0, 1.0);
-    let projection = v1 + (v2 - p) * t;
+    let projection = v1 + (v2 - v1) * t;
     (projection - p).norm_sq()
 }
 

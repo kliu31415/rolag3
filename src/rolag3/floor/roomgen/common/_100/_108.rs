@@ -1,6 +1,6 @@
 use std::{rc::Rc, cell::RefCell};
 
-use crate::rolag3::floor::{floorgen::run::{GenFloorRoomContext, GenFloorRoomResponse}, roomgen::util::{square_room::init_basic_square_room, connection_candidates::{some_borders_as_connection_candidates, SomeBorders}}, room_object::{room_object_def::NewRoomObjectContext, unit::enemy::{square::{rgb_2tri::new_square_rgb_2tri, rgb_2circle::position_fn_between_two_points}, small_square::rgb::new_square_rgb}, damage::DamageColor}, room::{RoomBuilder, RoomBuilderReq}};
+use crate::rolag3::floor::{floorgen::run::{GenFloorRoomContext, GenFloorRoomResponse}, roomgen::util::{square_room::init_basic_square_room, connection_candidates::{some_borders_as_connection_candidates, SomeBorders}}, room_object::{room_object_def::NewRoomObjectContext, unit::enemy::{square::{rgb_2tri::new_square_rgb_2tri, rgb_2circle::position_fn_between_two_points}, small_square::rgb::new_small_square_rgb}, damage::DamageColor}, room::{RoomBuilder, RoomBuilderReq}};
 
 /* Common108 contains many SquareRgb(Green)s, as well as two SquareRgb2Tris
  */
@@ -26,7 +26,7 @@ fn make_room(ctx: &mut GenFloorRoomContext, w: u32, h: u32) -> GenFloorRoomRespo
             // This prevents enemies from sliding over each other
             let x = i as f64 * (w as f64 / 6.0) + rng.gen_f64_range(-0.1 .. 0.1);
             let y = j as f64 * (h as f64 / 6.0) + rng.gen_f64_range(-0.1 .. 0.1);
-            let enemy = new_square_rgb(nro_ctx, e1_damage_color, x, y);
+            let enemy = new_small_square_rgb(nro_ctx, e1_damage_color, x, y);
             room_objects.add(Rc::new(RefCell::new(enemy)));
         }
     }

@@ -13,7 +13,7 @@ pub struct SquareSmallRgb {
     inner_color: Color,
 }
 
-pub fn new_square_rgb(ctx: &mut NewRoomObjectContext, damage_color: DamageColor, x: f64, y: f64) -> StandardUnit1 {
+pub fn new_small_square_rgb(ctx: &mut NewRoomObjectContext, damage_color: DamageColor, x: f64, y: f64) -> StandardUnit1 {
     let mut border_vertexes: [Point; 4] = regular_polygon(4, 0.8)[..].try_into().unwrap();
     rotate_polygon(std::f32::consts::FRAC_PI_4, &mut border_vertexes);
     let inner_vertexes: [Point; 4] = get_inner_polygon(0.1, &border_vertexes)[..].try_into().unwrap();

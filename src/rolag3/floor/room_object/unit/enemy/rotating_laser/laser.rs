@@ -1,4 +1,4 @@
-use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Team, Act1Response}, unit::standard_unit1::{StandardUnit1, StandardUnit1Builder, StandardUnit1BuilderReq, SuAct1Context, SuDrawContext, RofizObjType}, damage::DamageColor}, draw::{Color, DrawContext}, rofiz::{rofiz_object::{Transformation, RofizObjectMovement, Hitbox}, rofiz_state::RofizObjectRef}}, geometry::shape::{Shape, Rect, Point}};
+use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Team, Act1Response}, unit::standard_unit1::{StandardUnit1, StandardUnit1Builder, StandardUnit1BuilderReq, SuAct1Context, SuDrawContext}, damage::DamageColor}, draw::{Color, DrawContext}, rofiz::{rofiz_object::{Transformation, RofizObjectMovement, Hitbox}, rofiz_state::RofizObjectRef}}, geometry::shape::{Shape, Rect, Point}};
 
 /* RotatingLaserBasic is a single laser that rotates at a slow speed
 */
@@ -7,7 +7,6 @@ const CIRCULAR_BASE_BORDER_COLOR: Color = Color::new(0.5, 0.5, 0.5, 1.0);
 const CIRCULAR_BASE_BORDER_R: f32 = 0.5;
 const CIRCULAR_BASE_INNER_R: f32 = 0.4;
 const LASER_WIDTH: f32 = 0.15;
-const LASER_LENGTH: f32 = 5.0;
 
 struct RotatingLaserBasic {
     laser_draw_color: Color,
@@ -23,6 +22,7 @@ pub fn new_rotating_laser(
     ctx: &mut NewRoomObjectContext, 
     xform: Transformation,
     color: DamageColor,
+    laser_length: f64,
     angular_speed: f64,
 ) -> StandardUnit1 {
     let draw_color = match color {
@@ -37,7 +37,7 @@ pub fn new_rotating_laser(
         DamageColor::Blue => Color::new(0.01, 0.01, 0.5, 1.0),
         _ => panic!("can't create rotating laser with color {:?}", color),
     };
-    let rect = Shape::of_rect(Rect::new(0.0, -LASER_WIDTH / 2.0, LASER_LENGTH, LASER_WIDTH));
+    let rect = Shape::of_rect(Rect::new(0.0, -LASER_WIDTH / 2.0, laser_length as f32, LASER_WIDTH));
 
     let mut builder = StandardUnit1Builder::new(StandardUnit1BuilderReq {
         team: Team::Enemy,
@@ -47,6 +47,7 @@ pub fn new_rotating_laser(
         tire_traction: 1.0, // dummy
     });
     let md = builder.get_room_obj_metadata(ctx);
+    // TODO: if laser_length is large, break up the laser into multiple Rofiz objects as an optimizations
     let rotating_laser_rofo_ref = ctx.add_basic_projectile(md.get_ref(), Hitbox::new(xform, rect.clone()));
 
     let us_data = RotatingLaserBasic {
@@ -64,7 +65,6 @@ pub fn new_rotating_laser(
         .us_data(Box::new(us_data))
         .damageable(false)
         .blocks_room_clear(false)
-        .add_secondary_hitbox(xform, rect.clone(), RofizObjType::BasicProjectile)
         .build(ctx)
 }
 
