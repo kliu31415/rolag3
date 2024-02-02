@@ -40,8 +40,8 @@ fn make_room(
         }
     }
 
-    let xform = Transformation::new(w as f64 / 2.0, h as f64 / 2.0, 0.0);
-    let angular_speed = rng.gen_f64_range(0.7 .. 1.0);
+    let xform = Transformation::new(w as f64 / 2.0, h as f64 / 2.0, -std::f64::consts::FRAC_PI_6);
+    let angular_speed = rng.gen_f64_range(0.9 .. 1.2);
     let laser_length = 0.5 * f64::hypot(w as f64, h as f64);
     let laser = new_rotating_laser(nro_ctx, xform, laser_color, laser_length, angular_speed);
     room_objects.add(Rc::new(RefCell::new(laser)));
