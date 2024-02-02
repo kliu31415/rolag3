@@ -104,7 +104,7 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
 
     if let Some(qr) = us_data.xlate_dir_qr.take() {
         let Act1QueryResult::ClosestUnit(cu_opt) = &*qr.borrow() else {panic!("unexpected qr={:?}", &*qr.borrow())};
-        let mut probabilities = [1.5, 1.5, 1.5, 1.5];
+        let mut probabilities = [1.2, 1.2, 1.2, 1.2];
         if let Some(cu) = cu_opt {
             let dx = cu.x - xform.dx;
             let dy = cu.y - xform.dy;
