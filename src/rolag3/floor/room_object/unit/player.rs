@@ -1,4 +1,4 @@
-use crate::{rolag3::floor::{run::{PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, draw::DrawContext, room_object::{room_object_def::{RoomObject, Act1Context, FloorCoordinate, RoomObjectMetadata, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse, RoQueryUnitInfoContext, RoQueryUnitInfoResponse, HcTileContext, HcTileEffect, HcTileResponse, RoomObjApplyOperationContext, RoomObjOperation, HcStandardUnitContext, HcStandardUnitResponse, HandleRoomJustClearedContext, HcTileEffectDuration, RoomObjectRef, NewRoomObjectContext}, tiles::room_connection::Direction, damage::DamageColor, unit::{standard_unit_common::{BudebExpiry, BudebTractionMult, BudebTractionCap}, weapon::{crimson_shotgun::new_weapon_crimson_shotgun, shock_chain::new_weapon_shock_chain, weapon_def::SwitchOutWeaponContext}}}, rofiz::{rofiz_object::{Hitbox, Transformation}, rofiz_state::RofizState}, room::RoomConnectionInfo}, geometry::shape::{Shape, Point}, gfx::{renderer::{DrawOp, DrawOpGroup, ColorRGBA32f, DrawOpText, DrawTextPosition}, draw_op_util::draw_op_rect, text::font::Font}};
+use crate::{rolag3::floor::{run::{PlayerHorizontalMoveInput, PlayerVerticalMoveInput}, draw::DrawContext, room_object::{room_object_def::{RoomObject, Act1Context, FloorCoordinate, RoomObjectMetadata, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse, RoQueryUnitInfoContext, RoQueryUnitInfoResponse, HcTileContext, HcTileEffect, HcTileResponse, RoomObjApplyOperationContext, RoomObjOperation, HcStandardUnitContext, HcStandardUnitResponse, HandleRoomJustClearedContext, HcTileEffectDuration, RoomObjectRef, NewRoomObjectContext}, tiles::room_connection::Direction, damage::DamageColor, unit::{standard_unit_common::{BudebExpiry, BudebTractionMult, BudebTractionCap}, weapon::{crimson_shotgun::new_weapon_crimson_shotgun, shock_chain::new_weapon_shock_chain, weapon_def::SwitchOutWeaponContext, azure_katana::new_weapon_azure_katana}}}, rofiz::{rofiz_object::{Hitbox, Transformation}, rofiz_state::RofizState}, room::RoomConnectionInfo}, geometry::shape::{Shape, Point}, gfx::{renderer::{DrawOp, DrawOpGroup, ColorRGBA32f, DrawOpText, DrawTextPosition}, draw_op_util::draw_op_rect, text::font::Font}};
 
 use super::{Unit, standard_unit_common::{StandardUnitCommon, Budeb, BudebSpeedMult, TranslateMove, PolarForce}, weapon::{weapon_def::{Weapon, WeaponHandleTickContext, DrawWeaponHudContext, DrawWeaponOnOwnerContext, WeaponExitRoomContext}, green_laser::new_weapon_green_laser, lapis_trigun::new_weapon_lapis_trigun, ruby_rockets::new_weapon_ruby_rockets}, active_item::{active_item_def::{ActiveItem, ActiveItemHandleTickContext}, clear_enemy_projectiles::new_active_item_clear_projectiles, slow_enemy_time::new_active_item_slow_enemy_time, freedom_flare::new_active_item_freedom_flare, true_freedom_flare::new_active_item_true_freedom_flare}};
 
@@ -219,6 +219,7 @@ impl RoomObject for Player {
             x: xform.dx as f32,
             y: xform.dy as f32,
             owner_xform: xform,
+            owner_age: self.su_common.get_unit_time(),
             mouse_x_game_coords: ctx.get_mouse_x_game_coords(),
             mouse_y_game_coords: ctx.get_mouse_y_game_coords(),
         };
@@ -362,7 +363,7 @@ impl Player {
             vec![new_weapon_ruby_rockets(), new_weapon_green_laser(), new_weapon_lapis_trigun()]
         } else {
             // prevent the linter from warning about unused weapon code
-            vec![new_weapon_crimson_shotgun(), new_weapon_shock_chain()]
+            vec![new_weapon_crimson_shotgun(), new_weapon_shock_chain(), new_weapon_azure_katana()]
         };
         Player {
             md,

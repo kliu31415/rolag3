@@ -157,6 +157,7 @@ pub struct DrawWeaponOnOwnerContext<'a> {
     pub y: f32,
 
     pub owner_xform: Transformation,
+    pub owner_age: f64,
     pub mouse_x_game_coords: f64,
     pub mouse_y_game_coords: f64,
 }

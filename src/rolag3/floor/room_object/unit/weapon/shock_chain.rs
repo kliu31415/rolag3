@@ -68,8 +68,6 @@ fn handle_tick_fn(ctx: &mut WeaponHandleTickContext) -> WeaponHandleTickResponse
                 let link = link_rc.borrow();
                 response.room_objs_to_remove.push(link.get_metadata().get_ref());
             }
-            // TODO: fix bug where player moves rooms. Shock chain units are in the previous room and therefore
-            // can't be deleted
             ws_data.attack = None;
         } else {
             assert!(attack.links.len() > 1);

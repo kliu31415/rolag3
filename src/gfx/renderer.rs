@@ -495,7 +495,7 @@ impl Renderer for WgpuRenderer {
 
             // sort DrawOps by z. Order them in a way that minimizes the amount of times the shader pipeline is changed
             self.draw_ops.sort_by(|a, b| a.z.partial_cmp(&b.z).unwrap());
-            let mut ops_per_z = vec![Vec::new()];
+            let mut ops_per_z = Vec::new();
             let mut ops_this_z = Vec::new();
             let mut prev_z = f64::NEG_INFINITY;
             for op in self.draw_ops.iter() {

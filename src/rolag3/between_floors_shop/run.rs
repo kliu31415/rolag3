@@ -408,9 +408,9 @@ fn get_shop_ui_shop_weapons(ctx: &RunFrameBfshopContext, y: f32) -> KuiElement {
         ),
     };
     weapon_inventory_section.children.push(weapon_title);
-    let weapon_rects: [Rect; 3] = std::array::from_fn(|i| {
+    let weapon_rects = (0..(ctx.shop_weapons.len())).map(|i| {
         Rect::new(0.0, title_y_buffer + (0.065 * i as f32) * h, 0.12 * w, 0.05 * h)
-    });
+    }).collect::<Box<_>>();
     let colors = [
         ColorRGBA32f::new(1.0, 0.01, 0.01, 1.0),
         ColorRGBA32f::new(0.0, 1.0, 0.0, 1.0),

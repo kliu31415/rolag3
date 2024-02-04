@@ -6,3 +6,5 @@ pub mod ruby_rockets;
 pub mod shock_chain;
 pub mod shock_chain_link;
 pub mod fissile_rifle;
+pub mod azure_katana;
+pub mod sword_slash;

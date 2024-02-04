@@ -17,6 +17,7 @@ use crate::{gfx::{self, window::{Window, EventHandler}, renderer::{ColorRGBA32f,
 
 use super::between_floors_shop::run::{RunFrameBfshopContext, run_frame_between_floors_shop, MouseButtonAction, RunFrameBfshopResponse};
 use super::floor::room_object::unit::player::Player;
+use super::floor::room_object::unit::weapon::azure_katana::new_weapon_azure_katana;
 use super::floor::room_object::unit::weapon::crimson_shotgun::new_weapon_crimson_shotgun;
 use super::floor::room_object::unit::weapon::fissile_rifle::new_weapon_fissile_rifle;
 use super::floor::room_object::unit::weapon::shock_chain::new_weapon_shock_chain;
@@ -146,7 +147,12 @@ impl Rolag3EventHandler {
                 state: R3RunState::BetweenFloorsShop {
                     prev_lmb_down_xy: None,
                     shop_state: ShopState::Root,
-                    shop_weapons: vec![new_weapon_crimson_shotgun(), new_weapon_shock_chain(), new_weapon_fissile_rifle()],
+                    shop_weapons: vec![
+                        new_weapon_crimson_shotgun(), 
+                        new_weapon_shock_chain(), 
+                        new_weapon_fissile_rifle(),
+                        new_weapon_azure_katana(),
+                    ],
                 },
                 cur_floor_num: 0,
             },
@@ -305,7 +311,12 @@ impl Rolag3EventHandler {
             self.r3run.state = R3RunState::BetweenFloorsShop {
                 prev_lmb_down_xy: None, 
                 shop_state: ShopState::Root,
-                shop_weapons: vec![new_weapon_crimson_shotgun(), new_weapon_shock_chain(), new_weapon_fissile_rifle()],
+                shop_weapons: vec![
+                    new_weapon_crimson_shotgun(), 
+                    new_weapon_shock_chain(), 
+                    new_weapon_fissile_rifle(),
+                    new_weapon_azure_katana(),
+                ],
             };
         }
     }
@@ -345,7 +356,7 @@ impl Rolag3EventHandler {
 
         if response.move_to_next_floor {
             self.r3run.state = R3RunState::InFloor {
-                floor: Floor::new_test4(window.get_renderer(), &mut self.rng, self.r3run.player.clone()),
+                floor: Floor::new_test2(window.get_renderer(), &mut self.rng, self.r3run.player.clone()),
             }; 
             let damage_mult = (3.0 + self.r3run.cur_floor_num as f64) / 3.0;
             self.r3run.player.borrow_mut().set_floor_take_damage_mult(damage_mult);
