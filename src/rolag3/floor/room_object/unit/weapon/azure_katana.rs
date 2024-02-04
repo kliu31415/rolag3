@@ -4,7 +4,7 @@ use crate::{rolag3::floor::{draw::Color, room_object::{room_object_def::{RoomObj
 
 use super::{weapon_def::{Weapon, WeaponHandleTickResponse, WeaponHandleTickContext, DrawWeaponHudContext, DrawWeaponHudResponse, DrawWeaponOnOwnerContext, DrawWeaponOnOwnerResponse, BuyAmmoInfo, SwitchOutWeaponResponse, WeaponExitRoomResponse, SwitchOutWeaponContext, WeaponExitRoomContext}, sword_slash::new_sword_slash};
 
-/* Azure Katana swipes in a 120 degree angle, deflecting projectiles
+/* Azure Katana swipes in a 120 degree angle, blocking projectiles
 */
 
 const NAME: &str = "Azure Katana";
@@ -13,17 +13,19 @@ const SHOP_COST: u64 = 10;
 const STARTING_AMMO: f64 = 1e2;
 const BUY_AMMO_INFO: BuyAmmoInfo = BuyAmmoInfo { ammo_amount: 100.0, starcash_cost: 2.0 };
 
-const SLASH_PART_RADIANS_EACH: f32 = 0.1;
-const SLASH_PART_DPS: f64 = 3.0;
+const SLASH_PART_DPS: f64 = 20.0;
 const SLASH_PART_RADIUS: f32 = 4.5;
 const SLASH_DELTA: f64 = 2.0 * std::f64::consts::FRAC_PI_3;
 
 const PRIMARY_ATTACK_INTERVAL: f64 = 0.6;
+const SPECIAL_ATTACK_COOLDOWN: f64 = 1.0;
+const SPECIAL_ATTACK_MANA_COST: f64 = 5.0;
 
 const SLASH_COLOR: Color = Color::new(0.0, 0.2, 20.0, 1.0);
 
 struct AzureKatanaData {
     since_last_primary_attack: f64,
+    since_last_special_attack: f64,
     attack: Option<Attack>,
 }
 
@@ -32,7 +34,9 @@ struct Attack {
     start_angle: f64,
     total_angular_delta: f64,
     angular_speed: f64,
+    slash_part_radians_each: f32,
     next_slash_part_idx: usize,
+    unit: Weak<RefCell<StandardUnit1>>,
     slash_parts: VecDeque<SlashPart>,
 }
 
@@ -40,12 +44,12 @@ struct SlashPart {
     start_age: f64,
     end_age: f64,
     vertexes: [Point; 3],
-    unit: Weak<RefCell<StandardUnit1>>,
 }
 
 pub fn new_weapon_azure_katana() -> Weapon {
     let ws_data = Box::new(AzureKatanaData {
         since_last_primary_attack: PRIMARY_ATTACK_INTERVAL,
+        since_last_special_attack: SPECIAL_ATTACK_COOLDOWN,
         attack: None,
     });
     Weapon::new(
@@ -78,57 +82,82 @@ fn handle_tick_fn(ctx: &mut WeaponHandleTickContext) -> WeaponHandleTickResponse
             return response;
         }
 
+        let mut rofo_del: usize = 0;
+        let mut rofo_add = Vec::new();
+
         loop {
-            let next_part_at = (0.5 + attack.next_slash_part_idx as f32) * SLASH_PART_RADIANS_EACH;
+            let next_part_at = (0.5 + attack.next_slash_part_idx as f32) * attack.slash_part_radians_each;
             if next_part_at > cur_slash_delta {
                 break;
             }
-            let angle1 = (attack.start_angle as f32) + SLASH_PART_RADIANS_EACH * (attack.next_slash_part_idx as f32);
-            let angle2 = angle1 + SLASH_PART_RADIANS_EACH;
+            let angle1 = (attack.start_angle as f32) + attack.slash_part_radians_each * (attack.next_slash_part_idx as f32);
+            let angle2 = angle1 + attack.slash_part_radians_each;
             let vertexes = [
                 Point::new(0.0, 0.0),
                 Point::new(SLASH_PART_RADIUS * f32::cos(angle1), SLASH_PART_RADIUS * f32::sin(angle1)),
                 Point::new(SLASH_PART_RADIUS * f32::cos(angle2), SLASH_PART_RADIUS * f32::sin(angle2))
             ];
-            let slash_part = new_sword_slash(&mut NewRoomObjectContext::from_act1_ctx(ctx.act1_ctx), 
-                ctx.owner_team, 
-                SLASH_PART_DPS, 
-                ctx.owner_xform.dx, 
-                ctx.owner_xform.dy, 
-                Box::new(vertexes),
-            );
-            let slash_part = Rc::new(RefCell::new(slash_part));
+            rofo_add.push(vertexes);
             attack.slash_parts.push_back(SlashPart {
-                unit: Rc::downgrade(&slash_part),
                 start_age: ctx.owner_age,
                 end_age: ctx.owner_age + 0.2,
                 vertexes,
             });
-            response.new_room_objs.push(slash_part);
 
             attack.next_slash_part_idx += 1;
         }
 
         while let Some(front) = attack.slash_parts.front() {
             if ctx.owner_age > front.end_age {
-                let front_part_rc = front.unit.upgrade().unwrap();
-                let front_part = front_part_rc.borrow();
-                response.room_objs_to_remove.push(front_part.get_metadata().get_ref());
+                rofo_del += 1;
                 attack.slash_parts.pop_front();
             } else {
                 break;
             }
         }
 
-        for part in attack.slash_parts.iter_mut() {
-            let unit_rc = part.unit.upgrade().unwrap();
-            let mut unit = unit_rc.borrow_mut();
-            let mut dummy_response = Act1Response::new();
-            let input = (ctx.owner_xform.dx, ctx.owner_xform.dy);
-            let mut output = ();
-            unit.slave_act1_fn(ctx.act1_ctx, &mut dummy_response, &input, &mut output);
-        }
 
+        let unit_rc = attack.unit.upgrade().unwrap();
+        let mut unit = unit_rc.borrow_mut();
+        let mut dummy_response = Act1Response::new();
+        let input = (ctx.owner_xform.dx, ctx.owner_xform.dy, rofo_del, rofo_add);
+        let mut output = ();
+        unit.slave_act1_fn(ctx.act1_ctx, &mut dummy_response, &input, &mut output);
+
+        return response;
+    }
+
+    ws_data.since_last_special_attack += ctx.tick_len;
+
+    if ctx.special_attack && ws_data.since_last_special_attack >= SPECIAL_ATTACK_COOLDOWN && ctx.owner_mana >= SPECIAL_ATTACK_MANA_COST {
+        response.mana_delta -= SPECIAL_ATTACK_MANA_COST;
+        ws_data.since_last_special_attack = 0.0;
+
+        let angle = f64::atan2(ctx.mouse_y - ctx.owner_xform.dy, ctx.mouse_x - ctx.owner_xform.dx);
+
+        let unit = Rc::new(RefCell::new(new_sword_slash(
+            &mut NewRoomObjectContext::from_act1_ctx(ctx.act1_ctx), 
+            ctx.owner_team, 
+            SLASH_PART_DPS,
+        )));
+        response.new_room_objs.push(unit.clone());
+
+        ws_data.attack = Some(Attack {
+            start_owner_age: ctx.owner_age,
+            start_angle: angle - 2.0 * std::f64::consts::PI,
+            total_angular_delta: 4.0 * std::f64::consts::PI,
+            angular_speed: 20.0,
+            slash_part_radians_each: 2.0 * std::f32::consts::PI / 60.0,
+            next_slash_part_idx: 0,
+            unit: Rc::downgrade(&unit),
+            slash_parts: VecDeque::new(),
+        });
+
+        let mut rng = ctx.act1_ctx.get_rng().spawn_child();
+        let sound_candidates = &ctx.act1_ctx.get_sound_db().sci_fi_shield_device_small;
+        let sound_data = rng.sample_slice_uniform(sound_candidates);
+        response.newly_played_sounds.push(ctx.act1_ctx.new_play_sound_builder(sound_data).playback_speed(0.65).build());
+    
         return response;
     }
 
@@ -143,12 +172,21 @@ fn handle_tick_fn(ctx: &mut WeaponHandleTickContext) -> WeaponHandleTickResponse
 
     let angle = f64::atan2(ctx.mouse_y - ctx.owner_xform.dy, ctx.mouse_x - ctx.owner_xform.dx);
 
+    let unit = Rc::new(RefCell::new(new_sword_slash(
+        &mut NewRoomObjectContext::from_act1_ctx(ctx.act1_ctx), 
+        ctx.owner_team, 
+        SLASH_PART_DPS,
+    )));
+    response.new_room_objs.push(unit.clone());
+
     ws_data.attack = Some(Attack {
         start_owner_age: ctx.owner_age,
         start_angle: angle - 0.5 * SLASH_DELTA,
         total_angular_delta: SLASH_DELTA,
         angular_speed: 20.0,
+        slash_part_radians_each: (SLASH_DELTA as f32) / 20.0,
         next_slash_part_idx: 0,
+        unit: Rc::downgrade(&unit),
         slash_parts: VecDeque::new(),
     });
 
@@ -164,11 +202,9 @@ fn switch_out(ctx: &mut SwitchOutWeaponContext) -> SwitchOutWeaponResponse {
     let mut response = SwitchOutWeaponResponse::new();
     let ws_data = ctx.ws_data.downcast_mut::<AzureKatanaData>().unwrap();
     if let Some(attack) = ws_data.attack.take() {
-        for part in attack.slash_parts {
-            let unit_rc = part.unit.upgrade().unwrap();
-            let unit = unit_rc.borrow();
-            response.room_objs_to_remove.push(unit.get_metadata().get_ref());
-        }
+        let unit_rc = attack.unit.upgrade().unwrap();
+        let unit = unit_rc.borrow();
+        response.room_objs_to_remove.push(unit.get_metadata().get_ref());
     }
     response
 }
@@ -177,11 +213,9 @@ fn exit_room(ctx: &mut WeaponExitRoomContext) -> WeaponExitRoomResponse {
     let ws_data = ctx.ws_data.downcast_mut::<AzureKatanaData>().unwrap();
     let mut response = WeaponExitRoomResponse::new();
     if let Some(attack) = ws_data.attack.take() {
-        for part in attack.slash_parts {
-            let unit_rc = part.unit.upgrade().unwrap();
-            let unit = unit_rc.borrow();
-            response.room_objs_to_remove.push(unit.get_metadata().get_ref());
-        }
+        let unit_rc = attack.unit.upgrade().unwrap();
+        let unit = unit_rc.borrow();
+        response.room_objs_to_remove.push(unit.get_metadata().get_ref());
     }
     response
 }
@@ -216,7 +250,7 @@ fn draw_on_owner(ctx: &DrawWeaponOnOwnerContext) -> DrawWeaponOnOwnerResponse {
     let mut color = SLASH_COLOR;
     color.a = 0.01;
     let m2o_angle = if let Some(ref attack) = ws_data.attack {
-        attack.start_angle + 0.5 * SLASH_DELTA
+        attack.start_angle + 0.5 * attack.total_angular_delta
     } else {
         f64::atan2(ctx.mouse_y_game_coords - ctx.owner_xform.dy, ctx.mouse_x_game_coords - ctx.owner_xform.dx)
     };

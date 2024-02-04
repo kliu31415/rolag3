@@ -93,10 +93,22 @@ impl RofizObjMovable {
     }
 
     pub fn initial_overlaps_ro_movable(&self, other: &RofizObjMovable) -> bool {
+        if self.room_object_ref.id == other.room_object_ref.id {
+            // Even if two hitboxes from the same room objects collide, it's a NOP. Return early to optimize cases like
+            // Azure Katana, where the same room objects has ~50 hitboxes in the same location.
+            return false;
+        }
+
         shapes_overlap(&self.initial_hitbox, &self.bounding_box, &other.temp_hitbox, &other.bounding_box)
     }
     
     pub fn overlaps_ro_movable(&self, other: &RofizObjMovable) -> bool {
+        if self.room_object_ref.id == other.room_object_ref.id {
+            // Even if two hitboxes from the same room objects collide, it's a NOP. Return early to optimize cases like
+            // Azure Katana, where the same room objects has ~50 hitboxes in the same location.
+            return false;
+        }
+
         shapes_overlap(&self.temp_hitbox, &self.bounding_box, &other.temp_hitbox, &other.bounding_box)
     }
 
