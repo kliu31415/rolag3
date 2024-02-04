@@ -1,6 +1,6 @@
 use std::{any::Any, collections::VecDeque};
 
-use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Team, Act1Response}, unit::standard_unit1::{StandardUnit1Builder, StandardUnit1BuilderReq, StandardUnit1, RofizObjType, SuAct1Context}, damage::DamageColor}, rofiz::{rofiz_object::{Transformation, Hitbox, RofizObjectMovement}, rofiz_state::RofizObjectRef}}, geometry::shape::{Shape, Point}};
+use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, Team, Act1Response}, unit::standard_unit1::{StandardUnit1Builder, StandardUnit1BuilderReq, StandardUnit1, SuAct1Context, HcProjectileLogic}, damage::DamageColor}, rofiz::{rofiz_object::{Transformation, Hitbox, RofizObjectMovement}, rofiz_state::RofizObjectRef}}, geometry::shape::{Shape, Point}};
 
 
 struct SwordSlash {
@@ -13,20 +13,28 @@ pub fn new_sword_slash(
     ctx: &mut NewRoomObjectContext, 
     team: Team,
     dps: f64,
+    deflect: bool,
 ) -> StandardUnit1 {
     let us_data = SwordSlash { 
         rofo_refs: VecDeque::new(),
     };
     
-    StandardUnit1Builder::new(StandardUnit1BuilderReq {
+    let mut builder = StandardUnit1Builder::new(StandardUnit1BuilderReq {
         team,
         damage_color: DamageColor::Blue,
         hp: 0.0, // dummy
         engine_power: 0.0, // dummy,
         tire_traction: 0.0, // dummy,
-    }).slave_act1_fn(Box::new(slave_act1))
+    });
+    
+    if deflect {
+        builder = builder.hc_projectile_logic(HcProjectileLogic::Deflect {
+            speed_fn: Box::new(|| Box::new(|s| s + 40.0 / (s + 1.0)))
+        });
+    }
+
+    builder.slave_act1_fn(Box::new(slave_act1))
         .collision_damage(dps)
-        .rofiz_obj_type(RofizObjType::SpectralUnit)
         .us_data(Box::new(us_data))
         .damageable(false)
         .blocks_room_clear(false)
@@ -51,5 +59,12 @@ fn slave_act1(ctx: &mut SuAct1Context, _: &mut Act1Response, input: &dyn Any, _o
     }
     for r in us_data.rofo_refs.iter() {
         ctx.act1_ctx.get_rofiz().move_object(r, RofizObjectMovement::SetXform(xform));
+    }
+
+    // Set StandardUnitCommon.rofo_ref because projectile deflection logic reads Suc.rofo_ref's xform
+    if !us_data.rofo_refs.is_empty() {
+        ctx.su_ctx.su_common.set_primary_rofo_ref(Some(us_data.rofo_refs[0].clone()));
+    } else {
+        ctx.su_ctx.su_common.set_primary_rofo_ref(None);
     }
 }

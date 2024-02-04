@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::{Weak, Rc}};
 
-use crate::{rolag3::floor::{room_object::{room_object_def::{RoomObject, NewRoomObjectContext, Act1Response, HandleCollisionResponse, HcProjectileContext, Team, RoomObjOperation, Act1QueryResult, Act1QueryArgs}, damage::DamageColor, unit::standard_unit_common::SuccEwmaAction}, draw::{DrawContext, Color}, rofiz::rofiz_object::{Transformation, RofizObjectMovement}}, geometry::shape::{Shape, Point, Vector}};
+use crate::{rolag3::floor::{room_object::{room_object_def::{RoomObject, NewRoomObjectContext, Act1Response, HandleCollisionResponse, HcProjectileContext, Team, RoomObjOperation, Act1QueryResult, Act1QueryArgs, HcProjectileDeflect}, damage::DamageColor, unit::standard_unit_common::SuccEwmaAction}, draw::{DrawContext, Color}, rofiz::rofiz_object::{Transformation, RofizObjectMovement}}, geometry::shape::{Shape, Point, Vector}};
 
 use super::{standard_projectile1::{Sp1Builder, Sp1BuilderReq, StandardProjectile1, SpAct1Context, SpDrawContext, SpHandleCollisionContext, SpApplyOperationContext}, explosion1::Explosion1};
 
@@ -178,7 +178,7 @@ fn act1(ctx: &mut SpAct1Context) -> Act1Response {
             let self_as_weak = ctx.act1_ctx.get_self_as_weak();
             let args = Explosion1OnDeathFnArgs {
                 nro_ctx: &mut NewRoomObjectContext::from_act1_ctx(ctx.act1_ctx),
-                team: ctx.sp_ctx.team,
+                team: *ctx.sp_ctx.team,
                 owner: self_as_weak,
                 x: xform.dx,
                 y: xform.dy,
@@ -322,7 +322,7 @@ fn end_of_life(ctx: &mut SpAct1Context) -> Act1Response {
         let self_as_weak = ctx.act1_ctx.get_self_as_weak();
         let args = Explosion1OnDeathFnArgs {
             nro_ctx: &mut NewRoomObjectContext::from_act1_ctx(ctx.act1_ctx),
-            team: ctx.sp_ctx.team,
+            team: *ctx.sp_ctx.team,
             owner: self_as_weak,
             x: xform.dx,
             y: xform.dy,
@@ -367,7 +367,7 @@ fn handle_collision(ctx: &mut SpHandleCollisionContext) -> HandleCollisionRespon
             let self_as_weak = ctx.hc_ctx.get_self_as_weak();
             let args = Explosion1OnDeathFnArgs {
                 nro_ctx: &mut NewRoomObjectContext::from_hc_ctx(ctx.hc_ctx),
-                team: ctx.sp_ctx.team,
+                team: *ctx.sp_ctx.team,
                 owner: self_as_weak,
                 x: xform.dx,
                 y: xform.dy,
@@ -381,7 +381,7 @@ fn handle_collision(ctx: &mut SpHandleCollisionContext) -> HandleCollisionRespon
     let room_time = ctx.hc_ctx.get_room_time();
     let (rofiz, rng, room_object_id_counter, other) = ctx.hc_ctx.get_hcp_ctx_fields();
     let hcp_response = other.borrow_mut().handle_collision_projectile(&mut HcProjectileContext{
-        team: ctx.sp_ctx.team,
+        team: *ctx.sp_ctx.team,
         damage_color: ctx.sp_ctx.damage_color,
         damage: ctx.sp_ctx.damage,
         room_time,
@@ -399,13 +399,33 @@ fn handle_collision(ctx: &mut SpHandleCollisionContext) -> HandleCollisionRespon
             let self_as_weak = ctx.hc_ctx.get_self_as_weak();
             let args = Explosion1OnDeathFnArgs {
                 nro_ctx: &mut NewRoomObjectContext::from_hc_ctx(ctx.hc_ctx),
-                team: ctx.sp_ctx.team,
+                team: *ctx.sp_ctx.team,
                 owner: self_as_weak,
                 x: xform.dx,
                 y: xform.dy,
             };
             let explosion = (explosion_fn)(args);
             response = response.add_room_obj(Rc::new(RefCell::new(explosion)));
+        }
+    }
+
+    if let Some(ref pd) = hcp_response.projectile_deflect {
+        match pd {
+            HcProjectileDeflect::Radial { x, y, speed_fn } => {
+                let proj_xform = ctx.hc_ctx.get_rofiz().get_movable_object_xform(&ctx.sp_ctx.rofo_ref);
+                let angle = f64::atan2(proj_xform.dy - *y, proj_xform.dx - *x);
+                let ps_data = ctx.sp_ctx.ps_data.downcast_mut::<Projectile2Data>().unwrap();
+                let prev_speed = (speed_fn)(f64::hypot(ps_data.velocity_x, ps_data.velocity_y));
+                let new_vx = prev_speed * f64::cos(angle);
+                let new_vy = prev_speed * f64::sin(angle);
+                *ctx.sp_ctx.team = ctx.sp_ctx.team.other();
+                ps_data.velocity_x = new_vx;
+                ps_data.velocity_y = new_vy;
+                ps_data.homing_xlate_to_enemies_power_fn = None;
+                ps_data.homing_rotate_to_enemies_speed_fn = None;
+                ps_data.nef_position_fn = None;
+                ps_data.external_power_fn = None;
+            }
         }
     }
 

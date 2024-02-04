@@ -44,7 +44,7 @@ impl Sp1Data {
         SpContext { 
             ps_data: self.ps_data.as_mut(),
             md: &self.md,
-            team: self.team,
+            team: &mut self.team,
             damage_color: self.damage_color,
             damage: self.damage,
             rofo_ref: &mut self.rofo_ref,
@@ -239,7 +239,7 @@ impl Sp1Builder {
 pub struct SpContext<'a> {
     pub ps_data: &'a mut dyn Any,
     pub md: &'a RoomObjectMetadata,
-    pub team: Team,
+    pub team: &'a mut Team,
     pub damage_color: DamageColor,
     pub damage: f64,
     pub rofo_ref: &'a mut RofizObjectRef,

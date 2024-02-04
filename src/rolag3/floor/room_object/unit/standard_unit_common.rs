@@ -305,6 +305,10 @@ impl StandardUnitCommon {
         self.unit_age += self.unit_tick_length;
     }
 
+    pub fn set_primary_rofo_ref(&mut self, rofo_ref: Option<RofizObjectRef>) {
+        self.rofo_ref = rofo_ref;
+    }
+
     pub fn set_translate_move(&mut self, translate: TranslateMove) {
         assert!(self.act1_started, "cannot call standard_unit_common::set_translate_move() before act1 starts");
         assert!(self.rofo_ref.is_some());

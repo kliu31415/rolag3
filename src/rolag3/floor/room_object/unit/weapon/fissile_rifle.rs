@@ -7,7 +7,7 @@ use super::weapon_def::{WeaponHandleTickContext, Weapon, WeaponHandleTickRespons
 /* Fissile Rifle shoots homing projectiles that cause an explosion when enough hit the same target in a short timespan */
 
 const NAME: &str = "Fissile Rifle";
-const SHOP_DESCRIPTION: &str = "Shoots homing rays of fissile material.\n
+const SHOP_DESCRIPTION: &str = "Shoots homing rays of fissile material.
 Special attack: fires very quickly for a few seconds";
 const SHOP_COST: u64 = 20;
 const STARTING_AMMO: f64 = 1e4;

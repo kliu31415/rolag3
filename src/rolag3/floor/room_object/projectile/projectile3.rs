@@ -75,7 +75,7 @@ fn handle_collision(ctx: &mut SpHandleCollisionContext) -> HandleCollisionRespon
     let room_time = ctx.hc_ctx.get_room_time();
     let (rofiz, rng, room_object_id_counter, other) = ctx.hc_ctx.get_hcp_ctx_fields();
     let hcp_response = other.borrow_mut().handle_collision_projectile(&mut HcProjectileContext {
-        team: ctx.sp_ctx.team,
+        team: *ctx.sp_ctx.team,
         damage_color: ctx.sp_ctx.damage_color,
         damage: ctx.sp_ctx.damage,
         room_time,

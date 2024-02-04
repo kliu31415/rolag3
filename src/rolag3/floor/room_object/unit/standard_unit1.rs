@@ -1,6 +1,6 @@
 use std::any::Any;
 
-use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, RoomObject, RoomObjectMetadata, Act1Context, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse, RoomObjectType, RoQueryUnitInfoContext, RoQueryUnitInfoResponse, RoomObjApplyOperationContext, RoomObjOperation, HcStandardUnitContext, HcStandardUnitResponse, BossHp}, damage::DamageColor}, draw::DrawContext, rofiz::rofiz_object::{Transformation, Hitbox}}, geometry::shape::Shape};
+use crate::{rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, RoomObject, RoomObjectMetadata, Act1Context, Act1Response, HandleCollisionContext, HandleCollisionResponse, Team, HcProjectileContext, HcProjectileResponse, RoomObjectType, RoQueryUnitInfoContext, RoQueryUnitInfoResponse, RoomObjApplyOperationContext, RoomObjOperation, HcStandardUnitContext, HcStandardUnitResponse, BossHp, HcProjectileDeflect}, damage::DamageColor}, draw::DrawContext, rofiz::rofiz_object::{Transformation, Hitbox}}, geometry::shape::Shape};
 
 use super::{Unit, standard_unit_common::{StandardUnitCommon, Budeb}};
 
@@ -262,7 +262,8 @@ pub enum HandleCollisionLogic {
 
 pub enum HcProjectileLogic {
     _ShouldNeverHappen,
-    Default_,
+    Default,
+    Deflect {speed_fn: Box<dyn Fn() -> Box<dyn Fn(f64) -> f64>>},
 }
 
 pub enum AsBossHpLogic {
@@ -287,7 +288,7 @@ impl StandardUnit1Builder {
             draw_fn: Box::new(draw_nop),
             custom_fns: Vec::new(),
             handle_collision_logic: HandleCollisionLogic::Nop,
-            hc_projectile_logic: HcProjectileLogic::Default_,
+            hc_projectile_logic: HcProjectileLogic::Default,
             as_boss_hp_logic: AsBossHpLogic::NotImplemented,
             hitbox: None,
             rofiz_obj_type: RofizObjType::NonspectralUnit,
@@ -356,6 +357,11 @@ impl StandardUnit1Builder {
         self
     }
 
+    pub fn hc_projectile_logic(mut self, hcp_logic: HcProjectileLogic) -> Self {
+        self.hc_projectile_logic = hcp_logic;
+        self
+    }
+
     pub fn as_boss_hp_logic(mut self, logic: AsBossHpLogic) -> Self {
         self.as_boss_hp_logic = logic;
         self
@@ -421,7 +427,8 @@ impl StandardUnit1Builder {
         };
 
         let hc_projectile_fn: Box<HcProjectileFnT> = match self.hc_projectile_logic {
-            HcProjectileLogic::Default_ => Box::new(hc_projectile_default),
+            HcProjectileLogic::Default => Box::new(hc_projectile_default),
+            HcProjectileLogic::Deflect{ speed_fn } => Box::new(move |ctx| hc_projectile_deflect(ctx, &speed_fn)),
             HcProjectileLogic::_ShouldNeverHappen => Box::new(hc_projectile_umimplemented),
         };
 
@@ -522,9 +529,35 @@ fn hc_projectile_default(ctx: &mut SuHcProjectileContext) -> HcProjectileRespons
     td_response.new_room_objects.into_iter().for_each(|x| room_objs_to_add.push(x));
     HcProjectileResponse { 
         projectile_consumed: true,
+        projectile_deflect: None,
         damage_dealt: td_response.damage_taken,
         room_objects_to_delete,
         room_objs_to_add,
+    }
+}
+
+fn hc_projectile_deflect(ctx: &mut SuHcProjectileContext, speed_fn: &dyn Fn() -> Box<dyn Fn(f64) -> f64>) -> HcProjectileResponse {
+    if *ctx.su_ctx.is_dead {
+        return HcProjectileResponse::nop();
+    }
+    let unit_team = ctx.su_ctx.team;
+    let projectile_team = ctx.hcp_ctx.team;
+    if unit_team == projectile_team {
+        return HcProjectileResponse::nop();
+    }
+
+    let xform = ctx.su_ctx.su_common.get_rofiz_xform(ctx.hcp_ctx.rofiz);
+
+    HcProjectileResponse { 
+        projectile_consumed: false,
+        projectile_deflect: Some(HcProjectileDeflect::Radial { 
+            x: xform.dx, 
+            y: xform.dy,
+            speed_fn: (speed_fn)(),
+        }),
+        damage_dealt: 0.0,
+        room_objects_to_delete: Vec::new(),
+        room_objs_to_add: Vec::new(),
     }
 }
 

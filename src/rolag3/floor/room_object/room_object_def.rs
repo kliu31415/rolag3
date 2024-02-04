@@ -25,6 +25,7 @@ pub trait RoomObject {
     fn handle_collision_projectile(&mut self, _: &mut HcProjectileContext) -> HcProjectileResponse {
         HcProjectileResponse {
             projectile_consumed: false,
+            projectile_deflect: None,
             damage_dealt: 0.0,
             room_objects_to_delete: Vec::new(),
             room_objs_to_add: Vec::new(),
@@ -1104,15 +1105,21 @@ impl<'a> HcProjectileContext<'a> {
 
 pub struct HcProjectileResponse {
     pub projectile_consumed: bool,
+    pub projectile_deflect: Option<HcProjectileDeflect>,
     pub damage_dealt: f64,
     pub room_objects_to_delete: Vec<RoomObjectRef>,
     pub room_objs_to_add: Vec<Rc<RefCell<dyn RoomObject>>>,
+}
+
+pub enum HcProjectileDeflect {
+    Radial {x: f64, y: f64, speed_fn: Box<dyn Fn(f64) -> f64>},
 }
 
 impl HcProjectileResponse {
     pub fn nop() -> Self {
         Self {
             projectile_consumed: false,
+            projectile_deflect: None,
             damage_dealt: 0.0,
             room_objects_to_delete: Vec::new(),
             room_objs_to_add: Vec::new(),
@@ -1136,7 +1143,6 @@ impl<'a> HcStandardUnitContext<'a> {
         (NewRoomObjectContext::new(self.rofiz, self.room_object_id_counter, self.room_time, self.rng), self.suc)
     }
 }
-
 
 pub struct HcStandardUnitResponse {
     pub room_objects_to_delete: Vec<RoomObjectRef>,

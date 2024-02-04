@@ -274,6 +274,7 @@ impl RoomObject for Player {
         td_response.new_room_objects.into_iter().for_each(|x| room_objs_to_add.push(x));
         HcProjectileResponse { 
             projectile_consumed: true,
+            projectile_deflect: None,
             damage_dealt: td_response.damage_taken,
             room_objects_to_delete,
             room_objs_to_add,

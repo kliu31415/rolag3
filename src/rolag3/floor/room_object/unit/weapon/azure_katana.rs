@@ -8,7 +8,8 @@ use super::{weapon_def::{Weapon, WeaponHandleTickResponse, WeaponHandleTickConte
 */
 
 const NAME: &str = "Azure Katana";
-const SHOP_DESCRIPTION: &str = "Short-range melee weapon";
+const SHOP_DESCRIPTION: &str = "Short-range melee weapon
+Special attack: deflects projectiles";
 const SHOP_COST: u64 = 10;
 const STARTING_AMMO: f64 = 1e2;
 const BUY_AMMO_INFO: BuyAmmoInfo = BuyAmmoInfo { ammo_amount: 100.0, starcash_cost: 2.0 };
@@ -139,6 +140,7 @@ fn handle_tick_fn(ctx: &mut WeaponHandleTickContext) -> WeaponHandleTickResponse
             &mut NewRoomObjectContext::from_act1_ctx(ctx.act1_ctx), 
             ctx.owner_team, 
             SLASH_PART_DPS,
+            true,
         )));
         response.new_room_objs.push(unit.clone());
 
@@ -176,6 +178,7 @@ fn handle_tick_fn(ctx: &mut WeaponHandleTickContext) -> WeaponHandleTickResponse
         &mut NewRoomObjectContext::from_act1_ctx(ctx.act1_ctx), 
         ctx.owner_team, 
         SLASH_PART_DPS,
+        false,
     )));
     response.new_room_objs.push(unit.clone());
 
