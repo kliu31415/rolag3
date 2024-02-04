@@ -29,7 +29,7 @@ pub fn new_sword_slash(
     
     if deflect {
         builder = builder.hc_projectile_logic(HcProjectileLogic::Deflect {
-            speed_fn: Box::new(|| Box::new(|s| s + 40.0 / (s + 1.0)))
+            speed_fn: Box::new(|| Box::new(|s| s + 100.0 / f64::sqrt(s + 15.0)))
         });
     }
 
