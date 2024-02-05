@@ -68,8 +68,8 @@ pub fn init_basic_square_room_middle_walled(
     let mx2 = (w + mw) / 2;
     let my1 = (h - mh) / 2;
     let my2 = (h + mh) / 2;
-    for x in mx1..=mx2 {
-        for y in my1..=my2 {
+    for x in mx1..mx2 {
+        for y in my1..my2 {
             let wall = new_inner_wall(&mut nro_ctx, wall_theme, x, y);
             room_objects.add(Rc::new(RefCell::new(wall)));
         }
@@ -77,12 +77,12 @@ pub fn init_basic_square_room_middle_walled(
 
     let ground = new_ground1(&mut nro_ctx, ground_theme, 1, 1, mx1 - 1, h - 2);
     room_objects.add(Rc::new(RefCell::new(ground)));
-    let ground = new_ground1(&mut nro_ctx, ground_theme, mx2 + 1, 1, w - mx2 - 2, h - 2);
+    let ground = new_ground1(&mut nro_ctx, ground_theme, mx2, 1, w - mx2 - 1, h - 2);
     room_objects.add(Rc::new(RefCell::new(ground)));
 
     let ground = new_ground1(&mut nro_ctx, ground_theme, mx1, 1, mx2 - mx1 + 1, my1 - 1);
     room_objects.add(Rc::new(RefCell::new(ground)));
-    let ground = new_ground1(&mut nro_ctx, ground_theme, mx1, my2 + 1, mx2 - mx1 + 1, h - my2 - 2);
+    let ground = new_ground1(&mut nro_ctx, ground_theme, mx1, my2, mx2 - mx1 + 1, h - my2 - 1);
     room_objects.add(Rc::new(RefCell::new(ground)));
 
     (rofiz, room_objects)

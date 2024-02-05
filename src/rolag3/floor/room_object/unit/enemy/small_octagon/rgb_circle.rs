@@ -79,7 +79,7 @@ pub fn new_small_octagon_rgb_circle(
         team: Team::Enemy,
         damage_color,
         hp: 20.0,
-        engine_power: 20.0,
+        engine_power: 10.0,
         tire_traction: 50.0,
     }).act1_fn(Box::new(act1))
         .draw_fn(Box::new(draw))
