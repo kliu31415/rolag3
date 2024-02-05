@@ -12,3 +12,4 @@ pub mod thinstar4;
 pub mod thinstar5;
 pub mod big_circle;
 pub mod diamond;
+pub mod small_octagon;
