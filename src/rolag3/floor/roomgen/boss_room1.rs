@@ -1,6 +1,6 @@
 use std::{rc::Rc, cell::RefCell};
 
-use crate::rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, RoomObjectCollection}, wall::basic_wall::BasicWall, cosmetic::ground1::new_ground1, unit::boss1::new_boss1}, rofiz::rofiz_state::RofizState, room::{RoomBuilderReq, RoomBuilder}, floorgen::run::{GenFloorRoomContext, GenFloorRoomResponse}};
+use crate::rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, RoomObjectCollection}, wall::basic_wall::new_edge_wall, cosmetic::ground1::new_ground1, unit::boss1::new_boss1}, rofiz::rofiz_state::RofizState, room::{RoomBuilderReq, RoomBuilder}, floorgen::run::{GenFloorRoomContext, GenFloorRoomResponse}};
 
 pub fn get_gen_room_fn_boss1() -> Box<dyn Fn(&mut GenFloorRoomContext) -> GenFloorRoomResponse> {
     Box::new(move |ctx: &mut GenFloorRoomContext| {
@@ -19,16 +19,16 @@ fn make_boss_room1(ctx: &mut GenFloorRoomContext,) -> GenFloorRoomResponse {
     let height = 50;
 
     for i in 0..50 {
-        let wall = BasicWall::new(&mut new_floor_object_ctx, wall_theme, i, 0);
+        let wall = new_edge_wall(&mut new_floor_object_ctx, wall_theme, i, 0);
         room_objects.add(Rc::new(RefCell::new(wall)));
-        let wall = BasicWall::new(&mut new_floor_object_ctx, wall_theme, i, 49);
+        let wall = new_edge_wall(&mut new_floor_object_ctx, wall_theme, i, 49);
         room_objects.add(Rc::new(RefCell::new(wall)));
     }
     
     for i in 1..49 {
-        let wall = BasicWall::new(&mut new_floor_object_ctx, wall_theme, 0, i);
+        let wall = new_edge_wall(&mut new_floor_object_ctx, wall_theme, 0, i);
         room_objects.add(Rc::new(RefCell::new(wall)));
-        let wall = BasicWall::new(&mut new_floor_object_ctx, wall_theme, 49, i);
+        let wall = new_edge_wall(&mut new_floor_object_ctx, wall_theme, 49, i);
         room_objects.add(Rc::new(RefCell::new(wall)));
     }
 

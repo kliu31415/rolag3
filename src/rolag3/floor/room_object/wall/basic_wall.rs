@@ -121,15 +121,20 @@ impl Wall for BasicWall {
     
 }
 
-impl BasicWall {
-    pub fn new(ctx: &mut NewRoomObjectContext, theme: WallTheme, x: u32, y: u32) -> Self {
-        let md = RoomObjectMetadata::new(ctx, RoomObjectType::Wall);
-        let _rofo_ref = ctx.add_basic_wall(md.get_ref(), x, y);
-        Self {md, _rofo_ref, theme, x, y}
-    }
-}
-
 #[derive(Debug, Clone, Copy)]
 pub enum WallTheme {
     Monocolor(Color),
+}
+
+pub fn new_edge_wall(ctx: &mut NewRoomObjectContext, theme: WallTheme, x: u32, y: u32) -> BasicWall {
+    let md = RoomObjectMetadata::new(ctx, RoomObjectType::Wall);
+    let _rofo_ref = ctx.add_basic_wall(md.get_ref(), x, y);
+    BasicWall {md, _rofo_ref, theme, x, y}
+}
+
+// right now, this is the same as edge wall, but behavior may be forked in the future
+pub fn new_inner_wall(ctx: &mut NewRoomObjectContext, theme: WallTheme, x: u32, y: u32) -> BasicWall {
+    let md = RoomObjectMetadata::new(ctx, RoomObjectType::Wall);
+    let _rofo_ref = ctx.add_basic_wall(md.get_ref(), x, y);
+    BasicWall {md, _rofo_ref, theme, x, y}
 }

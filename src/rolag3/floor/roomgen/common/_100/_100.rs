@@ -1,6 +1,6 @@
 use std::{rc::Rc, cell::RefCell};
 
-use crate::rolag3::floor::{floorgen::run::{GenFloorRoomContext, GenFloorRoomResponse}, rofiz::rofiz_state::RofizState, room_object::{room_object_def::{NewRoomObjectContext, RoomObjectCollection}, wall::basic_wall::BasicWall, cosmetic::ground1::new_ground1, tiles::key_tile::{new_key_tile, KEY_TILE_SIDE_LEN}}, room::{RoomBuilderReq, RoomBuilder}, roomgen::util::{connection_candidates::some_borders_as_connection_candidates, logfp::new_logfp_v1}};
+use crate::rolag3::floor::{floorgen::run::{GenFloorRoomContext, GenFloorRoomResponse}, rofiz::rofiz_state::RofizState, room_object::{room_object_def::{NewRoomObjectContext, RoomObjectCollection}, wall::basic_wall::new_edge_wall, cosmetic::ground1::new_ground1, tiles::key_tile::{new_key_tile, KEY_TILE_SIDE_LEN}}, room::{RoomBuilderReq, RoomBuilder}, roomgen::util::{connection_candidates::some_borders_as_connection_candidates, logfp::new_logfp_v1}};
 
 /* Common100 contains three orbs moving around the walls, with lasers arcing between the orbs. To clear the room, the
    player must activate 4 key tiles. One key tile is in each quadrant of the room.
@@ -24,16 +24,16 @@ fn make_room(ctx: &mut GenFloorRoomContext, room_side_len: u32) -> GenFloorRoomR
     let height = room_side_len;
 
     for i in 0..width {
-        let wall = BasicWall::new(&mut nro_ctx, wall_theme, i, 0);
+        let wall = new_edge_wall(&mut nro_ctx, wall_theme, i, 0);
         room_objects.add(Rc::new(RefCell::new(wall)));
-        let wall = BasicWall::new(&mut nro_ctx, wall_theme, i, height-1);
+        let wall = new_edge_wall(&mut nro_ctx, wall_theme, i, height-1);
         room_objects.add(Rc::new(RefCell::new(wall)));
     }
     
     for i in 1..(height-1) {
-        let wall = BasicWall::new(&mut nro_ctx, wall_theme, 0, i);
+        let wall = new_edge_wall(&mut nro_ctx, wall_theme, 0, i);
         room_objects.add(Rc::new(RefCell::new(wall)));
-        let wall = BasicWall::new(&mut nro_ctx, wall_theme, width-1, i);
+        let wall = new_edge_wall(&mut nro_ctx, wall_theme, width-1, i);
         room_objects.add(Rc::new(RefCell::new(wall)));
     }
 

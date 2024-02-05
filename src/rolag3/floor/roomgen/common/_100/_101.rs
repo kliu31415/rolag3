@@ -1,6 +1,6 @@
 use std::{rc::Rc, cell::RefCell};
 
-use crate::rolag3::floor::{floorgen::run::{GenFloorRoomContext, GenFloorRoomResponse}, roomgen::util::{rectangular_maze::make_rectangular_maze, connection_candidates::all_borders_as_connection_candidates}, rofiz::rofiz_state::RofizState, room_object::{room_object_def::{NewRoomObjectContext, RoomObjectCollection}, wall::basic_wall::BasicWall, cosmetic::ground1::new_ground1, tiles::{damage_tile::new_damage_tile, key_tile::new_key_tile}, unit::enemy::{square::{self, blue_diamond::new_square_blue_diamond}, fatstar4::{self, green::new_fatstar4_green}}}, room::{RoomBuilderReq, RoomBuilder}};
+use crate::rolag3::floor::{floorgen::run::{GenFloorRoomContext, GenFloorRoomResponse}, roomgen::util::{rectangular_maze::make_rectangular_maze, connection_candidates::all_borders_as_connection_candidates}, rofiz::rofiz_state::RofizState, room_object::{room_object_def::{NewRoomObjectContext, RoomObjectCollection}, wall::basic_wall::new_edge_wall, cosmetic::ground1::new_ground1, tiles::{damage_tile::new_damage_tile, key_tile::new_key_tile}, unit::enemy::{square::{self, blue_diamond::new_square_blue_diamond}, fatstar4::{self, green::new_fatstar4_green}}}, room::{RoomBuilderReq, RoomBuilder}};
 
 /* Common101 contains a large maze. The player must activate key tiles around the maze to clear it. There are also
    some enemies that float around.
@@ -42,16 +42,16 @@ fn make_room(ctx: &mut GenFloorRoomContext,
     let room_h = (corridor_w + 1) * maze_h + 1;
 
     for i in 0..room_w {
-        let wall = BasicWall::new(&mut nro_ctx, wall_theme, i as u32, 0);
+        let wall = new_edge_wall(&mut nro_ctx, wall_theme, i as u32, 0);
         room_objects.add(Rc::new(RefCell::new(wall)));
-        let wall = BasicWall::new(&mut nro_ctx, wall_theme, i as u32, room_h as u32 - 1);
+        let wall = new_edge_wall(&mut nro_ctx, wall_theme, i as u32, room_h as u32 - 1);
         room_objects.add(Rc::new(RefCell::new(wall)));
     }
     
     for i in 1..(room_h-1) {
-        let wall = BasicWall::new(&mut nro_ctx, wall_theme, 0, i as u32);
+        let wall = new_edge_wall(&mut nro_ctx, wall_theme, 0, i as u32);
         room_objects.add(Rc::new(RefCell::new(wall)));
-        let wall = BasicWall::new(&mut nro_ctx, wall_theme, (room_w - 1) as u32, i as u32);
+        let wall = new_edge_wall(&mut nro_ctx, wall_theme, (room_w - 1) as u32, i as u32);
         room_objects.add(Rc::new(RefCell::new(wall)));
     }
 

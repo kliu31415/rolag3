@@ -1,6 +1,6 @@
 use std::{rc::Rc, cell::RefCell};
 
-use crate::rolag3::floor::{floorgen::run::{GenFloorRoomContext, GenFloorRoomResponse}, room_object::{wall::basic_wall::BasicWall, cosmetic::ground1::new_ground1, room_object_def::{NewRoomObjectContext, RoomObjectCollection, RoomObject}, tiles::next_floor_tile::{new_next_floor_tile, NEXT_FLOOR_TILE_SIDE_LEN}}, rofiz::rofiz_state::RofizState, room::{RoomBuilderReq, RoomBuilder}, roomgen::util::connection_candidates::all_borders_as_connection_candidates};
+use crate::rolag3::floor::{floorgen::run::{GenFloorRoomContext, GenFloorRoomResponse}, room_object::{wall::basic_wall::new_edge_wall, cosmetic::ground1::new_ground1, room_object_def::{NewRoomObjectContext, RoomObjectCollection, RoomObject}, tiles::next_floor_tile::{new_next_floor_tile, NEXT_FLOOR_TILE_SIDE_LEN}}, rofiz::rofiz_state::RofizState, room::{RoomBuilderReq, RoomBuilder}, roomgen::util::connection_candidates::all_borders_as_connection_candidates};
 
 pub fn get_gen_room_fn_boss_generic_rect(
     width: u32, 
@@ -27,16 +27,16 @@ fn make_room(
     let mut room_objects = RoomObjectCollection::new();
 
     for i in 0..width {
-        let wall = BasicWall::new(&mut new_floor_object_ctx, wall_theme, i, 0);
+        let wall = new_edge_wall(&mut new_floor_object_ctx, wall_theme, i, 0);
         room_objects.add(Rc::new(RefCell::new(wall)));
-        let wall = BasicWall::new(&mut new_floor_object_ctx, wall_theme, i, height-1);
+        let wall = new_edge_wall(&mut new_floor_object_ctx, wall_theme, i, height-1);
         room_objects.add(Rc::new(RefCell::new(wall)));
     }
     
     for i in 1..(height-1) {
-        let wall = BasicWall::new(&mut new_floor_object_ctx, wall_theme, 0, i);
+        let wall = new_edge_wall(&mut new_floor_object_ctx, wall_theme, 0, i);
         room_objects.add(Rc::new(RefCell::new(wall)));
-        let wall = BasicWall::new(&mut new_floor_object_ctx, wall_theme, width-1, i);
+        let wall = new_edge_wall(&mut new_floor_object_ctx, wall_theme, width-1, i);
         room_objects.add(Rc::new(RefCell::new(wall)));
     }
 

@@ -3,7 +3,7 @@
 
 use std::{rc::Rc, cell::RefCell};
 
-use crate::rolag3::floor::{floorgen::run::{GenFloorRoomContext, GenFloorRoomResponse}, roomgen::util::{square_room::init_basic_square_room_no_ground, connection_candidates::all_borders_as_connection_candidates}, room_object::{room_object_def::NewRoomObjectContext, unit::enemy::square::rgb_2circle::{new_square_rgb_2circle, position_fn_between_two_points}, damage::DamageColor, wall::basic_wall::BasicWall, cosmetic::ground1::new_ground1}, room::{RoomBuilder, RoomBuilderReq}};
+use crate::rolag3::floor::{floorgen::run::{GenFloorRoomContext, GenFloorRoomResponse}, roomgen::util::{square_room::init_basic_square_room_no_ground, connection_candidates::all_borders_as_connection_candidates}, room_object::{room_object_def::NewRoomObjectContext, unit::enemy::square::rgb_2circle::{new_square_rgb_2circle, position_fn_between_two_points}, damage::DamageColor, wall::basic_wall::new_inner_wall, cosmetic::ground1::new_ground1}, room::{RoomBuilder, RoomBuilderReq}};
 
 pub fn get_gen_room_fn_common105() -> Box<dyn Fn(&mut GenFloorRoomContext) -> GenFloorRoomResponse> {
     Box::new(move |ctx: &mut GenFloorRoomContext| {
@@ -65,7 +65,7 @@ fn make_room(ctx: &mut GenFloorRoomContext) -> GenFloorRoomResponse {
                     // a wall will already be present if i=0 for enemies that crawl along the lower/right walls.
                     continue;
                 }
-                let wall = BasicWall::new(nro_ctx, wall_theme, wx, wy);
+                let wall = new_inner_wall(nro_ctx, wall_theme, wx, wy);
                 room_objects.add(Rc::new(RefCell::new(wall)));
                 is_wall_at[wx as usize][wy as usize] = true;
             }

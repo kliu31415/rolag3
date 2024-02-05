@@ -1,6 +1,6 @@
 use std::{rc::Rc, cell::RefCell};
 
-use crate::{rolag3::floor::{room::Room, room_object::{room_object_def::{RoomObjectId, RoomObjectCollection, NewRoomObjectContext}, wall::basic_wall::{BasicWall, WallTheme}, cosmetic::ground1::{new_ground1, GroundTheme}}, rofiz::rofiz_state::RofizState, floorgen::run::BoundingBoxUsize}, util::rng::Prng};
+use crate::{rolag3::floor::{room::Room, room_object::{room_object_def::{RoomObjectId, RoomObjectCollection, NewRoomObjectContext}, wall::basic_wall::{WallTheme, new_edge_wall}, cosmetic::ground1::{new_ground1, GroundTheme}}, rofiz::rofiz_state::RofizState, floorgen::run::BoundingBoxUsize}, util::rng::Prng};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum HallwayGridCell {
@@ -39,7 +39,7 @@ pub fn make_hallway1(
                     room_objects.add(Rc::new(RefCell::new(ground)));
                 },
                 HallwayGridCell::Wall => {
-                    let wall = BasicWall::new(&mut new_floor_object_ctx, wall_theme, (x - bb.x1) as u32, (y - bb.y1) as u32);
+                    let wall = new_edge_wall(&mut new_floor_object_ctx, wall_theme, (x - bb.x1) as u32, (y - bb.y1) as u32);
                     room_objects.add(Rc::new(RefCell::new(wall)));
                 },
             }

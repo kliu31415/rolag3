@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
-use crate::rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, RoomObjectCollection}, wall::basic_wall::BasicWall, cosmetic::ground1::new_ground1, tiles::damage_tile::new_damage_tile}, rofiz::rofiz_state::RofizState, room::{RoomBuilderReq, RoomBuilder}, floorgen::run::{GenFloorRoomResponse, GenFloorRoomContext}};
+use crate::rolag3::floor::{room_object::{room_object_def::{NewRoomObjectContext, RoomObjectCollection}, wall::basic_wall::new_edge_wall, cosmetic::ground1::new_ground1, tiles::damage_tile::new_damage_tile}, rofiz::rofiz_state::RofizState, room::{RoomBuilderReq, RoomBuilder}, floorgen::run::{GenFloorRoomResponse, GenFloorRoomContext}};
 
 use super::util::rectangular_maze::make_rectangular_maze;
 
@@ -25,16 +25,16 @@ fn make_room_maze1(ctx: &mut GenFloorRoomContext, maze_w: usize, maze_h: usize) 
     let room_h = 5 * maze_h + 1;
 
     for i in 0..room_w {
-        let wall = BasicWall::new(&mut new_floor_object_ctx, wall_theme, i as u32, 0);
+        let wall = new_edge_wall(&mut new_floor_object_ctx, wall_theme, i as u32, 0);
         room_objects.add(Rc::new(RefCell::new(wall)));
-        let wall = BasicWall::new(&mut new_floor_object_ctx, wall_theme, i as u32, room_h as u32 - 1);
+        let wall = new_edge_wall(&mut new_floor_object_ctx, wall_theme, i as u32, room_h as u32 - 1);
         room_objects.add(Rc::new(RefCell::new(wall)));
     }
     
     for i in 1..(room_h-1) {
-        let wall = BasicWall::new(&mut new_floor_object_ctx, wall_theme, 0, i as u32);
+        let wall = new_edge_wall(&mut new_floor_object_ctx, wall_theme, 0, i as u32);
         room_objects.add(Rc::new(RefCell::new(wall)));
-        let wall = BasicWall::new(&mut new_floor_object_ctx, wall_theme, (room_w - 1) as u32, i as u32);
+        let wall = new_edge_wall(&mut new_floor_object_ctx, wall_theme, (room_w - 1) as u32, i as u32);
         room_objects.add(Rc::new(RefCell::new(wall)));
     }
 

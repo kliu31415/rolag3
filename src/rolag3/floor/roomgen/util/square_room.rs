@@ -1,6 +1,6 @@
 use std::{rc::Rc, cell::RefCell};
 
-use crate::rolag3::floor::{room_object::{wall::basic_wall::BasicWall, room_object_def::{RoomObjectCollection, NewRoomObjectContext}, cosmetic::ground1::new_ground1}, floorgen::run::GenFloorRoomContext, rofiz::rofiz_state::RofizState};
+use crate::rolag3::floor::{room_object::{wall::basic_wall::new_edge_wall, room_object_def::{RoomObjectCollection, NewRoomObjectContext}, cosmetic::ground1::new_ground1}, floorgen::run::GenFloorRoomContext, rofiz::rofiz_state::RofizState};
 
 pub fn init_basic_square_room(
     ctx: &mut GenFloorRoomContext,
@@ -13,16 +13,16 @@ pub fn init_basic_square_room(
     let mut nro_ctx = NewRoomObjectContext::from_gfr_ctx(&mut rofiz, ctx);
     let mut room_objects = RoomObjectCollection::new();
     for i in 0..w {
-        let wall = BasicWall::new(&mut nro_ctx, wall_theme, i, 0);
+        let wall = new_edge_wall(&mut nro_ctx, wall_theme, i, 0);
         room_objects.add(Rc::new(RefCell::new(wall)));
-        let wall = BasicWall::new(&mut nro_ctx, wall_theme, i, h - 1);
+        let wall = new_edge_wall(&mut nro_ctx, wall_theme, i, h - 1);
         room_objects.add(Rc::new(RefCell::new(wall)));
     }
 
     for i in 1..h-1 {
-        let wall = BasicWall::new(&mut nro_ctx, wall_theme, 0, i);
+        let wall = new_edge_wall(&mut nro_ctx, wall_theme, 0, i);
         room_objects.add(Rc::new(RefCell::new(wall)));
-        let wall = BasicWall::new(&mut nro_ctx, wall_theme, w - 1, i);
+        let wall = new_edge_wall(&mut nro_ctx, wall_theme, w - 1, i);
         room_objects.add(Rc::new(RefCell::new(wall)));
     }
 
@@ -42,16 +42,16 @@ pub fn init_basic_square_room_no_ground(
     let mut nro_ctx = NewRoomObjectContext::from_gfr_ctx(&mut rofiz, ctx);
     let mut room_objects = RoomObjectCollection::new();
     for i in 0..w {
-        let wall = BasicWall::new(&mut nro_ctx, wall_theme, i, 0);
+        let wall = new_edge_wall(&mut nro_ctx, wall_theme, i, 0);
         room_objects.add(Rc::new(RefCell::new(wall)));
-        let wall = BasicWall::new(&mut nro_ctx, wall_theme, i, h - 1);
+        let wall = new_edge_wall(&mut nro_ctx, wall_theme, i, h - 1);
         room_objects.add(Rc::new(RefCell::new(wall)));
     }
 
     for i in 1..h-1 {
-        let wall = BasicWall::new(&mut nro_ctx, wall_theme, 0, i);
+        let wall = new_edge_wall(&mut nro_ctx, wall_theme, 0, i);
         room_objects.add(Rc::new(RefCell::new(wall)));
-        let wall = BasicWall::new(&mut nro_ctx, wall_theme, w - 1, i);
+        let wall = new_edge_wall(&mut nro_ctx, wall_theme, w - 1, i);
         room_objects.add(Rc::new(RefCell::new(wall)));
     }
 
