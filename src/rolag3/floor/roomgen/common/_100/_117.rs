@@ -42,12 +42,12 @@ fn make_room(
     let (mut rofiz, mut room_objects) = init_basic_square_room_middle_walled(ctx, w, h, w / 5, h / 5);
     let nro_ctx = &mut NewRoomObjectContext::from_gfr_ctx(&mut rofiz, ctx);
 
-    let mut oct_colors = oct_colors.into_iter();
+    let mut hex_colors = oct_colors.into_iter();
     for i in [0.3, 0.7] {
         for j in [0.3, 0.7] {
             let x = w as f64 * i;
             let y = h as f64 * j;
-            let enemy = new_hexagon_rgb2_circle(nro_ctx, oct_colors.next().unwrap(), x, y);
+            let enemy = new_hexagon_rgb2_circle(nro_ctx, hex_colors.next().unwrap(), x, y);
             room_objects.add(Rc::new(RefCell::new(enemy)));
         }
     }
