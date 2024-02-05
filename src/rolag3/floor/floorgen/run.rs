@@ -725,7 +725,7 @@ fn get_disjoint_hallways(hg: &Vec<Vec<HallwayGridCell>>) -> (Vec<BoundingBoxUsiz
     let mut bounding_boxes = Vec::new();
     for x in 0..hg.len() {
         for y in 0..hg[0].len() {
-            if hg[x][y] != HallwayGridCell::Empty && hid_grid[x][y].is_none() {
+            if hg[x][y] == HallwayGridCell::Hallway && hid_grid[x][y].is_none() {
                 let mut bb = BoundingBoxUsize {
                     x1: x,
                     x2: x,
@@ -770,17 +770,21 @@ fn dfs_disjoint_hallways(
 
     hid_grid[x][y] = Some(hid);
 
-    if x > 0 {
-        dfs_disjoint_hallways(hg, hid_grid, hid, x-1, y, bb);
+    if hg[x][y] == HallwayGridCell::Wall {
+        // if two hallways only have touching walls, don't place them in the same room.
+        return;
     }
-    if x+1 != hg.len() {
-        dfs_disjoint_hallways(hg, hid_grid, hid, x+1, y, bb);
-    }
-    if y > 0 {
-        dfs_disjoint_hallways(hg, hid_grid, hid, x, y-1, bb);
-    }
-    if y+1 != hg[0].len() {
-        dfs_disjoint_hallways(hg, hid_grid, hid, x, y+1, bb);
+
+    // dfs to all 8 surrounding tiles to ensure wall corners are put into this hallway
+    for dx in [-1, 0, 1] {
+        for dy in [-1, 0, 1] {
+            let nx = (x as i32) + dx;
+            let ny = (y as i32) + dy;
+            if nx < 0 || ny < 0 || nx >= (hg.len() as i32) || ny >= (hg[0].len() as i32) {
+                continue;
+            }
+            dfs_disjoint_hallways(hg, hid_grid, hid, nx as usize, ny as usize, bb);
+        }
     }
 }
 

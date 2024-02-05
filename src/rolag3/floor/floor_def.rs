@@ -264,9 +264,9 @@ impl Floor {
             GenFloorRoomFn {weight: 0.0, func: get_gen_room_fn_common117b(40, 40)},
             GenFloorRoomFn {weight: 0.0, func: get_gen_room_fn_common118a(35, 35)},
             GenFloorRoomFn {weight: 0.0, func: get_gen_room_fn_common118b(35, 35)},
-            GenFloorRoomFn {weight: 1.0, func: get_gen_room_fn_common119a(48, 44)},
+            GenFloorRoomFn {weight: 0.0, func: get_gen_room_fn_common119a(48, 44)},
             GenFloorRoomFn {weight: 0.0, func: get_gen_room_fn_common119b(48, 44)},
-            GenFloorRoomFn {weight: 0.0, func: get_gen_room_fn_common119c(48, 44)},
+            GenFloorRoomFn {weight: 1.0, func: get_gen_room_fn_common119c(48, 44)},
         ];
         let ground_theme = GroundTheme::Monocolor(Color::new(0.02, 0.0, 0.0, 1.0));
         let wall_theme = WallTheme::Monocolor(Color::new(0.1, 0.2, 0.3, 1.0));
