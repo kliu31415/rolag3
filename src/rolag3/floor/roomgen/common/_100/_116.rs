@@ -5,7 +5,6 @@ use crate::rolag3::floor::{floorgen::run::{GenFloorRoomContext, GenFloorRoomResp
 /* Common116 contains many SmallOctagonRgbCircles
  */
 
-
 pub fn get_gen_room_fn_common116a(
     w: u32, 
     h: u32,
@@ -13,8 +12,8 @@ pub fn get_gen_room_fn_common116a(
     Box::new(move |ctx: &mut GenFloorRoomContext| {
         let mut colors = [DamageColor::Red, DamageColor::Green, DamageColor::Blue];
         ctx.rng.shuffle(&mut colors);
-        let square_colors = std::array::from_fn(|_| ctx.rng.sample_slice_uniform(&colors[1..]));
-        make_room(ctx, w, h, false, square_colors)
+        let oct_colors = std::array::from_fn(|_| ctx.rng.sample_slice_uniform(&colors[1..]));
+        make_room(ctx, w, h, false, oct_colors)
     })
 }
 
@@ -24,8 +23,8 @@ pub fn get_gen_room_fn_common116b(
 ) -> Box<dyn Fn(&mut GenFloorRoomContext) -> GenFloorRoomResponse> {
     Box::new(move |ctx: &mut GenFloorRoomContext| {
         let colors = [DamageColor::Red, DamageColor::Green, DamageColor::Blue];
-        let square_colors = std::array::from_fn(|_| ctx.rng.sample_slice_uniform(&colors));
-        make_room(ctx, w, h, false, square_colors)
+        let oct_colors = std::array::from_fn(|_| ctx.rng.sample_slice_uniform(&colors));
+        make_room(ctx, w, h, false, oct_colors)
     })
 }
 
@@ -35,8 +34,8 @@ pub fn get_gen_room_fn_common116c(
 ) -> Box<dyn Fn(&mut GenFloorRoomContext) -> GenFloorRoomResponse> {
     Box::new(move |ctx: &mut GenFloorRoomContext| {
         let colors = [DamageColor::Red, DamageColor::Green, DamageColor::Blue];
-        let square_colors = std::array::from_fn(|_| ctx.rng.sample_slice_uniform(&colors));
-        make_room(ctx, w, h, true, square_colors)
+        let oct_colors = std::array::from_fn(|_| ctx.rng.sample_slice_uniform(&colors));
+        make_room(ctx, w, h, true, oct_colors)
     })
 }
 
