@@ -23,7 +23,7 @@ const PROJ_FIRE_INTERVAL: f64 = 0.0025;
 const PROJ_SPEED: f64 = 180.0;
 
 const LASER_START_ROOM_PRELUDE_DURATION: f64 = 1.25;
-const LASER_DURATION_EACH: f64 = 0.5;
+const LASER_DURATION_EACH: f64 = 0.7;
 
 pub struct SmallOctRgbCircle {
     xlate_dir_qr: Option<Rc<RefCell<Act1QueryResult>>>,

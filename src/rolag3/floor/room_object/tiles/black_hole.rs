@@ -5,11 +5,11 @@ pub struct BlackHole {
     md: RoomObjectMetadata,
     rofo_ref: RofizObjectRef,
     last_absorbed_proj_at: Option<f64>,
+    outer_color_no_absorb: Color,
+    outer_color_absorb: Color,
 }
 
 const INNER_COLOR: Color = Color::new(0.0, 0.0, 0.0, 1.0);
-const OUTER_COLOR_NO_ABSORB: Color = Color::new(0.6, 3.0, 0.6, 1.0);
-const OUTER_COLOR_ABSORB: Color = Color::new(0.8, 10.0, 0.8, 1.0);
 const COLLISION_RADIUS: f32 = 0.3;
 const INNER_DRAW_RADIUS: f32 = 0.7;
 const OUTER_DRAW_RADIUS: f32 = 0.8;
@@ -22,10 +22,14 @@ impl RoomObject for BlackHole {
     fn act1(&mut self, ctx: &mut Act1Context) -> Act1Response {
         let xform = ctx.get_rofiz().get_movable_object_xform(&self.rofo_ref);
         let mut response = Act1Response::new();
+        let colors = match self.affects_projectiles_color_filter {
+            Some(c) => Box::new([c]) as _,
+            None => Box::new([DamageColor::Red, DamageColor::Green, DamageColor::Blue]) as _,
+        };
         response.apply_operation(RoomObjOperation::BlackHoleForce { 
             x: xform.dx, 
             y: xform.dy, 
-            colors: vec![DamageColor::Green], 
+            colors,
             accel_fn: |mut distance| {
                 let threshold = 6.0;
                 if distance > threshold {
@@ -41,8 +45,8 @@ impl RoomObject for BlackHole {
     fn draw(&mut self, ctx: &mut DrawContext) {
         let xform = ctx.get_rofiz().get_movable_object_xform(&self.rofo_ref);
         let outer_color = match self.last_absorbed_proj_at {
-            Some(t) => Color::lerp(OUTER_COLOR_ABSORB, OUTER_COLOR_NO_ABSORB, f64::min(1.0, 2.0 * (ctx.get_room_time() - t)) as f32),
-            None => OUTER_COLOR_NO_ABSORB,
+            Some(t) => Color::lerp(self.outer_color_absorb, self.outer_color_no_absorb, f64::min(1.0, 2.0 * (ctx.get_room_time() - t)) as f32),
+            None => self.outer_color_no_absorb,
         };
         let dop = ctx.do_concentric_circle(INNER_COLOR, outer_color, Point::new(xform.dx as f32, xform.dy as f32), INNER_DRAW_RADIUS, OUTER_DRAW_RADIUS);
         ctx.add_draw_op(DrawContext::Z_BLACK_HOLE, dop);
@@ -63,10 +67,30 @@ pub fn new_black_hole(ctx: &mut NewRoomObjectContext, color: Option<DamageColor>
     let xform = Transformation::new(x, y, 0.0);
     let shape = Shape::of_circle(Point::new(0.0, 0.0), COLLISION_RADIUS);
     let rofo_ref = ctx.add_spectral_unit(md.get_ref(), Hitbox::new(xform, shape));
+    let outer_color_no_absorb = match color {
+        Some(c) => match c {
+            DamageColor::Red => Color::new(8.0, 0.5, 0.6, 1.0),
+            DamageColor::Green => Color::new(0.6, 3.0, 0.6, 1.0),
+            DamageColor::Blue => Color::new(0.6, 0.5, 17.0, 1.0),
+            _ => panic!("unexpected damage color {:?}", c),
+        },
+        None => todo!(),
+    };
+    let outer_color_absorb = match color {
+        Some(c) => match c {
+            DamageColor::Red => Color::new(15.0, 0.8, 0.8, 1.0),
+            DamageColor::Green => Color::new(0.8, 5.0, 0.8, 1.0),
+            DamageColor::Blue => Color::new(0.8, 0.8, 35.0, 1.0),
+            _ => panic!("unexpected damage color {:?}", c),
+        },
+        None => todo!(),
+    };
     BlackHole {
         affects_projectiles_color_filter: color,
         md,
         rofo_ref,
         last_absorbed_proj_at: None,
+        outer_color_no_absorb,
+        outer_color_absorb,
     }
 }

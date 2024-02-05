@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
-use crate::rolag3::floor::{floorgen::run::{GenFloorRoomContext, GenFloorRoomResponse}, roomgen::util::{connection_candidates::all_borders_as_connection_candidates, square_room::init_basic_square_room}, room_object::{room_object_def::NewRoomObjectContext, unit::enemy::small_octagon::rgb_circle::new_small_octagon_rgb_circle, damage::DamageColor}, room::{RoomBuilder, RoomBuilderReq}};
+use crate::rolag3::floor::{floorgen::run::{GenFloorRoomContext, GenFloorRoomResponse}, roomgen::util::{connection_candidates::all_borders_as_connection_candidates, square_room::init_basic_square_room}, room_object::{room_object_def::NewRoomObjectContext, unit::enemy::small_octagon::rgb_circle::new_small_octagon_rgb_circle, damage::DamageColor, tiles::black_hole::new_black_hole}, room::{RoomBuilder, RoomBuilderReq}};
 
 /* Common116 contains many SmallOctagonRgbCircles
  */
@@ -14,7 +14,7 @@ pub fn get_gen_room_fn_common116a(
         let mut colors = [DamageColor::Red, DamageColor::Green, DamageColor::Blue];
         ctx.rng.shuffle(&mut colors);
         let square_colors = std::array::from_fn(|_| ctx.rng.sample_slice_uniform(&colors[1..]));
-        make_room(ctx, w, h, square_colors)
+        make_room(ctx, w, h, false, square_colors)
     })
 }
 
@@ -25,14 +25,27 @@ pub fn get_gen_room_fn_common116b(
     Box::new(move |ctx: &mut GenFloorRoomContext| {
         let colors = [DamageColor::Red, DamageColor::Green, DamageColor::Blue];
         let square_colors = std::array::from_fn(|_| ctx.rng.sample_slice_uniform(&colors));
-        make_room(ctx, w, h, square_colors)
+        make_room(ctx, w, h, false, square_colors)
     })
 }
+
+pub fn get_gen_room_fn_common116c(
+    w: u32, 
+    h: u32,
+) -> Box<dyn Fn(&mut GenFloorRoomContext) -> GenFloorRoomResponse> {
+    Box::new(move |ctx: &mut GenFloorRoomContext| {
+        let colors = [DamageColor::Red, DamageColor::Green, DamageColor::Blue];
+        let square_colors = std::array::from_fn(|_| ctx.rng.sample_slice_uniform(&colors));
+        make_room(ctx, w, h, true, square_colors)
+    })
+}
+
 
 fn make_room(
     ctx: &mut GenFloorRoomContext, 
     w: u32, 
     h: u32,
+    black_hole: bool,
     oct_colors: [DamageColor; 4],
 ) -> GenFloorRoomResponse {
     assert!(w >= 20, "w({}) is too low", w);
@@ -47,6 +60,13 @@ fn make_room(
             let enemy = new_small_octagon_rgb_circle(nro_ctx, oct_colors[i*2 + j], x, y);
             room_objects.add(Rc::new(RefCell::new(enemy)));
         }
+    }
+
+    if black_hole {
+        let colors = [DamageColor::Red, DamageColor::Green, DamageColor::Blue];
+        let color = nro_ctx.get_rng().sample_slice_uniform(&colors);
+        let bh = new_black_hole(nro_ctx, Some(color), w as f64 / 2.0, h as f64 / 2.0);
+        room_objects.add(Rc::new(RefCell::new(bh)));
     }
 
     GenFloorRoomResponse {

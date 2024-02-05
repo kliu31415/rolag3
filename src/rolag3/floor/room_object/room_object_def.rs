@@ -102,7 +102,7 @@ impl<'a> RoomObjApplyOperationContext<'a> {
 }
 
 pub enum RoomObjOperation {
-    BlackHoleForce { x: f64, y: f64, colors: Vec<DamageColor>, accel_fn: fn(f64) -> f64 /* dist -> accel */},
+    BlackHoleForce { x: f64, y: f64, colors: Box<[DamageColor]>, accel_fn: fn(f64) -> f64 /* dist -> accel */},
     ClearProjectiles {exclude_teams_filter: Vec<Team> },
     UnitBudeb {exclude_teams_filter: Vec<Team>, budeb: Budeb},
 }
