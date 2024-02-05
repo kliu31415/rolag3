@@ -18,11 +18,11 @@ const SLASH_PART_DPS: f64 = 20.0;
 const SLASH_PART_RADIUS: f32 = 4.5;
 const SLASH_DELTA: f64 = 2.0 * std::f64::consts::FRAC_PI_3;
 
-const PRIMARY_ATTACK_INTERVAL: f64 = 0.6;
+const PRIMARY_ATTACK_INTERVAL: f64 = 0.75;
 const SPECIAL_ATTACK_COOLDOWN: f64 = 1.0;
 const SPECIAL_ATTACK_MANA_COST: f64 = 5.0;
 
-const SLASH_COLOR: Color = Color::new(0.0, 0.2, 20.0, 1.0);
+const SLASH_COLOR: Color = Color::new(0.0, 0.5, 20.0, 1.0);
 
 struct AzureKatanaData {
     since_last_primary_attack: f64,

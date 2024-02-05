@@ -994,7 +994,7 @@ impl<'a> HandleCollisionContext<'a> {
     }
 
     // in the range [0, 1)
-    pub fn _get_randf64(&mut self) -> f64 {
+    pub fn get_randf64(&mut self) -> f64 {
         self.rng.gen_f64()
     }
 

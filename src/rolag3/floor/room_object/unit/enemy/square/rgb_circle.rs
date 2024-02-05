@@ -2,49 +2,74 @@ use std::{cell::RefCell, rc::Rc};
 
 use crate::{rolag3::floor::{draw::{Color, DrawContext}, room_object::{room_object_def::{Act1QueryResult, NewRoomObjectContext, Team, Act1Response, Act1QueryArgs, HandleCollisionResponse}, unit::{standard_unit1::{StandardUnit1, StandardUnit1BuilderReq, StandardUnit1Builder, HandleCollisionLogic, SuAct1Context, SuDrawContext, SuHandleCollisionContext}, standard_unit_common::TranslateMove}, damage::DamageColor, projectile::projectile2::{Proj2Shape, Projectile2BuilderReq, Projectile2Builder}}, rofiz::rofiz_object::Transformation}, geometry::{shape::{Shape, Point}, util::{rotate_polygon, regular_polygon, get_inner_polygon}}};
 
-/* SquareBlueCircle randomly translates. It occasionally spits a projectile in the player's direction.
+/* SquareRgbCircle randomly translates. It occasionally spits a projectile in the player's direction.
 */
 
-const OUTER_COLOR: Color = Color::new(0.0, 0.0, 1.0, 1.0);
-const INNER_COLOR: Color = Color::new(0.1, 0.1, 2.0, 1.0);
-const PROJ_COLOR: Color = Color::new(0.2, 0.2, 13.0, 1.0);
 const PROJ_RADIUS: f32 = 0.3;
 
-pub struct SquareBlueCircle {
+pub struct SquareRgbCircle {
     border_vertexes: [Point; 4],
     outer_vertexes: [Point; 4],
+    outer_color: Color,
+    inner_color: Color,
+    proj_color: Color,
     accel_xy_angle: f64,
     spit_projectile_start: Option<SpitProjectileInfo>,
-    should_reset_velocity: bool,
     query_result: Option<Rc<RefCell<Act1QueryResult>>>,
 }
 
 struct SpitProjectileInfo {
     start: f64,
     proj_spit: bool,
-    proj_dx: f64,
-    proj_dy: f64,
+    num_proj: usize,
+    angle_between_proj: f64,
+    proj_speed: f64,
+    proj_angle: f64,
 }
 
-pub fn new_square_blue_circle(ctx: &mut NewRoomObjectContext, x: f64, y: f64) -> StandardUnit1 {
+pub fn new_square_rgb_circle(ctx: &mut NewRoomObjectContext, damage_color: DamageColor, x: f64, y: f64) -> StandardUnit1 {
     let mut border_vertexes: [Point; 4] = regular_polygon(4, 1.3)[..].try_into().unwrap();
     rotate_polygon(std::f32::consts::FRAC_PI_4, &mut border_vertexes);
     let outer_vertexes: [Point; 4] = get_inner_polygon(0.1, &border_vertexes)[..].try_into().unwrap();
     let xform = Transformation::new(x, y, 0.0);
     let shape = Shape::of_polygon(Box::new(outer_vertexes));
-    let us_data = SquareBlueCircle {
+
+    let outer_color = match damage_color {
+        DamageColor::Red => Color::new(0.5, 0.0, 0.0, 1.0),
+        DamageColor::Green => Color::new(0.0, 0.4, 0.0, 1.0),
+        DamageColor::Blue => Color::new(0.0, 0.0, 0.5, 1.0),
+        _ => panic!("unexpected damage color {:?}", damage_color),
+    };
+
+    let inner_color = match damage_color {
+        DamageColor::Red => Color::new(1.0, 0.0, 0.0, 1.0),
+        DamageColor::Green => Color::new(0.0, 0.8, 0.0, 1.0),
+        DamageColor::Blue => Color::new(0.0, 0.0, 1.0, 1.0),
+        _ => panic!("unexpected damage color {:?}", damage_color),
+    };
+
+    let proj_color = match damage_color {
+        DamageColor::Red => Color::new(5.0, 0.01, 0.01, 1.0),
+        DamageColor::Green => Color::new(0.01, 1.5, 0.01, 1.0),
+        DamageColor::Blue => Color::new(0.06, 0.06, 14.0, 1.0),
+        _ => panic!("unexpected damage color {:?}", damage_color),
+    };
+
+    let us_data = SquareRgbCircle {
         border_vertexes,
         outer_vertexes,
+        outer_color,
+        inner_color,
+        proj_color,
         accel_xy_angle: 2.0 * std::f64::consts::PI * ctx.get_randf64(),
         spit_projectile_start: None,
-        should_reset_velocity: false,
         query_result: None,
     };
 
     StandardUnit1Builder::new(StandardUnit1BuilderReq {
         team: Team::Enemy,
-        damage_color: DamageColor::Blue,
-        hp: 30.0,
+        damage_color,
+        hp: 15.0,
         engine_power: 15.0,
         tire_traction: 50.0,
     }).act1_fn(Box::new(act1))
@@ -56,7 +81,7 @@ pub fn new_square_blue_circle(ctx: &mut NewRoomObjectContext, x: f64, y: f64) ->
 }
 
 fn act1(ctx: &mut SuAct1Context) -> Act1Response {
-    let us_data = ctx.su_ctx.us_data.downcast_mut::<SquareBlueCircle>().unwrap();
+    let us_data = ctx.su_ctx.us_data.downcast_mut::<SquareRgbCircle>().unwrap();
 
     let mut response = Act1Response::new();
     let tick_len = ctx.su_ctx.su_common.get_unit_tick_len();
@@ -67,11 +92,16 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
         match &*qr.borrow() {
             Act1QueryResult::ClosestUnit(v) => {
                 if let Some(closest) = v {
-                    let proj_velocity = 12.0;
-                    let theta = f64::atan2(closest.y - xform.dy, closest.x - xform.dx);
-                    let proj_dx = proj_velocity * f64::cos(theta);
-                    let proj_dy = proj_velocity * f64::sin(theta);
-                    us_data.spit_projectile_start = Some(SpitProjectileInfo { start: time, proj_spit: false, proj_dx, proj_dy });
+                    let proj_angle = f64::atan2(closest.y - xform.dy, closest.x - xform.dx);
+                    let num_proj = ctx.su_ctx.damage_color.to_rgb_idx() + 1;
+                    us_data.spit_projectile_start = Some(SpitProjectileInfo { 
+                        start: time, 
+                        proj_spit: false,
+                        num_proj,
+                        angle_between_proj: std::f64::consts::FRAC_PI_8,
+                        proj_speed: 12.0,
+                        proj_angle,
+                    });
                 }
             }
             _ => panic!("unexpected Act1QueryResult. Expected ClosestUnit, got {:?}", qr),
@@ -96,39 +126,36 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
                 y: 0.0,
                 r: PROJ_RADIUS,
             };
-            let proj = Projectile2Builder::new(
-                Projectile2BuilderReq{
-                    team: Team::Enemy,
-                    damage_color: DamageColor::Blue,
-                    damage: 3.0,
-                    owner: self_as_weak,
-                    velocity_x: sps.proj_dx,
-                    velocity_y: sps.proj_dy,
-                    xform,
-                    shape,
-                    color: PROJ_COLOR,
-                }
-            ).build(&mut nfo_ctx);
-            response.add_room_obj(Rc::new(RefCell::new(proj)));
+            for i in 0..sps.num_proj {
+                let angle = sps.proj_angle + sps.angle_between_proj * (i as f64 - 0.5 * (sps.num_proj - 1) as f64);
+                let proj = Projectile2Builder::new(
+                    Projectile2BuilderReq{
+                        team: Team::Enemy,
+                        damage_color: *ctx.su_ctx.damage_color,
+                        damage: 3.0,
+                        owner: self_as_weak.clone(),
+                        velocity_x: sps.proj_speed * f64::cos(angle),
+                        velocity_y: sps.proj_speed * f64::sin(angle),
+                        xform,
+                        shape: shape.clone(),
+                        color: us_data.proj_color,
+                    }
+                ).build(&mut nfo_ctx);
+                response.add_room_obj(Rc::new(RefCell::new(proj)));
+            }
         }
         if time - sps.start > 1.0 {
             us_data.spit_projectile_start = None;
         }
     }
 
-    if us_data.should_reset_velocity {
-        ctx.su_ctx.su_common.set_translate_move(TranslateMove::ResetVelocity);
-        us_data.accel_xy_angle = 2.0 * std::f64::consts::PI * ctx.act1_ctx.get_randf64();
-        us_data.should_reset_velocity = false;
-    } else {
-        match us_data.spit_projectile_start {
-            Some(_) => {
-                ctx.su_ctx.su_common.set_translate_move(TranslateMove::ResetVelocity);
-            }
-            None => {
-                us_data.accel_xy_angle += 10.0 * f64::sqrt(tick_len) * (ctx.act1_ctx.get_randf64() - 0.5);
-                ctx.su_ctx.su_common.set_translate_move(TranslateMove::Accelerate { ax: f64::cos(us_data.accel_xy_angle), ay: f64::sin(us_data.accel_xy_angle)});
-            }
+    match us_data.spit_projectile_start {
+        Some(_) => {
+            ctx.su_ctx.su_common.set_translate_move(TranslateMove::Decelerate);
+        }
+        None => {
+            us_data.accel_xy_angle += 10.0 * f64::sqrt(tick_len) * (ctx.act1_ctx.get_randf64() - 0.5);
+            ctx.su_ctx.su_common.set_translate_move(TranslateMove::Accelerate { ax: f64::cos(us_data.accel_xy_angle), ay: f64::sin(us_data.accel_xy_angle)});
         }
     }
 
@@ -136,17 +163,17 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
 }
 
 fn draw(ctx: &mut SuDrawContext) {
-    let us_data = ctx.su_ctx.us_data.downcast_mut::<SquareBlueCircle>().unwrap();
+    let us_data = ctx.su_ctx.us_data.downcast_mut::<SquareRgbCircle>().unwrap();
     let border_color = ctx.su_ctx.su_common.get_draw_color(DrawContext::COLOR_NSU_BORDER);
-    let outer_color = ctx.su_ctx.su_common.get_draw_color(OUTER_COLOR);
+    let outer_color = ctx.su_ctx.su_common.get_draw_color(us_data.outer_color);
     let inner_color = match us_data.spit_projectile_start {
         Some(ref x) => {
             let diff = ctx.su_ctx.su_common.get_unit_time() - x.start;
             assert!(diff>=0.0 && diff<=1.0);
-            let lerp_a = f64::powi(2.0 * (1.0 - f64::abs(0.5 - diff)), 2);
-            Color::lerp(INNER_COLOR, PROJ_COLOR, lerp_a as f32)
+            let lerp_a = 2.0 * (1.0 - f64::abs(0.5 - diff));
+            Color::lerp(us_data.inner_color, us_data.proj_color, lerp_a as f32)
         },
-        None => INNER_COLOR,
+        None => us_data.inner_color,
     };
     let xform = ctx.su_ctx.su_common.get_rofiz_xform(ctx.draw_ctx.get_rofiz());
     let border_vertexes = us_data.border_vertexes.map(|v| Point::new(xform.dx as f32 + v.x, xform.dy as f32 + v.y));
@@ -158,9 +185,9 @@ fn draw(ctx: &mut SuDrawContext) {
 }
 
 fn handle_collision(ctx: &mut SuHandleCollisionContext) -> HandleCollisionResponse {
-    let us_data = ctx.su_ctx.us_data.downcast_mut::<SquareBlueCircle>().unwrap();
+    let us_data = ctx.su_ctx.us_data.downcast_mut::<SquareRgbCircle>().unwrap();
     if !ctx.hc_ctx.is_other_spectral() {
-        us_data.should_reset_velocity = true;
+        us_data.accel_xy_angle = 2.0 * std::f64::consts::PI * ctx.hc_ctx.get_randf64();
     }
     HandleCollisionResponse::new()
 }

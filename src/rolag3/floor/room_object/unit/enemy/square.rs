@@ -1,4 +1,4 @@
-pub mod blue_circle;
+pub mod rgb_circle;
 pub mod blue_diamond;
 pub mod blue;
 pub mod red;
