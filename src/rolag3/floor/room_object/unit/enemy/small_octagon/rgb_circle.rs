@@ -41,6 +41,7 @@ struct XlateAction {
 }
 
 struct LaserAction {
+    played_initial_sound: bool,
     laser_dir: i64,
     next_dir_at: f64,
     num_proj_fired: u64,
@@ -67,6 +68,7 @@ pub fn new_small_octagon_rgb_circle(
             end_age: 0.0,
         },
         laser_action: LaserAction {
+            played_initial_sound: false,
             laser_dir: ctx.get_rng().gen_i64_range(0..8),
             next_dir_at: LASER_START_ROOM_PRELUDE_DURATION + LASER_DURATION_EACH,
             num_proj_fired: 0,
@@ -175,10 +177,28 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
         us_data.laser_action.num_proj_fired += 1;
     }
 
+    let mut play_sound = false;
+
     if owner_age > us_data.laser_action.next_dir_at {
         us_data.laser_action.laser_dir += 1;
         us_data.laser_action.laser_dir %= 8;
         us_data.laser_action.next_dir_at += LASER_DURATION_EACH;
+        play_sound = true;
+    }
+
+    if !us_data.laser_action.played_initial_sound && owner_age > LASER_START_ROOM_PRELUDE_DURATION {
+        us_data.laser_action.played_initial_sound = true;
+        play_sound = true;
+    }
+
+    if play_sound {
+        let mut rng = ctx.act1_ctx.get_rng().spawn_child();
+        let sounds = &ctx.act1_ctx.get_sound_db().energy_blast_small;
+        let sound = rng.sample_slice_uniform(sounds);
+        response.play_sound(ctx.act1_ctx.new_play_sound_builder(sound)
+            .location(xform.dx, xform.dy)
+            .volume_db_shift(-8.0)
+            .build());
     }
 
     response

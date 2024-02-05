@@ -8,6 +8,7 @@ pub struct SoundDb {
     pub sci_fi_weapon_laser_small_fun: [SoundDataRef; 5],
     pub sci_fi_shield_device_small: [SoundDataRef; 3],
     pub taser_stun_gun_zap_electricity: [SoundDataRef; 4],
+    pub energy_blast_small: [SoundDataRef; 5],
 }
 
 impl SoundDb {
@@ -20,6 +21,7 @@ impl SoundDb {
             sci_fi_weapon_laser_small_fun: Self::load_gm(ss, "sci-fi_weapon_laser_small_fun", 5)[..].try_into().unwrap(),
             sci_fi_shield_device_small: Self::load_gm(ss, "sci-fi_shield_device_small", 3)[..].try_into().unwrap(),
             taser_stun_gun_zap_electricity: Self::load_gm(ss, "taser_stun_gun_zap_electricity", 4)[..].try_into().unwrap(),
+            energy_blast_small: Self::load_gm(ss, "energy_blast_small", 5)[..].try_into().unwrap(),
         }
     }
 

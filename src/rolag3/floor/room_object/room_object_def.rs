@@ -349,18 +349,21 @@ impl RoomObjectCollection {
 
             for nps in newly_played_sounds {
                 // TODO: improve panning
+                let mut db_dist_falloff = 0.0;
                 let panning = if let Some((sx, sy)) = nps.location {
                     let dy = f64::abs(player_center.y - sy);
                     let lpan = 5.0 + f64::max(player_center.x - sx, 0.0) + dy;
                     let rpan = 5.0 + f64::max(sx - player_center.x, 0.0) + dy;
+                    let dist_sq = f64::powi(player_center.x - sx, 2) + f64::powi(player_center.y - sy, 2);
+                    db_dist_falloff = 4.0 * f64::log10(dist_sq + 1.0);
                     rpan / (lpan + rpan)
                 } else {
                     0.5
                 };
-                
+
                 let r = sound_system.play_sound(PlaySoundArgs {
                     sdr: nps.sound_data,
-                    volume_db_shift: nps.volume_db_shift,
+                    volume_db_shift: nps.volume_db_shift - db_dist_falloff,
                     playback_speed: nps.playback_speed,
                     panning,
                 });
