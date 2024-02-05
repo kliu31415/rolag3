@@ -164,7 +164,7 @@ fn act1(ctx: &mut SuAct1Context) -> Act1Response {
             let proj = Projectile2Builder::new(Projectile2BuilderReq {
                 team: Team::Enemy,
                 damage_color: *ctx.su_ctx.damage_color,
-                damage: if is_prelude {0.0} else {3.0},
+                damage: if is_prelude {0.0} else {10.0 * PROJ_FIRE_INTERVAL},
                 owner: self_as_weak,
                 velocity_x: PROJ_SPEED * f64::cos(angle),
                 velocity_y: PROJ_SPEED * f64::sin(angle),
