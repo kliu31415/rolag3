@@ -572,6 +572,10 @@ impl StandardUnitCommon {
         self.damageable = damageable;
     }
 
+    pub fn set_engine_power(&mut self, engine_power: f64) {
+        self.engine_power = engine_power;
+    }
+
     pub fn set_floor_take_damage_mult(&mut self, mult: f64) {
         self.floor_take_damage_mult = mult;
     }
